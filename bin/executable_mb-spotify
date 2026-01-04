@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-cd "$HOME/.config/mb-scripts"
-exec deno task mb-spotify "$@"

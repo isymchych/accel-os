@@ -1,0 +1,5 @@
+{{- $sourceDir := printf "%s/dotfiles/dotfiles" .chezmoi.homeDir -}}
+sourceDir: {{ $sourceDir | quote }}
+
+edit:
+  command: "vim"

@@ -22,11 +22,11 @@
 - Name executable scripts `executable_<tool>` so chezmoi marks them executable on apply.
 - Keep template variables lowercase snake_case and derive host details from `.chezmoidata`.
 
-## mb-scripts (Deno)
-- Store scripts in `dot_config/mb-scripts/scripts/` and shared modules in `dot_config/mb-scripts/lib/`.
-- Add tasks in `dot_config/mb-scripts/deno.json` with `--lock=deno.lock --frozen --cached-only`.
-- Wrap each task with `bin/executable_mb-<name>`; wrapper `cd`s into `~/.config/mb-scripts` and runs `deno task mb-<name>`.
-- Cache all entrypoints via `run_onchange_cache-mb-scripts.sh.tmpl` (globs `./scripts/*.ts`).
+## Scripts (Deno)
+- Store scripts in `scripts/scripts/` and shared modules in `scripts/lib/`.
+- Add tasks in `scripts/deno.json` with `--lock=deno.lock --frozen --cached-only`.
+- Wrap each task with `dotfiles/bin/executable_mb-<name>`; wrapper `cd`s into `$ACCELERANDO_HOME/scripts` and runs `deno task mb-<name>`.
+- Cache all entrypoints via `scripts/cache-mb-scripts.sh` (globs `./scripts/*.ts`).
 
 ## Theme Switching Scripts
 - Pair every app-specific theme toggle with matching scripts in `dot_local/share/dark-mode.d/` and `dot_local/share/light-mode.d/`, named `executable_<app>-theme.sh`.

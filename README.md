@@ -5,11 +5,18 @@ This repository relies on [chezmoi](https://www.chezmoi.io/) to manage dotfiles.
 To bootstrap a new host:
 
 ```bash
-chezmoi init --source="$HOME/dotfiles" --destination="$HOME"
+chezmoi init --source="$HOME/dotfiles/dotfiles" --destination="$HOME"
 chezmoi apply
 ```
 
 Re-run `chezmoi diff` before every apply to catch surprises, and keep host-specific bits in templates or `run_` scripts.
+
+## Orchestration
+If `just` is installed:
+
+```bash
+just provision
+```
 
 ## CLI tools I rely on
 - `yazi` — file manager (remember to install its `unarchiver` plugin for previews)

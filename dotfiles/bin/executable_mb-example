@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${ACCELERANDO_HOME:?ACCELERANDO_HOME must point at repo root}"
+cd "$ACCELERANDO_HOME/scripts"
+exec deno task mb-example "$@"

@@ -1,9 +1,3 @@
-firefox/**
-docs/**
-AGENTS.md
-README.md
-LICENSE
-
 {{ if ne .chezmoi.os "darwin" }}
 Library/**
 .config/com.googlecode.iterm2.plist

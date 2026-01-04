@@ -7,6 +7,8 @@ path=(
   $path
 )
 
+export ACCELERANDO_HOME="${ACCELERANDO_HOME:-$HOME/dotfiles}"
+
 # Starship https://starship.rs/
 eval "$(starship init zsh)"
 

@@ -69,7 +69,7 @@ $ chmod 700 ~/.ssh
 $ chmod 600 ~/.ssh/key
 ```
 * clone dotfiles from github
-* `chezmoi init --source="$HOME/dotfiles" --destination="$HOME"`
+* `chezmoi init --source="$HOME/dotfiles/dotfiles" --destination="$HOME"`
 * `chezmoi apply` (run with `--dry-run` first on a fresh host)
 * switch user to zsh `chsh -s /bin/zsh`
 * install pipewire pipewire-pulse
@@ -81,7 +81,7 @@ $ chmod 600 ~/.ssh/key
  * intel-gpu-tools - to monitor intel graphics card
 * install greetd
  * enable `greetd.service`
- * copy dotfiles/linux/run-sway.sh into /usr/local/bin/
+ * copy docs/linux/run-sway.sh into /usr/local/bin/
  * Update `/etc/greetd/config.toml`: `command = "agreety --cmd run-sway.sh"`
  * `systemctl edit greetd` and change service type to `idle` to prevent systemd logs overwriting login prompt
  * ? configure autologin
