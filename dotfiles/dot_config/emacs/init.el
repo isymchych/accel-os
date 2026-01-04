@@ -474,6 +474,18 @@ narrowed."
   (setq unread-command-events (listify-key-sequence "\C-c")))
 
 
+(defun mb/open-xterm-here ()
+  "Open xterm in `default-directory`."
+  (interactive)
+  (let ((dir default-directory))
+    (when (file-remote-p dir)
+      (user-error "xterm: remote directory not supported: %s" dir))
+    (unless (executable-find "xterm")
+      (user-error "xterm not found in PATH"))
+    (let ((cwd (file-name-as-directory (expand-file-name dir))))
+      (start-process "xterm" nil "xterm" "--cwd" cwd))))
+
+
 ;;; ---------------------------------------- ESSENTIAL PACKAGES
 
 
@@ -787,7 +799,7 @@ narrowed."
 (use-package eshell
   :ensure nil
   :defer t
-  :bind ("C-c e" . eshell))
+  :bind ("C-c E" . eshell))
 
 
 
@@ -2018,7 +2030,10 @@ targets."
 
 ;; Eat: terminal emulator
 (use-package eat
-  :hook (eshell-load . eat-eshell-mode))
+  :hook (eshell-load . eat-eshell-mode)
+  :bind ("C-c e" . eat)
+  :config
+  (setq eat-kill-buffer-on-exit t))
 
 
 
@@ -2211,6 +2226,9 @@ targets."
 (global-set-key [remap capitalize-word] 'capitalize-dwim)
 
 (global-set-key (kbd "<f6>") 'mb/revert-buffer)
+
+(global-set-key (kbd "M-RET")     'mb/open-xterm-here)
+(global-set-key (kbd "M-<return>") 'mb/open-xterm-here)
 
 
 (defvar-keymap mb/insert-map
