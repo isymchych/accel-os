@@ -68,8 +68,8 @@ During Arch installation mount it as `/efi` and use `reFind` boot manager.
 $ chmod 700 ~/.ssh
 $ chmod 600 ~/.ssh/key
 ```
-* clone dotfiles from github
-* `chezmoi init --source="$HOME/dotfiles/dotfiles" --destination="$HOME"`
+* clone accel-os from github
+* `chezmoi init --source="$HOME/accel-os/dotfiles" --destination="$HOME"`
 * `chezmoi apply` (run with `--dry-run` first on a fresh host)
 * switch user to zsh `chsh -s /bin/zsh`
 * install pipewire pipewire-pulse
@@ -171,7 +171,7 @@ $ chmod 600 ~/.ssh/key
 
 ## Apps
 * Firefox
-  * install config from dotfiles
+  * install config from accel-os
   * tweak settings of Cookie Auto Delete
 * Thunderbird
   * add accounts

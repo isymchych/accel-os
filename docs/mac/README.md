@@ -9,8 +9,8 @@
   * brew install --cask iterm2-beta
   * Preferences -> General/Preferences -> Check "Load preferences from a custom folder or URL" and point it at `~/.config/iterm2`
 * brew install git git-delta chezmoi zsh zsh-autosuggestions zsh-syntax-highlighting zsh-completions starship coreutils
-* Clone dotfiles
-* `chezmoi init --source="$HOME/dotfiles/dotfiles" && chezmoi apply`
+* Clone accel-os
+* `chezmoi init --source="$HOME/accel-os/dotfiles" && chezmoi apply`
 * Use zsh as a shell `chsh -s /bin/zsh`
 * CLI tools
     brew install aspell editorconfig fd gitui htop jq just yazi fnm ripgrep tokei wget

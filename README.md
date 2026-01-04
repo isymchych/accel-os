@@ -1,11 +1,11 @@
-# dotfiles
+# Accelerando OS
 
 This repository relies on [chezmoi](https://www.chezmoi.io/) to manage dotfiles.
 
 To bootstrap a new host:
 
 ```bash
-chezmoi init --source="$HOME/dotfiles/dotfiles" --destination="$HOME"
+chezmoi init --source="$HOME/accel-os/dotfiles" --destination="$HOME"
 chezmoi apply
 ```
 

@@ -16,7 +16,7 @@ shell_snapshot = true
 [tui]
 notifications = true
 
-[projects."/home/isymchych/dotfiles"]
+[projects."/home/isymchych/accel-os"]
 trust_level = "trusted"
 
 [projects."/home/isymchych/work"]
