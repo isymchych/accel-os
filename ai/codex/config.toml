@@ -2,7 +2,7 @@
 
 model = "gpt-5.2-codex"
 model_reasoning_effort = "high"
-# notify = ["/home/isymchych/.codex/notify.sh"]
+# notify = ["$CODEX_HOME/notify.sh"]
 network_access = true
 sandbox_mode = "workspace-write"
 

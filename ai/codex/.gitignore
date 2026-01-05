@@ -1,0 +1,7 @@
+auth.json
+history.jsonl
+log
+sessions
+shell_snapshots
+skills/.system
+version.json

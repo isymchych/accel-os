@@ -8,6 +8,7 @@ path=(
 )
 
 export ACCELERANDO_HOME="${ACCELERANDO_HOME:-$HOME/accel-os}"
+export CODEX_HOME="${CODEX_HOME:-$ACCELERANDO_HOME/ai/codex}"
 
 # Starship https://starship.rs/
 eval "$(starship init zsh)"

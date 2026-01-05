@@ -17,7 +17,7 @@ description: Find and attach the newest screenshot PNG in ~/temp/screenshots. Us
 Run:
 
 ```bash
-deno run --quiet --allow-read=$HOME/temp/screenshots --allow-env=HOME,USERPROFILE $HOME/.codex/skills/find-screenshot/scripts/find_latest_screenshot.ts
+deno run --quiet --allow-read=$HOME/temp/screenshots --allow-env=HOME,USERPROFILE $CODEX_HOME/skills/find-screenshot/scripts/find_latest_screenshot.ts
 ```
 
 It prints the absolute path on success and writes errors to stderr on failure.
