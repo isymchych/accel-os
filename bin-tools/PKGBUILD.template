@@ -1,6 +1,6 @@
 # Maintainer: mbme
 
-pkgname=mb-binutils
+pkgname=mb-bin-tools
 pkgrel=1
 pkgver="0.0.0"
 pkgdesc='CLI apps for controlling Linux laptop backlight, volume, microphone, touchpad etc.'
@@ -14,7 +14,7 @@ pkgver() {
   cd ..
 
   cargo metadata --no-deps --format-version=1 \
-    | jq -r '.packages[] | select(.name=="binutils") | .version'
+    | jq -r '.packages[] | select(.name=="bin-tools") | .version'
 }
 
 prepare() {
@@ -29,7 +29,7 @@ build() {
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
 
-  export BINUTILS_VERSION="$pkgver"
+  export BIN_TOOLS_VERSION="$pkgver"
 
   cargo build --frozen --release
 }

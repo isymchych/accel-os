@@ -6,7 +6,7 @@ use regex::Regex;
 pub mod tools;
 
 pub fn get_crate_version() -> &'static str {
-    option_env!("BINUTILS_VERSION").unwrap_or("dev-build")
+    option_env!("BIN_TOOLS_VERSION").unwrap_or("dev-build")
 }
 
 pub fn send_notification(message: &str) {

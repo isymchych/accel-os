@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use binutils::{
+use bin_tools::{
     get_crate_version,
     tools::{Microphone, Speakers},
 };

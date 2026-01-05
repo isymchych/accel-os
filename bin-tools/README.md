@@ -1,4 +1,4 @@
-# binutils
+# bin-tools
 CLI apps for controlling a Linux laptop backlight, volume, microphone, touchpad etc.
 
 # Build dependencies

@@ -1,5 +1,5 @@
 [package]
-name = "binutils"
+name = "bin-tools"
 version = "1.0.0"
 edition = "2024"
 authors = ["mbme"]

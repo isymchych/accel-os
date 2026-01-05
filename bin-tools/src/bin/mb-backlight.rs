@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use binutils::{get_crate_version, tools::Backlight};
+use bin_tools::{get_crate_version, tools::Backlight};
 
 /// Control brightness of the display or keyboard
 #[derive(Parser, Debug)]

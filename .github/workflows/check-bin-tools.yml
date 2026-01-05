@@ -2,9 +2,13 @@ name: Check code
 
 on:
   push:
-    branches: [master]
+    branches: [main]
+    paths:
+      - bin-tools/**
   pull_request:
-    branches: [master]
+    branches: [main]
+    paths:
+      - bin-tools/**
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,6 +17,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: bin-tools
+
     steps:
       # toolchain must be selected before the rust-cache init
       - name: Use Rust
@@ -20,6 +28,8 @@ jobs:
 
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bin-tools
 
       - name: Lint & test Rust
         run: cargo clippy --all-targets --all-features -- -D warnings && cargo test

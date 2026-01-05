@@ -16,7 +16,7 @@ init-chezmoi:
 install-scripts:
   bash scripts/cache-mb-scripts.sh
 
-install-binutils:
-  just -f binutils/justfile prod-build-install
+install-bin-tools:
+  just -f bin-tools/justfile prod-build-install
 
-bootstrap: apply-chezmoi install-scripts install-binutils
+bootstrap: apply-chezmoi install-scripts install-bin-tools

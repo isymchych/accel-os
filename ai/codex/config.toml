@@ -1,7 +1,7 @@
 # see docs in https://github.com/openai/codex/blob/main/docs/config.md
 
 model = "gpt-5.2-codex"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 # notify = ["$CODEX_HOME/notify.sh"]
 network_access = true
 sandbox_mode = "workspace-write"

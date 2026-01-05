@@ -166,7 +166,6 @@ $ chmod 600 ~/.ssh/key
   * enable chrome://flags/#enable-webrtc-pipewire-capturer
 
 * run `rustup default stable`
-* clone typed-v and install mb-binutils
 * for backlight, add user to video group; https://wiki.archlinux.org/index.php/Backlight#ACPI
 
 ## Apps

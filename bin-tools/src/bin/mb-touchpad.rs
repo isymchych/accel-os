@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use binutils::{get_crate_version, tools::Touchpad};
+use bin_tools::{get_crate_version, tools::Touchpad};
 
 #[derive(Parser, Debug)]
 #[clap(version = get_crate_version(), about, long_about = None, arg_required_else_help = true)]
