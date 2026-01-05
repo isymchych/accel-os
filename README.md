@@ -2,20 +2,11 @@
 
 This repository relies on [chezmoi](https://www.chezmoi.io/) to manage dotfiles.
 
-To bootstrap a new host:
+To bootstrap a new host (with `just`):
 
 ```bash
-chezmoi init --source="$HOME/accel-os/dotfiles" --destination="$HOME"
-chezmoi apply
-```
-
-Re-run `chezmoi diff` before every apply to catch surprises, and keep host-specific bits in templates or `run_` scripts.
-
-## Orchestration
-If `just` is installed:
-
-```bash
-just provision
+just init-chezmoi
+just bootstrap
 ```
 
 ## CLI tools I rely on
@@ -25,6 +16,7 @@ just provision
 - `tokei` — code line counts
 - `just` — task runner
 - `fzf` — fuzzy matcher
+- `sad` — structural search/replace, with preview
 - `wget` — HTTP(S) downloads
 - `htop` — system monitor
 - `gitui` — TUI for git
@@ -36,7 +28,6 @@ just provision
 - `lazydocker` - TUI for Docker
 
 ## Optional CLI tools
-- `sad` — structural search/replace, with preview
 - `ast-grep` — structural code search/rewrite
 
 ## Zsh setup

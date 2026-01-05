@@ -7,13 +7,14 @@ pkgdesc='CLI apps for controlling Linux laptop backlight, volume, microphone, to
 arch=(x86_64)
 license=(MIT)
 depends=(libnotify libpulse light xorg-xinput)
-makedepends=(git cargo)
+makedepends=(cargo jq)
 options=(!debug)
 
 pkgver() {
   cd ..
 
-  git describe --abbrev=0 --tags
+  cargo metadata --no-deps --format-version=1 \
+    | jq -r '.packages[] | select(.name=="binutils") | .version'
 }
 
 prepare() {
@@ -28,7 +29,7 @@ build() {
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
 
-  export BINUTILS_VERSION=$(git describe --tags)
+  export BINUTILS_VERSION="$pkgver"
 
   cargo build --frozen --release
 }

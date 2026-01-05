@@ -13,6 +13,23 @@ packages:
         - gitui       # TUI for git
         - git-delta   # git diff viewer
         - difftastic  # syntax-aware diffs
+        - television  # fuzzy file finder / search
+        - lazydocker  # TUI for Docker
+        - sad         # structural search/replace, with preview
+        - editorconfig-core-c
+
+        # emacs
+        - aspell
+        - aspell-en
+        - aspell-uk
+        - emacs-wayland
+
+        # zsh
+        - starship    # shell prompt
+        - noto-fonts-emoji # emoji-capable font
+        - zsh-completions
+        - zsh-autosuggestions
+        - zsh-syntax-highlighting
       aur:
         - mergiraf    # semantic merge driver
         - rainfrog    # CLI database client
