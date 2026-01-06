@@ -72,8 +72,10 @@ if (sandboxMode) {
 }
 args.push(...passthrough);
 
+const cwd = Deno.env.get("AI_CWD") ?? Deno.cwd();
 const command = new Deno.Command("codex", {
   args,
+  cwd,
   stdin: "inherit",
   stdout: "inherit",
   stderr: "inherit",

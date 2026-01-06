@@ -2,7 +2,7 @@
 
 model = "gpt-5.2-codex"
 model_reasoning_effort = "medium"
-# notify = ["$CODEX_HOME/notify.sh"]
+notify = ["ai-notify"]
 network_access = true
 sandbox_mode = "workspace-write"
 
@@ -14,7 +14,7 @@ skills = true
 shell_snapshot = true
 
 [tui]
-notifications = true
+notifications = false
 
 [projects."/home/isymchych/accel-os"]
 trust_level = "trusted"
@@ -32,5 +32,12 @@ enabled = false
 
 [mcp_servers.playwright]
 command = "npx"
-args = ["@playwright/mcp@latest"]
+args = ["@playwright/mcp@latest", "--executable-path", "/usr/bin/chromium", "--extension"]
 enabled = false
+env = { "PLAYWRIGHT_MCP_EXTENSION_TOKEN" = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq" }
+
+# [mcp_servers.playwright.env]
+# PLAYWRIGHT_MCP_EXTENSION_TOKEN = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq-PvdIfuKa77I"
+
+[notice]
+hide_rate_limit_model_nudge = true

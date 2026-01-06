@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${ACCELERANDO_HOME:?ACCELERANDO_HOME must point at repo root}"
+
+payload="${1-}"
+if [[ -z $payload ]]; then
+  exit 0
+fi
+
+type="$(jq -r '.type // empty' <<<"$payload")"
+if [[ $type != "agent-turn-complete" ]]; then
+  exit 0
+fi
+
+title="$(jq -r '."last-assistant-message" // "Turn Complete!"' <<<"$payload")"
+message="$(jq -r '."input-messages" // [] | if type=="array" then join(" ") else "" end' <<<"$payload")"
+
+notify-send -t 6000 -i "$ACCELERANDO_HOME/ai/codex/chatgpt-logo.svg" "$title" "$message"
