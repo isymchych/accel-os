@@ -1,12 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `dot_*` entries are copied into `$HOME` by chezmoi; keep the prefix to control target paths.
-- Chezmoi ignores source files whose names already start with `.`; if the target begins with `.`, name the source `dot_<name>` (e.g. `dot_yas-parents`).
-- `dot_config/` mirrors `~/.config`; prefer `.tmpl` variants when values differ per host.
-- `bin/` holds `executable_*` shims that chezmoi installs to `~/.local/bin`.
+- `bin-tools/` is the Rust CLI tools crate (backlight/volume/mic/touchpad helpers).
+- `firefox/` holds `user.js` prefs; outside chezmoi because profile IDs vary.
 - `docs/` contains platform notes (`docs/linux`, `docs/mac`); keep secrets out and reference `.chezmoidata` instead.
-- `run_once_*.sh` and `run_onchange_*.sh.tmpl` scripts provision hosts; guard them with OS checks and make them idempotent.
+- `scripts/` holds Deno tasks (`scripts/scripts/`) and shared modules (`scripts/lib/`).
+- `ai/` holds Codex skills and automation.
+
+### dotfiles/
+- `dotfiles/` is the chezmoi source tree for `$HOME`.
+- `dotfiles/dot_*` map to dotfiles in `$HOME`; keep the prefix to control target paths.
+- Chezmoi ignores source files whose names already start with `.`; if the target begins with `.`, name the source `dot_<name>` (e.g. `dot_yas-parents`).
+- `dotfiles/dot_config/` mirrors `~/.config`; prefer `.tmpl` variants when values differ per host.
+- `dotfiles/bin/` holds `executable_*` shims that chezmoi installs to `~/.local/bin`.
+- `run_once_*.sh` and `run_onchange_*.sh.tmpl` in `dotfiles/` provision hosts; guard them with OS checks and make them idempotent.
 
 ## Build, Test, and Development Commands
 - `chezmoi diff` — review pending changes before every apply.
@@ -29,9 +36,9 @@
 - Cache all entrypoints via `scripts/cache-mb-scripts.sh` (globs `./scripts/*.ts`).
 
 ## Theme Switching Scripts
-- Pair every app-specific theme toggle with matching scripts in `dot_local/share/dark-mode.d/` and `dot_local/share/light-mode.d/`, named `executable_<app>-theme.sh`.
+- Pair every app-specific theme toggle with matching scripts in `dotfiles/dot_local/share/dark-mode.d/` and `dotfiles/dot_local/share/light-mode.d/`, named `executable_<app>-theme.sh`.
 - Keep scripts minimal: shebang, blank line, then a single command that swaps the light and dark tokens (typically a `sed -i --follow-symlinks` substitution mirroring the rest of the repo).
-- Keep the literal theme tokens in sync with their tracked dotfiles (e.g. `dot_gemini/settings.json`) so the sed substitutions match what chezmoi installs.
+- Keep the literal theme tokens in sync with their tracked dotfiles (e.g. `dotfiles/dot_gemini/settings.json`) so the sed substitutions match what chezmoi installs.
 
 ## Testing Guidelines
 - Run `shellcheck bin/<script>` (or `bash -n`) before committing shell changes.
@@ -48,3 +55,7 @@
 - Keep secrets and host-only files ignored via `.chezmoiignore`.
 - In `.chezmoiignore`, patterns operate on the rendered target tree (e.g. `.config/...`, `.local/bin/<tool>`, `.local/share/chezmoi/run_onchange_*.sh`); the file is templated even without a `.tmpl` suffix, so gate OS-specific blocks accordingly.
 - Use `dot_zshrc_local.tmpl` and `run_onchange_*` scripts for overrides; defaults must stay safe cross-platform.
+
+## Local Environment
+- Current host OS: Arch Linux (ID=arch).
+- DE/WM: Sway (Wayland).

@@ -3,6 +3,7 @@
     "@lib/": "./lib/"
   },
   "tasks": {
+    "ai": "deno run --lock=deno.lock --frozen --cached-only --allow-run=codex ./scripts/ai.ts",
     "mb-example": "deno run --lock=deno.lock --frozen --cached-only ./scripts/mb-example.ts",
     "mb-spotify": "deno run --lock=deno.lock --frozen --cached-only --allow-env=HOME,XDG_CONFIG_HOME --allow-read --allow-write --allow-net=127.0.0.1,accounts.spotify.com,api.spotify.com --allow-run=xdg-open ./scripts/mb-spotify.ts"
   }

@@ -30,6 +30,9 @@ packages:
         - zsh-completions
         - zsh-autosuggestions
         - zsh-syntax-highlighting
+
+        # fonts
+        - noto-fonts-cjk # CJK fonts
       aur:
         - mergiraf    # semantic merge driver
         - rainfrog    # CLI database client

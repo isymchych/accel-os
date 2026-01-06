@@ -3,4 +3,4 @@ set -euo pipefail
 
 : "${ACCELERANDO_HOME:?ACCELERANDO_HOME must point at repo root}"
 cd "$ACCELERANDO_HOME/scripts"
-exec deno task --quiet mb-example "$@"
+exec deno task --quiet ai "$@"

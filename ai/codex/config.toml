@@ -24,3 +24,13 @@ trust_level = "trusted"
 
 [projects."/home/isymchych/projects"]
 trust_level = "trusted"
+
+[mcp_servers.serena]
+command = "uvx"
+args = ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--context", "codex"]
+enabled = false
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
+enabled = false
