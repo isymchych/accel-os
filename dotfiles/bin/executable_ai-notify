@@ -15,5 +15,14 @@ fi
 
 title="$(jq -r '."last-assistant-message" // "Turn Complete!"' <<<"$payload")"
 message="$(jq -r '."input-messages" // [] | if type=="array" then join(" ") else "" end' <<<"$payload")"
+sound_path="$ACCELERANDO_HOME/ai/codex/mixkit-correct-answer-tone-2870.wav"
 
-notify-send -t 6000 -i "$ACCELERANDO_HOME/ai/codex/chatgpt-logo.svg" "$title" "$message"
+notify-send -t 6000 -i "$ACCELERANDO_HOME/ai/codex/chatgpt-logo.svg" "$title" "$message" &
+if [[ -f $sound_path ]]; then
+  if command -v paplay >/dev/null 2>&1; then
+    paplay "$sound_path" >/dev/null 2>&1 &
+  elif command -v pw-play >/dev/null 2>&1; then
+    pw-play "$sound_path" >/dev/null 2>&1 &
+  fi
+fi
+wait
