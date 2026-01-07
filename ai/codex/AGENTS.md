@@ -27,6 +27,7 @@
 - Prefer **deterministic**, **repeatable**, **auditable** solutions.
 - Do the simplest thing that works.
 - Follow "parse, don't validate": parse into concrete structures, then validate.
+- Keep branded/domain types in component/public signatures. If data shapes don’t line up, adapt inside the component rather than widening types.
 
 ## Workflow
 - Comment only where logic is tricky/non-obvious; keep comments tight and high-value.
@@ -34,6 +35,9 @@
 - Avoid trivial class helper methods; prefer file-scope functions.
 - When a workaround stops being needed, revert names/structure to the simpler original; update all references.
 - Delete unused/obsolete files when changes make them irrelevant; only revert files you changed or when asked.
+- Ask for a clear “proceed” before any code changes when sequencing is requested.
+- Treat plan+execute as separate phases unless the user explicitly combines them.
+- Re-read current file state before edits; do not overwrite user-made changes.
 
 ## Tooling
 - Android: prefer **Java** (not Kotlin).

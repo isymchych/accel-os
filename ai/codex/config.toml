@@ -34,10 +34,7 @@ enabled = false
 command = "npx"
 args = ["@playwright/mcp@latest", "--executable-path", "/usr/bin/chromium", "--extension"]
 enabled = false
-env = { "PLAYWRIGHT_MCP_EXTENSION_TOKEN" = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq" }
-
-# [mcp_servers.playwright.env]
-# PLAYWRIGHT_MCP_EXTENSION_TOKEN = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq-PvdIfuKa77I"
+env = { "PLAYWRIGHT_MCP_EXTENSION_TOKEN" = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq-PvdIfuKa77I" }
 
 [notice]
 hide_rate_limit_model_nudge = true

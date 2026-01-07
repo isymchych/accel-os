@@ -34,6 +34,9 @@
 - Add tasks in `scripts/deno.json` with `--lock=deno.lock --frozen --cached-only`.
 - Wrap each task with `dotfiles/bin/executable_mb-<name>`; wrapper `cd`s into `$ACCELERANDO_HOME/scripts` and runs `deno task mb-<name>`.
 - Cache all entrypoints via `scripts/cache-mb-scripts.sh` (globs `./scripts/*.ts`).
+- Confirm cache/lock policy before dismissing dependency changes.
+- Don’t assume --cached-only means “no new deps”; ask if recache is allowed.
+- When Deno std is needed, prefer jsr:@std/* and align with repo policy or ecosystem guidance.
 
 ## Theme Switching Scripts
 - Pair every app-specific theme toggle with matching scripts in `dotfiles/dot_local/share/dark-mode.d/` and `dotfiles/dot_local/share/light-mode.d/`, named `executable_<app>-theme.sh`.

@@ -1,4 +1,5 @@
 auth.json
+*.auth.json
 history.jsonl
 log
 sessions
