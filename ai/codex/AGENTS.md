@@ -38,6 +38,7 @@
 - Ask for a clear “proceed” before any code changes when sequencing is requested.
 - Treat plan+execute as separate phases unless the user explicitly combines them.
 - Re-read current file state before edits; do not overwrite user-made changes.
+- For any DB access, assume sandbox denies sockets and plan to escalate or use an allowed path
 
 ## Tooling
 - Android: prefer **Java** (not Kotlin).
@@ -47,6 +48,7 @@
 - `git commit`: multi-paragraph bodies via multiple `-m` flags; never embed literal `\\n` in a single `-m`.
 - GitHub: use `gh` for PRs and comments.
 - Shell: run `shellcheck <script>` on shell changes.
+- When rewriting or generating TypeScript AST, reach for `ts-morph` first; avoid string-based transforms unless `ts-morph` cannot express the change.
 
 ## Critical Thinking
 - Fix root cause (not band-aid).

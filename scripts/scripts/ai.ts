@@ -7,18 +7,20 @@ import { join } from "jsr:@std/path";
 // - `ai +<mcp>` enables MCP server `<mcp>` via `--config mcp_servers.<mcp>.enabled=true`.
 // - `ai high` sets `model_reasoning_effort="high"`.
 // - `ai medium` sets `model_reasoning_effort="medium"`.
+// - `ai low` sets `model_reasoning_effort="low"`.
 // - `ai account` interactively switches Codex auth.json.
 // - `ai yolo` sets `--sandbox danger-full-access`.
 // - Modifiers compose and parse left-to-right until `--`.
 // - `ai help` prints this usage; `ai -- --help` forwards to codex.
 
 const usage =
-  `ai [high|medium] [yolo] [account] [+<mcp> ...] [-- <codex args...>]
+  `ai [high|medium|low] [yolo] [account] [+<mcp> ...] [-- <codex args...>]
 
 Examples:
   ai
   ai account
   ai high +serena
+  ai low
   ai yolo +playwright -- --help
 
 Notes:
@@ -274,6 +276,7 @@ let sandboxMode: string | null = null;
 let parseModifiers = true;
 let showHelp = false;
 let useAccountSwitcher = false;
+let hasReasoningEffort = false;
 
 for (const arg of Deno.args) {
   if (!parseModifiers) {
@@ -291,10 +294,17 @@ for (const arg of Deno.args) {
   }
   if (arg === "high") {
     configOverrides.push('model_reasoning_effort="high"');
+    hasReasoningEffort = true;
     continue;
   }
   if (arg === "medium") {
     configOverrides.push('model_reasoning_effort="medium"');
+    hasReasoningEffort = true;
+    continue;
+  }
+  if (arg === "low") {
+    configOverrides.push('model_reasoning_effort="low"');
+    hasReasoningEffort = true;
     continue;
   }
   if (arg === "account") {
@@ -329,6 +339,9 @@ if (useAccountSwitcher) {
 
 for (const mcp of mcps) {
   configOverrides.push(`mcp_servers.${mcp}.enabled=true`);
+}
+if (!hasReasoningEffort) {
+  configOverrides.push('model_reasoning_effort="medium"');
 }
 
 const args: string[] = [];
