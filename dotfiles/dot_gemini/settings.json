@@ -12,5 +12,12 @@
   },
   "ui": {
     "theme": "GitHub Light"
+  },
+  "general": {
+    "previewFeatures": true,
+    "disableAutoUpdate": true
+  },
+  "tools": {
+    "autoAccept": true
   }
 }

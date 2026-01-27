@@ -2055,6 +2055,7 @@ targets."
 
 ;; Gptel: interact with chatgpt and other LLMs
 (use-package gptel
+  :disabled
   :if mb-openai-api-key
   :custom
   ((gptel-api-key mb-openai-api-key)
