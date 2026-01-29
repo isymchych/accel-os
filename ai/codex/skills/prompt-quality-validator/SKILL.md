@@ -9,6 +9,8 @@ license: MIT
 ## When to use this skill
 Use when:
 - Writing or reviewing a prompt, system prompt, agent profile, or SKILL.md.
+- Asked to validate a skill or prompt.
+- Asked to review a skill or prompt.
 - Refactoring prompts/skills and wanting measurable A/B evaluation.
 - Diagnosing “it feels better/worse” changes and converting them into concrete, reviewable changes.
 - You want a **human review**, not a machine-validated artifact.

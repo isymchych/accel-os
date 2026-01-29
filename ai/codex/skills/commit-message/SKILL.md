@@ -33,7 +33,7 @@ description: Generate a Conventional Commit message from staged git changes and 
 - Line 1: `type(scope): summary` (scope optional; imperative; ≤72 chars).
 - If breaking changes: use `type(scope)!: summary` and add a `BREAKING CHANGE: ...` bullet.
 - Line 2: blank.
-- Lines 3+: 1–6 bullets, each `- ` and concise key change; order by user impact/risk.
+- Lines 3+: 1–6 bullets, each `- ` and concise key change; order by user impact/risk. Explain WHY (intent, motivation, user impact), not just WHAT; humane, plain language. Omit low-importance changes.
 
 ## Types
 - Allowed `type`: feat, fix, chore, refactor, docs, test, perf, build, ci, revert.

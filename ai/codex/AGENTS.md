@@ -25,6 +25,7 @@
 - Prefer clean solutions when they reduce complexity and don’t expand scope or risk.
 - Don’t add defensive guards when invariants guarantee correctness unless asked or evidence; keep logic explicit, minimal; avoid speculative safety checks.
 - Follow "parse, don't validate": parse into concrete structures, then validate.
+- Default to the best boundary for data/logic, not the smallest change; confirm with me if you plan to trade off
 
 ## Workflow
 - Comment only to note invariants, assumptions, or external requirements, or where logic is tricky/non-obvious; keep comments tight and high-value.
@@ -36,9 +37,6 @@
 - Treat plan+execute as separate phases unless the user explicitly combines them.
 - Re-read current file state before edits; do not overwrite user-made changes.
 - For any DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
-- Each time you complete a task or learn important information about the project,
-  skip one-off or overly specific suggestions, then ask me to add durable guidance to
-  ONE of: project `AGENTS.md` or personal `AGENTS.md`, and explain why that placement fits.
 
 ## Tooling
 - Android: prefer **Java** (not Kotlin).
@@ -49,6 +47,7 @@
 - GitHub: use `gh` for PRs and comments.
 - Shell: run `shellcheck <script>` on shell changes.
 - When rewriting or generating TypeScript AST, reach for `ts-morph` first; avoid string-based transforms unless `ts-morph` cannot express the change.
+- Typescript: don’t introduce double‑casts to silence lint; fix the root type source.
 
 ## Critical Thinking
 - Fix root cause (not band-aid).
