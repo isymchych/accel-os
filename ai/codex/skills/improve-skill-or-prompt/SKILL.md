@@ -1,5 +1,5 @@
 ---
-name: prompt-quality-validator
+name: improve-skill-or-prompt
 description: Evaluate a prompt or Agent Skill (SKILL.md) for clarity, constraints, robustness, and operational fit; output a numeric score.
 license: MIT
 ---
