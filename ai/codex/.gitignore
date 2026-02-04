@@ -1,5 +1,6 @@
 auth.json
 *.auth.json
+models_cache.json
 history.jsonl
 log
 tmp

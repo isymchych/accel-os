@@ -32,7 +32,7 @@ Return a concise report using headings and bullets (markdown allowed).
 Must include these sections in this order:
 1) **Artifact summary** (type: prompt|skill; intended task; key constraints found; assumptions/missing inputs if any)
 2) **Scorecard** (0–100 total, 1 decimal; per-category integers 0–5)
-3) **Top issues** (1–7 items; each includes: severity, direct quote, **problem (bold)**, fix, why it matters)
+3) **Top issues** (1–7 items; use a numbered list `1.`, `2.`, ...; each includes: severity, direct quote, **problem (bold)**, fix, why it matters)
 
 Forbidden:
 - Claiming tests were executed unless explicitly provided.
@@ -86,6 +86,7 @@ Compute weighted total:
 3) Score each rubric dimension 0–5.
 4) Produce “Top issues”:
    - At least 5 issues if total_score_0_100 < 85, otherwise 1–3.
+   - Enumerate issues with an ordered list (`1.`, `2.`, ...).
    - Each issue must include a direct quote from the artifact.
 
 ## Guardrails

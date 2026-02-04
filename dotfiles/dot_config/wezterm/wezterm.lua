@@ -35,16 +35,6 @@ wezterm.on('open-uri', function(_, _, uri)
   return false
 end)
 
-wezterm.on('window-config-reloaded', function(window)
-  local overrides = window:get_config_overrides() or {}
-  local scheme = scheme_for(window:get_appearance())
-  if overrides.color_scheme == scheme then
-    return
-  end
-  overrides.color_scheme = scheme
-  window:set_config_overrides(overrides)
-end)
-
 local function spawn_window_in_cwd(window, pane)
   local cwd_uri = pane:get_current_working_dir()
   mux.spawn_window {

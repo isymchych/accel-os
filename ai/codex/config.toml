@@ -1,13 +1,16 @@
-# see docs in https://github.com/openai/codex/blob/main/docs/config.md
+# https://developers.openai.com/codex/config-sample
 
 model = "gpt-5.2-codex"
-model_reasoning_effort = "medium"
-notify = ["ai-notify"]
+model_reasoning_effort = "high"
+personality = "pragmatic"
 network_access = true
 sandbox_mode = "workspace-write"
+web_search = 'cached' # OpenAI-maintained cache
+notify = ["ai-notify"]
+suppress_unstable_features_warning = true
+check_for_update_on_startup = false
 
 [features]
-web_search_request = true
 unified_exec = true
 apply_patch_freeform = true
 skills = true
@@ -15,11 +18,30 @@ shell_snapshot = true
 
 [tui]
 notifications = false
+animations = false
+
+
+[shell_environment_policy]
+inherit = "none"
+include_only = ["PATH", "HOME", "ACCELERANDO_HOME"]
+
+
+# Extra settings used only when sandbox_mode = "workspace-write".
+[sandbox_workspace_write]
+# Additional writable roots beyond the workspace (cwd). Default: []
+writable_roots = []
+# Allow outbound network access inside the sandbox. Default: false
+network_access = true
+# Exclude $TMPDIR from writable roots. Default: false
+exclude_tmpdir_env_var = true
+# Exclude /tmp from writable roots. Default: false
+exclude_slash_tmp = true
+
 
 [projects."/home/isymchych/accel-os"]
 trust_level = "trusted"
 
-[projects."/home/isymchych/work"]
+[projects."/home/isymchych/work/PAB"]
 trust_level = "trusted"
 
 [projects."/home/isymchych/projects"]
@@ -38,3 +60,9 @@ env = { "PLAYWRIGHT_MCP_EXTENSION_TOKEN" = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq-PvdI
 
 [notice]
 hide_rate_limit_model_nudge = true
+
+[analytics]
+enabled = false
+
+[feedback]
+enabled = false
