@@ -6,6 +6,7 @@ if ! command -v deno >/dev/null 2>&1; then
 fi
 
 : "${ACCELERANDO_HOME:?ACCELERANDO_HOME must point at repo root}"
+export DENO_NO_UPDATE_CHECK=1
 cd "$ACCELERANDO_HOME/scripts"
 
 shopt -s nullglob

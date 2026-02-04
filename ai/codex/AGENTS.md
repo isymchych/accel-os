@@ -66,3 +66,5 @@
 - Shell: run shellcheck <script> on shell changes.
 - When rewriting or generating TypeScript AST, reach for ts-morph first; avoid string-based transforms unless ts-morph cannot express the change.
 - TypeScript: do not introduce double-casts to silence lint; fix the root type source.
+- Use descriptive function/method names that communicate intent, not implementation details.
+- JS/TS: Prefer structured doc comments (JSDoc/TSDoc style) for exported APIs and non-obvious behavior; use inline comments only for local invariants or tricky blocks.

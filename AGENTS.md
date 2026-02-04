@@ -33,6 +33,7 @@
 - Store scripts in `scripts/scripts/` and shared modules in `scripts/lib/`.
 - Add tasks in `scripts/deno.json` with `--lock=deno.lock --frozen --cached-only`.
 - Wrap each task with `dotfiles/bin/executable_mb-<name>`; wrapper `cd`s into `$ACCELERANDO_HOME/scripts` and runs `deno task mb-<name>`.
+- Put `DENO_NO_UPDATE_CHECK=1` in Deno wrapper shell scripts (`dotfiles/bin/executable_*`, cache scripts) 
 - Cache all entrypoints via `scripts/cache-mb-scripts.sh` (globs `./scripts/*.ts`).
 - Confirm cache/lock policy before dismissing dependency changes.
 - Don’t assume --cached-only means “no new deps”; ask if recache is allowed.
