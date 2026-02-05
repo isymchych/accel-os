@@ -9,3 +9,4 @@ shell_snapshots
 version.json
 skills/.system
 .personality_migration
+session_index.jsonl

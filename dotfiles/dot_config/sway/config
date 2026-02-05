@@ -303,7 +303,7 @@ for_window [title="^Spotify.*"] border pixel $border
 for_window [app_id="arhiv-desktop"]  border pixel $border
 
 # enable floating for apps with custom app_id FLOAT
-for_window [app_id="FLOAT"] floating enable
+for_window [app_id="FLOAT"] floating enable, resize set width 60 ppt height 60 ppt, move position center
 
 # KEYBINDINGS
 
@@ -345,7 +345,7 @@ bindsym XF86KbdBrightnessUp exec mb-backlight --keyboard inc
 bindsym XF86KbdBrightnessDown exec mb-backlight --keyboard dec
 
 # terminal
-bindsym $mod+Return exec xterm
+bindsym $mod+Return exec xterm open
 
 # app runner
 bindsym --to-code $mod+Shift+p exec mb-run-app
@@ -360,10 +360,10 @@ bindsym $mod+Shift+Escape exec makoctl restore
 bindsym --release Print exec mb-screenshot
 
 # file manager
-bindsym --to-code $mod+n exec xterm -e yazi
+bindsym --to-code $mod+n exec xterm run -- yazi
 
 # google translate
-bindsym --to-code $mod+t exec xterm start --class="FLOAT" -e trans -shell
+bindsym --to-code $mod+t exec xterm run --class="FLOAT" -- trans -shell
 
 # clipboard manager
 bindsym --to-code $mod+i exec cliphist list | wofi -d -p "Select item to copy" | cliphist decode | wl-copy

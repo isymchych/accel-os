@@ -117,6 +117,7 @@ $ chmod 600 ~/.ssh/key
   * alacritty
   * OR ghostty
   * OR wezterm
+  * OR kitty
 * wlsunset - adjust display color temperature at night
 * udiskie - automounter for removable media
 * network-manager-applet - network manager applet

@@ -483,7 +483,7 @@ narrowed."
     (unless (executable-find "xterm")
       (user-error "xterm not found in PATH"))
     (let ((cwd (file-name-as-directory (expand-file-name dir))))
-      (start-process "xterm" nil "xterm" "--cwd" cwd))))
+      (start-process "xterm" nil "xterm" "open" "--cwd" cwd))))
 
 
 ;;; ---------------------------------------- ESSENTIAL PACKAGES

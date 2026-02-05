@@ -94,7 +94,7 @@
   {
     "label": "term:current-folder",
     "command": "sh",
-    "args": ["xterm", "--cwd", "$ZED_DIRNAME"],
+    "args": ["xterm", "open", "--cwd", "$ZED_DIRNAME"],
     "reveal": "never",
     "hide": "always",
     "allow_concurrent_runs": true,

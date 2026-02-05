@@ -15,7 +15,8 @@
   },
   "general": {
     "previewFeatures": true,
-    "disableAutoUpdate": true
+    "disableAutoUpdate": true,
+    "enableAutoUpdate": false
   },
   "tools": {
     "autoAccept": true

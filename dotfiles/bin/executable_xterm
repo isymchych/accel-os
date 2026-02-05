@@ -2,21 +2,188 @@
 
 # GIO has a hardcoded list of supported terminals
 # xterm is in that list
+#
+# xterm shim spec (stable API):
+# - Configure backend by editing `backend=` in this file.
+# - Supported backends: wezterm, alacritty, kitty, ghostty.
+# - Public commands:
+#   - xterm open [--cwd DIR] [--class CLASS]
+#   - xterm run [--cwd DIR] [--class CLASS] -- CMD [ARG...]
+#   - xterm help
+# - Parsing is strict:
+#   - unknown options fail
+#   - `run` requires `--` before command
+#   - `open` rejects extra positional args and rejects `--`
+# - Backend-specific flags are intentionally not part of public API.
+# - Unsupported/missing backend fails loud with usage + exit code 2.
+# - Backend option mapping:
+#   - --cwd: wezterm `--cwd`, alacritty `--working-directory`,
+#            kitty `--directory`, ghostty via `sh -lc 'cd ...'`
+#   - --class: wezterm/alacritty/kitty `--class`,
+#              ghostty `+new-window --class=...`
 
 set -euo pipefail
 
-# If the caller already passes ghostty flags (e.g. -t/-e),
-# just forward them unchanged so existing bindings keep working.
-for arg in "$@"; do
-    if [[ "$arg" == "-e" ]]; then
-        exec wezterm "$@"
-    fi
-done
+readonly backend="kitty"
+readonly supported_backends=(wezterm alacritty kitty ghostty)
 
-# Basic xterm compatibility: when invoked without -e, treat the
-# arguments as a command that should run inside the terminal.
+usage() {
+    cat <<'EOF'
+Usage:
+  xterm open [--cwd DIR] [--class CLASS]
+  xterm run [--cwd DIR] [--class CLASS] -- CMD [ARG...]
+  xterm help
+EOF
+}
+
+fail() {
+    echo "xterm: $*" >&2
+    usage >&2
+    exit 2
+}
+
+contains_backend() {
+    local candidate="$1"
+    local item
+    for item in "${supported_backends[@]}"; do
+        if [[ "$item" == "$candidate" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 if [[ $# -eq 0 ]]; then
-    exec wezterm
+    fail "missing command"
 fi
 
-exec wezterm -e "$@"
+if [[ "$1" == "help" || "$1" == "--help" || "$1" == "-h" ]]; then
+    usage
+    exit 0
+fi
+
+mode="$1"
+shift
+
+contains_backend "$backend" || fail "unsupported backend configured in script: $backend"
+command -v "$backend" >/dev/null 2>&1 || fail "backend not found in PATH: $backend"
+
+cwd=""
+class=""
+seen_separator=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --cwd)
+            [[ $# -ge 2 ]] || fail "--cwd requires a value"
+            cwd="$2"
+            shift 2
+            ;;
+        --cwd=*)
+            cwd="${1#--cwd=}"
+            [[ -n "$cwd" ]] || fail "--cwd requires a value"
+            shift
+            ;;
+        --class)
+            [[ $# -ge 2 ]] || fail "--class requires a value"
+            class="$2"
+            shift 2
+            ;;
+        --class=*)
+            class="${1#--class=}"
+            [[ -n "$class" ]] || fail "--class requires a value"
+            shift
+            ;;
+        --)
+            seen_separator=1
+            shift
+            break
+            ;;
+        -*)
+            fail "unknown option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+case "$mode" in
+    open)
+        [[ $# -eq 0 ]] || fail "unexpected arguments for open: $*"
+        if [[ $seen_separator -eq 1 ]]; then
+            fail "open does not accept --"
+        fi
+        case "$backend" in
+            wezterm)
+                cmd=(wezterm start)
+                [[ -n "$cwd" ]] && cmd+=(--cwd "$cwd")
+                [[ -n "$class" ]] && cmd+=(--class "$class")
+                exec "${cmd[@]}"
+                ;;
+            alacritty)
+                cmd=(alacritty)
+                [[ -n "$cwd" ]] && cmd+=(--working-directory "$cwd")
+                [[ -n "$class" ]] && cmd+=(--class "$class")
+                exec "${cmd[@]}"
+                ;;
+            kitty)
+                cmd=(kitty)
+                [[ -n "$cwd" ]] && cmd+=(--directory "$cwd")
+                [[ -n "$class" ]] && cmd+=(--class "$class")
+                exec "${cmd[@]}"
+                ;;
+            ghostty)
+                cmd=(ghostty +new-window)
+                [[ -n "$class" ]] && cmd+=("--class=$class")
+                if [[ -n "$cwd" ]]; then
+                    # shellcheck disable=SC2016
+                    exec "${cmd[@]}" -e sh -lc 'cd -- "$1" && exec "${SHELL:-/bin/sh}" -l' sh "$cwd"
+                fi
+                exec "${cmd[@]}"
+                ;;
+            *)
+                fail "unsupported backend: $backend"
+                ;;
+        esac
+        ;;
+    run)
+        [[ $seen_separator -eq 1 ]] || fail "run requires -- before command"
+        [[ $# -gt 0 ]] || fail "run requires a command after --"
+        case "$backend" in
+            wezterm)
+                cmd=(wezterm start)
+                [[ -n "$cwd" ]] && cmd+=(--cwd "$cwd")
+                [[ -n "$class" ]] && cmd+=(--class "$class")
+                exec "${cmd[@]}" -e "$@"
+                ;;
+            alacritty)
+                cmd=(alacritty)
+                [[ -n "$cwd" ]] && cmd+=(--working-directory "$cwd")
+                [[ -n "$class" ]] && cmd+=(--class "$class")
+                exec "${cmd[@]}" -e "$@"
+                ;;
+            kitty)
+                cmd=(kitty)
+                [[ -n "$cwd" ]] && cmd+=(--directory "$cwd")
+                [[ -n "$class" ]] && cmd+=(--class "$class")
+                exec "${cmd[@]}" "$@"
+                ;;
+            ghostty)
+                cmd=(ghostty +new-window)
+                [[ -n "$class" ]] && cmd+=("--class=$class")
+                if [[ -n "$cwd" ]]; then
+                    # shellcheck disable=SC2016
+                    exec "${cmd[@]}" -e sh -lc 'cd -- "$1" && shift && exec "$@"' sh "$cwd" "$@"
+                fi
+                exec "${cmd[@]}" -e "$@"
+                ;;
+            *)
+                fail "unsupported backend: $backend"
+                ;;
+        esac
+        ;;
+    *)
+        fail "unknown command: $mode"
+        ;;
+esac

@@ -2,7 +2,7 @@
 Type=Application
 Name=yazi
 Comment=Terminal file manager
-Exec=xterm yazi
+Exec=xterm run -- yazi
 Icon=yazi
 MimeType=inode/directory
 Categories=System;FileTools;FileManager;ConsoleOnly
