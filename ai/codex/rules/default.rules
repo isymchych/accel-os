@@ -1,0 +1,2 @@
+prefix_rule(pattern=["npm", "run", "test:integration", "--workspace", "backend"], decision="allow")
+prefix_rule(pattern=["git", "commit"], decision="allow")

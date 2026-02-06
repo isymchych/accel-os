@@ -54,6 +54,9 @@
 - Commits use short, lowercase, imperative titles (`fix mac files on linux` style) and stay scoped.
 - Include rationale and affected hosts in the body when behavior changes.
 
+## AI / Codex Skills
+- Skill helper scripts should be Deno TypeScript, not Python.
+
 ## Machine-Specific Configuration
 - Favor templates (`.tmpl`) or `.chezmoi.osRelease` checks over duplicating configs.
 - Keep secrets and host-only files ignored via `.chezmoiignore`.

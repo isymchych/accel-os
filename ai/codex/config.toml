@@ -1,7 +1,7 @@
 # https://developers.openai.com/codex/config-sample
 
-model = "gpt-5.2-codex"
-model_reasoning_effort = "high"
+model = "gpt-5.3-codex"
+model_reasoning_effort = "medium"
 personality = "pragmatic"
 network_access = true
 sandbox_mode = "workspace-write"
@@ -24,18 +24,6 @@ animations = false
 [shell_environment_policy]
 inherit = "none"
 include_only = ["PATH", "HOME", "ACCELERANDO_HOME"]
-
-
-# Extra settings used only when sandbox_mode = "workspace-write".
-[sandbox_workspace_write]
-# Additional writable roots beyond the workspace (cwd). Default: []
-writable_roots = []
-# Allow outbound network access inside the sandbox. Default: false
-network_access = true
-# Exclude $TMPDIR from writable roots. Default: false
-exclude_tmpdir_env_var = true
-# Exclude /tmp from writable roots. Default: false
-exclude_slash_tmp = true
 
 
 [projects."/home/isymchych/accel-os"]

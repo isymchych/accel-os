@@ -50,12 +50,8 @@ Ambiguity is resolved when the user confirms:
 If unknowns remain but are acceptable, convert them into explicit risks.
 
 ### 5) Build the plan (after approach chosen)
-Write concrete steps in order. Each step must specify:
-- goal
-- inputs
-- outputs
-- dependencies
-- verification
+Write concrete steps in order. Each step is 2–3 short sentences max and must still make
+clear the action, prerequisites/dependencies, expected outcome, and verification.
 
 ### 6) Capture decisions, constraints, and completion
 Record key decisions and rationale.
@@ -101,12 +97,8 @@ Blockers
 Plan:
 ```
 Implementation plan
-1) Step title
-   goal:
-   inputs:
-   outputs:
-   dependencies:
-   verification:
+1) Do X for Y. Requires A/B. This yields Z. Verify by V.
+2) ...
 
 Decisions
 - ...
