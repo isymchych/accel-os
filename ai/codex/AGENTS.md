@@ -63,8 +63,6 @@
 - Android: prefer Java (not Kotlin).
 - Frontend: component-first; reusable, composable UI pieces.
 - Repo AGENTS.md: never reference untracked files.
-- Git: run non-destructive commands (status, diff, log, show) freely; ask first before anything that mutates history or the index.
-- git commit: multi-paragraph bodies via multiple -m flags; never embed literal \n in a single -m.
 - GitHub: use gh for PRs and comments.
 - Shell: run shellcheck <script> on shell changes.
 - When rewriting or generating TypeScript AST, reach for ts-morph first; avoid string-based transforms unless ts-morph cannot express the change.
