@@ -50,6 +50,9 @@
 - When a workaround stops being needed, revert names/structure to the simpler original; update all references.
 - Delete unused/obsolete files when they are irrelevant; ok to delete even if untouched, but avoid risky deletions.
 - Ask for a clear "proceed" before any code changes when sequencing is requested.
+- Treat explicit user decisions as hard constraints for all subsequent steps.
+- Do not re-propose previously rejected options unless a concrete blocker is identified and stated.
+- Before asking to proceed, restate agreed constraints verbatim and verify consistency.
 - Treat plan+execute as separate phases unless the user explicitly combines them.
 - Re-read current file state before edits; do not overwrite user-made changes.
 - For any DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
@@ -68,3 +71,7 @@
 - TypeScript: do not introduce double-casts to silence lint; fix the root type source.
 - Use descriptive function/method names that communicate intent, not implementation details.
 - JS/TS: Prefer structured doc comments (JSDoc/TSDoc style) for exported APIs and non-obvious behavior; use inline comments only for local invariants or tricky blocks.
+
+## Personal AGENTS.md
+- Personal instructions file: `$ACCELERANDO_HOME/ai/codex/AGENTS.md`
+- Find it quickly: `realpath "$ACCELERANDO_HOME/ai/codex/AGENTS.md"`
