@@ -6,58 +6,106 @@
 
 ## Operating mode
 - Expertise: Rust, TypeScript, JavaScript.
-- Style: telegraph; noun-phrases ok; drop filler; min tokens; concise, precise, non-fluffy; active voice; no basics unless asked.
+- Style: telegraph; concise; precise; active voice; no basics unless asked.
 - Tone: direct; challenge assumptions; point out flaws.
 - Changes: modify code only on explicit request; otherwise suggest actions.
-- Questions: ask clarifying questions only when needed.
-- Ambiguity: list options briefly; ask me to choose.
+- Clarifications: ask only when ambiguity blocks correct execution.
+- Ambiguity: list options briefly; ask me to choose; do not pick silently.
+
+## Priority
+- Conflict order: explicit user constraints > privacy/safety constraints > remaining AGENTS.md defaults.
 
 ## Execution rules
 - Prefer best boundary for data/logic over smallest change.
-- Proactive simplification ok; delete/rewrite to reduce total code for same behavior.
-- Avoid unrelated refactors; proactive simplification ok when behavior stays unchanged, even beyond the request.
+- Allow proactive simplification beyond the request only when behavior stays unchanged and complexity drops.
 - Fix root cause; no band-aids.
 - Minimum code that solves the problem; no speculative features, flexibility, or config.
-- State assumptions explicitly; if uncertain, ask.
-- If multiple interpretations exist, present them; do not pick silently.
-- If something is unclear, stop; name what's confusing; ask.
+- State assumptions explicitly.
+- If requirements have multiple plausible interpretations, present options briefly and ask before editing.
+- If a requested behavior change has multiple valid rollout strategies, list the options and ask the user to choose before editing.
+- Treat backward compatibility vs migration as a product decision. Surface the tradeoffs and get explicit direction; do not decide silently in implementation.
 - If a simpler approach exists, say so; push back when warranted.
 - Don't improve adjacent code/comments/formatting unless required by the change or simplification.
-- Every changed line should trace to the user's request or agreed simplification.
+- Every changed line should trace to the user's request, agreed simplification, or proactive removal of irrelevant/obsolete code.
 
-## Design heuristics
-- Prioritize module depth: small, stable interface; substantial implementation. Red flags: many-arg functions; complex structures; many tiny funcs; classes with many methods; getters/setters.
+## Design heuristics (Ousterhout-style)
+
+#### North star
+- Optimize for low complexity over time.
+- Complexity = dependencies + obscurity.
+- Track symptoms: change amplification, cognitive load, unknown unknowns.
+
+#### Always-run post-change checks
+- Change amplification: did a "small" change require edits in multiple places? If yes, centralize the decision (remove leakage).
+- Unknown unknowns: would a new reader know where else to look? If no, improve structure (module boundary) or add a guiding comment.
+- Cognitive load: how many concepts must be kept in working memory? Reduce via deeper modules, better names, or moving detail downward.
+
+#### Modules and interfaces (depth)
+- Prefer deep modules: small/simple interface, lots of complexity hidden behind it.
+- Pull complexity downward: make callers simpler even if the callee becomes harder.
+- No pass-through layers: forwarding wrappers with mirrored signatures are a smell; delete, merge, or change the abstraction.
+- Adjacent layers must have different abstractions (avoid "same API at two layers").
+- Make interfaces somewhat general-purpose when it simplifies the API (do not generalize for hypothetical features).
+- Ensure one place per design decision: duplicated knowledge = information leakage.
+
+#### Decomposition (reduce obscurity)
+- Decompose by responsibility/knowledge, not by time/order (avoid temporal decomposition like "read -> parse -> handle" scatter).
+- Watch for conjoined methods: if A requires reading B to understand, restructure (merge, inline, rename, or introduce a deeper module).
+- Avoid classitis: many tiny shallow classes usually increase cognitive load.
+
+#### API ergonomics
+- The common case is trivial: one obvious call, minimal config.
+- Make misuse hard: encode invariants in types/constructors/module boundaries; minimize "caller must remember X".
+- An interface must be explainable in 1-3 sentences. If not, redesign.
+
+#### Error handling
+- Prefer to define errors out of existence when reasonable (validate/normalize/default internally).
+- Mask recoverable low-level errors inside the module (retries, fallback, internal repair).
+- Aggregate at boundaries: expose a small stable error surface; do not leak internal failure modes unless the caller can act on them.
+
+#### Naming and comments
+- Names must create a clear image. Avoid: data, info, result, handler, manager, util.
+- Comments are for why/intent/rationale, invariants/units/boundaries, and non-obvious tradeoffs.
+- Write interface comments first for new modules/APIs; if hard to write, redesign before coding.
+- Avoid comments that merely restate the code.
+
+#### Refactor triggers (stop-and-fix)
+- A "small" change touched 3+ files.
+- You introduced a new flag/option that callers must thread through.
+- You duplicated logic "just this once".
+- You added a helper/wrapper that mostly forwards calls.
+- You cannot name something without vague words.
+
+### Additional local heuristics
 - Prefer explicit data flow (args/returns) over implicit (globals, singletons, shared mutable state).
 - Keep definitions near use; avoid cross-file jumping.
-- Optimize for locality: code that must be understood/changed together lives together; minimize dependencies and external context.
-- Duplication harms locality; allow small duplication when it avoids indirection or is not truly coupled.
 - Treat globals/singletons/shared mutable state as locality hazards; keep state scope narrow.
 - Prefer composition over inheritance.
-- Split boundaries by purpose/data transforms (parse -> validate -> render), not by real-world nouns.
 - Preserve substitutability: derived types preserve base observable properties.
 - Default to concrete dependencies; add interfaces/DI only when multiple implementations run in the same program or swapping is an immediate need.
 - Testing: prefer real implementations when feasible; avoid mocks by default.
 - Compatibility: for public/external APIs/ABIs, avoid breaking users; for internal code, change freely and let compiler/tests enumerate fallout.
 - Prefer deterministic, repeatable, auditable solutions.
-- Prefer clean solutions when they reduce complexity and do not expand scope or risk.
 - Do not add defensive guards when invariants guarantee correctness unless asked or evidence; keep logic explicit, minimal; avoid speculative safety checks.
 - Follow "parse, don't validate": parse into concrete structures, then validate.
 
 ## Workflow
-- Comment only to note invariants, assumptions, or external requirements, or where logic is tricky/non-obvious; keep comments tight and high-value.
+- Treat explicit user decisions as hard constraints for all subsequent steps.
+- Do not re-propose previously rejected options unless a concrete blocker is identified and stated.
+- Treat plan+execute as separate phases unless the user explicitly combines them.
+- Ask for a clear "proceed" before any code changes when sequencing is requested.
+- Before asking to proceed, restate agreed constraints verbatim and verify consistency.
+- Re-read current file state before edits; do not overwrite user-made changes.
+- Unrecognized changes: assume other agent; keep going; focus your changes. If it causes issues, stop and ask.
+- For any DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
+- Delete unused/obsolete files when they are irrelevant; may delete even if untouched; avoid risky deletions.
+- When your changes create orphans, remove imports/variables/functions that your changes made unused; do not remove pre-existing dead code unless asked.
 - Large/repetitive refactors: write focused scripts.
 - Avoid trivial class helper methods; prefer file-scope functions.
 - When a workaround stops being needed, revert names/structure to the simpler original; update all references.
-- Delete unused/obsolete files when they are irrelevant; ok to delete even if untouched, but avoid risky deletions.
-- Ask for a clear "proceed" before any code changes when sequencing is requested.
-- Treat explicit user decisions as hard constraints for all subsequent steps.
-- Do not re-propose previously rejected options unless a concrete blocker is identified and stated.
-- Before asking to proceed, restate agreed constraints verbatim and verify consistency.
-- Treat plan+execute as separate phases unless the user explicitly combines them.
-- Re-read current file state before edits; do not overwrite user-made changes.
-- For any DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
-- When your changes create orphans, remove imports/variables/functions that your changes made unused; do not remove pre-existing dead code unless asked.
-- Unrecognized changes: assume other agent; keep going; focus your changes. If it causes issues, stop and ask.
+- Derive optimization target from explicit constraints before choosing an implementation strategy.
+- If speed/minimal edits conflicts with architecture or source-of-truth rules, follow architecture/source-of-truth.
+- When finishing changes, run a self-check: “Did I optimize the thing the instructions prioritized?”
 
 ## Tooling
 - Android: prefer Java (not Kotlin).
@@ -71,5 +119,4 @@
 - JS/TS: Prefer structured doc comments (JSDoc/TSDoc style) for exported APIs and non-obvious behavior; use inline comments only for local invariants or tricky blocks.
 
 ## Personal AGENTS.md
-- Personal instructions file: `$ACCELERANDO_HOME/ai/codex/AGENTS.md`
-- Find it quickly: `realpath "$ACCELERANDO_HOME/ai/codex/AGENTS.md"`
+- Personal file: `$ACCELERANDO_HOME/ai/codex/AGENTS.md` (`realpath "$ACCELERANDO_HOME/ai/codex/AGENTS.md"`).

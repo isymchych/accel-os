@@ -1,0 +1,3 @@
+interface:
+  display_name: "Find RSS Atom Feed"
+  short_description: "Find a website's recommended RSS or Atom feed URL"

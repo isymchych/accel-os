@@ -27,18 +27,26 @@ Output format (required, in this order):
 2) Assumptions
    - Required when conventions are inferred, missing, or conflicting.
    - List each assumption as one bullet, including the source signal (or lack of signal).
-3) Clarifications Needed
+3) PR Review Checklist (Must Answer)
+   - Answer each item explicitly with `Yes`, `No`, or `Partial`, followed by one concise sentence with concrete evidence:
+   - Did this reduce **dependencies** or **obscurity**?
+   - Did we introduce **information leakage** (same decision in multiple places)?
+   - Any new **pass-through methods** or mirrored abstractions?
+   - Are callers **simpler** than before?
+   - Is each new/changed interface describable in **<=3 sentences**?
+   - Did we reduce **unknown unknowns** (clear ownership of responsibilities)?
+4) Clarifications Needed
    - Only include if missing context blocks confident review.
-4) Minor Notes
+5) Minor Notes
    - Optional, for non-blocking improvements.
-5) Overall Verdict
+6) Overall Verdict
    - If no major findings, state exactly: `No major issues found`.
    - If minor-only concerns exist, still list them under Minor Notes.
 
 Blocked mode (when critical context is missing):
-- Output only sections 2) Assumptions, 3) Clarifications Needed, and 5) Overall Verdict.
-- In 5) Overall Verdict, state exactly: `Review blocked: missing critical context`.
-- Do not output 1) Findings or 4) Minor Notes in blocked mode.
+- Output only sections 2) Assumptions, 4) Clarifications Needed, and 6) Overall Verdict.
+- In 6) Overall Verdict, state exactly: `Review blocked: missing critical context`.
+- Do not output 1) Findings, 3) PR Review Checklist (Must Answer), or 5) Minor Notes in blocked mode.
 
 Severity criteria:
 - `critical`: likely production failure, data loss, exploitable security issue, or hard correctness break.
@@ -54,6 +62,7 @@ Confidence criteria:
 Evaluate the code across:
 - Code quality and adherence to inferred repo conventions (functions/methods focused, no unnecessary complexity, descriptive names)
 - Potential bugs, logic errors, and unhandled edge cases
+- Bypass paths and abuse cases (for example authn/authz bypass, validation gaps, policy circumvention, rate-limit evasion, state desynchronization)
 - Performance bottlenecks or unnecessary resource use
 - Readability and maintainability
 - Security vulnerabilities (e.g., injection, unsafe data handling, authz/authn flaws)

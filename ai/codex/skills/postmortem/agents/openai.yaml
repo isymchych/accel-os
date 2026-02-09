@@ -1,0 +1,3 @@
+interface:
+  display_name: "Postmortem"
+  short_description: "Distill a failure into a reusable principle and preflight check"
