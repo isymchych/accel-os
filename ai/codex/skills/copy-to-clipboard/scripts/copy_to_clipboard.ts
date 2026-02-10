@@ -53,6 +53,9 @@ async function copyText(text: string): Promise<void> {
 
 async function main() {
   const textArg = parseTextArg(Deno.args);
+  if (textArg === null && Deno.stdin.isTerminal()) {
+    throw new Error("No text provided. Pass --text \"...\" or pipe stdin.");
+  }
   const text = textArg ?? await readStdinText();
   if (text.length === 0) {
     throw new Error("No text provided. Pass --text \"...\" or pipe stdin.");

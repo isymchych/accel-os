@@ -92,6 +92,14 @@ function resolveHref(baseUrl: string, href: string): string | null {
   }
 }
 
+function hasTargetHost(url: string, targetHost: string): boolean {
+  try {
+    return new URL(url).hostname.toLowerCase() === targetHost.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 function isAlternateFeedLink(attrs: Map<string, string>): boolean {
   const rel = (attrs.get("rel") ?? "").toLowerCase();
   const type = (attrs.get("type") ?? "").toLowerCase();
@@ -104,7 +112,7 @@ function isAlternateFeedLink(attrs: Map<string, string>): boolean {
   );
 }
 
-function collectCandidatesFromHtml(html: string, pageUrl: string): Candidate[] {
+function collectCandidatesFromHtml(html: string, pageUrl: string, targetHost: string): Candidate[] {
   const candidates: Candidate[] = [];
 
   for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
@@ -112,6 +120,7 @@ function collectCandidatesFromHtml(html: string, pageUrl: string): Candidate[] {
     const attrs = parseAttributes(tag);
     const href = resolveHref(pageUrl, attrs.get("href") ?? "");
     if (!href) continue;
+    if (!hasTargetHost(href, targetHost)) continue;
 
     if (isAlternateFeedLink(attrs)) {
       candidates.push({ url: href, source: "alternate-link", discoveredFrom: pageUrl });
@@ -128,6 +137,7 @@ function collectCandidatesFromHtml(html: string, pageUrl: string): Candidate[] {
     const attrs = parseAttributes(tag);
     const href = resolveHref(pageUrl, attrs.get("href") ?? "");
     if (!href) continue;
+    if (!hasTargetHost(href, targetHost)) continue;
     if (!FEED_HINT_RE.test(href)) continue;
     candidates.push({ url: href, source: "html-link", discoveredFrom: pageUrl });
   }
@@ -219,12 +229,13 @@ const initialCandidates: Candidate[] = [
 ];
 
 const pages = pageCandidates(inputUrl);
+const targetHost = inputUrl.hostname;
 for (const pageUrl of pages) {
   try {
     const { status, text, contentType } = await fetchText(pageUrl);
     if (status !== 200) continue;
     if (!contentType.includes("html")) continue;
-    initialCandidates.push(...collectCandidatesFromHtml(text, pageUrl));
+    initialCandidates.push(...collectCandidatesFromHtml(text, pageUrl, targetHost));
   } catch {
     // Ignore fetch failures and continue with other candidate sources.
   }

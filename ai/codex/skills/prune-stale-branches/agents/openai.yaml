@@ -1,0 +1,3 @@
+interface:
+  display_name: "Prune Stale Branches"
+  short_description: "Prune stale GitHub remote branches with a safe dry-run-first workflow"

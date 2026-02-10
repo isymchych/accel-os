@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --quiet --allow-env=HOME,USERPROFILE
+#!/usr/bin/env -S deno run --quiet --allow-env=HOME,USERPROFILE --allow-read
 
 const home = Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE");
 if (!home) {

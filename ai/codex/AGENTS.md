@@ -98,6 +98,9 @@
 - Re-read current file state before edits; do not overwrite user-made changes.
 - Unrecognized changes: assume other agent; keep going; focus your changes. If it causes issues, stop and ask.
 - For any DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
+- When a required command fails with permission/network/sandbox errors, immediately retry with escalation instead of switching to a workaround path.
+- Treat infrastructure failures as execution constraints, not design signals; preserve the original fix strategy unless escalation is denied.
+- Before changing approach after command failure, run a quick gate: "environment issue or solution issue?" and escalate on environment issues.
 - Delete unused/obsolete files when they are irrelevant; may delete even if untouched; avoid risky deletions.
 - When your changes create orphans, remove imports/variables/functions that your changes made unused; do not remove pre-existing dead code unless asked.
 - Large/repetitive refactors: write focused scripts.
