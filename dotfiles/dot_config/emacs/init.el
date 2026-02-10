@@ -165,8 +165,8 @@
 ;; do not ask if I want to set variables from dir-locals
 (setq enable-local-variables :all)
 
-;; disable only critical messages
-(setq warning-minimum-level :emergency)
+;; Keep warnings visible so package/API breakage is discoverable.
+(setq warning-minimum-level :warning)
 
 ;; Emacs 30 and newer: Disable Ispell completion function.
 (setq text-mode-ispell-word-completion nil)
@@ -348,7 +348,11 @@
   (let ((filename (buffer-file-name)))
     (if (not (and filename (file-exists-p filename)))
         (message "mb: Buffer is not visiting a file!")
-      (let ((new-name (read-file-name "New name: " filename)))
+      (let ((new-name (read-file-name "New name: "
+                                      (file-name-directory filename)
+                                      nil
+                                      nil
+                                      (file-name-nondirectory filename))))
         (cond
          ((vc-backend filename) (vc-rename-file filename new-name))
          (t
@@ -484,6 +488,13 @@ narrowed."
       (user-error "xterm not found in PATH"))
     (let ((cwd (file-name-as-directory (expand-file-name dir))))
       (start-process "xterm" nil "xterm" "open" "--cwd" cwd))))
+
+(defun mb/meta-return-dwim ()
+  "Confirm minibuffer input, otherwise open xterm in current directory."
+  (interactive)
+  (if (active-minibuffer-window)
+      (exit-minibuffer)
+    (mb/open-xterm-here)))
 
 
 ;;; ---------------------------------------- ESSENTIAL PACKAGES
@@ -803,20 +814,6 @@ narrowed."
 
 
 
-;; Flymake
-(use-package flymake
-  :ensure nil
-  :disabled
-  :defer t
-  :init
-  ;; as flymakes fail silently there is no need to activate it on a per major mode basis
-  (add-hook 'prog-mode-hook #'flymake-mode)
-  (add-hook 'text-mode-hook #'flymake-mode)
-  :config
-  (setq flymake-fringe-indicator-position 'right-fringe))
-
-
-
 ;; Comint-mode: interact with REPLs
 (use-package comint
   :ensure nil
@@ -1006,7 +1003,12 @@ narrowed."
 
   :config
   (setq darkman-themes (list :light mb-light-theme :dark mb-dark-theme))
-  (darkman-mode))
+  (if (getenv "DBUS_SESSION_BUS_ADDRESS")
+      (condition-case err
+          (darkman-mode)
+        (dbus-error
+         (message "Skipping darkman-mode: %s" (error-message-string err))))
+    (message "Skipping darkman-mode: DBUS_SESSION_BUS_ADDRESS is unset")))
 
 
 
@@ -1056,7 +1058,6 @@ narrowed."
   (setq doom-modeline-buffer-file-name-style 'truncate-with-project
         doom-modeline-minor-modes t
         doom-modeline-hud nil
-        doom-modeline-unicode-fallback nil
         doom-modeline-buffer-encoding nil
         doom-modeline-env-version nil)
 
@@ -1913,13 +1914,13 @@ targets."
   (setq treesit-font-lock-level 4)
   ;; (setq treesit-language-source-alist (treesit-auto--build-treesit-source-alist))
   ;; (message "treesit-auto: %s languages" (length treesit-language-source-alist))
-  (treesit-auto-add-to-auto-mode-alist 'all)
+  ;; Don't use 'all here: some treesit-auto recipes intentionally have no file
+  ;; pattern (e.g. phpdoc/jsdoc), which would add (nil . MODE) entries.
+  (treesit-auto-add-to-auto-mode-alist)
+  (setq auto-mode-alist (seq-filter #'car-safe auto-mode-alist))
   (global-treesit-auto-mode)
 
   (add-to-list 'auto-mode-alist '("\\.mts\\'" . typescript-ts-mode))
-
-  (add-hook 'hack-local-variables-hook
-            (lambda () (when (derived-mode-p 'ts-mode) (lsp))))
 
   (add-hook 'tsx-ts-mode-hook #'lsp-deferred)
   (add-hook 'js-ts-mode-hook #'lsp-deferred)
@@ -2228,8 +2229,8 @@ targets."
 
 (global-set-key (kbd "<f6>") 'mb/revert-buffer)
 
-(global-set-key (kbd "M-RET")     'mb/open-xterm-here)
-(global-set-key (kbd "M-<return>") 'mb/open-xterm-here)
+(global-set-key (kbd "M-RET")     'mb/meta-return-dwim)
+(global-set-key (kbd "M-<return>") 'mb/meta-return-dwim)
 
 
 (defvar-keymap mb/insert-map

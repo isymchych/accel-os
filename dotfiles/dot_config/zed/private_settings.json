@@ -7,6 +7,8 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "show_edit_predictions": false,
+  "disable_ai": true,
   "preview_tabs": {
     "enable_preview_multibuffer_from_code_navigation": true,
     "enable_preview_from_file_finder": true,
@@ -75,6 +77,8 @@
       "max_severity": null,
     },
   },
+
+  "agent": { "enabled": false },
 
   // Use zed commit editor
   "terminal": {
