@@ -1,8 +1,50 @@
 #!/usr/bin/env -S deno run --quiet --allow-run=wl-copy
 
+type ClipboardErrorReason =
+  | "invalid-arguments"
+  | "missing-input"
+  | "missing-wl-copy"
+  | "wayland-unavailable"
+  | "wl-copy-failed";
+
+class ClipboardError extends Error {
+  reason: ClipboardErrorReason;
+  action?: string;
+  details?: string;
+
+  constructor(reason: ClipboardErrorReason, message: string, options?: {
+    action?: string;
+    details?: string;
+  }) {
+    super(message);
+    this.reason = reason;
+    this.action = options?.action;
+    this.details = options?.details;
+  }
+}
+
+function formatClipboardError(error: ClipboardError): string {
+  const segments = [`status=error reason=${error.reason}`];
+  if (error.action) {
+    segments.push(`action="${error.action}"`);
+  }
+  segments.push(`message="${error.message}"`);
+  if (error.details) {
+    segments.push(`details="${error.details}"`);
+  }
+  return segments.join(" ");
+}
+
 function parseTextArg(args: string[]): string | null {
   const flagIndex = args.indexOf("--text");
   if (flagIndex === -1) return null;
+  if (flagIndex === args.length - 1) {
+    throw new ClipboardError(
+      "invalid-arguments",
+      "--text flag requires a value.",
+      { action: "Pass --text \"...\" or pipe stdin." },
+    );
+  }
   return args.slice(flagIndex + 1).join(" ");
 }
 
@@ -36,17 +78,34 @@ async function copyText(text: string): Promise<void> {
       const stderr = process.stderr
         ? (await new Response(process.stderr).text()).trim()
         : "";
-      if (stderr.includes("Failed to connect to a Wayland server")) {
-        throw new Error(
-          "Wayland clipboard unavailable. Check WAYLAND_DISPLAY and compositor session.",
+      const details = stderr || `exit_code=${status.code}`;
+      if (
+        stderr.includes("Failed to connect to a Wayland server") ||
+        stderr.includes("WAYLAND_DISPLAY") ||
+        stderr.includes("No such file or directory")
+      ) {
+        throw new ClipboardError(
+          "wayland-unavailable",
+          "Wayland clipboard is unavailable.",
+          {
+            action: "Check WAYLAND_DISPLAY and compositor session.",
+            details,
+          },
         );
       }
-      throw new Error(stderr ? `wl-copy failed: ${stderr}` : "wl-copy failed");
+      throw new ClipboardError("wl-copy-failed", "wl-copy exited with failure.", {
+        details,
+      });
     }
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
-      throw new Error("wl-copy is not installed. Install the wl-clipboard package.");
+      throw new ClipboardError(
+        "missing-wl-copy",
+        "wl-copy is not installed or not in PATH.",
+        { action: "Install wl-clipboard." },
+      );
     }
+    if (error instanceof ClipboardError) throw error;
     throw error;
   }
 }
@@ -54,11 +113,19 @@ async function copyText(text: string): Promise<void> {
 async function main() {
   const textArg = parseTextArg(Deno.args);
   if (textArg === null && Deno.stdin.isTerminal()) {
-    throw new Error("No text provided. Pass --text \"...\" or pipe stdin.");
+    throw new ClipboardError(
+      "missing-input",
+      "No text provided.",
+      { action: "Pass --text \"...\" or pipe stdin." },
+    );
   }
   const text = textArg ?? await readStdinText();
   if (text.length === 0) {
-    throw new Error("No text provided. Pass --text \"...\" or pipe stdin.");
+    throw new ClipboardError(
+      "missing-input",
+      "Input text is empty.",
+      { action: "Pass non-empty --text value or non-empty stdin." },
+    );
   }
   await copyText(text);
   console.log("Copied text to clipboard.");
@@ -68,8 +135,16 @@ if (import.meta.main) {
   try {
     await main();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
+    if (error instanceof ClipboardError) {
+      console.error(formatClipboardError(error));
+      Deno.exit(1);
+    }
+    const message = error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : String(error);
+    console.error(
+      `status=error reason=wl-copy-failed message="Unexpected error while copying text." details="${message}"`,
+    );
     Deno.exit(1);
   }
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Review"
+  short_description: "Review module boundaries and complexity risks"
+  default_prompt: "Use $architecture-review to evaluate this change for architecture regressions, boundary leaks, and simplification opportunities."

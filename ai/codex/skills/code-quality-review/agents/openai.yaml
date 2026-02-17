@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Quality Review"
+  short_description: "Review high-impact code quality risks"
+  default_prompt: "Use $code-quality-review to review code for high-impact risks, actionable fixes, and a clear verdict."

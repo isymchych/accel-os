@@ -1,0 +1,4 @@
+interface:
+  display_name: "Root Cause Analysis"
+  short_description: "Analyze failures to find true root causes"
+  default_prompt: "Use $root-cause-analysis to investigate this failure and produce evidence-backed fixes that prevent recurrence."

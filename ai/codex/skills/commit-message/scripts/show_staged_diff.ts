@@ -1,34 +1,24 @@
 #!/usr/bin/env -S deno run --quiet --allow-run=git
 
+import { runGit } from "../../lib/git_command.ts";
+
 type Mode = "diff" | "fingerprint" | "names";
 
 const mode = parseMode(Deno.args);
 const gitArgs = getGitArgs(mode);
 
-const command = new Deno.Command("git", {
-  args: ["--no-pager", ...gitArgs],
-  stdin: "null",
-  stdout: "piped",
-  stderr: "piped",
-  env: {
-    LC_ALL: "C",
-    GIT_PAGER: "cat",
-  },
-});
-
-const { code, stdout, stderr } = await command.output();
-const output = decode(stdout).trimEnd();
-if (code === 0) {
+const { code, stdout, stderr, success } = await runGit(gitArgs);
+if (success) {
   if (mode === "fingerprint") {
-    console.log(await sha256Hex(output));
+    console.log(await sha256Hex(stdout));
     Deno.exit(0);
   }
 
-  if (output !== "") console.log(output);
+  if (stdout !== "") console.log(stdout);
   Deno.exit(0);
 }
 
-const errorText = decode(stderr).trim() || output || `git exited with status ${code}`;
+const errorText = stderr || stdout || `git exited with status ${code}`;
 if (/not a git repository/i.test(errorText)) {
   console.error(`ERR_NOT_REPO: ${errorText}`);
   Deno.exit(65);
@@ -65,10 +55,6 @@ function getGitArgs(mode: Mode): string[] {
 function usage(): never {
   console.error("ERR_USAGE: expected no args, --fingerprint, or --names");
   Deno.exit(64);
-}
-
-function decode(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
 }
 
 async function sha256Hex(text: string): Promise<string> {
