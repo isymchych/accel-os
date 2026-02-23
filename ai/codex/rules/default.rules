@@ -1,3 +1,5 @@
 prefix_rule(pattern=["gh", "pr", "checks"], decision="allow")
 prefix_rule(pattern=["gh", "run", "view"], decision="allow")
 prefix_rule(pattern=["gh", "pr", "view"], decision="allow")
+prefix_rule(pattern=["wl-copy"], decision="allow")
+prefix_rule(pattern=["curl", "-fsSL"], decision="allow")

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ADB Audiobook Sync"
+  short_description: "Sync local audiobooks to Android and verify integrity"
+  default_prompt: "Use adb to copy selected audiobook folders to /sdcard/Audiobooks, handle authorization prompts, and verify count+bytes match local."

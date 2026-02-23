@@ -18,7 +18,6 @@ shell_snapshot = true
 
 [tui]
 notifications = false
-animations = false
 status_line = ["model-with-reasoning", "context-remaining"]
 
 
