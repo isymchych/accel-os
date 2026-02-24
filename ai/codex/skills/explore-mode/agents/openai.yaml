@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explore Mode"
+  short_description: "Explore repo safely without premature implementation"
+  default_prompt: "Use $explore-mode to investigate this problem, surface options and trade-offs, and avoid implementation until we switch modes."

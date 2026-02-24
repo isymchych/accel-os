@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Mode"
+  short_description: "Create decision-complete execution plans"
+  default_prompt: "Use $plan-mode to create a final plans/<slug>.md with options, risks, verification, and explicit approval gates before execution."

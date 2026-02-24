@@ -3,7 +3,7 @@
 ## 0. Purpose
 Plan Mode is a guardrailed collaboration mode that turns vague intent into a decision-complete plan before implementation. It prioritizes correctness, auditability, and human control.
 
-This document defines behavior only (no tooling assumptions).
+This document defines behavior and a minimal plan-artifact contract. It is tool-agnostic except for the canonical artifact path/shape required for auditability.
 
 ## 0.1 Spec Layout
 This spec is split into two parts:
@@ -16,7 +16,7 @@ If any guidance conflicts with the Normative Core, the Normative Core wins.
 Plan Mode is done only when all are true:
 - A final plan file exists at `plans/<slug>.md` with no pending decisions.
 - Requirements, constraints, and success criteria are explicit.
-- 2-3 options were considered and one was selected (or recommendation explicitly approved).
+- 2-3 options were considered and one was selected, or a documented trivial-request fast path (Section 5.4) was used and explicitly approved.
 - Verification steps are actionable and aligned with repo conventions.
 - Major risks and rollback/backout strategy are documented.
 - The user explicitly approves transition to Execute Mode.
@@ -36,11 +36,16 @@ Plan Mode is done only when all are true:
 - Unknown MUST be treated as mutating until classified.
 - In Plan Mode, repo mutability is the hard boundary.
 
+#### 1.3 Plan lifecycle states
+- Draft: planning in progress; unresolved decisions may exist.
+- Blocked: planning cannot proceed without user/external input; `Pending Decisions` must be present.
+- Final: decision-complete plan ready for approval to execute; `Pending Decisions` must be empty or omitted.
+
 ### 2. Mode invariants (MUST NEVER VIOLATE)
-1. No edits to product/source tracked repo files. The only write allowed in Plan Mode is the canonical plan artifact at `plans/<slug>.md`.
+1. No edits to product/source tracked repo files. The only repo file that may be written in Plan Mode is the canonical plan artifact at `plans/<slug>.md`, and only with explicit user confirmation.
 2. Explore first, ask second. Ask only questions not answerable by inspecting repo/environment.
-3. One canonical plan artifact. Keep exactly one plan path: `plans/<slug>.md`; revisions replace full content in that same file.
-4. Options before recommendation. Present 2-3 structurally different approaches with trade-offs before recommending.
+3. One canonical plan artifact per request. Keep exactly one plan path for the active request: `plans/<slug>.md`; revisions replace full content in that same file.
+4. Options before recommendation. By default, present 2-3 structurally different approaches with trade-offs before recommending. A single-option trivial-request fast path is allowed only under Section 5.4.
 5. Human approval gates. Do not transition out of Plan Mode, or run commands requiring confirmation, without explicit user approval.
 6. No silent assumptions. Any assumption that materially affects scope/cost/risk must be explicit.
 7. Verification commands may run by default only when allowed by command policy in Section 4.
@@ -49,15 +54,16 @@ Plan Mode is done only when all are true:
 #### 3.1 Allowed without confirmation
 - Read-only exploration (list/open/search/read files and config).
 - Diagnostics/verification commands classified as allowed by Section 4.
-- Write/update only `plans/<slug>.md`.
 
 #### 3.2 Requires explicit confirmation
+- Any write/update to `plans/<slug>.md`.
 - Any repo-mutating command.
 - Any command classified by Section 4 as requiring confirmation.
 - Any implementation work (executing the plan, refactors, feature coding).
 
 ### 4. Command classification policy (MUST apply before run/recommend)
 Classify each command on both axes (repo + environment), then apply:
+- Writes limited to canonical `plans/<slug>.md` -> requires explicit confirmation.
 - Repo-mutating (any) -> requires explicit confirmation.
 - Repo-non-mutating + Environment-non-mutating -> allowed by default.
 - Repo-non-mutating + Environment-mutating (bounded verification effects only) -> allowed by default.
@@ -74,7 +80,7 @@ Repeat until decision-complete:
 1. Ground in environment (explore).
 2. Summarize findings and implications.
 3. Ask clarifying questions only if needed and not discoverable.
-4. Propose 2-3 options with trade-offs.
+4. Propose 2-3 options with trade-offs unless the trivial-request fast path (Section 5.4) applies.
 5. Converge with recommendation and wait for selection/approval.
 
 #### 5.2 Clarifying questions rules
@@ -94,7 +100,18 @@ If blocked on user/external info:
 
 If the user declines to answer, remain paused unless the user explicitly authorizes assumption-based continuation. If authorized, record assumptions and risks explicitly.
 
-#### 5.4 Pre-exit checklist
+#### 5.4 Trivial-request fast path
+A single-option recommendation MAY be used only when all are true:
+- Scope is trivial, unambiguous, and low risk.
+- There is only one reasonable structural approach after exploration.
+- No migration/compatibility decision is required.
+- No unbounded or external environment side effects are introduced.
+
+When this fast path is used:
+- Include a brief `Fast-path justification` in the plan.
+- Still require explicit user approval for recommendation acceptance and mode exit.
+
+#### 5.5 Pre-exit checklist
 Before requesting mode exit, confirm:
 - Plan is final (no pending decisions).
 - Acceptance criteria are measurable.
@@ -108,24 +125,57 @@ Before requesting mode exit, confirm:
 Plan Mode MUST pause for explicit confirmation:
 - before running any command requiring confirmation under Section 4,
 - before exiting Plan Mode / entering Execute Mode,
-- when selecting among approaches.
+- when user selection is required among multiple viable approaches.
 
 #### 6.2 Plan revisions
-If requirements change, revise by replacing the entire plan artifact (do not append conflicting deltas).
+If requirements change, revise by replacing the entire plan artifact (do not append conflicting deltas). Preserve and append `## 0. Decision Log` entries so major revisions remain auditable in-file. Revisions MUST comply with Section 7.2 (non-lossy fidelity).
 
 #### 6.3 Mode exit gate
 When plan is complete:
-- Present plan file path.
-- Ask: "Approve this plan and switch to Execute Mode?" (yes/no).
+- Present plan file path and readiness checklist:
+  - selected option (or approved recommendation),
+  - assumptions (if any),
+  - open questions = none,
+  - verification plan agreed,
+  - rollback/backout documented.
+- Ask for explicit yes/no approval to switch to Execute Mode.
 - If no, request changes and revise plan in full.
 
 ### 7. Required plan artifact (`plans/<slug>.md`)
-Create exactly one file path: `plans/<slug>.md`.
+For each user request, create exactly one canonical file path: `plans/<slug>.md`.
 
-Use this exact structure:
+Section requirements:
+- Required in all lifecycle states: `0`, `1`, `2`, `4`, `5`, `6`, `7`, `8`, `10`.
+- Conditional: `3` (include when clarifications occurred), `7.1` (Blocked state only), `9` (if applicable).
+- Optional within required sections: `Option C` in `4`.
+- Final-state constraint: `5` -> Open questions must be empty; `7.1` must be omitted.
+
+#### 7.2 Plan fidelity requirements (MUST preserve meaning)
+Purpose: keep `plans/<slug>.md` decision-complete and non-lossy across revisions.
+
+Normative rules:
+- Non-lossy updates only. Revisions to the canonical plan artifact MUST NOT summarize, compress, or omit material plan details that were previously established unless those details are explicitly superseded.
+- Material details include, at minimum:
+  - requirements and constraints,
+  - options considered and trade-offs,
+  - recommendation and rationale,
+  - assumptions and dependencies,
+  - risks and mitigations (including rollback/backout),
+  - execution and verification details,
+  - open questions / pending decisions (when applicable).
+- Explicit supersession. If prior material details are changed or removed, the revision MUST record what changed and why in `## 0. Decision Log`.
+- Missing-content marker. Required sections with no available content MUST contain `None provided.`; they MUST NOT be silently omitted.
+- Editorial compression allowed only when semantics are preserved. Reformatting, de-duplication, and wording cleanup MAY be applied, but MUST NOT reduce decision-relevant detail or weaken testability/auditability.
+- Canonical precedence. `plans/<slug>.md` remains the source of truth in Plan Mode; any snapshot/export format is non-canonical and MUST NOT replace or relax canonical requirements.
+
+Use this baseline structure and keep heading numbers stable:
 
 ```md
 # <Title>
+
+## 0. Decision Log
+- YYYY-MM-DD HH:MM (local): Initial draft created.
+- YYYY-MM-DD HH:MM (local): <meaningful revision + rationale>
 
 ## 1. Context
 - What the user wants (1-3 sentences).
@@ -171,6 +221,7 @@ Use this exact structure:
 ## 5. Recommendation
 - Chosen option and rationale.
 - Explicit assumptions (if any).
+- Fast-path justification (required only when using Section 5.4).
 - Open questions (must be empty if decision-complete).
 
 ## 6. Execution Plan (Step-by-step)
@@ -199,7 +250,8 @@ For each major step include:
   - Unknown (requires confirmation)
 - Manual validation steps (if any)
 
-## 7.1 Pending Decisions (only if blocked)
+## 7.1 Pending Decisions (Blocked state only)
+Include this section only when lifecycle state is `Blocked`.
 If planning is blocked awaiting user input, list bounded decisions and pause.
 If the user explicitly authorizes assumption-based continuation, document assumptions/risks and continue planning.
 
