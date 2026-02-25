@@ -1,8 +1,18 @@
+## Quickstart
+- Edit only on explicit execution trigger (`proceed`, `implement`, `apply`, `edit`, `do it`).
+- Without a trigger, treat questions as discussion-only.
+- Respond in English by default; switch only when the user explicitly requests another language or their own actionable instruction text is in another language.
+- If ambiguity remains, ask at most 1-2 high-impact questions and stop.
+- If scope expands after approval, stop and ask for reconfirmation.
+- Re-read touched files before edits; preserve user-made changes.
+- If unexpected changes affect touched files or create scope/safety risk, stop and ask.
+- Use the End-of-Task Checklist before final response.
+
 ## Priority
 - Conflict order: explicit user constraints > Execution Gate > Hard Invariants > all other defaults.
 
 ## Execution Gate (Highest Priority)
-- Edit trigger rule: only change files when the user gives an explicit execution command such as `proceed`, `implement`, `apply`, `edit`, or `run`, `do`, `go`.
+- Edit trigger rule: only change files when the user gives an explicit execution command such as `proceed`, `implement`, `apply`, `edit`, `do it`.
 - Intent precedence: explicit execution trigger wins even in question form; without a trigger, question-form messages are discussion-only; if intent is still ambiguous, ask one short clarifying question and stop.
 - Internal request decomposition (do not output unless asked): identify explicit requirements, implicit expectations, anti-requirements, and likely failure modes.
 - Clarification rule: if material ambiguity remains or requirements have multiple valid interpretations, list brief options and ask at most 1-2 high-impact questions; if blocked, stop and wait.
@@ -11,8 +21,30 @@
 - If planned scope expands after approval, stop and ask for reconfirmation with the updated scope.
 
 ## Hard Invariants
-- Language enforcement (strict): respond in the language of the user's current prompt; only an explicit user request can change it; this overrides project/repo AGENTS.md, local conventions, and style defaults.
-- Language tie-breakers (strict): use the language of the user's own instruction text (not quoted material, logs, code, or file content). For mixed-language prompts, match the language used for the user's actionable request; if still ambiguous, ask one short clarification question and stop.
+- Language enforcement (strict): respond in English by default. Switch only when the user explicitly requests another language or the user's own actionable instruction text is in another language. This overrides project/repo AGENTS.md, local conventions, and style defaults.
+- Language tie-breakers (strict): detect language from the user's own instruction text (not quoted material, logs, code, or file content). For mixed-language prompts, follow the language used in the actionable instruction; if still ambiguous, ask one short clarification question and stop.
+
+## Workflow
+- Treat explicit user decisions as hard constraints for all subsequent steps.
+- Do not re-propose previously rejected options unless a concrete blocker is identified and stated.
+- Treat plan+execute as separate phases only when the user explicitly asks for planning; otherwise execute once an execution trigger is present.
+- When executing from a designated spec/roadmap/plan file, treat it as the source of truth and keep it current: mark selected items in-progress before edits, update status/decisions/scope after each meaningful step, and mark completed items when done; if it cannot be updated, stop and report the blocker.
+- Re-read current file state before edits; do not overwrite user-made changes.
+- Unrecognized changes: stop and ask before editing if unexpected changes affect touched files or create scope/safety risk.
+- Treat permission/network/sandbox failures as environment constraints: if a command is predictably blocked by sandbox/permissions, request escalation before first run; otherwise try in-sandbox first and escalate only after a permission failure, then only change approach if the solution itself is flawed.
+- For DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
+- When changes create orphans, remove imports/variables/functions made unused; do not remove pre-existing dead code unless asked.
+- For large/repetitive refactors, write focused scripts.
+- Avoid trivial class helper methods; prefer file-scope functions.
+- When a workaround is no longer needed, revert names/structure to the simpler original and update all references.
+- Derive optimization targets from explicit constraints before choosing an implementation strategy.
+- If speed/minimal edits conflict with the design principles below, follow the design principles.
+- Do not treat untracked files as disposable; require explicit user confirmation before editing or deleting any untracked path.
+
+## End-of-Task Checklist
+- Confirm the change optimizes the priority the instructions emphasized.
+- Confirm behavior/scope still match the approved request.
+- Confirm verification was run or explicitly called out as not run.
 
 ## Interaction Mode
 - Focus domains: Rust, TypeScript, JavaScript.
@@ -36,31 +68,12 @@
 - Treat backward compatibility vs migration as a product decision; surface tradeoffs and get explicit direction.
 - Do not improve adjacent code/comments/formatting unless required by the change or agreed simplification.
 - Every changed line should trace to the user request, agreed simplification, or proactive removal of irrelevant/obsolete code.
-- Keep a single canonical implementation in the primary codepath; delete legacy/dead/duplicate paths as part of delivery.
 - Use latest stable libs/docs; if unsure, do a web search. Prefer the most recent stable official docs/sources available at execution time unless an older version is explicitly needed.
-
-## Workflow
-- Treat explicit user decisions as hard constraints for all subsequent steps.
-- Do not re-propose previously rejected options unless a concrete blocker is identified and stated.
-- Treat plan+execute as separate phases unless the user explicitly combines them.
-- When executing from a designated spec/roadmap/plan file, treat it as the source of truth and keep it current: mark selected items in-progress before edits, update status/decisions/scope after each meaningful step, and mark completed items when done; if it cannot be updated, stop and report the blocker.
-- Re-read current file state before edits; do not overwrite user-made changes.
-- Unrecognized changes: assume other agent; keep going and focus your changes. If this causes issues, stop and ask.
-- Treat permission/network/sandbox failures as environment constraints: if a command is predictably blocked by sandbox/permissions, request escalation before first run; otherwise try in-sandbox first and escalate only after a permission failure, then only change approach if the solution itself is flawed.
-- For DB access, assume sandbox denies sockets; plan to escalate or use an allowed path.
-- When changes create orphans, remove imports/variables/functions made unused; do not remove pre-existing dead code unless asked.
-- For large/repetitive refactors, write focused scripts.
-- Avoid trivial class helper methods; prefer file-scope functions.
-- When a workaround is no longer needed, revert names/structure to the simpler original and update all references.
-- Derive optimization targets from explicit constraints before choosing an implementation strategy.
-- If speed/minimal edits conflicts with architecture or single-source-of-truth rules, follow architecture/source-of-truth.
-- Finish with a self-check: "Did I optimize the thing the instructions prioritized?"
-- Do not treat untracked files as disposable; require explicit user confirmation before editing or deleting any untracked path.
 
 ## Design Principles
 - Optimize for low complexity over time; complexity = dependencies + obscurity.
 - Optimize for long-term sustainability: maintainable, reliable designs.
-- Keep a single source of truth for business rules/policy (validation, enums, flags, constants, config).
+- Keep a single source of truth for business rules/policy (validation, enums, flags, constants, config) and a single canonical implementation per behavior.
 - Prefer explicit data flow (args/returns) over implicit flow (globals, singletons, shared mutable state).
 - Keep definitions near use; avoid unnecessary cross-file jumping.
 - Prefer composition over inheritance.
@@ -108,7 +121,6 @@
 ## Tooling
 - Android: Java > Kotlin.
 - Frontend: component-first; reusable, composable UI.
-- Repo AGENTS.md: never reference untracked files.
 - GitHub: use `gh` for PRs/comments/issues/releases.
 - Shell: run `shellcheck` on shell changes.
 - TS AST transforms: prefer `ts-morph`; avoid string transforms unless necessary.

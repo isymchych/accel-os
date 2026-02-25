@@ -82,18 +82,6 @@ Add a **Critic**:
 
 ---
 
-## Combined Meta-Insight
-
-The two documents align tightly:
-
-| Mental Model                    | Planning Best Practice         |
-| ------------------------------- | ------------------------------ |
-| Model + Harness = Agent         | Planner–Executor separation    |
-| Surfaces enable workflows       | Plan mode in CLI/IDE           |
-| Harness enables execution loops | ReAct / iterative debug cycles |
-| Compaction + state              | Persistent scratchpads         |
-| Consistent execution model      | Human-in-the-loop controls     |
-
 **Core theme:**
 Reliable agentic coding emerges from:
 
