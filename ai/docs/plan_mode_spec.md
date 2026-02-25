@@ -128,7 +128,7 @@ Plan Mode MUST pause for explicit confirmation:
 - when user selection is required among multiple viable approaches.
 
 #### 6.2 Plan revisions
-If requirements change, revise by replacing the entire plan artifact (do not append conflicting deltas). Preserve and append `## 0. Decision Log` entries so major revisions remain auditable in-file. Revisions MUST comply with Section 7.2 (non-lossy fidelity).
+If requirements change, revise by replacing the entire plan artifact (do not append conflicting deltas). Preserve and append `## 0. Dev Log` entries so major revisions remain auditable in-file. Revisions MUST comply with Section 7.3 (non-lossy fidelity).
 
 #### 6.3 Mode exit gate
 When plan is complete:
@@ -150,7 +150,17 @@ Section requirements:
 - Optional within required sections: `Option C` in `4`.
 - Final-state constraint: `5` -> Open questions must be empty; `7.1` must be omitted.
 
-#### 7.2 Plan fidelity requirements (MUST preserve meaning)
+#### 7.2 Execution step format and progress tracking (MUST)
+- `## 6. Execution Plan` MUST be written as a checklist using Markdown checkboxes (`- [ ]` / `- [x]`).
+- Each major execution step MUST be one checkbox item.
+- Initial plan state: all execution steps are unchecked.
+- During Execute Mode, the agent MUST update the same canonical plan file to reflect progress:
+  - mark the current step as `- [ ] ... (in progress)`,
+  - mark completed steps as `- [x] ...`,
+  - keep not-started steps as `- [ ] ...`.
+- Progress updates MUST be in-place updates to the canonical plan file (no separate tracker).
+
+#### 7.3 Plan fidelity requirements (MUST preserve meaning)
 Purpose: keep `plans/<slug>.md` decision-complete and non-lossy across revisions.
 
 Normative rules:
@@ -163,19 +173,36 @@ Normative rules:
   - risks and mitigations (including rollback/backout),
   - execution and verification details,
   - open questions / pending decisions (when applicable).
-- Explicit supersession. If prior material details are changed or removed, the revision MUST record what changed and why in `## 0. Decision Log`.
+- Explicit supersession. If prior material details are changed or removed, the revision MUST record what changed and why in `## 0. Dev Log`.
 - Missing-content marker. Required sections with no available content MUST contain `None provided.`; they MUST NOT be silently omitted.
 - Editorial compression allowed only when semantics are preserved. Reformatting, de-duplication, and wording cleanup MAY be applied, but MUST NOT reduce decision-relevant detail or weaken testability/auditability.
 - Canonical precedence. `plans/<slug>.md` remains the source of truth in Plan Mode; any snapshot/export format is non-canonical and MUST NOT replace or relax canonical requirements.
+
+#### 7.4 Dev Log requirements (MUST)
+- The canonical logging section name MUST be `## 0. Dev Log`.
+- `## 0. Dev Log` is the only in-file tracker for decisions, errors/resolutions, and findings/learnings; separate trackers MUST NOT be introduced.
+- Each log entry MUST include:
+  - `timestamp` (local time),
+  - `step` (execution step id or `N/A`),
+  - `type` (`Decision` | `Error` | `Finding/Learning`),
+  - `summary`,
+  - `evidence` reference(s) (or `N/A`),
+  - `action/resolution`,
+  - `status` (`open` | `resolved` | `superseded`).
+- Error entries MUST include a concrete resolution or next action.
+- Finding/Learning entries MUST include the implication for plan scope, risk, verification, or implementation choices.
+- Materiality filter: include only entries that change plan, scope, risk posture, implementation choices, or verification strategy.
+- Non-material noise (for example transient retries or routine command output) SHOULD be omitted.
 
 Use this baseline structure and keep heading numbers stable:
 
 ```md
 # <Title>
 
-## 0. Decision Log
-- YYYY-MM-DD HH:MM (local): Initial draft created.
-- YYYY-MM-DD HH:MM (local): <meaningful revision + rationale>
+## 0. Dev Log
+- timestamp: YYYY-MM-DD HH:MM (local) | step: N/A | type: Decision | summary: Initial draft created. | evidence: N/A | action/resolution: N/A | status: resolved
+- timestamp: YYYY-MM-DD HH:MM (local) | step: <id> | type: Error | summary: <material error> | evidence: <E# or N/A> | action/resolution: <fix or next action> | status: <open|resolved|superseded>
+- timestamp: YYYY-MM-DD HH:MM (local) | step: <id> | type: Finding/Learning | summary: <material finding> | evidence: <E# or N/A> | action/resolution: <plan/verification/implementation adjustment> | status: <open|resolved|superseded>
 
 ## 1. Context
 - What the user wants (1-3 sentences).
@@ -225,9 +252,9 @@ Use this baseline structure and keep heading numbers stable:
 - Open questions (must be empty if decision-complete).
 
 ## 6. Execution Plan (Step-by-step)
-1. ...
-2. ...
-3. ...
+- [ ] Step 1 ...
+- [ ] Step 2 ...
+- [ ] Step 3 ...
 
 For each major step include:
 - impacted areas/files (expected, not edited in Plan Mode),

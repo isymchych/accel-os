@@ -139,7 +139,7 @@ When using fast path:
 
 - Keep exactly one canonical artifact: `plans/<slug>.md`.
 - Replace full file content on revisions; do not append conflicting deltas.
-- Preserve `## 0. Decision Log` and append meaningful revision entries.
+- Preserve `## 0. Dev Log` and append meaningful revision entries.
 - Apply non-lossy updates:
   - keep requirements/constraints,
   - keep options/trade-offs,
@@ -148,10 +148,39 @@ When using fast path:
   - keep risks/mitigations/rollback,
   - keep execution and verification details,
   - keep open questions/pending decisions when applicable.
-- Record explicit supersession in `## 0. Decision Log` when changing/removing prior material details.
+- Record explicit supersession in `## 0. Dev Log` when changing/removing prior material details.
 - For required sections with no content, write `None provided.`.
 - Editorial compression is allowed only when semantics are preserved. Do not reduce decision-relevant detail or weaken testability/auditability.
 - `plans/<slug>.md` remains the source of truth in Plan Mode; any snapshot/export format is non-canonical and cannot replace or relax canonical requirements.
+
+## Enforce Execution Checklist and Progress Tracking
+
+- `## 6. Execution Plan` must use Markdown checkbox steps only (`- [ ]` / `- [x]`).
+- Each major execution step must be a single checkbox item.
+- Initial plan state: all execution steps are unchecked.
+- During Execute Mode, update progress in the same canonical plan file:
+  - current step: `- [ ] ... (in progress)`,
+  - completed steps: `- [x] ...`,
+  - not-started steps: `- [ ] ...`.
+- Do not use a separate progress tracker; progress state lives in `plans/<slug>.md`.
+
+## Enforce Dev Log Requirements
+
+- The canonical logging section name is `## 0. Dev Log`.
+- `## 0. Dev Log` is the only in-file tracker for decisions, errors/resolutions, and findings/learnings.
+- Each dev-log entry must include:
+  - `timestamp` (local time),
+  - `step` (execution step id or `N/A`),
+  - `type` (`Decision` | `Error` | `Finding/Learning`),
+  - `summary`,
+  - `evidence` reference(s) (or `N/A`),
+  - `action/resolution`,
+  - `status` (`open` | `resolved` | `superseded`).
+- Error entries must include a concrete resolution or next action.
+- Finding/Learning entries must include the implication for plan scope, risk, verification, or implementation choices.
+- Apply a materiality filter:
+  - include only entries that change plan, scope, risk posture, implementation choices, or verification strategy,
+  - omit non-material noise (for example transient retries or routine command output).
 
 ## Use Required Plan Structure
 
@@ -160,9 +189,10 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 ```md
 # <Title>
 
-## 0. Decision Log
-- YYYY-MM-DD HH:MM (local): Initial draft created.
-- YYYY-MM-DD HH:MM (local): <revision + rationale>
+## 0. Dev Log
+- timestamp: YYYY-MM-DD HH:MM (local) | step: N/A | type: Decision | summary: Initial draft created. | evidence: N/A | action/resolution: N/A | status: resolved
+- timestamp: YYYY-MM-DD HH:MM (local) | step: <id> | type: Error | summary: <material error> | evidence: <E# or N/A> | action/resolution: <fix or next action> | status: <open|resolved|superseded>
+- timestamp: YYYY-MM-DD HH:MM (local) | step: <id> | type: Finding/Learning | summary: <material finding> | evidence: <E# or N/A> | action/resolution: <plan/verification/implementation adjustment> | status: <open|resolved|superseded>
 
 ## 1. Context
 - What the user wants (1-3 sentences).
@@ -209,14 +239,12 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 - Chosen option and rationale.
 - Explicit assumptions (if any).
 - Fast-path justification (required only when using fast path).
-
-### 5.1 Open Questions
-- None provided.
+- Open questions (must be empty if decision-complete).
 
 ## 6. Execution Plan (Step-by-step)
-1. ...
-2. ...
-3. ...
+- [ ] Step 1 ...
+- [ ] Step 2 ...
+- [ ] Step 3 ...
 
 For each major step include:
 - impacted areas/files (expected, not edited in Plan Mode),
@@ -265,7 +293,7 @@ Plan Mode can end when:
 Lifecycle constraints:
 - Draft: unresolved decisions allowed.
 - Blocked: include `7.1 Pending Decisions`.
-- Final: omit `7.1`; set section `5.1 Open Questions` to `None provided.`.
+- Final: omit `7.1`; set `5` open questions to `None provided.`.
 
 ## Enforce Pre-Exit Gate
 
@@ -273,7 +301,7 @@ Before requesting exit to Execute Mode, confirm and report:
 - plan is final (no pending decisions),
 - selected option (or approved recommendation),
 - assumptions (if any),
-- `5.1 Open Questions` = `None provided.`,
+- `5` open questions = `None provided.`,
 - acceptance criteria are measurable,
 - verification plan agreed,
 - tests align with repo conventions,
