@@ -56,6 +56,8 @@
 
 ## AI / Codex Skills
 - Skill helper scripts should be Deno TypeScript, not Python.
+- When a skill references cross-folder policy docs, use `$ACCELERANDO_HOME` absolute paths because relative paths drift by working directory.
+
 
 ## Machine-Specific Configuration
 - Favor templates (`.tmpl`) or `.chezmoi.osRelease` checks over duplicating configs.

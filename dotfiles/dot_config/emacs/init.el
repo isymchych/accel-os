@@ -1975,6 +1975,18 @@ targets."
                              (local-set-key (kbd "C-c l t") 'lsp-goto-type-definition)
                              (local-set-key (kbd "C-c l r") 'lsp-rename))))
 
+;; Fix escaped UTF-8 bytes in consult-xref previews for non-visited files.
+(with-eval-after-load 'lsp-mode
+  (defun mb/lsp-xref-read-files-decoded (orig-fn locations)
+    "Force decoded reads in lsp xref temp buffers."
+    (cl-letf (((symbol-function 'insert-file-contents-literally)
+               (lambda (filename &optional visit beg end replace)
+                 (let ((coding-system-for-read 'undecided))
+                   (insert-file-contents filename visit beg end replace)))))
+      (funcall orig-fn locations)))
+  (advice-add 'lsp--locations-to-xref-items
+              :around #'mb/lsp-xref-read-files-decoded))
+
 
 
 ;; Flycheck: lint files

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Cleanup"
+  short_description: "Apply focused, guideline-driven code cleanup"
+  default_prompt: "Use $code-cleanup to apply guideline-driven cleanup refactors with minimal behavior risk."

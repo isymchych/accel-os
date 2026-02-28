@@ -357,7 +357,7 @@ bindsym $mod+Escape exec makoctl dismiss --all
 bindsym $mod+Shift+Escape exec makoctl restore
 
 # screenshot
-bindsym --release Print exec mb-screenshot
+bindsym Print exec mb-screenshot
 
 # file manager
 bindsym --to-code $mod+n exec xterm run -- yazi

@@ -10,3 +10,4 @@ version.json
 skills/.system
 .personality_migration
 session_index.jsonl
+state_*.sqlite*

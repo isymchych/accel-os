@@ -1,3 +1,0 @@
-interface:
-  display_name: "Copy to Clipboard"
-  short_description: "Copy text to Wayland clipboard"

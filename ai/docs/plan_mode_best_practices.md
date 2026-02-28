@@ -92,3 +92,17 @@ Reliable agentic coding emerges from:
 * Human supervision at control points
 
 Not from raw model intelligence alone.
+
+-------------------------
+
+## High-level best practices for long-horizon Codex tasks:
+
+* **Freeze the target in a spec file**: goals/non-goals, hard constraints, deliverables, and explicit “done when” checks so the agent doesn’t build something impressive-but-wrong. 
+* **Decompose into checkpointed milestones**: small steps the agent can complete in one loop, each with acceptance criteria + concrete validation commands (tests, lint, typecheck, deterministic snapshots).
+* **Adopt a hard “stop-and-fix” rule:** if a validation fails, repair before moving on (prevents compounding failures and drift). 
+* **Use an execution runbook**: tell the agent how to operate—follow the plan, keep diffs scoped, run validations after each milestone, and keep documentation updated. 
+  * Resolve ambiguity by writing it down first: if something’s unclear, decide and record the decision before coding (keeps the plan as the canonical spec).
+  * Milestone exit criteria is stricter than “run tests”: after every milestone: run verification (lint/typecheck/unit tests/snapshots/integration checks), fix failures immediately, and add/update tests covering the milestone’s core behavior.
+  * Bug protocol: if any bug is found: write failing test → fix → confirm pass → add a short note in “Implementation Notes”.
+* **Maintain a live status + audit log**: current milestone status, decisions (and why), how to run/demo, known issues—so you can pause/resume without losing context. 
+* **Continuous verification beats “prompt cleverness”:** keep tests/lint/typecheck/build in the loop so progress is measured in passing gates, not tokens spent. 
