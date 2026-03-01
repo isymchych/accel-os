@@ -85,7 +85,7 @@ Use one 2-3 line block per check, in this format:
 
 ```
 <status_icon> <check_name>
-- cmd: <exact command or n/a>
+- cmd: <exact command>   # required only for runnable checks
 - evidence: <1 short concrete line>
 - refs: <policy refs only>   # only for doc_code_style, agents_compliance
 ```
@@ -97,18 +97,21 @@ Status icon mapping:
 - `⚪` = `n/a`
 - `⏭️` = `not_run`
 
-Required checks:
+Default required checks:
 - `tests`
 - `typecheck`
 - `tooling_style`
-- `doc_code_style`
-- `agents_compliance`
+
+Conditional checks:
+- `doc_code_style` (only when style-policy documents were edited or style-policy interpretation changed)
+- `agents_compliance` (only when AGENTS/policy compliance is materially in scope)
 
 Rules:
 - List failed checks first, then warns, then pass, then n/a/not_run.
 - Do not mark `pass` unless the command/check was actually run.
 - You MUST report final resolved status per check, not per-attempt history.
 - If a check is retried and a later run passes, the check MUST be `✅`.
+- You MAY omit checks that are genuinely out of scope for the task; do not emit placeholder blocks.
 - For `tooling_style`, you MUST run and report applicable lint checks (for example ESLint).
 - For `tooling_style`, you SHOULD also run and report applicable formatter checks (for example Prettier).
 - `tooling_style` is `pass` only when all applicable lint/format checks were run and clean.
@@ -117,7 +120,8 @@ Rules:
 - Keep `cmd` display at or under 120 characters when possible.
 - If `cmd` exceeds display length, truncate with `...`.
 - `refs` MUST point to governing rules, not changed files or artifacts.
-- For `doc_code_style`, `refs` MUST cite style policy sections/bullets (for example `docs/engineering-principles.md#Code Style`).
+- For `doc_code_style`, `refs` MUST include `docs/engineering-principles.md#Code Style` and any additional governing style-policy sections used for the judgment.
+- If `doc_code_style` is present and the required engineering-principles ref is missing, `doc_code_style` MUST be `❌`.
 - For `agents_compliance`, `refs` MUST cite AGENTS rules/sections (for example `AGENTS.md#Execution Gate`).
 
 Examples:
@@ -172,7 +176,7 @@ Examples:
 - Public APIs: you SHOULD use structured doc comments (JSDoc/TSDoc). Inline comments SHOULD be limited to local invariants or non-obvious logic.
 - Testing: you SHOULD prefer real implementations when feasible; you SHOULD avoid mocks by default.
 - Testing: you SHOULD NOT add unit tests for pure delegation methods (methods that only forward args/returns unchanged) when delegated behavior is already covered at the callee level.
-- Testing: for behavior-changing edits where automated tests exist (or are added), you SHOULD follow red->green->refactor: write a failing test first, make it pass with the smallest change, then refactor safely.
+- Testing: if you add or change a reusable trust boundary (a shared method/module whose output enforces or interprets contracts), you MUST add or update tests in the enforcing layer in the same patch, or get an explicit user-approved exception in the task thread; triggers include behavior branching (null/throw, fallback/default, policy branch), cross-layer data-shape conversion, fan-out to multiple consumers, and contract bug fixes (add a regression test where the contract is enforced); pure pass-through/delegation changes are exempt unless contract semantics changed.
 - Testing: for behavior-changing edits in a module with no automated tests, you MUST stop and ask for explicit direction before implementation.
 - Testing: when this gate is triggered, you MUST present options: (a) add a minimal test seam first, (b) proceed with a documented one-time exception and manual verification, or (c) defer the change.
 - Testing: non-behavioral edits (for example comments, renames, formatting, or mechanical refactors) MAY proceed without this gate.

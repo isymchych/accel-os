@@ -17,9 +17,10 @@
 - Trigger model is explicit-only.
 - State-changing actions require an explicit trigger tied to the current scoped task.
 - Accepted short triggers: `do it`, `go`, `proceed`, `implement`, `apply`, `edit`.
-- If trigger wording is ambiguous for the current task, ask one clarification.
+- If trigger wording is ambiguous for the current task, ask one clarification and stop.
 - Discovery without trigger is allowed: read/search files, inspect logs, run commands/tests, and prepare a concrete patch plan.
-- Ask for confirmation immediately before first state-changing action (or earlier for high-risk impact).
+- If an explicit trigger is present for the current scoped task, proceed without an additional confirmation step.
+- Ask for confirmation immediately before first state-changing action only when trigger is absent/ambiguous, or when the action is high-risk/destructive.
 
 ## Scope Control (Workflow)
 - Execute only explicitly authorized scope.
@@ -32,6 +33,10 @@
 - Re-read current file state before edits; do not overwrite user changes.
 - If unexpected changes affect touched files or safety/scope, stop and ask.
 - Do not edit/delete untracked paths without explicit user confirmation (except explicitly requested creation).
+- Treat requirement-level edits in normative documents as behavior-affecting changes, not copy edits.
+- Normative documents are source-of-truth files that prescribe required or recommended behavior, constraints, or decision rules (for example policies, standards, specs, governance docs, and instruction files; runbooks when they define required behavior).
+- For each edited normative section, classify requirements as `preserved`, `modified`, `removed`, or `added`, and report this in the completion report.
+- If any removal is not explicitly requested, stop and ask before applying.
 
 ## Plan/Spec Execution Discipline
 - If executing from a designated spec/roadmap/plan file, treat it as source of truth.
