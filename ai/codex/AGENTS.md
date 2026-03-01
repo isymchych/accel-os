@@ -44,7 +44,7 @@
 - If the plan file cannot be updated, stop and report the blocker.
 
 ## Coding Preflight (Progressive Disclosure)
-- For coding work, load `$ACCELERANDO_HOME/ai/codex/docs/engineering-principles.md` once per session before the first coding analysis/output.
+- For coding work, load `$ACCEL_OS/ai/codex/docs/engineering-principles.md` once per session before the first coding analysis/output.
 - Re-load only when one of the following is true: (a) the principles file changed, (b) scoped task materially changed, or (c) the user explicitly asks to re-run preflight.
 - Coding work includes planning, edits, implementation, review, debugging, RCA, and architecture/refactor decisions.
 - Mixed-task rule: if any requested deliverable includes code reasoning/edit/review/debugging, treat the task as coding work.
@@ -77,5 +77,5 @@
 - Prohibited by default: cloud-only when local exists, telemetry/analytics, online pastebins, link shorteners.
 
 ## Personal AGENTS.md
-- Discovery pointer only: `$ACCELERANDO_HOME/ai/codex/AGENTS.md`.
+- Discovery pointer only: `$ACCEL_OS/ai/codex/AGENTS.md`.
 - It is a tooling lookup path, not an extra policy layer unless explicitly loaded.

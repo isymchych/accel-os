@@ -32,7 +32,7 @@
 ## Scripts (Deno)
 - Store scripts in `scripts/scripts/` and shared modules in `scripts/lib/`.
 - Add tasks in `scripts/deno.json` with `--lock=deno.lock --frozen --cached-only`.
-- Wrap each task with `dotfiles/bin/executable_mb-<name>`; wrapper `cd`s into `$ACCELERANDO_HOME/scripts` and runs `deno task mb-<name>`.
+- Wrap each task with `dotfiles/bin/executable_mb-<name>`; wrapper `cd`s into `$ACCEL_OS/scripts` and runs `deno task mb-<name>`.
 - Put `DENO_NO_UPDATE_CHECK=1` in Deno wrapper shell scripts (`dotfiles/bin/executable_*`, cache scripts) 
 - Cache all entrypoints via `scripts/cache-mb-scripts.sh` (globs `./scripts/*.ts`).
 - Confirm cache/lock policy before dismissing dependency changes.
@@ -56,7 +56,7 @@
 
 ## AI / Codex Skills
 - Skill helper scripts should be Deno TypeScript, not Python.
-- When a skill references cross-folder policy docs, use `$ACCELERANDO_HOME` absolute paths because relative paths drift by working directory.
+- When a skill references cross-folder policy docs, use `$ACCEL_OS` absolute paths because relative paths drift by working directory.
 
 
 ## Machine-Specific Configuration

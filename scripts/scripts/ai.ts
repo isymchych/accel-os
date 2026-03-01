@@ -112,9 +112,9 @@ const fileExists = async (path: string): Promise<boolean> => {
 };
 
 const resolveAuthDir = async (): Promise<string> => {
-  const accelHome = Deno.env.get("ACCELERANDO_HOME");
+  const accelHome = Deno.env.get("ACCEL_OS");
   if (!accelHome) {
-    throw new Error("ACCELERANDO_HOME is not set");
+    throw new Error("ACCEL_OS is not set");
   }
   const direct = join(accelHome, "ai", "codex");
   if (await fileExists(direct)) {

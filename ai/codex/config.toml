@@ -23,7 +23,7 @@ status_line = ["model-with-reasoning", "context-remaining"]
 
 [shell_environment_policy]
 inherit = "none"
-include_only = ["PATH", "HOME", "ACCELERANDO_HOME"]
+include_only = ["PATH", "HOME", "ACCEL_OS"]
 
 
 [projects."/home/isymchych/accel-os"]

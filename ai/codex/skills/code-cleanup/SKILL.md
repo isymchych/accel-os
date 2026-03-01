@@ -10,7 +10,7 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
 ## Workflow
 
 1. Read project constraints first (`AGENTS.md`, repo guidelines, language/tooling configs).
-2. Read cleanup policy at `$ACCELERANDO_HOME/ai/docs/code_cleanup_guidelines.md` and treat it as required.
+2. Read cleanup policy at `$ACCEL_OS/ai/docs/code_cleanup_guidelines.md` and treat it as required.
    - If this file is missing or unreadable, stop and report a blocker before making edits.
 3. Identify target scope and avoid adjacent cleanup outside user-requested areas.
 4. Apply the required cleanup checks in order:

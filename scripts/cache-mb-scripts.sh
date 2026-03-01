@@ -5,9 +5,9 @@ if ! command -v deno >/dev/null 2>&1; then
   exit 0
 fi
 
-: "${ACCELERANDO_HOME:?ACCELERANDO_HOME must point at repo root}"
+: "${ACCEL_OS:?ACCEL_OS must point at repo root}"
 export DENO_NO_UPDATE_CHECK=1
-cd "$ACCELERANDO_HOME/scripts"
+cd "$ACCEL_OS/scripts"
 
 shopt -s nullglob
 scripts=(./scripts/*.ts)

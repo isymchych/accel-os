@@ -15,7 +15,7 @@
 2. Back up current profile `user.js`:
    - `cp ~/.mozilla/firefox/<profile-id>/user.js ~/.mozilla/firefox/<profile-id>/user.js.bak.$(date +%Y%m%d-%H%M%S)`
 3. Copy repo prefs into profile:
-   - `cp "$ACCELERANDO_HOME/firefox/user.js" ~/.mozilla/firefox/<profile-id>/user.js`
+   - `cp "$ACCEL_OS/firefox/user.js" ~/.mozilla/firefox/<profile-id>/user.js`
 4. Verify copy:
-   - `cmp -s "$ACCELERANDO_HOME/firefox/user.js" ~/.mozilla/firefox/<profile-id>/user.js && echo MATCH || echo DIFF`
+   - `cmp -s "$ACCEL_OS/firefox/user.js" ~/.mozilla/firefox/<profile-id>/user.js && echo MATCH || echo DIFF`
 5. Restart Firefox fully.

@@ -16,7 +16,7 @@ description: Find a website's recommended RSS or Atom feed URL from a page or do
 ## Command
 
 ```bash
-$ACCELERANDO_HOME/ai/codex/skills/find-rss-atom-feed/scripts/find_feed.ts <url>
+$ACCEL_OS/ai/codex/skills/find-rss-atom-feed/scripts/find_feed.ts <url>
 ```
 
 Output fields:

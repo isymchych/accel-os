@@ -1,8 +1,8 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-export ACCELERANDO_HOME := justfile_directory()
+export ACCEL_OS := justfile_directory()
 
-chezmoi := "chezmoi --source \"$ACCELERANDO_HOME/dotfiles\""
+chezmoi := "chezmoi --source \"$ACCEL_OS/dotfiles\""
 
 default:
   @just --list

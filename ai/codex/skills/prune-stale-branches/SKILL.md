@@ -6,7 +6,7 @@ description: Prune stale GitHub remote branches in the current repo using a safe
 # Prune Stale Branches
 
 Use this skill to safely prune stale remote branches via:
-- `$ACCELERANDO_HOME/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts`
+- `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts`
 
 ## Preconditions
 
@@ -19,16 +19,16 @@ Use this skill to safely prune stale remote branches via:
 
 1. Confirm main branch name (`main` by default).
 2. Run dry-run first:
-   - `$ACCELERANDO_HOME/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --dry-run`
+   - `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --dry-run`
    - execute with escalation
 3. Show the complete candidate list from command output to the user.
 4. Run deletion only after explicit confirmation:
    - require user confirmation text: `proceed delete`
    - run:
-     - `$ACCELERANDO_HOME/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
+     - `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
      - execute with escalation
 5. If main branch differs:
-   - `$ACCELERANDO_HOME/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --main <branch> --dry-run`
+   - `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --main <branch> --dry-run`
    - execute with escalation
 
 ## Behavior
