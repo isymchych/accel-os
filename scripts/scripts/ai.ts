@@ -27,6 +27,12 @@ Notes:
   - Modifiers parse until \`--\`.
   - Use \`ai -- --help\` to show Codex CLI docs.`;
 
+const accelOs = Deno.env.get("ACCEL_OS");
+if (!accelOs) {
+  console.error("ai: ACCEL_OS is not set");
+  Deno.exit(1);
+}
+
 type AccountInfo = {
   id: string;
   email: string;
@@ -112,15 +118,11 @@ const fileExists = async (path: string): Promise<boolean> => {
 };
 
 const resolveAuthDir = async (): Promise<string> => {
-  const accelHome = Deno.env.get("ACCEL_OS");
-  if (!accelHome) {
-    throw new Error("ACCEL_OS is not set");
-  }
-  const direct = join(accelHome, "ai", "codex");
+  const direct = join(accelOs, "ai", "codex");
   if (await fileExists(direct)) {
     return direct;
   }
-  throw new Error(`missing ai/codex under ${accelHome}`);
+  throw new Error(`missing ai/codex under ${accelOs}`);
 };
 
 const loadAccount = async (
@@ -357,6 +359,7 @@ const cwd = Deno.env.get("AI_CWD") ?? Deno.cwd();
 const command = new Deno.Command("codex", {
   args,
   cwd,
+  env: { ACCEL_OS: accelOs },
   stdin: "inherit",
   stdout: "inherit",
   stderr: "inherit",

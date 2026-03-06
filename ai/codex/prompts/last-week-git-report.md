@@ -12,9 +12,19 @@
      - Daily breakdown (commit counts by date)
      - Area breakdown (top directories touched)
      - Key changes grouped by theme
+     - What I did (narrative with details and impact)
      - Duplicate/cherry-pick note (which commit messages repeated and how many times)
   5. Format: concise Markdown report I can paste into Slack/Notion.
   6. If data is ambiguous, state assumptions explicitly.
+  7. Add a "What I did (narrative)" section:
+     - 5–10 bullets, ordered by impact.
+     - Each bullet must include:
+       - action taken (what changed),
+       - context/intent (why),
+       - concrete evidence (1–3 commit SHAs or PR/branch refs),
+       - outcome/impact (result, risk reduced, or user/dev benefit).
+     - Prefer synthesis over commit-message restatement.
+     - Include technical specifics (key files/components touched) without dumping raw diffs.
 
   Optional overrides:
   - Author override: <name/email/regex>

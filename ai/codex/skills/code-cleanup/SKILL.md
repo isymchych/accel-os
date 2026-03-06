@@ -10,18 +10,27 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
 ## Workflow
 
 1. Read project constraints first (`AGENTS.md`, repo guidelines, language/tooling configs).
-2. Read cleanup policy at `$ACCEL_OS/ai/docs/code_cleanup_guidelines.md` and treat it as required.
-   - If this file is missing or unreadable, stop and report a blocker before making edits.
-3. Identify target scope and avoid adjacent cleanup outside user-requested areas.
-4. Apply the required cleanup checks in order:
+2. Identify target scope and avoid adjacent cleanup outside user-requested areas.
+3. Run cleanup in bounded passes with explicit convergence controls:
+   - Default `max_passes` is `3` unless the user sets a lower bound.
+   - Each pass MUST stay within authorized scope only.
+   - Stop early when a pass produces no code edits in scope.
+   - Stop immediately on first failing verification check; report the blocker.
+4. In each pass, apply the required cleanup checks in order:
    - Fix coding-guideline violations (personal and project).
    - Convert methods to module-level functions when they do not use `this`.
    - Replace hard-to-read type-level indirection (indexed-access types, utility extraction) with explicit readable types.
    - Introduce branded types where they improve correctness and readability.
    - Prefer pure collection helpers that return values over mutating caller-provided accumulators; allow mutable sinks only when required by API constraints, streaming behavior, or measured performance/allocation needs.
-   - Inline private functions/methods that are called once when inlining reduces local indirection.
+   - Inline private functions/methods called once when inlining reduces local indirection.
+   - Remove shallow pass-through helpers that add no domain meaning. Keep a helper only when it centralizes reusable policy, materially reduces duplication, or provides a stable semantic boundary.
+   - Prefer separate function arguments over object parameter bags when object-shaped inputs do not improve clarity or API stability.
+   - Remove dead abstractions.
 5. Keep refactors minimal, deterministic, and root-cause oriented.
-6. Run relevant verification for touched code (targeted tests, typecheck, lint/format checks).
+6. After each pass, run relevant verification for touched code (targeted tests, typecheck, lint/format checks).
+7. Before starting the next pass, re-scan authorized scope only:
+   - Continue only if unresolved in-scope issues from the required checks remain.
+   - Record out-of-scope findings as deferred recommendations instead of expanding scope.
 
 ## Decision Rules
 
@@ -47,11 +56,14 @@ Use this exact section order:
    - Behavior impact statement (`none` unless explicitly requested)
 2. `Changes Made`
    - Per-file concrete edits and why each reduced complexity
-3. `Deferred Recommendations`
+3. `Pass Results`
+   - Per pass: scope scanned, files changed, checks run, and stop/continue decision
+   - Final pass MUST include explicit no-change evidence when claiming convergence
+4. `Deferred Recommendations`
    - Out-of-scope cleanup opportunities discovered but not edited
-4. `Checks Run`
+5. `Checks Run`
    - Exact commands executed and outcomes (`pass`, `fail`, `not_run`)
-5. `Assumptions and Risks`
+6. `Assumptions and Risks`
    - Assumptions, residual risk, and any verification gaps
 
 Rules:

@@ -24,11 +24,12 @@
 - You MUST ensure every changed line maps to one of: user request, agreed simplification, or removal of irrelevant/obsolete code.
 - You MUST timebox structural exploration and keep non-goals explicit to avoid gold-plating.
 - If simplification expands scope (new modules, migrations, or user-visible behavior risk), you MUST pause and request reconfirmation.
-- You MUST treat backward compatibility vs migration as a product decision and get explicit direction when tradeoffs exist.
+- You MUST treat backward compatibility as opt-in: unless the user explicitly requests compatibility for the current task, you SHOULD prefer the simplest correct change even if it is breaking.
 - You MUST follow repository-pinned versions/lockfiles/toolchains.
 - You SHOULD prefer official documentation for the pinned version in use.
 - You MAY use web search for clarification when local docs are insufficient and network policy allows it.
 - You MUST NOT upgrade dependencies solely to follow "latest stable" unless explicitly requested.
+- You MUST NOT introduce compiler workarounds (for example suppressions, bypass flags, or compatibility shims) unless the user explicitly requests a workaround for the current task.
 
 ## Design Principles
 - You SHOULD optimize for low complexity over time; complexity = dependencies + obscurity.
@@ -180,7 +181,7 @@ Examples:
 - Testing: for behavior-changing edits in a module with no automated tests, you MUST stop and ask for explicit direction before implementation.
 - Testing: when this gate is triggered, you MUST present options: (a) add a minimal test seam first, (b) proceed with a documented one-time exception and manual verification, or (c) defer the change.
 - Testing: non-behavioral edits (for example comments, renames, formatting, or mechanical refactors) MAY proceed without this gate.
-- Compatibility: for public/external APIs/ABIs, you MUST avoid breaking users without an explicit migration plan. For internal code, you MAY change freely and use compiler/tests to enumerate fallout.
+- Compatibility: you MUST assume compatibility is not required unless the user explicitly requests it for the current task. If compatibility is requested for public/external APIs/ABIs, you MUST avoid breaking users without an explicit migration plan. For internal code, you MAY change freely and use compiler/tests to enumerate fallout.
 - You MUST NOT add defensive guards that only mask programmer errors when invariants already guarantee correctness.
 - You SHOULD add guards at trust boundaries (I/O, network, parsing, user input) or when invariants have proven unreliable in production/tests.
 - You MUST keep shell commands deterministic and non-interactive; you SHOULD limit output (for example `head`) and pick a single result consistently.

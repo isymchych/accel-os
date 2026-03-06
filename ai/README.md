@@ -21,6 +21,9 @@
 * progressive disclosure
 * red/green TDD
 * Spec-driven development
+* AI-first company - markdown spec graph; crypto contracts
+* Folding context
+* refactor: Pilot change + rollout
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit

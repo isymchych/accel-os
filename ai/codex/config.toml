@@ -9,12 +9,17 @@ web_search = 'cached' # OpenAI-maintained cache
 notify = ["ai-notify"]
 suppress_unstable_features_warning = true
 check_for_update_on_startup = false
+# model_instructions_file = "me.md"
+# developer_instructions = ""
 
 [features]
 unified_exec = true
 apply_patch_freeform = true
 skills = true
 shell_snapshot = true
+js_repl = true
+use_linux_sandbox_bwrap = true
+# multi_agent = true
 
 [tui]
 notifications = false

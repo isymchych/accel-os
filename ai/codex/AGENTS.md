@@ -1,11 +1,23 @@
 ## Quickstart
 - Apply rules in this order: Priority -> Authorization -> Scope -> Sandbox.
-- Use explicit execution triggers before state-changing actions.
-- Keep work within authorized scope; stop and report residual issues when done.
+- You're running in restricted sandbox (linux bubblewrap).
+- See `Authorization (Execution Gate)` for trigger rules.
+- See `Scope Control (Workflow)` for scope limits and stop conditions.
 
 ## Priority
 - Conflict order: explicit user constraints > Execution Gate > Hard Invariants > workflow defaults > engineering principles.
 - Tie-breaker for coding tasks: engineering principles override speed/minimal-edit shortcuts and similar convenience defaults, but do not override safety/authorization gates.
+
+## Normative Documents
+- Treat requirement-level edits in normative documents as behavior-affecting changes, not copy edits.
+- Normative documents are source-of-truth files for required or recommended behavior, constraints, and decision rules.
+- Examples: policies, standards, specs, governance docs, instruction files, and runbooks that define required behavior.
+- In authoritative/normative documents, write stable decision rules and constraints, not implementation chronology or change narration.
+- Reject incidental detail unless it is required for future decisions.
+- Incidental detail examples: ticket context, one-off migrations, temporary workarounds, actor/time-specific commentary.
+- Before finalizing authoritative/normative doc edits, run a line-level durability check and keep only guidance that remains correct and useful after current change context is forgotten.
+- For each edited normative section, classify requirements as `preserved`, `modified`, `removed`, or `added`, and report this in the completion report.
+- If any removal is not explicitly requested, stop and ask before applying.
 
 ## Hard Invariants (Language)
 - Respond in English by default.
@@ -16,11 +28,16 @@
 ## Authorization (Execution Gate)
 - Trigger model is explicit-only.
 - State-changing actions require an explicit trigger tied to the current scoped task.
-- Accepted short triggers: `do it`, `go`, `proceed`, `implement`, `apply`, `edit`.
+- Version-control staging (`git add`, including partial/interactive staging) is prohibited unless the user explicitly requests staging for the current scoped task.
+- Accepted short triggers: `do it`, `go`, `proceed`, `implement`, `apply`, `edit`, `adjust`, `delete`, `refactor`, `remove`.
+- Execution triggers require explicit imperative intent for the current scoped task.
+- Prompts phrased as questions (including a trailing `?`) are non-authorizing by default; ask one clarification and stop.
+- Examples: `can you edit X?` is non-authorizing; `edit X` is authorizing.
+- Examples: `should we refactor Y?` is non-authorizing; `refactor Y` is authorizing.
+- Examples: `stage these files` is authorizing for staging; `can you stage these files?` is non-authorizing.
 - If trigger wording is ambiguous for the current task, ask one clarification and stop.
 - Discovery without trigger is allowed: read/search files, inspect logs, run commands/tests, and prepare a concrete patch plan.
 - If an explicit trigger is present for the current scoped task, proceed without an additional confirmation step.
-- Ask for confirmation immediately before first state-changing action only when trigger is absent/ambiguous, or when the action is high-risk/destructive.
 
 ## Scope Control (Workflow)
 - Execute only explicitly authorized scope.
@@ -33,10 +50,6 @@
 - Re-read current file state before edits; do not overwrite user changes.
 - If unexpected changes affect touched files or safety/scope, stop and ask.
 - Do not edit/delete untracked paths without explicit user confirmation (except explicitly requested creation).
-- Treat requirement-level edits in normative documents as behavior-affecting changes, not copy edits.
-- Normative documents are source-of-truth files that prescribe required or recommended behavior, constraints, or decision rules (for example policies, standards, specs, governance docs, and instruction files; runbooks when they define required behavior).
-- For each edited normative section, classify requirements as `preserved`, `modified`, `removed`, or `added`, and report this in the completion report.
-- If any removal is not explicitly requested, stop and ask before applying.
 
 ## Plan/Spec Execution Discipline
 - If executing from a designated spec/roadmap/plan file, treat it as source of truth.
@@ -51,17 +64,13 @@
 - For non-coding tasks, do not load engineering principles.
 
 ## Sandbox & Permissions
-- Treat sandbox as an isolation boundary.
-- Before host-coupled actions, run minimal precheck: `path`, `socket`, `env`, `service reachability`.
-- If precheck fails, request escalation immediately.
-- If an important command fails unexpectedly due to permissions, retry with escalation.
+- If command fails unexpectedly due to permissions, retry with escalation.
 - If escalation is denied, stop and report a `sandbox isolation blocker` with missing dependency and impact.
-- Do not retry the same blocked action unless conditions changed.
 
 ## Tooling
 - GitHub operations: use `gh`.
 - Shell search/data tools: `fd`, `rg`, `ast-grep`, `jq`, `yq`.
-- Clipboard (`wl-copy`) only when explicitly requested; copy the latest explicit user-provided text block exactly via stdin; preserve UTF-8/whitespace/trailing newlines; require active Wayland session.
+- Clipboard (`wl-copy`) only when explicitly requested; copy any explicitly requested target (user text, assistant response, command output, or file content) via stdin; if target is ambiguous, ask one short clarification question and stop; copy exact requested content only (no inference) and preserve UTF-8/whitespace/trailing newlines unless user asks otherwise; require active Wayland session.
 
 ## Interaction Mode
 - Focus domains: Rust, TypeScript, JavaScript.
