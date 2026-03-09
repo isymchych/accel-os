@@ -53,50 +53,36 @@
 - If fallback commands are used, you MUST state why in the report.
 - You MUST NOT report `pass` for checks that were not run; use `not_run` or `not_applicable`.
 - You MUST run the standard verification set by default for code edits: targeted tests, typecheck, and applicable formatting/lint checks.
-- You SHOULD report results using the "Completion Report Format" below for human-readable, skimmable output.
+- You SHOULD report results using the "Completion Report Guidance" below for human-readable, skimmable output.
 - Change amplification: if one behavior change touches 3+ files, you SHOULD centralize the decision or explain why centralization is not appropriate.
 - Unknown unknowns: for each new or changed entrypoint, you MUST add at least one concrete breadcrumb to the next decision point (for example module boundary, interface comment, or explicit file/symbol reference).
 - Cognitive load: if a change introduces new complexity (new concepts, API surface, or call-site branching), you MUST either (a) remove at least one existing load driver in the touched area or (b) state why reduction is unsafe now and record a follow-up.
 - If any refactor trigger was present and a local patch was selected, you MUST record why structural change was deferred and what follow-up would retire the debt.
 
-### Completion Report Format (Required for Code-Edit Task Reports)
-Use this exact section order:
+### Completion Report Guidance (Required for Code-Edit Task Reports)
+Use this section order when `Summary` is present:
 1. `Summary`
 2. `Changes Made`
-3. `Check Results`
+3. `Verification`
+
+For small, low-risk edits, you MAY omit `Summary` and report only:
+1. `Changes Made`
+2. `Verification`
 
 #### 1) Summary
+- `Summary` SHOULD be included for multi-file, risky, user-visible, or behavior-changing work.
+- `Summary` MAY be omitted for small, low-risk, localized edits when `Changes Made` and `Verification` already make outcome and risk obvious.
 - `Result: <PASS|FAIL|WARN>`
-- `Scope: <areas/files validated>`
-- `Risk: <none|low|medium|high> (+ 1 short reason)`
-- `Tests: <clean|failed|not_run>`
-- `Typecheck: <clean|failed|not_run>`
-- `Format/Lint: <clean|failed|not_run>`
-- `Format/Lint` MUST align with `tooling_style` outcomes.
-- `Confidence` values in `Summary` MUST reflect final check outcomes only; do not include attempt counts.
-- `Scope drift: <match|drifted>`
-- `Behavioral risk: <none|low|medium|high>`
+- `Scope: <areas/files changed or validated>`
+- `Risk: <none|low|medium|high> - <1 short reason>`
+- `Validation: <clean|mixed|partial|not_run>`
 
 #### 2) Changes Made (2-5 bullets)
 - Start each bullet with a past-tense verb.
 - Include only behaviorally relevant edits in requested scope.
 
-#### 3) Check Results (icon-first blocks)
-Use one 2-3 line block per check, in this format:
-
-```
-<status_icon> <check_name>
-- cmd: <exact command>   # required only for runnable checks
-- evidence: <1 short concrete line>
-- refs: <policy refs only>   # only for doc_code_style, agents_compliance
-```
-
-Status icon mapping:
-- `✅` = `pass`
-- `❌` = `fail`
-- `⚠️` = `warn`
-- `⚪` = `n/a`
-- `⏭️` = `not_run`
+#### 3) Verification
+Report one short item per check. Prefer concise bullets or similarly skimmable lines.
 
 Default required checks:
 - `tests`
@@ -108,22 +94,20 @@ Conditional checks:
 - `agents_compliance` (only when AGENTS/policy compliance is materially in scope)
 
 Rules:
-- List failed checks first, then warns, then pass, then n/a/not_run.
-- Do not mark `pass` unless the command/check was actually run.
-- You MUST report final resolved status per check, not per-attempt history.
-- If a check is retried and a later run passes, the check MUST be `✅`.
-- You MAY omit checks that are genuinely out of scope for the task; do not emit placeholder blocks.
+- Each reported check MUST include `status`, and SHOULD include `cmd` and `evidence` when the check was runnable.
+- `status` MUST be one of: `pass`, `fail`, `warn`, `not_run`, `not_applicable`.
+- Do not mark `pass` unless the command/check was actually run and passed.
+- You MUST report the final resolved status per check, not per-attempt history.
+- You MAY omit checks that are genuinely out of scope for the task.
 - For `tooling_style`, you MUST run and report applicable lint checks (for example ESLint).
 - For `tooling_style`, you SHOULD also run and report applicable formatter checks (for example Prettier).
 - `tooling_style` is `pass` only when all applicable lint/format checks were run and clean.
-- If lint is applicable but was not run, `tooling_style` MUST be `⚠️` or `⏭️`, not `✅`.
-- Keep `evidence` at or under 80 characters when possible.
-- Keep `cmd` display at or under 120 characters when possible.
-- If `cmd` exceeds display length, truncate with `...`.
+- If lint is applicable but was not run, `tooling_style` MUST be `warn` or `not_run`, not `pass`.
 - `refs` MUST point to governing rules, not changed files or artifacts.
 - For `doc_code_style`, `refs` MUST include `docs/engineering-principles.md#Code Style` and any additional governing style-policy sections used for the judgment.
-- If `doc_code_style` is present and the required engineering-principles ref is missing, `doc_code_style` MUST be `❌`.
+- If `doc_code_style` is present and the required engineering-principles ref is missing, `doc_code_style` MUST be `fail`.
 - For `agents_compliance`, `refs` MUST cite AGENTS rules/sections (for example `AGENTS.md#Execution Gate`).
+- Presentation is flexible, but each item SHOULD stay brief and easy to scan.
 
 Examples:
 - Valid: `refs: docs/engineering-principles.md#Code Style; AGENTS.md#Execution Gate`
