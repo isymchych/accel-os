@@ -1,16 +1,21 @@
 # https://developers.openai.com/codex/config-sample
 
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 network_access = true
-sandbox_mode = "workspace-write"
 web_search = 'cached' # OpenAI-maintained cache
 notify = ["ai-notify"]
 suppress_unstable_features_warning = true
 check_for_update_on_startup = false
-# model_instructions_file = "me.md"
+
+model_instructions_file = "SYSTEM.md"
 # developer_instructions = ""
+
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access=true
 
 [features]
 unified_exec = true
@@ -49,7 +54,29 @@ enabled = false
 command = "npx"
 args = ["@playwright/mcp@latest", "--executable-path", "/usr/bin/chromium", "--extension"]
 enabled = false
-env = { "PLAYWRIGHT_MCP_EXTENSION_TOKEN" = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq-PvdIfuKa77I" }
+
+[mcp_servers.playwright.env]
+PLAYWRIGHT_MCP_EXTENSION_TOKEN = "4ABNUUw41dr10RtRCTxvNUGoNsadvCq-PvdIfuKa77I"
+
+# autoConnect requires setup https://github.com/ChromeDevTools/chrome-devtools-mcp#connecting-to-a-running-chrome-instance
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = [
+   "chrome-devtools-mcp@latest",
+  # "-e", "/usr/bin/chromium",
+
+  # "--autoConnect",
+  # "--browserUrl", "http://127.0.0.1:9222",
+  # "--wsEndpoint", "ws://127.0.0.1:9222/devtools/browser",
+
+  "--no-performance-crux",
+  "--no-usage-statistics",
+
+  "--no-category-emulation",
+  # "--no-category-performance",
+  # "--slim",
+]
+enabled = false
 
 [notice]
 hide_rate_limit_model_nudge = true

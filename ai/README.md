@@ -6,7 +6,7 @@
 # PRINCIPLES
 * pragmatic
 * human-in-the-loop
-* digital exoskeleton
+* digital exoskeleton - to amplify user capabilities
 
 
 # USEFUL PATTERNS / IDEAS
@@ -22,7 +22,7 @@
 * red/green TDD
 * Spec-driven development
 * AI-first company - markdown spec graph; crypto contracts
-* Folding context
+* Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions.
 * refactor: Pilot change + rollout
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.

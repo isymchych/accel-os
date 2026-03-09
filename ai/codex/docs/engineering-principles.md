@@ -159,6 +159,7 @@ Examples:
 - Names MUST create a clear image. You SHOULD avoid vague names such as `data`, `info`, `result`, `handler`, `manager`, and `util`.
 - Functions/methods SHOULD express intent, not implementation.
 - Comments SHOULD capture why/intent/rationale, invariants/units/boundaries, and non-obvious tradeoffs.
+- Comments SHOULD be added only when necessary to clarify non-obvious intent, invariants, or behavior.
 - For new modules/APIs, you SHOULD write interface comments first; if hard to write, you SHOULD redesign before coding.
 - You MUST avoid comments that merely restate code.
 - Refactor triggers to evaluate (not automatic):
@@ -172,14 +173,21 @@ Examples:
 ## Tooling
 - Android: you SHOULD prefer Java unless project constraints require Kotlin.
 - Frontend: you SHOULD use a component-first approach with reusable, composable UI.
+- Frontend: you SHOULD put meaningful state in the URL
+- Frontend (design tasks): you SHOULD choose a deliberate visual direction and avoid generic layouts.
+- Frontend (design tasks): typography SHOULD be purposeful; avoid default stacks unless an existing design system mandates them.
+- Frontend (design tasks): color/background choices SHOULD be intentional (for example CSS variables, gradients, subtle patterns); avoid default purple-on-white output and unrequested dark-mode bias.
+- Frontend (design tasks): use a small number of meaningful animations (for example load/reveal/stagger), not generic micro-motion everywhere.
+- Frontend (design tasks): outputs MUST remain usable on desktop and mobile viewports.
+- Frontend (design tasks): when working inside an existing website or design system, you MUST preserve established patterns and visual language.
 - Shell: you MUST run `shellcheck` on shell changes.
 - TS AST transforms: you SHOULD prefer `ts-morph`; you SHOULD avoid string transforms unless necessary.
 - Public APIs: you SHOULD use structured doc comments (JSDoc/TSDoc). Inline comments SHOULD be limited to local invariants or non-obvious logic.
 - Testing: you SHOULD prefer real implementations when feasible; you SHOULD avoid mocks by default.
 - Testing: you SHOULD NOT add unit tests for pure delegation methods (methods that only forward args/returns unchanged) when delegated behavior is already covered at the callee level.
 - Testing: if you add or change a reusable trust boundary (a shared method/module whose output enforces or interprets contracts), you MUST add or update tests in the enforcing layer in the same patch, or get an explicit user-approved exception in the task thread; triggers include behavior branching (null/throw, fallback/default, policy branch), cross-layer data-shape conversion, fan-out to multiple consumers, and contract bug fixes (add a regression test where the contract is enforced); pure pass-through/delegation changes are exempt unless contract semantics changed.
-- Testing: for behavior-changing edits in a module with no automated tests, you MUST stop and ask for explicit direction before implementation.
-- Testing: when this gate is triggered, you MUST present options: (a) add a minimal test seam first, (b) proceed with a documented one-time exception and manual verification, or (c) defer the change.
+- Testing: for behavior-changing edits in a module with no automated tests, you SHOULD NOT add new tests unless explicitly requested.
+- Testing: in this case, you SHOULD proceed without stopping to ask and MUST document manual verification and any test gap in the final report.
 - Testing: non-behavioral edits (for example comments, renames, formatting, or mechanical refactors) MAY proceed without this gate.
 - Compatibility: you MUST assume compatibility is not required unless the user explicitly requests it for the current task. If compatibility is requested for public/external APIs/ABIs, you MUST avoid breaking users without an explicit migration plan. For internal code, you MAY change freely and use compiler/tests to enumerate fallout.
 - You MUST NOT add defensive guards that only mask programmer errors when invariants already guarantee correctness.
