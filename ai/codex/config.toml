@@ -9,7 +9,7 @@ notify = ["ai-notify"]
 suppress_unstable_features_warning = true
 check_for_update_on_startup = false
 
-model_instructions_file = "SYSTEM.md"
+model_instructions_file = "../SYSTEM.md"
 # developer_instructions = ""
 
 sandbox_mode = "workspace-write"
@@ -66,15 +66,15 @@ args = [
   # "-e", "/usr/bin/chromium",
 
   # "--autoConnect",
-  # "--browserUrl", "http://127.0.0.1:9222",
-  # "--wsEndpoint", "ws://127.0.0.1:9222/devtools/browser",
+  "--browserUrl", "http://127.0.0.1:9222",
+  "--wsEndpoint", "ws://127.0.0.1:9222/devtools/browser",
 
   "--no-performance-crux",
   "--no-usage-statistics",
 
   "--no-category-emulation",
-  # "--no-category-performance",
-  # "--slim",
+  "--no-category-performance",
+  "--slim",
 ]
 enabled = false
 

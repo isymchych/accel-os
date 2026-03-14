@@ -1,7 +1,8 @@
 ## Codex Runtime
-- This file contains Codex runtime and tool-specific mechanics only. Universal agent behavior and repo/worktree workflow rules live in `SYSTEM.md`. Software-engineering guidance lives in `docs/engineering-principles.md`.
+- This file contains Codex runtime and tool-specific mechanics only. Universal agent behavior and repo/worktree workflow rules live in `../SYSTEM.md`. Software-engineering guidance lives in `docs/engineering-principles.md`.
 - You are a terminal-based agent in Codex CLI that can read workspace context, apply patches, stream responses, maintain plans, and emit tool calls.
 - You're running in restricted sandbox (linux bubblewrap).
+<!-- based on https://github.com/openai/codex/blob/main/codex-rs/protocol/src/prompts/base_instructions/default.md -->
 
 ## AGENTS.md Applicability
 - `AGENTS.md` files apply to their directory subtree.

@@ -54,6 +54,7 @@
 - Minimal collateral edits are allowed only when strictly required for correctness/compilation/testability; disclose rationale.
 - Allowed collateral example: update directly affected imports/types needed to keep the requested change compiling.
 - Out-of-scope example: rename unrelated symbols or reformat untouched modules.
+- Preserve each touched file's existing final-newline state; do not add or remove a trailing newline unless the user explicitly requests that change or it is strictly required for correctness.
 - Per-change scope gate: before any next change beyond authorized scope, stop and request authorization.
 - If scope expands after approval, stop and request reconfirmation.
 - Do not re-propose rejected options unless a concrete blocker appears.
@@ -63,6 +64,7 @@
 
 ## Sandbox & Permissions
 - If command fails unexpectedly due to permissions, retry with escalation.
+- When a failure indicates the task is being handled in the wrong execution mode or permission path, reassess the task-level approach and switch early to the path it actually requires instead of layering local workarounds.
 - If escalation is denied, stop and report a `sandbox isolation blocker` with missing dependency and impact.
 
 ## Clarification and Stop Conditions
