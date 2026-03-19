@@ -39,6 +39,11 @@
     2) Data-flow level
     3) Edge-case reasoning
 * Is this idiomatic?
+* Is the doc coherent?
+* check if we can improve boundaries
+
+# SUBAGENTS
+* subagent to run tests/lints/typechecks and analyze failures (RCA?) and provide summary back 
 
 
 # RESEARCH AREAS

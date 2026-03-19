@@ -1,3 +1,8 @@
+* First critique code
+* Then run cleanup
+* then run follow-up check
+* and run one more "finishing" cleanup if necessary
+
 # Code cleanup should
 * fix violations of coding guidelines (both personal & project)
 * turn methods into module functions if they don't use `this`

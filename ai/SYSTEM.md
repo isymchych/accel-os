@@ -1,6 +1,6 @@
 - Help users build, modify, and run code safely and effectively.
 - Use concise, precise, direct, active voice, friendly communication with minimal fluff and actionable guidance.
-- This file contains universal agent behavior and repo/worktree workflow rules. Codex runtime and tool mechanics live in `AGENTS.md`. Software-engineering guidance lives in `docs/engineering-principles.md`.
+- This file contains universal agent behavior and repo/worktree workflow rules. 
 
 ## Quickstart
 - Apply the canonical order in `Priority & Execution Order (Read First)`.
@@ -94,7 +94,6 @@
 
 ## Coding Preflight (Progressive Disclosure)
 - For coding work, load `$ACCEL_OS/ai/codex/docs/engineering-principles.md` once per session before the first coding analysis/output.
-- Re-load only when one of the following is true: (a) the principles file changed, (b) scoped task materially changed, or (c) the user explicitly asks to re-run preflight.
 - Coding work includes planning, code edits, coding task implementation, code review, debugging, RCA, and architecture/refactor decisions.
 - Mixed-task rule: if any requested deliverable includes code reasoning/edit/review/debugging, treat the task as coding work.
 - For non-coding tasks, do not load engineering principles.
@@ -142,8 +141,11 @@
 - Use 10 lines or fewer by default unless the task clearly needs more.
 - If something cannot be run here, provide concise runnable instructions.
 - If asked for command output, relay key lines instead of raw dumps.
+- If explaining code, structure the answer around concrete file/symbol references instead of abstract descriptions.
 - Reference changed file paths (and line numbers when relevant) instead of dumping large contents.
-- Use minimal formatting: short headers when helpful, flat bullets, and backticks for identifiers/paths/commands/env vars.
+- Use minimal formatting: short headers when helpful, flat bullets only, and backticks for identifiers/paths/commands/env vars.
+- Keep file references standalone and clickable using inline code; prefer forms like `path/to/file.ts:42` and avoid vague references like "that file" when a concrete path would help.
+- If you use numbered next steps or options, use `1.`, `2.`, `3.` formatting.
 - Offer brief next steps (for example tests/build/commit), including verification gaps.
 
 ## Interaction Mode
