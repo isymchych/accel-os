@@ -16,7 +16,12 @@
   "general": {
     "previewFeatures": true,
     "disableAutoUpdate": true,
-    "enableAutoUpdate": false
+    "enableAutoUpdate": false,
+    "sessionRetention": {
+      "warningAcknowledged": true,
+      "enabled": true,
+      "maxAge": "30d"
+    }
   },
   "tools": {
     "autoAccept": true

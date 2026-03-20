@@ -12,17 +12,13 @@ Plugin 'tpope/vim-sensible'
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-fugitive'
 
-Plugin 'scrooloose/nerdcommenter'
-Plugin 'scrooloose/nerdtree'
+Plugin 'preservim/nerdcommenter'
 
 Plugin 'tommcdo/vim-exchange'
-Plugin 'kien/ctrlp.vim'
+Plugin 'ctrlpvim/ctrlp.vim'
 Plugin 'editorconfig/editorconfig-vim'
-Plugin 'Raimondi/delimitMate'
+Plugin 'jiangmiao/auto-pairs'
 Plugin 'ervandew/supertab'
-
-Plugin 'pangloss/vim-javascript'
-Plugin 'mxw/vim-jsx'
 
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
@@ -43,20 +39,15 @@ if !exists("g:os")
 endif
 
 
-" no sounds
+" terminal behavior
 set noerrorbells visualbell t_vb=
-autocmd GUIEnter * set visualbell t_vb=
-
-set guioptions-=T " hide toolbar
-set guioptions-=m " hide menu
-set guioptions-=L  "remove left-hand scroll bar
 
 
+" encodings
 set fileencodings=utf8,cp1251,koi8-r
-set termencoding=utf-8
 set encoding=utf-8
 
-"  store temporary files in a central spot
+" store temporary files in a central spot
 set backupdir=~/.vim/tmp,/var/tmp,/tmp
 set directory=~/.vim/tmp,/var/tmp,/tmp
 
@@ -67,13 +58,12 @@ endif
 
 
 let mapleader = " "
-set notimeout
 
 
 syntax on " fite-type highlighting and configuration
 set cursorline " underscore cursor line
 " set number " show line numbers
-set history=50 " keep 50 lines of command line history
+set history=200 " keep command-line history
 set hlsearch " highlight search terms
 
 " /-style searches now are case-sensitive only if there is a capital letter in the
@@ -85,19 +75,21 @@ set shortmess=atI " shorten text in "Press ENTER to continue... etc.
 set tabstop=4 softtabstop=4 shiftwidth=4
 set expandtab
 
+set timeout
+set timeoutlen=300
 set wildmode=longest:full " show completions for ex commands
 
-" use system clipboard (requires gvim)
-if g:os == "Linux"
-    set clipboard=unnamedplus
-elseif g:os == "Darwin"
+" use system clipboard when supported
+if g:os == "Darwin"
     set clipboard=unnamed
+elseif has('clipboard') || has('clipboard_provider')
+    set clipboard=unnamedplus
 endif
 
 " allow to use mouse
 set mouse=a
 
-let g:netrw_liststyle=3 " show file tree in NetRW (Explore)
+let g:netrw_liststyle=3 " show file tree in netrw
 
 " enable 24bit TrueColor support
 set termguicolors
@@ -115,7 +107,6 @@ silent! colorscheme NeoSolarized
 
 " Airline
 set noshowmode
-set timeoutlen=50
 let g:airline_left_sep=''
 let g:airline_right_sep=''
 " let g:airline_section_z (column number, line number, percentage)
@@ -132,15 +123,10 @@ let g:ctrlp_user_command = 'ag %s -l --nocolor --hidden -g ""'
 
 
 
-" Vim-jsx
-let g:jsx_ext_required = 0
-
 " ---------------------------------------- KEYBINDINGS
-nnoremap <F12> :if &go=~#'m'<Bar>set go-=m<Bar>else<Bar>set go+=m<Bar>endif<CR>
-
 nnoremap <Leader>o :CtrlP<CR>
 nnoremap <Leader>b :CtrlPBuffer<CR>
-nnoremap <Leader>d :NERDTreeToggle<CR>
+nnoremap <Leader>d :Explore<CR>
 
 nnoremap <Leader>w :w<CR>
 nnoremap <Leader>q :q<CR>

@@ -102,6 +102,9 @@ Quick judgment examples:
 - You SHOULD keep a single source of truth for business rules/policy (validation, enums, flags, constants, config).
 - You SHOULD keep a single canonical implementation per behavior.
 - You MAY keep more than one implementation when required by staged migration, hard isolation boundaries, or measured performance constraints; you MUST document ownership and a convergence/sunset plan.
+- You SHOULD treat data design as primary: choose domain types and data structures so valid operations are obvious and invalid states are hard to represent.
+- You SHOULD prefer simple algorithms and straightforward control flow when the data model can carry the meaning directly.
+- You SHOULD encode meaning, invariants, and policy in types, data structures, and module boundaries so callers stay simple.
 - You SHOULD prefer explicit data flow (args/returns) over implicit flow (globals, singletons, shared mutable state).
 - You SHOULD keep definitions near use and avoid unnecessary cross-file jumping.
 - You SHOULD prefer composition over inheritance.

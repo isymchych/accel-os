@@ -19,7 +19,7 @@ just bootstrap
 - `sad` — structural search/replace, with preview
 - `wget` — HTTP(S) downloads
 - `htop` — system monitor
-- `gitui` — TUI for git
+- `lazygit` — TUI for git
 - `delta` — git diff viewer
 - `difftastic` — syntax-aware diffs
 - `mergiraf` — semantic merge driver

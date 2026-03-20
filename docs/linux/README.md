@@ -47,7 +47,7 @@ During Arch installation mount it as `/efi` and use `reFind` boot manager.
     * `24` is font size, `n` means normal <https://gist.github.com/danielcbaldwin/0eb3def2478150b32ad27280f8a937fb>
 
 ## Install basic cli and configs
-* install pacman -S --needed base-devel git go vim just
+* install pacman -S --needed base-devel git go neovim just
 * install yay
 * install openssh, chezmoi, rustup, sccache, lld
 * install zsh, zsh-completions, zsh-autosuggestions, zsh-syntax-highlighting, starship, ttf-nerd-fonts-symbols, powerline-fonts

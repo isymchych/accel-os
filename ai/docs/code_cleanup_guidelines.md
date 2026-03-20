@@ -13,3 +13,4 @@
 * consider removing shallow pass-through helpers that add no domain meanining. Keep a helper only when it centralizes reusable policy, reduces duplication materially, or provides a stable semantic boundary.
 * consider turning function/method object param into separate args
 * dead abstractions
+* trim leftovers

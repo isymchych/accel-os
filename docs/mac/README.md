@@ -13,7 +13,7 @@
 * `chezmoi init --source="$HOME/accel-os/dotfiles" && chezmoi apply`
 * Use zsh as a shell `chsh -s /bin/zsh`
 * CLI tools
-    brew install aspell editorconfig fd gitui htop jq just yazi fnm ripgrep tokei wget
+    brew install aspell editorconfig fd lazygit htop jq just yazi fnm ripgrep tokei wget nvim
 * kdiff3 - diff tool
     brew install --cask kdiff3
 * Install Owly - prevent Mac from sleeping in 15 minutes

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# nvim-init-lua-sha256: {{ include "dot_config/nvim/init.lua" | sha256sum }}
+# nvim-lazy-lock-sha256: {{ include "dot_config/nvim/lazy-lock.json" | sha256sum }}
+set -euo pipefail
+
+if ! command -v nvim >/dev/null; then
+  printf >&2 'nvim plugin sync: nvim not found\n'
+  exit 0
+fi
+
+if ! command -v git >/dev/null; then
+  printf >&2 'nvim plugin sync: git not found\n'
+  exit 1
+fi
+
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+mkdir -p "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+
+nvim --headless '+Lazy! restore' +qa
