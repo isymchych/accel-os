@@ -2319,6 +2319,7 @@ targets."
 
 (global-set-key (kbd "C-c b") 'switch-to-buffer)
 
+(global-set-key (kbd "C-c j") 'avy-goto-char-timer)
 (global-set-key (kbd "C-c d") 'dired-jump)
 (global-set-key (kbd "C-c k") 'mb/kill-this-buffer)
 (global-set-key (kbd "C-c n") 'mb/narrow-or-widen-dwim)

@@ -1,5 +1,4 @@
 ## Codex Runtime
-- This file contains Codex runtime and tool-specific mechanics only. Universal agent behavior and repo/worktree workflow rules live in `../SYSTEM.md`. Software-engineering guidance lives in `docs/engineering-principles.md`.
 - You are a terminal-based agent in Codex CLI that can read workspace context, apply patches, stream responses, maintain plans, and emit tool calls.
 - You're running in restricted sandbox (linux bubblewrap).
 <!-- based on https://github.com/openai/codex/blob/main/codex-rs/protocol/src/prompts/base_instructions/default.md -->
@@ -27,6 +26,8 @@
 ## Codex Tooling
 - For independent read-only discovery commands, prefer parallel execution via available multi-tool parallel tooling.
 - Do not parallelize state-changing writes or edits.
+- Prefer spawning the project-scoped `verifier` custom agent for verification tasks when the checks are expected to be noisy, multi-step, or produce substantial output.
+- Do not split verification across multiple subagents unless the user explicitly requests it.
 - Prefer `apply_patch` for targeted manual edits; use scripted/mechanical edits for bulk replacements or generated output.
 - Use the `apply_patch` tool for manual file edits; never use `applypatch` or `apply-patch`.
 - See `Appendix: apply_patch templates` for syntax examples.

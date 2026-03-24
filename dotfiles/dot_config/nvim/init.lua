@@ -24,6 +24,7 @@ vim.opt.listchars = { tab = "▸  ", trail = "·", nbsp = "␣" }
 vim.opt.inccommand = "split"
 vim.opt.cursorline = true
 vim.opt.scrolloff = 5
+vim.opt.autoread = true
 
 vim.opt.hlsearch = true
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
@@ -40,6 +41,16 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	group = vim.api.nvim_create_augroup("highlight-yank", { clear = true }),
 	callback = function()
 		vim.highlight.on_yank()
+	end,
+})
+
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "TermClose", "TermLeave" }, {
+	desc = "Reload files changed outside Neovim",
+	group = vim.api.nvim_create_augroup("autoreload-files", { clear = true }),
+	callback = function()
+		if vim.fn.mode() ~= "c" then
+			vim.cmd.checktime()
+		end
 	end,
 })
 
@@ -170,12 +181,55 @@ require("lazy").setup({
 		},
 	},
 
+	{
+		name = "leap.nvim",
+		url = "https://codeberg.org/andyg/leap.nvim.git",
+		event = "VeryLazy",
+		init = function()
+			-- Reduce preview noise/blink after the first Leap character.
+			require("leap").opts.preview = function(ch0, ch1, ch2)
+				return not (
+					ch1:match("%s")
+					or (ch0:match("%a") and ch1:match("%a") and ch2:match("%a"))
+				)
+			end
+		end,
+		keys = {
+			{ "<leader>j", mode = { "n", "x", "o" }, "<Plug>(leap)", desc = "[J]ump with Leap" },
+			{ "<leader>J", mode = { "n", "x", "o" }, "<Plug>(leap-from-window)", desc = "[J]ump with Leap from any window" },
+		},
+	},
+
 	{ -- Useful plugin to show you pending keybinds.
 		"folke/which-key.nvim",
 		event = "VimEnter",
 		config = function()
 			local wk = require("which-key")
-			wk.setup()
+			wk.setup({
+				delay = 300,
+				triggers = {
+					{ "<auto>", mode = "nxso" },
+					{ "g", mode = "n" },
+					{ "z", mode = "n" },
+					{ "\"", mode = "n" },
+					{ "'", mode = "n" },
+					{ "`", mode = "n" },
+					{ "<C-w>", mode = "n" },
+				},
+				plugins = {
+					marks = true,
+					registers = true,
+					presets = {
+						operators = true,
+						motions = true,
+						text_objects = true,
+						windows = true,
+						nav = true,
+						z = true,
+						g = true,
+					},
+				},
+			})
 
 			wk.add({
 				{ "<leader>f", group = "[F]ind" },
@@ -299,7 +353,36 @@ require("lazy").setup({
 		config = function()
 			-- Small editing conveniences without growing the plugin surface much.
 			require("mini.ai").setup({ n_lines = 500 })
+			require("mini.operators").setup({
+				evaluate = { prefix = "" },
+				exchange = { prefix = "gx" },
+				multiply = { prefix = "" },
+				replace = { prefix = "" },
+				sort = { prefix = "gs" },
+			})
 			require("mini.surround").setup()
+
+			-- Keep vim-surround delete muscle memory on top of mini.surround.
+			local delete_surround_compat = {
+				["("] = "sd)",
+				["["] = "sd]",
+				["{"] = "sd}",
+				["<"] = "sd>",
+				[")"] = "sd)",
+				["]"] = "sd]",
+				["}"] = "sd}",
+				[">"] = "sd>",
+				["'"] = "sd'",
+				['"'] = 'sd"',
+				["`"] = "sd`",
+			}
+
+			for lhs_suffix, rhs in pairs(delete_surround_compat) do
+				vim.keymap.set("n", "ds" .. lhs_suffix, rhs, {
+					remap = true,
+					desc = "Delete surrounding compatibility mapping",
+				})
+			end
 
 			local statusline = require("mini.statusline")
 			statusline.setup({ use_icons = vim.g.have_nerd_font })

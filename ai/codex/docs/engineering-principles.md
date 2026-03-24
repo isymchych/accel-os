@@ -201,6 +201,7 @@ Quick judgment examples:
 - You SHOULD prefer explicit, named types over inferred/meta utility types.
 - You MUST avoid type-level indirection that reduces readability, especially utility type extraction and index types. Reducing coupling is not, by itself, a sufficient reason to introduce index types.
 - You SHOULD import domain types directly; you MAY define local aliases when clarity improves.
+- You SHOULD avoid creating callback-based APIs, prefer explicit operations
 - Public APIs: you SHOULD use structured doc comments (JSDoc/TSDoc).
 - You MUST NOT silence type/lint errors via casts; you MUST fix the source type.
 - Exceptions (one-line justification required):
