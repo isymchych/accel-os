@@ -12,3 +12,5 @@ skills/.system
 session_index.jsonl
 state_*.sqlite*
 logs_*.sqlite*
+cache
+.tmp

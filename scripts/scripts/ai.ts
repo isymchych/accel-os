@@ -342,6 +342,7 @@ if (useAccountSwitcher) {
 for (const mcp of mcps) {
   configOverrides.push(`mcp_servers.${mcp}.enabled=true`);
 }
+configOverrides.push('developer_instructions="read engineering principles"');
 if (!hasReasoningEffort) {
   configOverrides.push('model_reasoning_effort="medium"');
 }

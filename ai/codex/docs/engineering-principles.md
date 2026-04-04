@@ -139,7 +139,7 @@ Quick judgment examples:
 
 ## Naming and Comments
 - Names MUST create a clear image. You SHOULD avoid vague names such as `data`, `info`, `result`, `handler`, `manager`, and `util`.
-- Names SHOULD be concise as long as clarity is preserved. You SHOULD prefer the shortest name that still communicates intent and avoids ambiguity.
+- Names SHOULD be concise as long as clarity is preserved. You SHOULD prefer the shortest name that still communicates intent.
 - Functions/methods SHOULD express intent, not implementation.
 - Comments SHOULD capture why/intent/rationale, invariants/units/boundaries, and non-obvious tradeoffs.
 - Comments SHOULD be added only when necessary to clarify non-obvious intent, invariants, or behavior.

@@ -1,6 +1,7 @@
 {
   "imports": {
-    "@lib/": "./lib/"
+    "@lib/": "./lib/",
+    "@std/cli/parse-args": "jsr:@std/cli@1.0.25/parse-args"
   },
   "tasks": {
     "ai": "deno run --lock=deno.lock --frozen --cached-only --allow-env=AI_CWD,ACCEL_OS --allow-read=../ai/codex --allow-write=../ai/codex --allow-run=codex ./scripts/ai.ts",

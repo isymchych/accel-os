@@ -92,11 +92,10 @@
 - For each edited normative section, classify requirements as `preserved`, `modified`, `removed`, or `added`, and report this in the completion report.
 - If any removal is not explicitly requested, stop and ask before applying.
 
-## Coding Preflight (Progressive Disclosure)
-- For coding work, load `$ACCEL_OS/ai/codex/docs/engineering-principles.md` once per session before the first coding analysis/output.
+## Engineering Principles
+- For coding work, follow `$ACCEL_OS/ai/codex/docs/engineering-principles.md`.
 - Coding work includes planning, code edits, coding task implementation, code review, debugging, RCA, and architecture/refactor decisions.
 - Mixed-task rule: if any requested deliverable includes code reasoning/edit/review/debugging, treat the task as coding work.
-- For non-coding tasks, do not load engineering principles.
 
 ## Plan/Spec Execution Discipline
 - If executing from a designated spec/roadmap/plan file, treat it as source of truth.

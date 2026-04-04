@@ -41,6 +41,7 @@
 * Is this idiomatic?
 * Is the doc coherent?
 * check if we can improve boundaries
+* Discuss options for doing ...
 
 # SUBAGENTS
 * subagent to run build/tests/lints/typechecks and analyze failures (RCA?) and provide summary back 

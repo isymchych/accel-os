@@ -26,7 +26,6 @@
 ## Codex Tooling
 - For independent read-only discovery commands, prefer parallel execution via available multi-tool parallel tooling.
 - Do not parallelize state-changing writes or edits.
-- Prefer spawning the project-scoped `verifier` custom agent for verification tasks when the checks are expected to be noisy, multi-step, or produce substantial output.
 - Do not split verification across multiple subagents unless the user explicitly requests it.
 - Prefer `apply_patch` for targeted manual edits; use scripted/mechanical edits for bulk replacements or generated output.
 - Use the `apply_patch` tool for manual file edits; never use `applypatch` or `apply-patch`.

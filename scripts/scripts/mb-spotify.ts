@@ -1,10 +1,11 @@
-import { parseArgs as parseFlags } from "jsr:@std/cli@1.0.25/parse-args";
+import { parseArgs } from "@std/cli/parse-args";
 
 const SCOPES = [
   "playlist-read-private",
   "playlist-read-collaborative",
   "playlist-modify-private",
   "playlist-modify-public",
+  "user-library-read",
 ].join(" ");
 
 const REDIRECT_HOST = "127.0.0.1";
@@ -51,7 +52,8 @@ type ParsedArgs = {
 const usage = `mb-spotify auth --client-id <id>
 mb-spotify list
 mb-spotify export --playlist <id> --out <path>
-mb-spotify import --in <path> [--playlist <id>]
+mb-spotify export-liked --out <path>
+mb-spotify import --in <path> [--playlist <id>] [--create]
 
 Export format (JSON):
 {
@@ -68,7 +70,9 @@ Export format (JSON):
 
 const encoder = new TextEncoder();
 
-const normalizeFlags = (parsed: Record<string, unknown>): Record<string, string | boolean> => {
+const normalizeFlags = (
+  parsed: Record<string, unknown>,
+): Record<string, string | boolean> => {
   const flags: Record<string, string | boolean> = {};
 
   for (const [key, value] of Object.entries(parsed)) {
@@ -92,23 +96,25 @@ const normalizeFlags = (parsed: Record<string, unknown>): Record<string, string 
   return flags;
 };
 
-const parseArgs = (args: string[]): ParsedArgs => {
-  const parsed = parseFlags(args, {
-    boolean: ["help"],
+const parseCliArgs = (args: string[]): ParsedArgs => {
+  const parsedArgs = parseArgs(args, {
+    boolean: ["help", "create"],
     string: ["client-id", "playlist", "out", "in"],
     alias: { h: "help" },
   });
-
-  const positionals = parsed._.map((item) => String(item));
+  const positionals = parsedArgs._.map((item: unknown) => String(item));
   const [command, ...rest] = positionals;
   return {
     command: command ?? null,
     positionals: rest,
-    flags: normalizeFlags(parsed as Record<string, unknown>),
+    flags: normalizeFlags(parsedArgs as Record<string, unknown>),
   };
 };
 
-const stringFlag = (flags: Record<string, string | boolean>, name: string): string | undefined => {
+const stringFlag = (
+  flags: Record<string, string | boolean>,
+  name: string,
+): string | undefined => {
   const value = flags[name];
   return typeof value === "string" ? value : undefined;
 };
@@ -116,9 +122,15 @@ const stringFlag = (flags: Record<string, string | boolean>, name: string): stri
 const hasHelpFlag = (flags: Record<string, string | boolean>): boolean =>
   flags.help === true || flags.h === true;
 
+const hasBooleanFlag = (
+  flags: Record<string, string | boolean>,
+  name: string,
+): boolean => flags[name] === true;
+
 const configDir = (): string => {
   const home = Deno.env.get("HOME") ?? "";
-  const configHome = Deno.env.get("XDG_CONFIG_HOME") ?? (home ? `${home}/.config` : ".");
+  const configHome = Deno.env.get("XDG_CONFIG_HOME") ??
+    (home ? `${home}/.config` : ".");
   return `${configHome}/mb-scripts`;
 };
 
@@ -176,7 +188,11 @@ const fetchJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
   return await response.json() as T;
 };
 
-const spotifyRequest = async <T>(path: string, token: string, init?: RequestInit): Promise<T> => {
+const spotifyRequest = async <T>(
+  path: string,
+  token: string,
+  init?: RequestInit,
+): Promise<T> => {
   const url = `https://api.spotify.com/v1${path}`;
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${token}`);
@@ -218,7 +234,27 @@ const refreshToken = async (config: Config): Promise<Token> => {
   };
 };
 
-const getAccessToken = async (): Promise<string> => {
+const hasGrantedScopes = (
+  grantedScope: string | undefined,
+  requiredScopes: string[],
+): boolean => {
+  if (requiredScopes.length === 0) {
+    return true;
+  }
+
+  if (!grantedScope) {
+    return false;
+  }
+
+  const granted = new Set(
+    grantedScope.split(/\s+/).filter((scope) => scope.length > 0),
+  );
+  return requiredScopes.every((scope) => granted.has(scope));
+};
+
+const getAccessToken = async (
+  requiredScopes: string[] = [],
+): Promise<string> => {
   const config = await readConfig();
   if (!config) {
     throw new Error("missing config; run mb-spotify auth");
@@ -227,6 +263,14 @@ const getAccessToken = async (): Promise<string> => {
   const existing = config.token;
   if (!existing) {
     throw new Error("missing token; run mb-spotify auth");
+  }
+
+  if (!hasGrantedScopes(existing.scope, requiredScopes)) {
+    throw new Error(
+      `missing required Spotify scope(s): ${
+        requiredScopes.join(", ")
+      }; run mb-spotify auth again`,
+    );
   }
 
   if (Date.now() + 60_000 < existing.expires_at) {
@@ -239,15 +283,50 @@ const getAccessToken = async (): Promise<string> => {
   return refreshed.access_token;
 };
 
+const trackEntryFromSpotifyTrack = (
+  track: Record<string, unknown> | null,
+): TrackEntry | null => {
+  const uri = typeof track?.uri === "string" ? track.uri : "";
+  if (!uri) {
+    return null;
+  }
+
+  const name = typeof track?.name === "string" ? track.name : undefined;
+  const album = typeof track?.album === "object" && track.album !== null &&
+      typeof (track.album as Record<string, unknown>).name === "string"
+    ? (track.album as Record<string, unknown>).name as string
+    : undefined;
+  const artists = Array.isArray(track?.artists)
+    ? (track.artists as Array<Record<string, unknown>>)
+      .map((artist) => typeof artist.name === "string" ? artist.name : null)
+      .filter((artist): artist is string => Boolean(artist))
+    : undefined;
+  const type = typeof track?.type === "string" ? track.type : undefined;
+
+  return { uri, name, artists, album, type };
+};
+
 const parsePlaylistFile = (value: unknown): PlaylistFile => {
-  const obj = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
-  const tracks = Array.isArray(obj.tracks) ? obj.tracks : [];
+  if (typeof value !== "object" || value === null) {
+    throw new Error("playlist file must be a JSON object");
+  }
+
+  const obj = value as Record<string, unknown>;
+  if (!Array.isArray(obj.tracks)) {
+    throw new Error("playlist file missing tracks array");
+  }
+
+  const tracks = obj.tracks;
 
   return {
     version: 1,
-    playlist_id: typeof obj.playlist_id === "string" ? obj.playlist_id : undefined,
+    playlist_id: typeof obj.playlist_id === "string"
+      ? obj.playlist_id
+      : undefined,
     name: typeof obj.name === "string" ? obj.name : undefined,
-    description: typeof obj.description === "string" ? obj.description : undefined,
+    description: typeof obj.description === "string"
+      ? obj.description
+      : undefined,
     public: typeof obj.public === "boolean" ? obj.public : undefined,
     tracks: tracks
       .map((item) => {
@@ -258,7 +337,9 @@ const parsePlaylistFile = (value: unknown): PlaylistFile => {
         const uri = typeof entry.uri === "string" ? entry.uri : "";
         const name = typeof entry.name === "string" ? entry.name : undefined;
         const artists = Array.isArray(entry.artists)
-          ? entry.artists.filter((artist) => typeof artist === "string") as string[]
+          ? entry.artists.filter((artist) =>
+            typeof artist === "string"
+          ) as string[]
           : undefined;
         const album = typeof entry.album === "string" ? entry.album : undefined;
         const type = typeof entry.type === "string" ? entry.type : undefined;
@@ -282,12 +363,15 @@ const readPlaylistFile = async (path: string): Promise<PlaylistFile> => {
   return ensurePlaylistFile(parsePlaylistFile(parsed));
 };
 
-const writePlaylistFile = async (path: string, playlist: PlaylistFile): Promise<void> => {
+const writePlaylistFile = async (
+  path: string,
+  playlist: PlaylistFile,
+): Promise<void> => {
   const data = JSON.stringify(playlist, null, 2);
   await Deno.writeTextFile(path, `${data}\n`);
 };
 
-const openInBrowser = async (url: string): Promise<void> => {
+const openInBrowser = (url: string): void => {
   try {
     const child = new Deno.Command("xdg-open", {
       args: [url],
@@ -295,25 +379,22 @@ const openInBrowser = async (url: string): Promise<void> => {
       stdout: "null",
       stderr: "null",
     }).spawn();
-    if ("unref" in child) {
-      (child as { unref: () => void }).unref();
-    }
+    child.unref();
   } catch (error) {
-    console.error(`failed to open browser: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `failed to open browser: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
 };
 
-const startRedirectListener = () => {
-  const listener = Deno.listen({ hostname: REDIRECT_HOST, port: REDIRECT_PORT });
-  return { listener, redirectUri: REDIRECT_URI, expectedPath: REDIRECT_PATH };
-};
-
 const waitForAuthCode = async (
-  listener: Deno.Listener,
   expectedPath: string,
   state: string,
 ): Promise<string> => {
   let settled = false;
+  const abortController = new AbortController();
 
   const codePromise = new Promise<string>((resolve, reject) => {
     const finish = (result: { code?: string; error?: string }) => {
@@ -321,7 +402,7 @@ const waitForAuthCode = async (
         return;
       }
       settled = true;
-      listener.close();
+      abortController.abort();
       if (result.error) {
         reject(new Error(result.error));
         return;
@@ -333,7 +414,7 @@ const waitForAuthCode = async (
       resolve(result.code);
     };
 
-    const handle = async (request: Request): Promise<Response> => {
+    const handle = (request: Request): Response => {
       const url = new URL(request.url);
 
       if (url.pathname !== expectedPath) {
@@ -363,28 +444,18 @@ const waitForAuthCode = async (
       });
     };
 
-    (async () => {
-      try {
-        for await (const conn of listener) {
-          const httpConn = Deno.serveHttp(conn);
-          for await (const event of httpConn) {
-            const response = await handle(event.request);
-            await event.respondWith(response);
-            if (settled) {
-              httpConn.close();
-              break;
-            }
-          }
-          if (settled) {
-            break;
-          }
-        }
-      } catch (error) {
-        if (!settled) {
-          reject(error);
-        }
+    try {
+      Deno.serve({
+        hostname: REDIRECT_HOST,
+        port: REDIRECT_PORT,
+        signal: abortController.signal,
+        onListen: () => {},
+      }, handle);
+    } catch (error) {
+      if (!settled) {
+        reject(error);
       }
-    })();
+    }
   });
 
   return await codePromise;
@@ -395,24 +466,15 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
   const clientId = stringFlag(parsed.flags, "client-id") ?? existing?.client_id;
 
   if (!clientId) {
-    throw new Error("client id missing; create a Spotify app and pass --client-id. See https://developer.spotify.com/documentation/web-api/tutorials/getting-started#create-an-app");
+    throw new Error(
+      "client id missing; create a Spotify app and pass --client-id. See https://developer.spotify.com/documentation/web-api/tutorials/getting-started#create-an-app",
+    );
   }
 
-  let listener: Deno.Listener;
-  let redirectUri: string;
-  let expectedPath: string;
-
-  try {
-    ({ listener, redirectUri, expectedPath } = startRedirectListener());
-  } catch (error) {
-    if (error instanceof Deno.errors.AddrInUse) {
-      throw new Error(`port ${REDIRECT_PORT} is in use; free it or change REDIRECT_PORT`);
-    }
-    throw error;
-  }
-
-  console.log("Ensure this redirect URI is registered in your Spotify app settings:");
-  console.log(redirectUri);
+  console.log(
+    "Ensure this redirect URI is registered in your Spotify app settings:",
+  );
+  console.log(REDIRECT_URI);
 
   const verifier = randomVerifier();
   const challenge = await sha256(verifier);
@@ -420,7 +482,7 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
   const authUrl = new URL("https://accounts.spotify.com/authorize");
   authUrl.searchParams.set("client_id", clientId);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
   authUrl.searchParams.set("code_challenge", challenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
   authUrl.searchParams.set("scope", SCOPES);
@@ -428,14 +490,24 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
 
   console.log("Open this URL and authorize:");
   console.log(authUrl.toString());
-  await openInBrowser(authUrl.toString());
-  console.log(`Waiting for redirect on ${redirectUri}`);
-  const code = await waitForAuthCode(listener, expectedPath, state);
+  openInBrowser(authUrl.toString());
+  console.log(`Waiting for redirect on ${REDIRECT_URI}`);
+  let code: string;
+  try {
+    code = await waitForAuthCode(REDIRECT_PATH, state);
+  } catch (error) {
+    if (error instanceof Deno.errors.AddrInUse) {
+      throw new Error(
+        `port ${REDIRECT_PORT} is in use; free it or change REDIRECT_PORT`,
+      );
+    }
+    throw error;
+  }
 
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: redirectUri,
+    redirect_uri: REDIRECT_URI,
     client_id: clientId,
     code_verifier: verifier,
   });
@@ -471,7 +543,9 @@ const cmdList = async (): Promise<void> => {
   let url = "/me/playlists?limit=50";
 
   while (url) {
-    const data = await spotifyRequest<{ items: { id: string; name: string }[]; next: string | null }>(
+    const data = await spotifyRequest<
+      { items: { id: string; name: string }[]; next: string | null }
+    >(
       url,
       token,
     );
@@ -485,8 +559,57 @@ const cmdList = async (): Promise<void> => {
   }
 };
 
+const cmdExportLiked = async (parsed: ParsedArgs): Promise<void> => {
+  const outPath = stringFlag(parsed.flags, "out") ?? parsed.positionals[0];
+  if (!outPath) {
+    throw new Error("missing output path");
+  }
+
+  const token = await getAccessToken(["user-library-read"]);
+  let offset = 0;
+  const entries: TrackEntry[] = [];
+
+  while (true) {
+    const page = await spotifyRequest<
+      {
+        items: Array<{ track: Record<string, unknown> | null }>;
+        next: string | null;
+      }
+    >(
+      `/me/tracks?limit=50&offset=${offset}`,
+      token,
+    );
+
+    for (const item of page.items) {
+      const entry = trackEntryFromSpotifyTrack(item.track);
+      if (!entry) {
+        continue;
+      }
+
+      entries.push(entry);
+    }
+
+    offset += page.items.length;
+    console.error(`exported ${entries.length}`);
+    if (!page.next) {
+      break;
+    }
+  }
+
+  const file: PlaylistFile = {
+    version: 1,
+    name: "Liked Songs",
+    description: "Saved tracks from Your Library",
+    tracks: entries,
+  };
+
+  await writePlaylistFile(outPath, file);
+  console.error(`saved ${entries.length} tracks to ${outPath}`);
+};
+
 const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
-  const playlistId = stringFlag(parsed.flags, "playlist") ?? parsed.positionals[0];
+  const playlistId = stringFlag(parsed.flags, "playlist") ??
+    parsed.positionals[0];
   const outPath = stringFlag(parsed.flags, "out") ?? parsed.positionals[1];
 
   if (!playlistId || !outPath) {
@@ -494,7 +617,14 @@ const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
   }
 
   const token = await getAccessToken();
-  const playlist = await spotifyRequest<{ name: string; description: string | null; public: boolean | null; tracks: { total: number } }>(
+  const playlist = await spotifyRequest<
+    {
+      name: string;
+      description: string | null;
+      public: boolean | null;
+      tracks: { total: number };
+    }
+  >(
     `/playlists/${playlistId}`,
     token,
   );
@@ -504,30 +634,23 @@ const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
   let offset = 0;
 
   while (true) {
-    const page = await spotifyRequest<{ items: Array<{ track: Record<string, unknown> | null }>; next: string | null }>(
+    const page = await spotifyRequest<
+      {
+        items: Array<{ track: Record<string, unknown> | null }>;
+        next: string | null;
+      }
+    >(
       `/playlists/${playlistId}/tracks?limit=100&offset=${offset}&additional_types=track,episode`,
       token,
     );
 
     for (const item of page.items) {
-      const track = item.track as Record<string, unknown> | null;
-      const uri = typeof track?.uri === "string" ? track.uri : "";
-      if (!uri) {
+      const entry = trackEntryFromSpotifyTrack(item.track);
+      if (!entry) {
         continue;
       }
 
-      const name = typeof track?.name === "string" ? track.name : undefined;
-      const album = typeof track?.album === "object" && track.album !== null && typeof (track.album as Record<string, unknown>).name === "string"
-        ? (track.album as Record<string, unknown>).name as string
-        : undefined;
-      const artists = Array.isArray(track?.artists)
-        ? (track.artists as Array<Record<string, unknown>>)
-          .map((artist) => typeof artist.name === "string" ? artist.name : null)
-          .filter((artist): artist is string => Boolean(artist))
-        : undefined;
-      const type = typeof track?.type === "string" ? track.type : undefined;
-
-      entries.push({ uri, name, artists, album, type });
+      entries.push(entry);
     }
 
     offset += page.items.length;
@@ -554,22 +677,47 @@ const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
 const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
   const inPath = stringFlag(parsed.flags, "in") ?? parsed.positionals[0];
   const playlistOverride = stringFlag(parsed.flags, "playlist");
+  const shouldCreate = hasBooleanFlag(parsed.flags, "create");
 
   if (!inPath) {
     throw new Error("missing input path");
   }
 
   const file = await readPlaylistFile(inPath);
-  const playlistId = playlistOverride ?? file.playlist_id;
+  if (shouldCreate && playlistOverride) {
+    throw new Error("cannot use --create together with --playlist");
+  }
+
+  let playlistId = playlistOverride ?? file.playlist_id;
+  const token = await getAccessToken();
+
+  if (shouldCreate) {
+    const profile = await spotifyRequest<{ id: string }>("/me", token);
+    const created = await spotifyRequest<{ id: string }>(
+      `/users/${profile.id}/playlists`,
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name ?? "Imported Playlist",
+          description: file.description ?? "",
+          public: file.public ?? false,
+        }),
+      },
+    );
+    playlistId = created.id;
+    console.error(`created playlist ${playlistId}`);
+  }
+
   if (!playlistId) {
-    throw new Error("playlist id missing; pass --playlist or export a file with playlist_id");
+    throw new Error(
+      "playlist id missing; pass --playlist, export a file with playlist_id, or use --create",
+    );
   }
 
   const uris = file.tracks
     .map((track) => track.uri.trim())
     .filter((uri) => uri.length > 0);
-
-  const token = await getAccessToken();
 
   console.error(`replacing playlist ${playlistId} with ${uris.length} items`);
 
@@ -594,7 +742,7 @@ const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
 };
 
 const main = async () => {
-  const parsed = parseArgs(Deno.args);
+  const parsed = parseCliArgs(Deno.args);
   if (!parsed.command || hasHelpFlag(parsed.flags)) {
     console.log(usage.trim());
     return;
@@ -606,6 +754,9 @@ const main = async () => {
       return;
     case "list":
       await cmdList();
+      return;
+    case "export-liked":
+      await cmdExportLiked(parsed);
       return;
     case "export":
       await cmdExport(parsed);
