@@ -186,7 +186,7 @@ Quick judgment examples:
 - Conditional checks are `doc_code_style` and `agents_compliance`; you MAY omit checks that are genuinely out of scope.
 - `tooling_style` is `pass` only when all applicable lint and formatter checks that were run are clean; if applicable lint was not run, `tooling_style` MUST be `warn` or `not_run`.
 - `refs` MUST point to governing rules, not changed files or artifacts.
-- For `doc_code_style`, `refs` MUST include `docs/engineering-principles.md#Code Style`; if that ref is missing, `doc_code_style` MUST be `fail`.
+- For `doc_code_style`, `refs` MUST include `ai/docs/engineering-principles.md#Code Style`; if that ref is missing, `doc_code_style` MUST be `fail`.
 - For `agents_compliance`, `refs` MUST cite AGENTS rules/sections.
 
 ## Tooling

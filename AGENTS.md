@@ -5,7 +5,7 @@
 - `firefox/` holds `user.js` prefs; outside chezmoi because profile IDs vary.
 - `docs/` contains platform notes (`docs/linux`, `docs/mac`); keep secrets out and reference `.chezmoidata` instead.
 - `scripts/` holds Deno tasks (`scripts/scripts/`) and shared modules (`scripts/lib/`).
-- `ai/` holds Codex skills and automation.
+- `ai/` holds skills and automation for coding agents (Codex, Pi).
 
 ### dotfiles/
 - `dotfiles/` is the chezmoi source tree for `$HOME`.

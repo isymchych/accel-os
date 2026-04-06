@@ -6,29 +6,29 @@ description: Prune stale GitHub remote branches in the current repo using a safe
 # Prune Stale Branches
 
 Use this skill to safely prune stale remote branches via:
-- `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts`
+- `./scripts/prune-stale-branches.ts`
 
 ## Preconditions
 
 - Run in the target git repository.
 - `origin` remote exists.
 - `gh` is authenticated and has repo access.
-- Run the script with escalated permissions (`sandbox_permissions: require_escalated`) because it performs network operations (`git fetch`, GitHub API via `gh`).
+- Run the script with the permissions needed for network operations because it performs `git fetch` and GitHub API calls via `gh`.
 
 ## Workflow
 
 1. Confirm main branch name (`main` by default).
 2. Run dry-run first:
-   - `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --dry-run`
+   - `./scripts/prune-stale-branches.ts --dry-run`
    - execute with escalation
 3. Show the complete candidate list from command output to the user.
 4. Run deletion only after explicit confirmation:
    - require user confirmation text: `proceed delete`
    - run:
-     - `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
+     - `./scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
      - execute with escalation
 5. If main branch differs:
-   - `$ACCEL_OS/ai/codex/skills/prune-stale-branches/scripts/prune-stale-branches.ts --main <branch> --dry-run`
+   - `./scripts/prune-stale-branches.ts --main <branch> --dry-run`
    - execute with escalation
 
 ## Behavior

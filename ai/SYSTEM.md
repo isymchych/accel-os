@@ -93,7 +93,7 @@
 - If any removal is not explicitly requested, stop and ask before applying.
 
 ## Engineering Principles
-- For coding work, follow `$ACCEL_OS/ai/codex/docs/engineering-principles.md`.
+- For coding work, follow `$ACCEL_OS/ai/docs/engineering-principles.md`.
 - Coding work includes planning, code edits, coding task implementation, code review, debugging, RCA, and architecture/refactor decisions.
 - Mixed-task rule: if any requested deliverable includes code reasoning/edit/review/debugging, treat the task as coding work.
 
@@ -122,7 +122,6 @@
 
 ## Validation Defaults
 - If the codebase supports verification, validate changes before finalizing.
-- For code-edit verification specifics and completion-report guidance, follow `docs/engineering-principles.md`.
 - Start with the most targeted checks for touched behavior, then broaden only as needed.
 - If a codebase has no tests, do not add new tests unless explicitly requested.
 - If no formatter is configured, do not introduce one.
