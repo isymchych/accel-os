@@ -1,5 +1,9 @@
 #!/usr/bin/env zsh
 
+export ACCEL_OS="$HOME/accel-os"
+export TERMINAL=xterm
+export BROWSER=firefox
+
 export DESKTOP_SESSION=sway
 export XDG_CURRENT_DESKTOP=sway
 export XDG_SESSION_TYPE=wayland
