@@ -7,11 +7,6 @@ path=(
   $path
 )
 
-export ACCEL_OS="${ACCEL_OS:-$HOME/accel-os}"
-export CODEX_HOME="${CODEX_HOME:-$ACCEL_OS/ai/codex}"
-export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-$ACCEL_OS/ai/pi}"
-export PI_CACHE_RETENTION=long
-
 # Starship https://starship.rs/
 eval "$(starship init zsh)"
 

@@ -1323,17 +1323,6 @@ narrowed."
   (advice-add #'multi-occur :override #'consult-multi-occur))
 
 
-;; jump to project
-(use-package consult-jump-project
-  :after consult
-  :defer t
-  :commands (consult-jump-project)
-  :init
-  (if (not (package-installed-p 'consult-jump-project))
-      (package-vc-install "https://github.com/jdtsmith/consult-jump-project"))
-  (global-set-key [remap project-switch-project] #'consult-jump-project))
-
-
 ;; Jump to Flycheck error
 (use-package consult-flycheck
   :after (consult flycheck)
@@ -1958,6 +1947,8 @@ targets."
   (setq lsp-volar-take-over-mode nil)
   (setq lsp-volar-hybrid-mode t)
   :config
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.worktrees\\'")
+
   (when mb-use-company
     (defun mb/lsp-mode-setup-completion ()
       (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))

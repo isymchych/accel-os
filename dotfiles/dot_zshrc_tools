@@ -1,6 +1,10 @@
 # configure theme for difftastic
 export DFT_BACKGROUND=light
 
+export CODEX_HOME="${CODEX_HOME:-${ACCEL_OS:-$HOME/accel-os}/ai/codex}"
+export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-${ACCEL_OS:-$HOME/accel-os}/ai/pi}"
+export PI_CACHE_RETENTION=long
+
 alias y=yazi
 alias j=just
 alias cz=chezmoi

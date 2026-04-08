@@ -19,6 +19,7 @@ macos-defaults.sh
 .local/bin/mb-wine-cleanup-menu-entries
 .local/bin/update-pacman-mirrors.sh
 .config/darkman/**
+.config/environment.d/**
 .config/gtk-3.0/**
 .config/kanshi/**
 .config/mako/**
