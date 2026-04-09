@@ -15,6 +15,7 @@
   pager = delta
   excludesfile = ~/.gitignore_global
   attributesfile = ~/.gitattributes
+  quotePath = false
 
 [color]
   ui = true
