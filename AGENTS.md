@@ -58,6 +58,11 @@
 - Skill helper scripts should be Deno TypeScript, not Python.
 - When a skill references cross-folder policy docs, use `$ACCEL_OS` absolute paths because relative paths drift by working directory.
 
+## Pi Configuration
+- Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.
+- Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.
+- Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
+- On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshrc_tools` exports `PI_CODING_AGENT_DIR` to that path.
 
 ## Machine-Specific Configuration
 - Favor templates (`.tmpl`) or `.chezmoi.osRelease` checks over duplicating configs.

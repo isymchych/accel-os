@@ -1,5 +1,8 @@
 #!/usr/bin/env -S deno run --quiet --allow-run=git --allow-read
 
+import { classifyGitFailure, formatGitError, printStructuredGitError } from "../../lib/git_error.ts";
+import { runGit } from "../../lib/git_command.ts";
+
 const BODY_LINE_MAX = 99;
 
 export function normalizeMessage(message: string): string {
@@ -94,32 +97,44 @@ async function readInput(args: string[]): Promise<string> {
   return text;
 }
 
-async function commitMessage(message: string): Promise<number> {
+async function commitMessage(message: string) {
   const lines = message.split("\n");
   const subject = lines[0] ?? "";
   const body = lines.slice(2).join("\n").trimEnd();
 
-  const cmd = ["git", "commit", "-m", subject];
-  if (body) cmd.push("-m", body);
+  const args = ["commit", "-m", subject];
+  if (body) args.push("-m", body);
+  return await runGit(args);
+}
 
-  const command = new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  const { code } = await command.output();
-  return code;
+async function readHeadSha(): Promise<string> {
+  const result = await runGit(["rev-parse", "HEAD"]);
+  if (result.code !== 0) throw new Error("failed to read commit sha after successful commit");
+  const sha = result.stdout.trim();
+  if (!sha) throw new Error("git rev-parse returned empty commit sha");
+  return sha;
 }
 
 if (import.meta.main) {
   try {
     const rawMessage = await readInput(Deno.args);
     const normalized = normalizeMessage(rawMessage);
-    const code = await commitMessage(normalized);
-    Deno.exit(code);
+    const result = await commitMessage(normalized);
+
+    if (result.code === 0) {
+      const sha = await readHeadSha();
+      console.log(`OK ${sha}`);
+      Deno.exit(0);
+    }
+
+    printStructuredGitError(classifyGitFailure(result.stdout, result.stderr));
+    Deno.exit(3);
   } catch (error) {
-    console.error(`commit message error: ${error instanceof Error ? error.message : String(error)}`);
-    Deno.exit(2);
+    const message = error instanceof Error ? error.message : String(error);
+    const code = message.startsWith("empty commit") || message.startsWith("missing value for --message-file")
+      ? "ERR_MESSAGE_INVALID"
+      : "ERR_INTERNAL";
+    printStructuredGitError(formatGitError(code, message, ""));
+    Deno.exit(code === "ERR_MESSAGE_INVALID" ? 2 : 4);
   }
 }

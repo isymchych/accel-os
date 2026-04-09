@@ -37,7 +37,5 @@ Use only when the script fails:
 - Prefer official site pages and direct feed URLs over third-party feed mirrors.
 - Preserve user privacy: do not share project-specific URLs outside the local environment.
 
-## Resources
-
-### scripts/
-- `find_feed.ts`: discover and validate RSS/Atom feeds from a website or page URL.
+## Available scripts
+- `scripts/find_feed.ts` — Discovers and validates RSS/Atom feeds from a website or page URL.

@@ -4,9 +4,8 @@
 
 ## Quickstart
 - Apply the canonical order in `Priority & Execution Order (Read First)`.
-- Follow `Decision Flow` before state-changing actions.
+- Before state-changing actions, follow `Decision Flow`.
 - Stay within explicitly authorized scope; ask before expanding scope.
-- On permission failures, retry with escalation; if denied, report a `sandbox isolation blocker`.
 
 ## Priority & Execution Order (Read First)
 - Apply rules in this order when they conflict:
@@ -14,19 +13,19 @@
   2. Authorization (Execution Gate).
   3. Hard Invariants.
   4. Scope Control (Workflow).
-  5. Sandbox & Permissions.
+  5. Execution Constraints.
   6. Workflow defaults.
   7. Engineering principles.
 - See `Authorization (Execution Gate)` for trigger rules.
 - See `Scope Control (Workflow)` for scope limits and stop conditions.
-- Tie-breaker for coding tasks: engineering principles override speed/minimal-edit shortcuts inside workflow defaults, but never override explicit user constraints, authorization, hard invariants, scope, or sandbox rules.
+- Tie-breaker for coding tasks: engineering principles override workflow-default speed/minimal-edit shortcuts, but never override higher-priority rules above.
 
 ## Decision Flow
 1. Confirm an explicit trigger exists for the current scoped task.
 2. Confirm requested scope and identify out-of-scope adjacent changes.
 3. If intent is ambiguous, perform local discovery and apply `Clarification and Stop Conditions`.
 4. Apply the canonical order for any rule conflict.
-5. Confirm sandbox/permissions path and verification/reporting steps before finalizing.
+5. Confirm required execution mode/permissions and planned verification/reporting steps before finalizing.
 
 ## Authorization (Execution Gate)
 - Trigger model is explicit-only.
@@ -62,13 +61,14 @@
 - If unexpected changes affect touched files or safety/scope, stop and ask.
 - Do not edit/delete untracked paths without explicit user confirmation (except explicitly requested creation).
 
-## Sandbox & Permissions
+## Execution Constraints
 - If command fails unexpectedly due to permissions, retry with escalation.
 - When a failure indicates the task is being handled in the wrong execution mode or permission path, reassess the task-level approach and switch early to the path it actually requires instead of layering local workarounds.
 - If escalation is denied, stop and report a `sandbox isolation blocker` with missing dependency and impact.
 
 ## Clarification and Stop Conditions
 - If actionable intent or requested artifact is ambiguous, first attempt local discovery.
+- This section is the canonical stop-and-ask rule unless another section defines a stricter task-specific stop condition.
 - Ambiguity risk rubric:
   - Low: wording preference with no behavior impact (for example output phrasing style).
   - Medium: target/path ambiguity that could modify the wrong artifact.
@@ -76,10 +76,10 @@
 - If ambiguity remains, ask one short clarification question and stop.
 - This rule applies globally, including language/tooling ambiguity and trigger interpretation.
 - Stop and ask when:
-- Scope expands beyond explicitly authorized changes.
-- Escalation is denied after a required permission retry.
-- Ambiguity remains medium/high risk after local discovery.
-- Task requires editing or deleting an untracked path without explicit confirmation.
+  - Scope expands beyond explicitly authorized changes.
+  - Escalation is denied after a required permission retry.
+  - Ambiguity remains medium/high risk after local discovery.
+  - Task requires editing or deleting an untracked path without explicit confirmation.
 
 ## Normative Documents
 - Treat requirement-level edits in normative documents as behavior-affecting changes, not copy edits.
@@ -106,12 +106,13 @@
 - Persist through the task once execution is authorized: continue until the scoped task is complete, you are blocked, or a major user decision is required.
 - Investigate instead of guessing; ask the user only when necessary.
 - Do not guess or make up an answer; verify uncertain facts before concluding.
-- When the user asks a question, answer it directly. Unless clearly unnecessary, also include brief critique, risks, and 1-3 alternatives or improvement ideas.
+- When the user asks a design, debugging, planning, or implementation question, answer it directly. Unless clearly unnecessary, also include brief critique, risks, and 1-3 alternatives or improvement ideas.
 - Use `git log` and `git blame` for historical context when local code intent is unclear.
 - Do not `git commit` changes or create new branches unless explicitly requested.
 - Version-control staging (`git add`, including partial/interactive staging) is prohibited unless the user explicitly requests staging for the current scoped task.
 - Update docs when behavior or required usage changes.
 - Default to ASCII when editing or creating files. Introduce non-ASCII or Unicode only when clearly justified and the file already uses it.
+- You **MUST** resolve every skill-relative helper script path against `dirname(SKILL.md)` before running it; never assume the repo cwd matches the skill location.
 
 ## Git & Workspace Hygiene
 - You may be in a dirty git worktree; never revert existing changes you did not make unless explicitly requested for the current scoped task.
@@ -121,6 +122,7 @@
 - Never run destructive commands (for example `git reset --hard`, `git checkout --`) unless explicitly requested or approved.
 
 ## Validation Defaults
+- Scoped implementation authorization includes the targeted verification needed to validate the requested change, unless the user explicitly excludes or limits verification.
 - If the codebase supports verification, validate changes before finalizing.
 - Start with the most targeted checks for touched behavior, then broaden only as needed.
 - If a codebase has no tests, do not add new tests unless explicitly requested.
@@ -157,7 +159,6 @@
 - Avoid Python for large file dumps when shell tools are sufficient.
 - Keep shell commands deterministic and non-interactive; scope queries and limit noisy output when possible.
 - Run `shellcheck` for modified shell scripts.
-- Clipboard (`wl-copy`) only when explicitly requested; copy any explicitly requested target (user text, assistant response, command output, or file content) via stdin; if target is ambiguous, follow `Clarification Rule`; copy exact requested content only (no inference) and preserve UTF-8/whitespace/trailing newlines unless user asks otherwise; require active Wayland session.
 
 ## Privacy / Ops
 - Treat all data as private.

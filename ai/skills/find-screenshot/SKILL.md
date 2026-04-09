@@ -22,7 +22,5 @@ Run:
 
 It prints the absolute path on success and writes errors to stderr on failure.
 
-## Resources
-
-### scripts/
-- `find_latest_screenshot.ts`: resolve newest PNG in `~/temp/screenshots`.
+## Available scripts
+- `scripts/find_latest_screenshot.ts` — Resolves the newest PNG in `~/temp/screenshots`.

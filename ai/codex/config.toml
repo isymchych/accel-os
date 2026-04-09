@@ -1,7 +1,7 @@
 # https://developers.openai.com/codex/config-sample
 
 model = "gpt-5.4"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "low"
 personality = "pragmatic"
 network_access = true
 web_search = 'cached' # OpenAI-maintained cache

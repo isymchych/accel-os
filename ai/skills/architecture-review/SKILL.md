@@ -15,6 +15,10 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 - Call-site complexity versus callee complexity
 - Migration risk for boundary changes
 
+## Available scripts
+- `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the workspace, staged changes, or a base-ref diff.
+- `scripts/find-pass-through.ts` — Scans changed TS/JS/Rust files for likely pass-through wrappers that mirror another API.
+
 ## Workflow
 
 ### 1) Map The Change Boundary

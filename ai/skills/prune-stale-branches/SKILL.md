@@ -8,6 +8,9 @@ description: Prune stale GitHub remote branches in the current repo using a safe
 Use this skill to safely prune stale remote branches via:
 - `./scripts/prune-stale-branches.ts`
 
+## Available scripts
+- `scripts/prune-stale-branches.ts` — Performs dry-run or confirmed deletion of stale remote branches using git and GitHub API checks.
+
 ## Preconditions
 
 - Run in the target git repository.
