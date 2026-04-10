@@ -112,7 +112,6 @@
 - Version-control staging (`git add`, including partial/interactive staging) is prohibited unless the user explicitly requests staging for the current scoped task.
 - Update docs when behavior or required usage changes.
 - Default to ASCII when editing or creating files. Introduce non-ASCII or Unicode only when clearly justified and the file already uses it.
-- You **MUST** resolve every skill-relative helper script path against `dirname(SKILL.md)` before running it; never assume the repo cwd matches the skill location.
 
 ## Git & Workspace Hygiene
 - You may be in a dirty git worktree; never revert existing changes you did not make unless explicitly requested for the current scoped task.
@@ -154,6 +153,7 @@
 
 ## Tooling
 - GitHub operations: use `gh`.
+- When a project provides a relevant `Justfile` target, prefer invoking that `just` recipe over ad hoc underlying commands, unless the recipe is clearly unsuitable for the requested task. Fall back to the project's documented native commands when no suitable `just` target exists.
 - Shell search/data tools: `fd`, `rg`, `ast-grep`, `jq`, `yq`.
 - Prefer `rg`/`rg --files` for search.
 - Avoid Python for large file dumps when shell tools are sufficient.

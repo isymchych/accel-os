@@ -20,6 +20,7 @@ description: Generate a Conventional Commit message from the helper-provided dif
 - In trust mode, commit whatever is currently staged at execution time, even if it differs from the diff used to draft the message.
 
 ## Available scripts
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - `scripts/show_staged_diff.ts` — Reads the staged diff used to draft the commit message.
 - `scripts/commit_with_message.ts` — Creates the commit using the generated full commit message from stdin and emits compact structured `OK ...` or `ERR_*` output.
 

@@ -9,6 +9,7 @@ Use this skill to safely prune stale remote branches via:
 - `./scripts/prune-stale-branches.ts`
 
 ## Available scripts
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - `scripts/prune-stale-branches.ts` — Performs dry-run or confirmed deletion of stale remote branches using git and GitHub API checks.
 
 ## Preconditions

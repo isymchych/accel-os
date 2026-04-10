@@ -16,6 +16,7 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 - Migration risk for boundary changes
 
 ## Available scripts
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the workspace, staged changes, or a base-ref diff.
 - `scripts/find-pass-through.ts` — Scans changed TS/JS/Rust files for likely pass-through wrappers that mirror another API.
 

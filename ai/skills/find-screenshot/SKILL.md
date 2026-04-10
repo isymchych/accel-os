@@ -23,4 +23,5 @@ Run:
 It prints the absolute path on success and writes errors to stderr on failure.
 
 ## Available scripts
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - `scripts/find_latest_screenshot.ts` — Resolves the newest PNG in `~/temp/screenshots`.

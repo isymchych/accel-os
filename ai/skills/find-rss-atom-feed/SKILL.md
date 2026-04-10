@@ -38,4 +38,5 @@ Use only when the script fails:
 - Preserve user privacy: do not share project-specific URLs outside the local environment.
 
 ## Available scripts
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - `scripts/find_feed.ts` — Discovers and validates RSS/Atom feeds from a website or page URL.
