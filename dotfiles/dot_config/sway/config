@@ -404,6 +404,7 @@ exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CU
 exec hash dbus-update-activation-environment 2>/dev/null && \
      dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP ACCEL_OS
 exec systemctl --user start mako.service # it depends on WAYLAND_DISPLAY
+exec systemctl --user start darkman.service # it depends on ACCEL_OS
 
 
 exec_always {

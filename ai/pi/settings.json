@@ -4,11 +4,17 @@
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
-  "defaultThinkingLevel": "low",
+  "defaultThinkingLevel": "medium",
   "skills": [
     "../skills"
   ],
   "prompts": [
     "../prompts"
-  ]
+  ],
+  "shellPath": "/usr/bin/bash",
+  "enabledModels": [
+    "openai-codex/gpt-5.4-mini",
+    "openai-codex/gpt-5.4"
+  ],
+  "treeFilterMode": "user-only"
 }

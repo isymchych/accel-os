@@ -152,7 +152,7 @@ Quick judgment examples:
 - If you add or change a reusable trust boundary (a shared method/module whose output enforces or interprets contracts), you MUST add or update tests in the enforcing layer in the same patch, or get an explicit user-approved exception in the task thread; triggers include behavior branching (null/throw, fallback/default, policy branch), cross-layer data-shape conversion, fan-out to multiple consumers, and contract bug fixes (add a regression test where the contract is enforced); pure pass-through/delegation changes are exempt unless contract semantics changed.
 - For behavior-changing edits in a module with no automated tests, you SHOULD NOT add new tests unless explicitly requested.
 - In this case, you SHOULD proceed without stopping to ask and MUST document manual verification and any test gap in the final report.
-- Non-behavioral edits (for example comments, renames, formatting, or mechanical refactors) MAY proceed without this gate.
+- Non-behavioral edits (for example comments, renames, or mechanical refactors) MAY proceed without this gate.
 
 ## Operational Safeguards
 - Compatibility: you MUST assume compatibility is not required unless the user explicitly requests it for the current task. If compatibility is requested for public/external APIs/ABIs, you MUST avoid breaking users without an explicit migration plan. For internal code, you MAY change freely and use compiler/tests to enumerate fallout.
@@ -168,7 +168,8 @@ Quick judgment examples:
 - Precedence: documented project targets (AGENTS/README/justfile/Makefile/package scripts) first; raw tool commands only as fallback.
 - If fallback commands are used, you MUST state why in the report.
 - You MUST NOT report `pass` for checks that were not run; use `not_run` or `not_applicable`.
-- You MUST run the standard verification set by default for code edits: targeted tests, typecheck, and applicable formatting/lint checks.
+- You MUST run the standard verification set by default for code edits: targeted tests, typecheck, and applicable lint checks.
+- You MUST NOT run code formatters unless the user explicitly requests formatting for the current task, or formatting is required by a repository-defined verification entrypoint needed to validate the scoped change.
 
 ## Completion Reporting
 ### Report Shape
@@ -184,7 +185,7 @@ Quick judgment examples:
 - Each runnable check MUST include `cmd` and SHOULD include `evidence`.
 - Default required checks are `tests`, `typecheck`, and `tooling_style`.
 - Conditional checks are `doc_code_style` and `agents_compliance`; you MAY omit checks that are genuinely out of scope.
-- `tooling_style` is `pass` only when all applicable lint and formatter checks that were run are clean; if applicable lint was not run, `tooling_style` MUST be `warn` or `not_run`.
+- `tooling_style` is `pass` only when all applicable lint checks that were run are clean. If formatting was run, any formatter checks that were run MUST also be clean. If applicable lint was not run, `tooling_style` MUST be `warn` or `not_run`.
 - `refs` MUST point to governing rules, not changed files or artifacts.
 - For `doc_code_style`, `refs` MUST include `ai/docs/engineering-principles.md#Code Style`; if that ref is missing, `doc_code_style` MUST be `fail`.
 - For `agents_compliance`, `refs` MUST cite AGENTS rules/sections.
