@@ -12,13 +12,14 @@
 * prompt - to read code & ask questions until task is unambiguous
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 * use television cli as file picker
+* pi - compact/compress file reads 
+* call skills using $... as in codex
 
 * based on https://github.com/can1357/oh-my-pi
 * pi Hashline Edits
 * Completion notifications: Configurable bell/OSC99/OSC9 when agent finishes
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep
-* Multi-Credential Support
 * LSP?
 * better editor
 
@@ -45,6 +46,7 @@
 * AI-first company - markdown spec graph; crypto contracts
 * Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions.
 * refactor: Pilot change + rollout
+* avoid negative framing
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit

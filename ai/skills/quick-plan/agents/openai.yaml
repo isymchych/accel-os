@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quick Plan"
+  short_description: "Create short, execution-ready plans inline"
+  default_prompt: "Use $quick-plan to inspect the relevant code and produce a short, execution-ready inline plan without formal plan-file overhead."

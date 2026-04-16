@@ -1,6 +1,6 @@
 ---
 name: plan-mode
-description: Decision-complete planning protocol for CLI coding work that prepares an auditable plan and can write it to `plans/slug.md` with explicit user approval before implementation. Use when the user asks for a plan, roadmap, design-first workflow, options/trade-off analysis, or approval-gated execution prep, especially when requirements are ambiguous, risky, or cross multiple files/systems.
+description: Decision-complete planning protocol for CLI coding work that prepares an auditable plan and can write it to `plans/slug.md` with explicit user approval before implementation.
 ---
 
 # Plan Mode
@@ -15,6 +15,8 @@ Plan Mode is done only when all are true:
 - A final plan file exists at `plans/<slug>.md` with no pending decisions.
 - Requirements, constraints, and success criteria are explicit.
 - 2-3 options were considered and one was selected, or a documented trivial-request fast path was used and explicitly approved.
+- Relevant code, configs, tests, and docs have been inspected enough to make the execution approach unambiguous, or any inspection gap is explicitly bounded and justified.
+- Execution steps are operationally unambiguous and do not defer material decisions to implementation time.
 - Verification steps are actionable and aligned with repo conventions.
 - Major risks and rollback/backout strategy are documented.
 - The user explicitly approves transition to Execute Mode.
@@ -40,11 +42,23 @@ Plan Mode is done only when all are true:
 - Unknown is treated as mutating until classified.
 - In Plan Mode, repo mutability is the hard boundary.
 
+### Relevant implementation areas
+
+Inspect the concrete parts of the repo needed to make a step execution-ready. This usually includes, when applicable:
+- entry points and call sites for the affected behavior,
+- touched modules/files and their nearby collaborators,
+- interfaces, types, schemas, and API boundaries the change depends on,
+- existing tests, fixtures, and test helpers covering the behavior,
+- configs, build scripts, flags, and runtime wiring that affect the change,
+- adjacent integration points where the planned change could break assumptions.
+
+Inspect broadly enough to remove material ambiguity, but do not read unrelated code once additional inspection is unlikely to change the plan.
+
 ### Plan lifecycle states
 
 - Draft: planning in progress; unresolved decisions may exist.
 - Blocked: planning cannot proceed without user/external input; `Pending Decisions` must be present.
-- Final: decision-complete plan ready for approval to execute; `Pending Decisions` must be empty or omitted.
+- Final: decision-complete, execution-ready plan; `Pending Decisions` must be empty or omitted, relevant implementation areas must have been inspected sufficiently, and execution must not require further material decisions.
 
 ## Enforce Invariants
 
@@ -61,6 +75,10 @@ Plan Mode is done only when all are true:
 7. Classify commands before running or recommending them.
 8. Any plan-file write requires explicit confirmation; any other repo mutation also requires explicit confirmation.
 9. Verification commands may run by default only when allowed by command policy.
+10. Final plans must not defer material design, scope, interface, or verification decisions to Execute Mode.
+11. If execution encounters a material unresolved decision, stop, summarize the blocker, and ask the user before proceeding.
+12. While preparing the plan, inspect the relevant code, configs, tests, and docs until the execution approach is unambiguous or the remaining ambiguity is clearly bounded.
+13. Ask questions only for material ambiguities that cannot be resolved by repo/environment inspection.
 
 ## Allowed vs Disallowed Actions
 
@@ -93,9 +111,9 @@ If a command commonly considered safe is mutating in this environment (for examp
 ## Run the Explore-First Loop
 
 Repeat until decision-complete:
-1. Explore repo and environment (read-only).
+1. Explore repo and environment (read-only), including the concrete code paths, interfaces, configs, tests, and docs relevant to each major planned step.
 2. Summarize findings and implications.
-3. Ask at most 1-2 high-impact questions per turn, only when needed.
+3. Ask at most 1-2 high-impact questions per turn, only when inspection cannot resolve a material ambiguity.
 4. Propose options with trade-offs.
 5. Recommend one option and wait for user selection/approval.
 
@@ -108,6 +126,7 @@ If blocked:
 Clarifying question rules:
 - Questions are unlimited across the full session.
 - Ask at most 1-2 high-impact questions per turn unless user requests batching.
+- Read enough relevant code and configuration before asking so questions are specific, evidence-backed, and decision-relevant.
 - Questions should be bounded or multiple-choice where possible.
 - Never ask questions answerable via repo inspection.
 
@@ -128,6 +147,7 @@ Use a single-option fast path only when all are true:
 - scope is trivial, unambiguous, low risk,
 - only one reasonable structural approach exists,
 - no migration/compatibility decision is needed,
+- no material execution-time decision is expected,
 - no unbounded or external side effects are introduced.
 
 When using fast path:
@@ -157,6 +177,10 @@ When using fast path:
 
 - `## 6. Execution Plan` must use Markdown checkbox steps only (`- [ ]` / `- [x]`).
 - Each major execution step must be a single checkbox item.
+- Each execution step must be operationally unambiguous: state the intended outcome, impacted areas/files, key design details, and a concrete completion checkpoint.
+- Final execution steps must be executable without choosing among materially different approaches during implementation.
+- Minor local implementation details may be resolved during execution only if they do not change scope, architecture, interfaces, data shape, or verification strategy.
+- If a step reveals a material ambiguity, trade-off, or scope-affecting choice not already resolved in the plan, stop execution and ask the user instead of making the decision implicitly.
 - Initial plan state: all execution steps are unchecked.
 - During Execute Mode, update progress in the same canonical plan file:
   - current step: `- [ ] ... (in progress)`,
@@ -202,6 +226,8 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 ## 2. Repository Findings
 - Files/areas inspected:
   - <path> - why it matters
+- Inspection coverage by planned step:
+  - Step <id> - inspected paths/symbols and what they resolved
 - Existing patterns/conventions to follow:
 - Constraints discovered (build, runtime, architecture):
 - Evidence map (major decisions -> evidence):
@@ -238,6 +264,7 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 ## 5. Recommendation
 - Chosen option and rationale.
 - Explicit assumptions (if any).
+- Inspection summary: what relevant implementation areas were inspected, and any bounded gaps that remain.
 - Fast-path justification (required only when using fast path).
 - Open questions (must be empty if decision-complete).
 
@@ -247,10 +274,17 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 - [ ] Step 3 ...
 
 For each major step include:
+- intended outcome,
 - impacted areas/files (expected, not edited in Plan Mode),
 - key design details (interfaces, data flow, edge cases),
 - checkpoints,
 - evidence reference(s) (for example E1, E2) when applicable.
+
+Execution-step rules:
+- Steps must be specific enough that an executor can perform them without making further material design or scope decisions.
+- Do not leave "decide during implementation", "pick approach later", or equivalent placeholders in a final plan.
+- Allowed execution-time judgment is limited to local, non-material details that stay within the approved plan.
+- If a material decision remains, keep the plan in `Draft` or `Blocked` state and surface it in `Pending Decisions` instead of hiding it in Step 6.
 
 ## 7. Verification Plan
 - Acceptance criteria (checklist)
@@ -293,7 +327,7 @@ Plan Mode can end when:
 Lifecycle constraints:
 - Draft: unresolved decisions allowed.
 - Blocked: include `7.1 Pending Decisions`.
-- Final: omit `7.1`; set `5` open questions to `None provided.`.
+- Final: omit `7.1`; set `5` open questions to `None provided.`; ensure relevant code paths were inspected and Step 6 contains no execution-time material decisions.
 
 ## Enforce Pre-Exit Gate
 
@@ -302,6 +336,9 @@ Before requesting exit to Execute Mode, confirm and report:
 - selected option (or approved recommendation),
 - assumptions (if any),
 - `5` open questions = `None provided.`,
+- relevant code/config/test/doc areas were inspected sufficiently for each major step,
+- each execution step is operationally unambiguous,
+- no material execution-time decisions remain,
 - acceptance criteria are measurable,
 - verification plan agreed,
 - tests align with repo conventions,

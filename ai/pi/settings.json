@@ -1,9 +1,9 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.66.1",
+  "lastChangelogVersion": "0.67.3",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.4",
+  "defaultModel": "gpt-5.4-mini",
   "defaultThinkingLevel": "medium",
   "skills": [
     "../skills"
@@ -16,5 +16,5 @@
     "openai-codex/gpt-5.4-mini",
     "openai-codex/gpt-5.4"
   ],
-  "treeFilterMode": "user-only"
+  "treeFilterMode": "no-tools"
 }

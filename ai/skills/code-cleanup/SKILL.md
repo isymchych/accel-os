@@ -1,6 +1,6 @@
 ---
 name: code-cleanup
-description: Perform focused, behavior-safe cleanup refactors in Rust, TypeScript, and JavaScript codebases. Use when asked to clean up code, reduce local complexity, align code with project/personal coding guidelines, remove unnecessary class/method indirection, replace hard-to-read type-level indirection, introduce branded types where appropriate, or inline private helpers that are called once.
+description: Perform focused, behavior-safe cleanup refactors in Rust, TypeScript, and JavaScript codebases
 ---
 
 # Code Cleanup
@@ -27,8 +27,9 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
    - Skip it if no such follow-up is clearly justified.
 7. Use the required cleanup checks during critique to select the highest-value in-scope cleanup, and use them during cleanup only as needed to complete the chosen refactor cleanly:
    - Fix coding-guideline violations (personal and project).
+   - Remove useless defensive coding when invariants, types, control flow, or surrounding architecture already make the guarded case impossible or non-actionable.
    - Convert methods to module-level functions when they do not use `this`.
-   - Replace hard-to-read type-level indirection (indexed-access types, utility extraction) with explicit readable types.
+   - Replace hard-to-read type-level indirection (index types, utility extraction) with explicit readable types.
    - Introduce branded types where they improve correctness and readability.
    - Prefer pure collection helpers that return values over mutating caller-provided accumulators; allow mutable sinks only when required by API constraints, streaming behavior, or measured performance/allocation needs.
    - Inline private functions/methods called once when inlining reduces local indirection.
@@ -44,6 +45,7 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
 - Resolve conflicting instructions in this order: explicit user constraints, `AGENTS.md` execution rules, repository guidelines, then this skill.
 - Prefer the simplest design that reduces cognitive load in the touched area.
 - Reject speculative abstractions, extra configuration, and preemptive generalization.
+- Prefer explicit invariants and direct control flow over redundant guards, fallback branches, or defensive checks that do not protect a real supported case.
 - Preserve API behavior unless the user explicitly approves a break/migration.
 - If cleanup expands scope materially (many files, API shape changes, migration risk), pause and ask for reconfirmation.
 - Default workflow is `critique -> cleanup -> closure check -> optional tiny follow-up -> verification`, not open-ended iterative passes.

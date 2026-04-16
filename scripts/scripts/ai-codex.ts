@@ -1,47 +1,37 @@
 import { decodeBase64 } from "jsr:@std/encoding/base64";
 import { join } from "jsr:@std/path";
 
+// ai-codex: thin Codex CLI wrapper for common modifiers.
+// Specs:
+// - `ai-codex` launches `codex`.
+// - `ai-codex +<mcp>` enables MCP server `<mcp>` via `--config mcp_servers.<mcp>.enabled=true`.
+// - `ai-codex high` sets `model_reasoning_effort="high"`.
+// - `ai-codex medium` sets `model_reasoning_effort="medium"`.
+// - `ai-codex low` sets `model_reasoning_effort="low"`.
+// - `ai-codex account` interactively switches Codex auth.json.
+// - `ai-codex yolo` sets `--sandbox danger-full-access`.
+// - Modifiers compose and parse left-to-right until `--`.
+// - `ai-codex help` prints this usage; `ai-codex -- --help` forwards to codex.
+
 const usage =
-  `ai [chat] [account] [-- <pi args...>]
+  `ai-codex [high|medium|low] [yolo] [account] [+<mcp> ...] [-- <codex args...>]
 
 Examples:
-  ai
-  ai chat
-  ai account
-  ai -- --help
+  ai-codex
+  ai-codex account
+  ai-codex high +serena
+  ai-codex low
+  ai-codex yolo +playwright -- --help
 
 Notes:
-  - By default, ai appends both ai/SYSTEM.md and ai/docs/engineering-principles.md.
-  - \`chat\` skips appending ai/docs/engineering-principles.md.
-  - \`account\` swaps ai/pi/auth.json between saved OpenAI Codex logins.
-  - Saved accounts are stored as <accountId>.auth.json next to auth.json.
-  - Use \`ai -- --help\` to show Pi CLI docs.`;
+  - Modifiers parse until \`--\`.
+  - Use \`ai-codex -- --help\` to show Codex CLI docs.`;
 
 const accelOs = Deno.env.get("ACCEL_OS");
 if (!accelOs) {
-  console.error("ai: ACCEL_OS is not set");
+  console.error("ai-codex: ACCEL_OS is not set");
   Deno.exit(1);
 }
-
-const appendSystemPromptPath = join(accelOs, "ai", "SYSTEM.md");
-const engineeringPrinciplesPath = join(
-  accelOs,
-  "ai",
-  "docs",
-  "engineering-principles.md",
-);
-
-type OAuthCredential = {
-  type?: string;
-  access?: string;
-  refresh?: string;
-  expires?: number;
-  accountId?: string;
-};
-
-type AuthFile = {
-  "openai-codex"?: OAuthCredential;
-};
 
 type AccountInfo = {
   id: string;
@@ -51,17 +41,39 @@ type AccountInfo = {
   isCurrent: boolean;
 };
 
-const decodeBase64UrlString = (input: string): string | null => {
-  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
-  const padLength = normalized.length % 4 === 0
-    ? 0
-    : 4 - (normalized.length % 4);
-  const padded = normalized + "=".repeat(padLength);
-  try {
-    return new TextDecoder().decode(decodeBase64(padded));
-  } catch {
-    return null;
+const parseAccountInfo = (
+  raw: string,
+  path: string,
+  isCurrent: boolean,
+): AccountInfo => {
+  const parsed = JSON.parse(raw) as {
+    tokens?: {
+      account_id?: string;
+      id_token?: string;
+    };
+  };
+  const tokens = parsed.tokens ?? {};
+  const payload = tokens.id_token ? parseJwtPayload(tokens.id_token) : null;
+  const authClaims =
+    payload && typeof payload["https://api.openai.com/auth"] === "object" &&
+      payload["https://api.openai.com/auth"] !== null
+      ? payload["https://api.openai.com/auth"] as Record<string, unknown>
+      : null;
+  const accountIdFromClaims =
+    typeof authClaims?.["chatgpt_account_id"] === "string"
+      ? authClaims["chatgpt_account_id"]
+      : null;
+  const accountId = typeof tokens.account_id === "string"
+    ? tokens.account_id
+    : accountIdFromClaims;
+  if (!accountId) {
+    throw new Error(`missing tokens.account_id in ${path}`);
   }
+  const emailValue = payload?.["email"];
+  const email = typeof emailValue === "string" ? emailValue : "unknown";
+  const planValue = authClaims?.["chatgpt_plan_type"];
+  const plan = typeof planValue === "string" ? planValue : "unknown";
+  return { id: accountId, email, plan, path, isCurrent };
 };
 
 const parseJwtPayload = (token: string): Record<string, unknown> | null => {
@@ -80,6 +92,19 @@ const parseJwtPayload = (token: string): Record<string, unknown> | null => {
   }
 };
 
+const decodeBase64UrlString = (input: string): string | null => {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = normalized.length % 4 === 0
+    ? 0
+    : 4 - (normalized.length % 4);
+  const padded = normalized + "=".repeat(padLength);
+  try {
+    return new TextDecoder().decode(decodeBase64(padded));
+  } catch {
+    return null;
+  }
+};
+
 const fileExists = async (path: string): Promise<boolean> => {
   try {
     await Deno.stat(path);
@@ -93,49 +118,11 @@ const fileExists = async (path: string): Promise<boolean> => {
 };
 
 const resolveAuthDir = async (): Promise<string> => {
-  const direct = join(accelOs, "ai", "pi");
+  const direct = join(accelOs, "ai", "codex");
   if (await fileExists(direct)) {
     return direct;
   }
-  throw new Error(`missing ai/pi under ${accelOs}`);
-};
-
-const parseAccountInfo = (
-  raw: string,
-  path: string,
-  isCurrent: boolean,
-): AccountInfo => {
-  const parsed = JSON.parse(raw) as AuthFile;
-  const credential = parsed["openai-codex"];
-  if (!credential || credential.type !== "oauth") {
-    throw new Error(`missing openai-codex OAuth credential in ${path}`);
-  }
-  const payload = credential.access ? parseJwtPayload(credential.access) : null;
-  const authClaims =
-    payload && typeof payload["https://api.openai.com/auth"] === "object" &&
-      payload["https://api.openai.com/auth"] !== null
-      ? payload["https://api.openai.com/auth"] as Record<string, unknown>
-      : null;
-  const profileClaims =
-    payload && typeof payload["https://api.openai.com/profile"] === "object" &&
-      payload["https://api.openai.com/profile"] !== null
-      ? payload["https://api.openai.com/profile"] as Record<string, unknown>
-      : null;
-  const accountIdFromClaims =
-    typeof authClaims?.["chatgpt_account_id"] === "string"
-      ? authClaims["chatgpt_account_id"]
-      : null;
-  const accountId = typeof credential.accountId === "string"
-    ? credential.accountId
-    : accountIdFromClaims;
-  if (!accountId) {
-    throw new Error(`missing openai-codex.accountId in ${path}`);
-  }
-  const emailValue = profileClaims?.["email"] ?? payload?.["email"];
-  const email = typeof emailValue === "string" ? emailValue : "unknown";
-  const planValue = authClaims?.["chatgpt_plan_type"];
-  const plan = typeof planValue === "string" ? planValue : "unknown";
-  return { id: accountId, email, plan, path, isCurrent };
+  throw new Error(`missing ai/codex under ${accelOs}`);
 };
 
 const loadAccount = async (
@@ -262,8 +249,9 @@ const runAccountSwitcher = async (): Promise<void> => {
     return;
   }
   if (!current) {
-    if (selected.kind !== "switch") {
-      throw new Error("no current account to rename");
+    if (selected.kind === "new") {
+      console.log("No current account to rename.");
+      return;
     }
     await Deno.rename(selected.target.path, currentPath);
     console.log(`Switched to ${selected.target.id}.`);
@@ -283,11 +271,14 @@ const runAccountSwitcher = async (): Promise<void> => {
   );
 };
 
+const configOverrides: string[] = [];
+const mcps: string[] = [];
 const passthrough: string[] = [];
+let sandboxMode: string | null = null;
 let parseModifiers = true;
 let showHelp = false;
 let useAccountSwitcher = false;
-let chatMode = false;
+let hasReasoningEffort = false;
 
 for (const arg of Deno.args) {
   if (!parseModifiers) {
@@ -303,12 +294,31 @@ for (const arg of Deno.args) {
     showHelp = true;
     continue;
   }
+  if (arg === "high") {
+    configOverrides.push('model_reasoning_effort="high"');
+    hasReasoningEffort = true;
+    continue;
+  }
+  if (arg === "medium") {
+    configOverrides.push('model_reasoning_effort="medium"');
+    hasReasoningEffort = true;
+    continue;
+  }
+  if (arg === "low") {
+    configOverrides.push('model_reasoning_effort="low"');
+    hasReasoningEffort = true;
+    continue;
+  }
   if (arg === "account") {
     useAccountSwitcher = true;
     continue;
   }
-  if (arg === "chat") {
-    chatMode = true;
+  if (arg === "yolo") {
+    sandboxMode = "danger-full-access";
+    continue;
+  }
+  if (arg.startsWith("+") && arg.length > 1) {
+    mcps.push(arg.slice(1));
     continue;
   }
   passthrough.push(arg);
@@ -324,18 +334,31 @@ if (useAccountSwitcher) {
     await runAccountSwitcher();
     Deno.exit(0);
   } catch (err) {
-    console.error(`ai account: ${(err as Error).message}`);
+    console.error(`ai-codex account: ${(err as Error).message}`);
     Deno.exit(1);
   }
 }
 
-const cwd = Deno.env.get("AI_CWD") ?? Deno.cwd();
-const appendArgs = ["--append-system-prompt", appendSystemPromptPath];
-if (!chatMode) {
-  appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
+for (const mcp of mcps) {
+  configOverrides.push(`mcp_servers.${mcp}.enabled=true`);
 }
-const command = new Deno.Command("pi", {
-  args: [...appendArgs, ...passthrough],
+configOverrides.push('developer_instructions="read engineering principles"');
+if (!hasReasoningEffort) {
+  configOverrides.push('model_reasoning_effort="medium"');
+}
+
+const args: string[] = [];
+for (const override of configOverrides) {
+  args.push("--config", override);
+}
+if (sandboxMode) {
+  args.push("--sandbox", sandboxMode);
+}
+args.push(...passthrough);
+
+const cwd = Deno.env.get("AI_CWD") ?? Deno.cwd();
+const command = new Deno.Command("codex", {
+  args,
   cwd,
   env: { ACCEL_OS: accelOs },
   stdin: "inherit",
