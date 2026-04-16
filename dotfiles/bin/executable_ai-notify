@@ -15,7 +15,7 @@ fi
 
 title="$(jq -r '."last-assistant-message" // "Turn Complete!"' <<<"$payload")"
 message="$(jq -r '."input-messages" // [] | if type=="array" then join(" ") else "" end' <<<"$payload")"
-sound_path="$ACCEL_OS/ai/codex/mixkit-correct-answer-tone-2870.wav"
+sound_path="$ACCEL_OS/ai/mixkit-correct-answer-tone-2870.wav"
 
 notify-send -t 6000 -i "$ACCEL_OS/ai/codex/chatgpt-logo.svg" "$title" "$message" &
 if [[ -f $sound_path ]]; then

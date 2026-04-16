@@ -3,10 +3,13 @@
   "lastChangelogVersion": "0.67.3",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.4-mini",
+  "defaultModel": "gpt-5.4",
   "defaultThinkingLevel": "medium",
   "skills": [
     "../skills"
+  ],
+  "extensions": [
+    "./extensions"
   ],
   "prompts": [
     "../prompts"

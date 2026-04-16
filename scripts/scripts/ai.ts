@@ -334,6 +334,12 @@ const appendArgs = ["--append-system-prompt", appendSystemPromptPath];
 if (!chatMode) {
   appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
 }
+const hasExplicitToolSelection = passthrough.some((arg) =>
+  arg === "--tools" || arg.startsWith("--tools=") || arg === "--no-tools"
+);
+if (!hasExplicitToolSelection) {
+  appendArgs.push("--tools", "read,bash,edit,write,grep,find,ls");
+}
 const command = new Deno.Command("pi", {
   args: [...appendArgs, ...passthrough],
   cwd,

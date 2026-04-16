@@ -3,13 +3,9 @@
 * `openai-codex`
 
 # TODO
-* pi openai /status
 * pi use openai web search
 * pi use openai verbosity levels
 * pi use project-specific codex skills
-* pi - notify when done, preferrably when took more than 5s and window not focused
-* pi plugin - display timers / time for responses etc.
-* prompt - to read code & ask questions until task is unambiguous
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 * use television cli as file picker
 * pi - compact/compress file reads 
