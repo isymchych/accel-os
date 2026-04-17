@@ -1,0 +1,17 @@
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+alias c := check
+
+fmt:
+  npm run fmt
+
+fmt-check:
+  npm run fmt:check
+
+typecheck:
+  npm run typecheck
+
+lint:
+  npm run lint
+
+check: typecheck fmt-check lint

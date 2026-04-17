@@ -2002,6 +2002,16 @@ targets."
   (global-set-key [remap previous-error] 'flycheck-previous-error)
   (global-set-key [remap next-error]     'flycheck-next-error)
 
+  (defun mb/flycheck-javascript-oxlint-working-directory (_checker)
+    "Run oxlint from the nearest directory that owns `.oxlintrc.json`."
+    (or (and buffer-file-name
+             (locate-dominating-file buffer-file-name ".oxlintrc.json"))
+        default-directory))
+
+  (put 'javascript-oxlint
+       'flycheck-working-directory
+       #'mb/flycheck-javascript-oxlint-working-directory)
+
   (flycheck-add-mode 'javascript-eslint 'html-ts-mode)
   (add-hook 'html-ts-mode-hook
             (lambda ()

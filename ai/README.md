@@ -10,6 +10,10 @@
 * use television cli as file picker
 * pi - compact/compress file reads 
 * call skills using $... as in codex
+* show account in status
+* use pi as npm dependency not from global installation
+* move tests next to files they test
+* show timer next to Working...
 
 * based on https://github.com/can1357/oh-my-pi
 * pi Hashline Edits
@@ -18,6 +22,7 @@
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep
 * LSP?
 * better editor
+* ast-grep?
 
 
 

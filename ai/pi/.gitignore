@@ -1,3 +1,5 @@
 auth.json
 *.auth.json
 sessions/
+
+node_modules/
