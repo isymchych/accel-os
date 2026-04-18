@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-import { Buffer } from "node:buffer";
 import { constants as fsConstants } from "node:fs";
 import { access, readFile, readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
+
+import { isRecord } from "./lib/guards.ts";
+import {
+  parseOpenAICodexCredential,
+  readOpenAICodexAccountProfile,
+} from "./lib/openai-codex-auth.ts";
 
 const usage = `ai [chat] [account] [-- <pi args...>]
 
@@ -29,14 +34,6 @@ if (accelOs === undefined || accelOs.length === 0) {
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
 const engineeringPrinciplesPath = path.join(accelOs, "ai", "docs", "engineering-principles.md");
-
-type OAuthCredential = {
-  type: "oauth";
-  access?: string;
-  refresh?: string;
-  expires?: number;
-  accountId?: string;
-};
 
 type AccountInfo = {
   id: string;
@@ -63,70 +60,8 @@ const writeStderr = (message: string): void => {
   process.stderr.write(`${message}\n`);
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === "object" && value !== null;
-};
-
 const isErrnoException = (value: unknown): value is NodeJS.ErrnoException => {
   return value instanceof Error && "code" in value;
-};
-
-const isOAuthCredential = (value: unknown): value is OAuthCredential => {
-  return isRecord(value) && value["type"] === "oauth";
-};
-
-const getNestedRecord = (
-  value: Record<string, unknown> | null,
-  key: string,
-): Record<string, unknown> | null => {
-  if (value === null) {
-    return null;
-  }
-  const nested = value[key];
-  return isRecord(nested) ? nested : null;
-};
-
-const getStringRecordValue = (
-  value: Record<string, unknown> | null,
-  key: string,
-): string | null => {
-  if (value === null) {
-    return null;
-  }
-  const nested = value[key];
-  return typeof nested === "string" && nested.length > 0 ? nested : null;
-};
-
-const decodeBase64UrlString = (input: string): string | null => {
-  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
-  const padLength = normalized.length % 4 === 0 ? 0 : 4 - (normalized.length % 4);
-  const padded = normalized + "=".repeat(padLength);
-  try {
-    return Buffer.from(padded, "base64").toString("utf8");
-  } catch {
-    return null;
-  }
-};
-
-const parseJwtPayload = (token: string): Record<string, unknown> | null => {
-  const parts = token.split(".");
-  if (parts.length < 2) {
-    return null;
-  }
-  const payloadPart = parts[1];
-  if (payloadPart === undefined) {
-    return null;
-  }
-  const payload = decodeBase64UrlString(payloadPart);
-  if (payload === null) {
-    return null;
-  }
-  try {
-    const parsed: unknown = JSON.parse(payload);
-    return isRecord(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
 };
 
 const fileExists = async (filePath: string): Promise<boolean> => {
@@ -155,28 +90,20 @@ const parseAccountInfo = (raw: string, filePath: string, isCurrent: boolean): Ac
     throw new Error(`invalid auth file structure in ${filePath}`);
   }
 
-  const credential = parsed["openai-codex"];
-  if (!isOAuthCredential(credential)) {
+  const credential = parseOpenAICodexCredential(parsed["openai-codex"]);
+  if (credential === null) {
     throw new Error(`missing openai-codex OAuth credential in ${filePath}`);
   }
 
-  const payload = credential.access === undefined ? null : parseJwtPayload(credential.access);
-  const authClaims = getNestedRecord(payload, "https://api.openai.com/auth");
-  const profileClaims = getNestedRecord(payload, "https://api.openai.com/profile");
-  const accountIdFromClaims = getStringRecordValue(authClaims, "chatgpt_account_id");
-  const accountId =
-    credential.accountId !== undefined && credential.accountId.length > 0
-      ? credential.accountId
-      : accountIdFromClaims;
-  if (accountId === null) {
+  const profile =
+    credential.access === undefined ? {} : readOpenAICodexAccountProfile(credential.access);
+  const accountId = credential.accountId ?? profile.accountId;
+  if (accountId === undefined || accountId.length === 0) {
     throw new Error(`missing openai-codex.accountId in ${filePath}`);
   }
 
-  const email =
-    getStringRecordValue(profileClaims, "email") ??
-    getStringRecordValue(payload, "email") ??
-    "unknown";
-  const plan = getStringRecordValue(authClaims, "chatgpt_plan_type") ?? "unknown";
+  const email = profile.email ?? "unknown";
+  const plan = profile.plan ?? "unknown";
 
   return { id: accountId, email, plan, path: filePath, isCurrent };
 };

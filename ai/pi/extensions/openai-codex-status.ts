@@ -8,6 +8,17 @@
 import { AuthStorage, type ExtensionAPI, type Theme } from "@mariozechner/pi-coding-agent";
 import { matchesKey, visibleWidth } from "@mariozechner/pi-tui";
 
+import { isRecord } from "../lib/guards.ts";
+import {
+  parseOpenAICodexCredential,
+  readOpenAICodexAccountProfile,
+} from "../lib/openai-codex-auth.ts";
+import {
+  type LimitWindow,
+  type StatusSnapshot,
+  renderStatusLines,
+} from "../lib/openai-codex-status.ts";
+
 interface RawRateLimitWindowSnapshot {
   used_percent?: number | string | null;
   limit_window_seconds?: number | null;
@@ -27,50 +38,16 @@ interface RawRateLimitStatusPayload {
   rate_limit?: RawRateLimitStatusDetails | null;
 }
 
-interface LimitWindow {
-  usedPercent: number;
-  windowSeconds?: number;
-  resetsAt?: number;
-}
-
-interface StatusSnapshot {
-  planType?: string;
-  allowed?: boolean;
-  limitReached?: boolean;
-  primary?: LimitWindow;
-  secondary?: LimitWindow;
-  fetchedAt: number;
-}
-
-interface OAuthCredentialShape {
-  type: "oauth";
-  access?: string;
-  expires?: number;
-  accountId?: string;
-}
-
 interface CodexCredential {
   accessToken: string;
   accountId: string;
+  email?: string;
+  plan?: string;
 }
 
 const PROVIDER_ID = "openai-codex";
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const MS_PER_SECOND = 1000;
-const SECONDS_PER_MINUTE = 60;
-const MINUTES_PER_HOUR = 60;
-const HOURS_PER_DAY = 24;
-const HOURS_PER_WEEK_THRESHOLD = 24;
-const DAYS_PER_WEEK_THRESHOLD = 7.5;
-const DAYS_PER_MONTH_THRESHOLD = 31;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isOAuthCredentialShape(value: unknown): value is OAuthCredentialShape {
-  return isRecord(value) && value["type"] === "oauth";
-}
 
 function clampPercent(value: unknown): number {
   const n = typeof value === "string" ? Number(value) : typeof value === "number" ? value : 0;
@@ -78,75 +55,6 @@ function clampPercent(value: unknown): number {
     return 0;
   }
   return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split(".");
-  if (parts.length < 2) {
-    return null;
-  }
-
-  try {
-    const encodedPayload = parts[1];
-    if (encodedPayload === undefined) {
-      return null;
-    }
-
-    const payload = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
-    const padLength = (4 - (payload.length % 4)) % 4;
-    const base64 = payload + "=".repeat(padLength);
-    const json = Buffer.from(base64, "base64").toString("utf8");
-    const parsed: unknown = JSON.parse(json);
-    return isRecord(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function getAccountIdFromToken(token: string): string | undefined {
-  const payload = parseJwtPayload(token);
-  if (!payload) {
-    return undefined;
-  }
-
-  const direct = payload["https://api.openai.com/auth.chatgpt_account_id"];
-  if (typeof direct === "string" && direct.length > 0) {
-    return direct;
-  }
-
-  const auth = payload["https://api.openai.com/auth"];
-  if (!isRecord(auth)) {
-    return undefined;
-  }
-
-  const nested = auth["chatgpt_account_id"];
-  return typeof nested === "string" && nested.length > 0 ? nested : undefined;
-}
-
-async function getCodexCredential(authStorage: AuthStorage): Promise<CodexCredential | null> {
-  authStorage.reload();
-  let cred = authStorage.get(PROVIDER_ID);
-  if (!isOAuthCredentialShape(cred)) {
-    return null;
-  }
-
-  const accessToken = await authStorage.getApiKey(PROVIDER_ID);
-  if (accessToken === undefined || accessToken.length === 0) {
-    return null;
-  }
-
-  authStorage.reload();
-  cred = authStorage.get(PROVIDER_ID);
-  if (!isOAuthCredentialShape(cred)) {
-    return null;
-  }
-
-  const accountId = cred.accountId ?? getAccountIdFromToken(accessToken);
-  if (accountId === undefined || accountId.length === 0) {
-    throw new Error("OpenAI Codex credential is missing ChatGPT account id.");
-  }
-
-  return { accessToken, accountId };
 }
 
 function normalizeWindow(
@@ -205,6 +113,43 @@ function normalizePayload(payload: RawRateLimitStatusPayload): StatusSnapshot {
   return snapshot;
 }
 
+async function getCodexCredential(authStorage: AuthStorage): Promise<CodexCredential | null> {
+  authStorage.reload();
+  const currentCredential = parseOpenAICodexCredential(authStorage.get(PROVIDER_ID));
+  if (currentCredential === null) {
+    return null;
+  }
+
+  const accessToken = await authStorage.getApiKey(PROVIDER_ID);
+  if (accessToken === undefined || accessToken.length === 0) {
+    return null;
+  }
+
+  authStorage.reload();
+  const refreshedCredential = parseOpenAICodexCredential(authStorage.get(PROVIDER_ID));
+  if (refreshedCredential === null) {
+    return null;
+  }
+
+  const profile = readOpenAICodexAccountProfile(accessToken);
+  const accountId = refreshedCredential.accountId ?? profile.accountId;
+  if (accountId === undefined || accountId.length === 0) {
+    throw new Error("OpenAI Codex credential is missing ChatGPT account id.");
+  }
+
+  const credential: CodexCredential = {
+    accessToken,
+    accountId,
+  };
+  if (profile.email !== undefined) {
+    credential.email = profile.email;
+  }
+  if (profile.plan !== undefined) {
+    credential.plan = profile.plan;
+  }
+  return credential;
+}
+
 async function fetchUsageSnapshot(authStorage: AuthStorage): Promise<StatusSnapshot> {
   const credential = await getCodexCredential(authStorage);
   if (!credential) {
@@ -233,96 +178,19 @@ async function fetchUsageSnapshot(authStorage: AuthStorage): Promise<StatusSnaps
     throw new Error("OpenAI usage response payload was not an object.");
   }
 
-  return normalizePayload(payload);
-}
-
-function describeWindow(seconds?: number): string {
-  if (seconds === undefined || seconds <= 0) {
-    return "limit";
+  const snapshot = normalizePayload(payload);
+  if (credential.email !== undefined && credential.email.length > 0) {
+    snapshot.accountEmail = credential.email;
   }
-  const hours = seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR);
-  const days = hours / HOURS_PER_DAY;
-  if (hours <= HOURS_PER_WEEK_THRESHOLD) {
-    return `${Math.max(1, Math.round(hours))}h limit`;
-  }
-  if (days <= DAYS_PER_WEEK_THRESHOLD) {
-    return "weekly limit";
-  }
-  if (days <= DAYS_PER_MONTH_THRESHOLD) {
-    return "monthly limit";
-  }
-  return "usage limit";
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.max(0, Math.round(ms / MS_PER_SECOND));
-  if (totalSeconds < SECONDS_PER_MINUTE) {
-    return `${totalSeconds}s`;
+  if (credential.plan !== undefined && credential.plan.length > 0) {
+    snapshot.accountPlan = credential.plan;
   }
 
-  const hours = Math.floor(totalSeconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR));
-  const minutes = Math.floor(
-    (totalSeconds % (SECONDS_PER_MINUTE * MINUTES_PER_HOUR)) / SECONDS_PER_MINUTE,
-  );
-  const days = Math.floor(hours / HOURS_PER_DAY);
-
-  if (days > 0) {
-    const remHours = hours % HOURS_PER_DAY;
-    return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
-  }
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-  }
-  return `${minutes}m`;
-}
-
-function formatReset(timestamp?: number): string {
-  if (timestamp === undefined) {
-    return "reset unknown";
-  }
-  const diff = timestamp - Date.now();
-  if (diff <= 0) {
-    return "resets now";
-  }
-  return `resets in ${formatDuration(diff)}`;
-}
-
-function formatWindow(window: LimitWindow | undefined): string {
-  if (!window) {
-    return "unavailable";
-  }
-  const left = Math.max(0, 100 - window.usedPercent);
-  return `${left}% left (${formatReset(window.resetsAt)})`;
-}
-
-function renderLines(snapshot: StatusSnapshot): string[] {
-  const header =
-    snapshot.planType === undefined || snapshot.planType.length === 0
-      ? "OpenAI Codex"
-      : `OpenAI Codex (${snapshot.planType})`;
-  const statusBits: string[] = [];
-  if (typeof snapshot.allowed === "boolean") {
-    statusBits.push(snapshot.allowed ? "allowed" : "blocked");
-  }
-  if (snapshot.limitReached === true) {
-    statusBits.push("limit reached");
-  }
-
-  const lines = [
-    header,
-    `${describeWindow(snapshot.primary?.windowSeconds)}: ${formatWindow(snapshot.primary)}`,
-    `${describeWindow(snapshot.secondary?.windowSeconds)}: ${formatWindow(snapshot.secondary)}`,
-  ];
-
-  if (statusBits.length > 0) {
-    lines.splice(1, 0, `Status: ${statusBits.join(" · ")}`);
-  }
-
-  return lines;
+  return snapshot;
 }
 
 class StatusOverlay {
-  readonly width = 76;
+  readonly width = 84;
   focused = true;
 
   constructor(
@@ -371,7 +239,7 @@ export default function openAICodexStatusExtension(pi: ExtensionAPI): void {
     handler: async (_args, ctx) => {
       try {
         const snapshot = await fetchUsageSnapshot(authStorage);
-        const lines = renderLines(snapshot);
+        const lines = renderStatusLines(snapshot);
         await ctx.ui.custom(
           (_tui, theme, _keybindings, done) =>
             new StatusOverlay(theme, lines, () => {

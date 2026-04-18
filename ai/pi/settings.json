@@ -1,5 +1,5 @@
 {
-  "theme": "light",
+  "theme": "dark",
   "lastChangelogVersion": "0.67.68",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",

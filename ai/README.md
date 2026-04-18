@@ -9,20 +9,16 @@
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 * use television cli as file picker
 * pi - compact/compress file reads 
-* call skills using $... as in codex
+* call skills using $... as in codex - show skill picker TUI on $
 * show account in status
-* use pi as npm dependency not from global installation
-* move tests next to files they test
 * show timer next to Working...
 
 * based on https://github.com/can1357/oh-my-pi
-* pi Hashline Edits
-* Completion notifications: Configurable bell/OSC99/OSC9 when agent finishes
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep
 * LSP?
 * better editor
-* ast-grep?
+* thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
 
 
 
