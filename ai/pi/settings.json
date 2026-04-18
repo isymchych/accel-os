@@ -1,9 +1,9 @@
 {
-  "theme": "dark",
-  "lastChangelogVersion": "0.67.6",
+  "theme": "light",
+  "lastChangelogVersion": "0.67.68",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.4-mini",
+  "defaultModel": "gpt-5.4",
   "defaultThinkingLevel": "medium",
   "skills": [
     "../skills"
