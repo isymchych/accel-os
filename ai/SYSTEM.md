@@ -161,7 +161,6 @@
 
 ## Tooling
 - GitHub operations: use `gh`.
-- When a project provides a relevant `Justfile` target, prefer invoking that `just` recipe over ad hoc underlying commands, unless the recipe is clearly unsuitable for the requested task. Fall back to the project's documented native commands when no suitable `just` target exists.
 - Shell search/data tools: `fd`, `rg`, `ast-grep`, `jq`, `yq`.
 - Prefer `rg`/`rg --files` for search.
 - Avoid Python for large file dumps when shell tools are sufficient.
