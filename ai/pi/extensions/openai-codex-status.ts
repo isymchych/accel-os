@@ -190,22 +190,22 @@ async function fetchUsageSnapshot(authStorage: AuthStorage): Promise<StatusSnaps
 }
 
 class StatusOverlay {
-  readonly width = 84;
-  focused = true;
+  public readonly width = 84;
+  public readonly focused = true;
 
-  constructor(
+  public constructor(
     private readonly theme: Theme,
     private readonly lines: readonly string[],
     private readonly done: () => void,
   ) {}
 
-  handleInput(data: string): void {
+  public handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "return") || data.toLowerCase() === "q") {
       this.done();
     }
   }
 
-  render(width: number): string[] {
+  public render(width: number): string[] {
     const outerWidth = Math.max(48, Math.min(this.width, width));
     const innerWidth = outerWidth - 2;
     const pad = (text: string): string =>
@@ -222,11 +222,11 @@ class StatusOverlay {
     ];
   }
 
-  invalidate(): void {
+  public invalidate(): void {
     void this.focused;
   }
 
-  dispose(): void {
+  public dispose(): void {
     void this.focused;
   }
 }

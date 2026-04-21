@@ -49,9 +49,7 @@ function getStringRecordValue(value: Record<string, unknown> | null, key: string
   return typeof nested === "string" && nested.length > 0 ? nested : null;
 }
 
-export function parseOpenAICodexCredential(
-  value: unknown,
-): OpenAICodexSavedCredential | null {
+export function parseOpenAICodexCredential(value: unknown): OpenAICodexSavedCredential | null {
   if (!isRecord(value) || value["type"] !== "oauth") {
     return null;
   }
