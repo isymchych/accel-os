@@ -7,9 +7,7 @@
 * pi use openai verbosity levels
 * pi use project-specific codex skills
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
-* use television cli as file picker
 * pi - compact/compress file reads 
-* call skills using $... as in codex - show skill picker TUI on $
 * show account in status
 * show timer next to Working...
 
@@ -17,7 +15,6 @@
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep
 * LSP?
-* better editor
 * thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
 
 
