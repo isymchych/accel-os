@@ -1,8 +1,5 @@
 # Engineering Principles
 
-- You MUST load this file for coding work: planning, code edits/implementation, code review, design review, debugging/root-cause analysis, and architecture/refactor decisions.
-- You SHOULD avoid loading this file for non-coding tasks.
-
 ## Quick Checklist
 This checklist is a compressed summary for day-to-day use. The detailed sections below remain canonical.
 

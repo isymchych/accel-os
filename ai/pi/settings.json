@@ -1,6 +1,6 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.68.0",
+  "lastChangelogVersion": "0.69.0",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
@@ -14,6 +14,11 @@
   "prompts": [
     "../prompts"
   ],
+  "retry": {
+    "enabled": true,
+    "maxRetries": 5,
+    "baseDelayMs": 3000
+  },
   "shellPath": "/usr/bin/bash",
   "enabledModels": [
     "openai-codex/gpt-5.4-mini",
