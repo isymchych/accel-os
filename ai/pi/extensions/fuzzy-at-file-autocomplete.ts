@@ -87,7 +87,7 @@ async function loadFdCandidates(
       .map((line) => line.replace(/\r$/u, ""))
       .filter((line) => line.length > 0)
       .map((path) => ({
-        path,
+        path: type === "d" && path.endsWith("/") ? path.slice(0, -1) : path,
         isDirectory: type === "d",
       }));
   };

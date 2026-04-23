@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, resolve } from "node:path";
 
 import type { AutocompleteItem } from "@mariozechner/pi-tui";
@@ -73,6 +74,16 @@ function needsQuotes(path: string, quoted: boolean): boolean {
   return quoted || path.includes(" ");
 }
 
+function expandHomePath(path: string): string {
+  if (path === "~") {
+    return homedir();
+  }
+  if (path.startsWith("~/")) {
+    return resolve(homedir(), path.slice(2));
+  }
+  return path;
+}
+
 export function extractAtFileToken(textBeforeCursor: string): string | null {
   const quoteStart = findUnclosedQuoteStart(textBeforeCursor);
   if (quoteStart !== null && quoteStart > 0 && textBeforeCursor[quoteStart - 1] === "@") {
@@ -115,23 +126,26 @@ export function planFdQuery(basePath: string, rawQuery: string): FdQueryPlan {
   const displayPrefix = slashIndex === -1 ? "" : normalized.slice(0, slashIndex + 1);
   const fuzzyQuery = slashIndex === -1 ? normalized : normalized.slice(slashIndex + 1);
   const resolvedBasePath = resolve(basePath);
+  const includeHidden = shouldIncludeHidden(rawQuery);
 
   if (displayPrefix.length === 0) {
     return {
       searchRoot: resolvedBasePath,
       displayPrefix,
       fuzzyQuery,
-      includeHidden: shouldIncludeHidden(rawQuery),
+      includeHidden,
     };
   }
 
-  const scopedRoot = resolve(basePath, displayPrefix);
+  const scopedRoot = displayPrefix.startsWith("~/")
+    ? expandHomePath(displayPrefix)
+    : resolve(basePath, displayPrefix);
   if (existsSync(scopedRoot)) {
     return {
       searchRoot: scopedRoot,
       displayPrefix,
       fuzzyQuery,
-      includeHidden: shouldIncludeHidden(rawQuery),
+      includeHidden,
     };
   }
 
@@ -139,7 +153,7 @@ export function planFdQuery(basePath: string, rawQuery: string): FdQueryPlan {
     searchRoot: resolvedBasePath,
     displayPrefix: "",
     fuzzyQuery: normalized,
-    includeHidden: shouldIncludeHidden(rawQuery),
+    includeHidden,
   };
 }
 

@@ -16,7 +16,7 @@ description: Find a website's recommended RSS or Atom feed URL from a page or do
 ## Command
 
 ```bash
-./scripts/find_feed.ts <url>
+deno run -A ./scripts/find_feed.ts <url>
 ```
 
 Output fields:
@@ -39,4 +39,5 @@ Use only when the script fails:
 
 ## Available scripts
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
+- Run bundled `.ts` helper scripts with `deno`, not `node`.
 - `scripts/find_feed.ts` — Discovers and validates RSS/Atom feeds from a website or page URL.

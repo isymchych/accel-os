@@ -6,33 +6,42 @@ description: Prune stale GitHub remote branches in the current repo using a safe
 # Prune Stale Branches
 
 Use this skill to safely prune stale remote branches via:
-- `./scripts/prune-stale-branches.ts`
+- `deno run -A ./scripts/prune-stale-branches.ts`
 
 ## Available scripts
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
+- Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
+- Run bundled `.ts` helper scripts with `deno`, not `node`.
+- For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
+- Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
 - `scripts/prune-stale-branches.ts` — Performs dry-run or confirmed deletion of stale remote branches using git and GitHub API checks.
 
 ## Preconditions
 
-- Run in the target git repository.
+- Determine the target git repository before running the helper.
+- Run the helper with `cwd` set to the target git repository.
+- Verify the resolved helper path and the execution `cwd` before the first helper invocation.
 - `origin` remote exists.
 - `gh` is authenticated and has repo access.
 - Run the script with the permissions needed for network operations because it performs `git fetch` and GitHub API calls via `gh`.
 
 ## Workflow
 
-1. Confirm main branch name (`main` by default).
-2. Run dry-run first:
-   - `./scripts/prune-stale-branches.ts --dry-run`
+1. Determine the target repository and confirm main branch name (`main` by default).
+2. Resolve the helper path relative to `dirname(SKILL.md)` and verify it separately from execution context.
+3. Verify the execution `cwd` is the intended target repository.
+   If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory, stop and report the mismatch.
+4. Run dry-run first, with `cwd` set to the target repository:
+   - `deno run -A <resolved-path-to>/scripts/prune-stale-branches.ts --dry-run`
    - execute with escalation
-3. Show the complete candidate list from command output to the user.
-4. Run deletion only after explicit confirmation:
+5. Show the complete candidate list from command output to the user.
+6. Run deletion only after explicit confirmation:
    - require user confirmation text: `proceed delete`
    - run:
-     - `./scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
+     - `deno run -A <resolved-path-to>/scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
      - execute with escalation
-5. If main branch differs:
-   - `./scripts/prune-stale-branches.ts --main <branch> --dry-run`
+7. If main branch differs:
+   - `deno run -A <resolved-path-to>/scripts/prune-stale-branches.ts --main <branch> --dry-run`
    - execute with escalation
 
 ## Behavior

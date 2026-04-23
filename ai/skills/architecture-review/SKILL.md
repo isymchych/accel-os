@@ -17,37 +17,48 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 
 ## Available scripts
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
+- Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
+- Run bundled `.ts` helper scripts with `deno`, not `node`.
+- For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
+- Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
 - `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the workspace, staged changes, or a base-ref diff.
 - `scripts/find-pass-through.ts` — Scans changed TS/JS/Rust files for likely pass-through wrappers that mirror another API.
 
 ## Workflow
 
-### 1) Map The Change Boundary
+### 1) Verify Helper Path And Repository Context
+- Determine the target repository for the review.
+- Resolve helper script paths relative to `dirname(SKILL.md)`.
+- Verify the helper path and the `cwd` separately before execution.
+- Run repository-aware helpers with `cwd` set to the target repository.
+- If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory, stop and report the mismatch.
+
+### 2) Map The Change Boundary
 - Identify changed modules and their public interfaces.
 - Note new dependencies, moved responsibilities, and altered ownership.
 - Ignore internal details unless they affect the boundary.
 
-### 2) Trace Design Decisions
+### 3) Trace Design Decisions
 - Find every place each design decision appears.
 - Flag repeated decisions across modules as leakage.
 - Prefer one authoritative module per decision.
 
-### 3) Check Depth And Layering
+### 4) Check Depth And Layering
 - Flag pass-through functions/classes that only mirror another API.
 - Check whether adjacent layers expose the same abstraction.
 - Prefer deeper modules with simpler caller APIs.
 
-### 4) Assess Cognitive Load
+### 5) Assess Cognitive Load
 - Count concepts a caller must hold to use the change correctly.
 - Verify common paths stay obvious and low-configuration.
 - Flag interfaces that cannot be explained in 1-3 sentences.
 
-### 5) Evaluate Change Amplification
+### 6) Evaluate Change Amplification
 - If one behavior tweak requires edits in 3+ files, find the leaked decision.
 - Recommend centralizing at a stronger boundary.
 - Prefer reducing call-site complexity even if callee complexity increases.
 
-### 6) Classify Migration Impact
+### 7) Classify Migration Impact
 - Explicitly mark whether recommendations are backward-compatible.
 - For breaking changes, list required migration steps and blast radius.
 

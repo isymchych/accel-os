@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { homedir } from "node:os";
 import test from "node:test";
 
 import {
@@ -43,6 +44,18 @@ test("planFdQuery scopes only when the directory prefix exists", () => {
   assert.equal(deepFuzzy.displayPrefix, "");
   assert.equal(deepFuzzy.fuzzyQuery, "tui/src/auto");
   assert.equal(deepFuzzy.includeHidden, false);
+
+  const homeScoped = planFdQuery(process.cwd(), "~/test");
+  assert.equal(homeScoped.searchRoot, homedir());
+  assert.equal(homeScoped.displayPrefix, "~/");
+  assert.equal(homeScoped.fuzzyQuery, "test");
+  assert.equal(homeScoped.includeHidden, false);
+
+  const hiddenHomeScoped = planFdQuery(process.cwd(), "~/.config");
+  assert.equal(hiddenHomeScoped.searchRoot, homedir());
+  assert.equal(hiddenHomeScoped.displayPrefix, "~/");
+  assert.equal(hiddenHomeScoped.fuzzyQuery, ".config");
+  assert.equal(hiddenHomeScoped.includeHidden, true);
 });
 
 test("shouldIncludeHidden only enables hidden entries for dot-prefixed active segments", () => {
@@ -126,6 +139,21 @@ test("formatAutocompleteItems preserves quoting and directory suffixes", () => {
       value: '@"my folder/test.txt"',
       label: "test.txt",
       description: "my folder/test.txt",
+    },
+  ]);
+});
+
+test("formatAutocompleteItems does not double-append directory slashes", () => {
+  const items = formatAutocompleteItems(
+    [{ path: "goods-tree", isDirectory: true }],
+    { displayPrefix: "los-frontend/src/app/shared/components/", quoted: false },
+  );
+
+  assert.deepEqual(items, [
+    {
+      value: "@los-frontend/src/app/shared/components/goods-tree/",
+      label: "goods-tree/",
+      description: "los-frontend/src/app/shared/components/goods-tree",
     },
   ]);
 });
