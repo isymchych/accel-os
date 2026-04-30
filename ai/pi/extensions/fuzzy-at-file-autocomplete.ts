@@ -38,7 +38,6 @@ import {
 } from "../lib/fuzzy-at-file-autocomplete.ts";
 
 const FD_TIMEOUT_MS = 2_000;
-const MAX_RESULTS_PER_KIND = 200;
 const FD_BINARY = "fd";
 const ERROR_STATUS_KEY = "fuzzy-at-file-autocomplete";
 
@@ -63,8 +62,6 @@ async function loadFdCandidates(
     "--exclude",
     ".git/**",
     "--full-path",
-    "--max-results",
-    String(MAX_RESULTS_PER_KIND),
   ];
   if (includeHidden) {
     baseArgs.push("--hidden");

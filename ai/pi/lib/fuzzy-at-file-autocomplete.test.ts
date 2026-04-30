@@ -144,10 +144,10 @@ test("formatAutocompleteItems preserves quoting and directory suffixes", () => {
 });
 
 test("formatAutocompleteItems does not double-append directory slashes", () => {
-  const items = formatAutocompleteItems(
-    [{ path: "goods-tree", isDirectory: true }],
-    { displayPrefix: "los-frontend/src/app/shared/components/", quoted: false },
-  );
+  const items = formatAutocompleteItems([{ path: "goods-tree", isDirectory: true }], {
+    displayPrefix: "los-frontend/src/app/shared/components/",
+    quoted: false,
+  });
 
   assert.deepEqual(items, [
     {

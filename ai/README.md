@@ -10,6 +10,7 @@
 * pi - compact/compress file reads 
 * show account in status
 * show timer next to Working...
+* switch thinking modes with alt-1-2-3-4-5
 
 * based on https://github.com/can1357/oh-my-pi
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
@@ -41,6 +42,7 @@
 * Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions.
 * refactor: Pilot change + rollout
 * avoid negative framing
+* provide examples instead of complicated instructions
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
