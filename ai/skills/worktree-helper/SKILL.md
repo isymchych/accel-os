@@ -1,56 +1,49 @@
 ---
 name: worktree-helper
-description: Manage repo-local git worktrees through the bundled `scripts/worktree.ts` helper. Use when asked to create, inspect, or remove a project worktree from an existing ref, a new branch from an explicit base ref, `origin/main`, or a same-repo GitHub pull request, and when flags like `--no-setup`, `--force`, or `--delete-branch` are relevant.
+description: Manage repo-local git worktrees through the standalone `mb-worktree` command. Use when asked to create, inspect, or remove a project worktree from an existing ref, a new branch from an explicit base ref, `origin/main`, or a same-repo GitHub pull request, and when flags like `--no-setup`, `--force`, or `--delete-branch` are relevant.
 ---
 
 # Worktree Helper
 
-Use this skill to manage repo-local git worktrees through the bundled helper script instead of hand-writing raw `git worktree` or `gh` command sequences.
-
-## Available scripts
-
-- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
-- Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
-- Run bundled `.ts` helper scripts with `deno`, not `node`.
-- For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
-- Before invoking the helper, verify both the resolved helper path and the working directory.
-- `scripts/worktree.ts` — Manages repo-local git worktrees for list/create/remove flows, including same-repo PR checkouts and optional setup hook execution.
+Use this skill to manage repo-local git worktrees through the standalone helper instead of hand-writing raw `git worktree` or `gh` command sequences.
 
 ## Preferred entrypoint
 
-Run `deno run -A <resolved-path-to>/scripts/worktree.ts <command> ...` with `cwd` set to the target repository.
+Run `mb-worktree <command> ...`.
+
+Default targeting:
+- `mb-worktree` targets the caller's current repository.
+- Use `--repo <path>` when the target repo is not the current directory.
+- Relative `--repo` paths resolve from the caller's original working directory.
 
 Start with:
-- `deno run -A <resolved-path-to>/scripts/worktree.ts list`
-- `deno run -A <resolved-path-to>/scripts/worktree.ts --help`
+- `mb-worktree list`
+- `mb-worktree --help`
 
 ## Preconditions
 
 - Determine the target git repository before running the helper.
-- Run the helper with `cwd` set to the target repository.
-- Verify the resolved helper path and the execution `cwd` before the first helper invocation.
+- If using `--repo`, verify the path points at the intended repository.
 - Run with the permissions needed for git and `gh` operations when the selected command performs fetches or PR lookups.
 
 ## Workflow
 
 1. Determine the target repository.
-2. Resolve the helper path relative to `dirname(SKILL.md)` and verify it separately from execution context.
-3. Verify the execution `cwd` is the intended target repository.
-   If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory, stop and report the mismatch.
-4. Choose the command path:
+2. Choose the command path:
    - Existing branch / remote branch / tag / commit:
-     - `deno run -A <resolved-path-to>/scripts/worktree.ts checkout <ref>`
+     - `mb-worktree checkout <ref>`
    - New branch from an explicit base:
-     - `deno run -A <resolved-path-to>/scripts/worktree.ts new-branch <branch> --from <ref>`
+     - `mb-worktree new-branch <branch> --from <ref>`
    - New branch from `origin/main`:
-     - `deno run -A <resolved-path-to>/scripts/worktree.ts new-from-main <branch>`
+     - `mb-worktree new-from-main <branch>`
    - Same-repo GitHub PR:
-     - `deno run -A <resolved-path-to>/scripts/worktree.ts new-from-pr <url-or-number>`
+     - `mb-worktree new-from-pr <url-or-number>`
    - Remove a worktree:
-     - `deno run -A <resolved-path-to>/scripts/worktree.ts remove <branch-or-path>`
+     - `mb-worktree remove <branch-or-path>`
      - add `--delete-branch` to delete the local branch after removal
      - add `--force` to skip the confirmation prompt
      - add `--no-setup` on create commands to skip `setup-worktree.sh`
+     - add `--repo <path>` when operating on a repo outside the current directory
 
 ## Behavior notes
 

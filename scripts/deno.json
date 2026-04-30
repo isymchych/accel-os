@@ -1,11 +1,14 @@
 {
   "imports": {
     "@lib/": "./lib/",
-    "@std/cli/parse-args": "jsr:@std/cli@1.0.25/parse-args"
+    "@std/cli/parse-args": "jsr:@std/cli@1.0.29/parse-args",
+    "@std/encoding/base64": "jsr:@std/encoding@1.0.10/base64",
+    "@std/path": "jsr:@std/path@1.1.4"
   },
   "tasks": {
     "ai-codex": "deno run --lock=deno.lock --frozen --cached-only --allow-env=AI_CWD,ACCEL_OS --allow-read=../ai/codex --allow-write=../ai/codex --allow-run=codex ./scripts/ai-codex.ts",
     "mb-example": "deno run --lock=deno.lock --frozen --cached-only ./scripts/mb-example.ts",
-    "mb-spotify": "deno run --lock=deno.lock --frozen --cached-only --allow-env=HOME,XDG_CONFIG_HOME --allow-read --allow-write --allow-net=127.0.0.1,accounts.spotify.com,api.spotify.com --allow-run=xdg-open ./scripts/mb-spotify.ts"
+    "mb-spotify": "deno run --lock=deno.lock --frozen --cached-only --allow-env=HOME,XDG_CONFIG_HOME --allow-read --allow-write --allow-net=127.0.0.1,accounts.spotify.com,api.spotify.com --allow-run=xdg-open ./scripts/mb-spotify.ts",
+    "mb-worktree": "deno run --lock=deno.lock --frozen --cached-only -A ./scripts/worktree.ts"
   }
 }

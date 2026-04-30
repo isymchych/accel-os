@@ -1,5 +1,5 @@
-import { decodeBase64 } from "jsr:@std/encoding/base64";
-import { join } from "jsr:@std/path";
+import { decodeBase64 } from "@std/encoding/base64";
+import { join } from "@std/path";
 
 // ai-codex: thin Codex CLI wrapper for common modifiers.
 // Specs:

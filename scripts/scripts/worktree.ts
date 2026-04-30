@@ -1,9 +1,4 @@
-#!/usr/bin/env node
-
-import { spawnSync } from 'node:child_process';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { createInterface } from 'node:readline/promises';
+import * as path from "@std/path";
 
 /**
  * Repo-local Git worktree helper.
@@ -29,8 +24,16 @@ import { createInterface } from 'node:readline/promises';
  *   remove the current worktree or the primary checkout and prompts before deleting a worktree that
  *   has tracked changes, untracked files, or local commits
  * - `--delete-branch` deletes the local branch only after successful worktree removal
+ * - repo selection defaults to `AI_CWD` when present, otherwise the current working directory;
+ *   `--repo <path>` overrides that starting directory explicitly
  */
-type CommandName = 'list' | 'checkout' | 'new-branch' | 'new-from-main' | 'new-from-pr' | 'remove';
+type CommandName =
+  | "list"
+  | "checkout"
+  | "new-branch"
+  | "new-from-main"
+  | "new-from-pr"
+  | "remove";
 
 interface RepoIdentity {
   readonly owner: string;
@@ -75,11 +78,12 @@ interface ParsedArgs {
   readonly help: boolean;
   readonly json: boolean;
   readonly pathOverride: string | null;
+  readonly repoOverride: string | null;
 }
 
 interface RunOptions {
   readonly cwd?: string;
-  readonly stdio?: 'inherit' | 'pipe';
+  readonly stdio?: "inherit" | "pipe";
   readonly allowFailure?: boolean;
 }
 
@@ -107,56 +111,81 @@ interface PullRequestMetadata {
 
 type CreateCollisionDecision =
   | {
-      readonly kind: 'reuse-existing';
-      readonly existingWorktree: WorktreeRecord;
-    }
+    readonly kind: "reuse-existing";
+    readonly existingWorktree: WorktreeRecord;
+  }
   | {
-      readonly kind: 'path-conflict';
-      readonly existingWorktree: WorktreeRecord;
-    }
+    readonly kind: "path-conflict";
+    readonly existingWorktree: WorktreeRecord;
+  }
   | {
-      readonly kind: 'branch-conflict';
-      readonly existingWorktree: WorktreeRecord;
-    }
+    readonly kind: "branch-conflict";
+    readonly existingWorktree: WorktreeRecord;
+  }
   | {
-      readonly kind: 'create-new';
-    };
+    readonly kind: "create-new";
+  };
 
 type CreationTarget =
   | {
-      readonly kind: 'branch';
-      readonly worktreePath: string;
-      readonly branchName: string;
-      readonly createArgs: readonly string[];
-      readonly displaySource: string;
-    }
+    readonly kind: "branch";
+    readonly worktreePath: string;
+    readonly branchName: string;
+    readonly createArgs: readonly string[];
+    readonly displaySource: string;
+  }
   | {
-      readonly kind: 'detached';
-      readonly worktreePath: string;
-      readonly resolvedCommit: string;
-      readonly requestedRef: string;
-      readonly createArgs: readonly string[];
-      readonly displaySource: string;
-    };
+    readonly kind: "detached";
+    readonly worktreePath: string;
+    readonly resolvedCommit: string;
+    readonly requestedRef: string;
+    readonly createArgs: readonly string[];
+    readonly displaySource: string;
+  };
+
+const textDecoder = new TextDecoder();
+
+function decodeText(bytes: Uint8Array | null | undefined): string {
+  return bytes ? textDecoder.decode(bytes) : "";
+}
+
+function pathExists(filePath: string): boolean {
+  try {
+    Deno.statSync(filePath);
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return false;
+    }
+
+    throw error;
+  }
+}
 
 async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
+  const parsed = parseArgs(Deno.args);
   if (parsed.help || parsed.command === null) {
     printUsage();
-    process.exit(parsed.help ? 0 : 1);
+    Deno.exit(parsed.help ? 0 : 1);
   }
 
-  const context = buildContext();
+  const context = buildContext(parsed.repoOverride);
 
   switch (parsed.command) {
-    case 'list':
-      ensureNoExtraArgs(parsed.positional, 'list');
+    case "list":
+      ensureNoExtraArgs(parsed.positional, "list");
       runList(context, parsed.json);
       return;
-    case 'checkout':
-      runCheckout(context, parsed.positional, parsed.runSetup, parsed.pathOverride, parsed.dryRun);
+    case "checkout":
+      runCheckout(
+        context,
+        parsed.positional,
+        parsed.runSetup,
+        parsed.pathOverride,
+        parsed.dryRun,
+      );
       return;
-    case 'new-branch':
+    case "new-branch":
       runNewBranch(
         context,
         parsed.positional,
@@ -166,7 +195,7 @@ async function main(): Promise<void> {
         parsed.dryRun,
       );
       return;
-    case 'new-from-main':
+    case "new-from-main":
       runNewFromMain(
         context,
         parsed.positional,
@@ -175,11 +204,23 @@ async function main(): Promise<void> {
         parsed.dryRun,
       );
       return;
-    case 'new-from-pr':
-      runNewFromPr(context, parsed.positional, parsed.runSetup, parsed.pathOverride, parsed.dryRun);
+    case "new-from-pr":
+      runNewFromPr(
+        context,
+        parsed.positional,
+        parsed.runSetup,
+        parsed.pathOverride,
+        parsed.dryRun,
+      );
       return;
-    case 'remove':
-      await runRemove(context, parsed.positional, parsed.deleteBranch, parsed.force, parsed.dryRun);
+    case "remove":
+      runRemove(
+        context,
+        parsed.positional,
+        parsed.deleteBranch,
+        parsed.force,
+        parsed.dryRun,
+      );
       return;
     default:
       assertNever(parsed.command);
@@ -195,67 +236,85 @@ export function parseArgs(args: string[]): ParsedArgs {
   let help = false;
   let json = false;
   let pathOverride: string | null = null;
+  let repoOverride: string | null = null;
   const positional: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
     switch (arg) {
-      case '--delete-branch':
+      case "--delete-branch":
         deleteBranch = true;
         break;
-      case '--dry-run':
+      case "--dry-run":
         dryRun = true;
         break;
-      case '--force':
+      case "--force":
         force = true;
         break;
-      case '--no-setup':
+      case "--no-setup":
         runSetup = false;
         break;
-      case '--from': {
+      case "--from": {
         const value = args[index + 1];
-        if (!value || value.startsWith('-')) {
+        if (!value || value.startsWith("-")) {
           throw new Error('Option "--from" requires a ref value.');
         }
         fromRef = value;
         index += 1;
         break;
       }
-      case '--path': {
+      case "--path": {
         const value = args[index + 1];
-        if (!value || value.startsWith('-')) {
+        if (!value || value.startsWith("-")) {
           throw new Error('Option "--path" requires a directory value.');
         }
         pathOverride = value;
         index += 1;
         break;
       }
-      case '--json':
+      case "--repo": {
+        const value = args[index + 1];
+        if (!value || value.startsWith("-")) {
+          throw new Error('Option "--repo" requires a directory value.');
+        }
+        repoOverride = value;
+        index += 1;
+        break;
+      }
+      case "--json":
         json = true;
         break;
-      case '--help':
-      case '-h':
+      case "--help":
+      case "-h":
         help = true;
         break;
       default:
-        if (arg.startsWith('--from=')) {
-          fromRef = arg.slice('--from='.length);
+        if (arg.startsWith("--from=")) {
+          fromRef = arg.slice("--from=".length);
           if (fromRef.length === 0) {
             throw new Error('Option "--from" requires a ref value.');
           }
           break;
         }
 
-        if (arg.startsWith('--path=')) {
-          pathOverride = arg.slice('--path='.length);
+        if (arg.startsWith("--path=")) {
+          pathOverride = arg.slice("--path=".length);
           if (pathOverride.length === 0) {
             throw new Error('Option "--path" requires a directory value.');
           }
           break;
         }
 
-        if (arg.startsWith('-')) {
+        if (arg.startsWith("--repo=")) {
+          repoOverride = arg.slice("--repo=".length);
+          if (repoOverride.length === 0) {
+            throw new Error('Option "--repo" requires a directory value.');
+          }
+          break;
+        }
+
+        if (arg.startsWith("-")) {
           throw new Error(`Unknown option: ${arg}`);
         }
 
@@ -278,28 +337,29 @@ export function parseArgs(args: string[]): ParsedArgs {
     help,
     json,
     pathOverride,
+    repoOverride,
   };
 }
 
 function isCommandName(value: string | null): value is CommandName {
   return (
-    value === 'list' ||
-    value === 'checkout' ||
-    value === 'new-branch' ||
-    value === 'new-from-main' ||
-    value === 'new-from-pr' ||
-    value === 'remove'
+    value === "list" ||
+    value === "checkout" ||
+    value === "new-branch" ||
+    value === "new-from-main" ||
+    value === "new-from-pr" ||
+    value === "remove"
   );
 }
 
 function printUsage(): void {
-  process.stdout.write(`Usage:
-  ./scripts/worktree.ts list
-  ./scripts/worktree.ts checkout <ref>
-  ./scripts/worktree.ts new-branch <branch> --from <ref>
-  ./scripts/worktree.ts new-from-main <branch>
-  ./scripts/worktree.ts new-from-pr <url-or-number>
-  ./scripts/worktree.ts remove <branch-or-path> [--delete-branch] [--force]
+  console.log(`Usage:
+  mb-worktree [--repo <dir>] list
+  mb-worktree [--repo <dir>] checkout <ref>
+  mb-worktree [--repo <dir>] new-branch <branch> --from <ref>
+  mb-worktree [--repo <dir>] new-from-main <branch>
+  mb-worktree [--repo <dir>] new-from-pr <url-or-number>
+  mb-worktree [--repo <dir>] remove <branch-or-path> [--delete-branch] [--force]
 
 Commands:
   list                      List linked worktrees and their local status.
@@ -313,6 +373,7 @@ Options:
   --from <ref>              Base ref for new-branch.
   --json                    Emit machine-readable JSON output for list.
   --path <dir>              Override the target worktree directory for create commands.
+  --repo <dir>              Target a repo from outside it. Relative paths resolve from the caller's original cwd.
   --delete-branch           After successful removal, also delete the local branch with git branch -d/-D.
   --dry-run                 Print the resolved actions without creating or removing anything.
   --force                   Skip remove confirmation and use forceful branch/worktree deletion where applicable.
@@ -321,15 +382,43 @@ Options:
 `);
 }
 
-function ensureNoExtraArgs(args: readonly string[], command: CommandName): void {
+function ensureNoExtraArgs(
+  args: readonly string[],
+  command: CommandName,
+): void {
   if (args.length > 0) {
     throw new Error(`Command "${command}" does not accept extra arguments.`);
   }
 }
 
-function buildContext(): CommandContext {
-  const primaryWorktreeRoot = resolvePrimaryWorktreeRoot(process.cwd());
-  const currentWorktreeRoot = resolveGitTopLevel(process.cwd());
+export function getInvocationDirectory(
+  cwd: string = Deno.cwd(),
+  aiCwd: string | null = Deno.env.get("AI_CWD") ?? null,
+): string {
+  return aiCwd ? path.resolve(aiCwd) : path.resolve(cwd);
+}
+
+export function resolveRepoSearchStart(
+  invocationDirectory: string,
+  repoOverride: string | null,
+): string {
+  if (!repoOverride) {
+    return path.resolve(invocationDirectory);
+  }
+
+  return path.isAbsolute(repoOverride)
+    ? path.resolve(repoOverride)
+    : path.resolve(invocationDirectory, repoOverride);
+}
+
+function buildContext(repoOverride: string | null): CommandContext {
+  const invocationDirectory = getInvocationDirectory();
+  const repoSearchStart = resolveRepoSearchStart(
+    invocationDirectory,
+    repoOverride,
+  );
+  const primaryWorktreeRoot = resolvePrimaryWorktreeRoot(repoSearchStart);
+  const currentWorktreeRoot = resolveGitTopLevel(repoSearchStart);
   const repoRoot = primaryWorktreeRoot;
   const repoIdentity = resolveRepoIdentity(repoRoot);
 
@@ -342,30 +431,38 @@ function buildContext(): CommandContext {
 }
 
 function resolveGitTopLevel(cwd: string): string {
-  const result = runCommand('git', ['rev-parse', '--show-toplevel'], { cwd });
+  const result = runCommand("git", ["rev-parse", "--show-toplevel"], { cwd });
   return result.stdout.trim();
 }
 
 function resolvePrimaryWorktreeRoot(cwd: string): string {
-  const result = runCommand('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+  const result = runCommand("git", [
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-common-dir",
+  ], {
     cwd,
   });
   const gitCommonDir = result.stdout.trim();
 
-  if (path.basename(gitCommonDir) !== '.git') {
-    throw new Error(`Expected git common dir to end with .git, got: ${gitCommonDir}`);
+  if (path.basename(gitCommonDir) !== ".git") {
+    throw new Error(
+      `Expected git common dir to end with .git, got: ${gitCommonDir}`,
+    );
   }
 
   return path.dirname(gitCommonDir);
 }
 
 function resolveRepoIdentity(repoRoot: string): RepoIdentity {
-  const remoteUrl = runCommand('git', ['remote', 'get-url', 'origin'], {
+  const remoteUrl = runCommand("git", ["remote", "get-url", "origin"], {
     cwd: repoRoot,
   }).stdout.trim();
-  const normalizedUrl = remoteUrl.replace(/\.git$/, '');
+  const normalizedUrl = remoteUrl.replace(/\.git$/, "");
 
-  const sshMatch = /^(?:ssh:\/\/)?git@github\.com[:/](.+)\/(.+)$/.exec(normalizedUrl);
+  const sshMatch = /^(?:ssh:\/\/)?git@github\.com[:/](.+)\/(.+)$/.exec(
+    normalizedUrl,
+  );
   if (sshMatch) {
     const owner = sshMatch[1];
     const name = sshMatch[2];
@@ -384,8 +481,8 @@ function resolveRepoIdentity(repoRoot: string): RepoIdentity {
 
 interface WorktreeListRow {
   readonly branch: string;
-  readonly source: 'branch' | 'detached';
-  readonly pathKind: 'default' | 'custom';
+  readonly source: "branch" | "detached";
+  readonly pathKind: "default" | "custom";
   readonly upstream: string;
   readonly comparison: string;
   readonly path: string;
@@ -400,45 +497,47 @@ function runList(context: CommandContext, json: boolean): void {
   const statuses = collectWorktreeStatuses(context);
 
   if (statuses.length === 0) {
-    process.stdout.write(json ? '[]\n' : 'No worktrees found.\n');
+    console.log(json ? "[]" : "No worktrees found.");
     return;
   }
 
   const rows = buildWorktreeListRows(context.repoRoot, statuses);
   if (json) {
-    process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+    console.log(JSON.stringify(rows, null, 2));
     return;
   }
 
   const headers: (keyof WorktreeListRow)[] = [
-    'branch',
-    'source',
-    'pathKind',
-    'upstream',
-    'comparison',
-    'path',
-    'dirty',
-    'untracked',
-    'localCommits',
-    'current',
-    'primary',
+    "branch",
+    "source",
+    "pathKind",
+    "upstream",
+    "comparison",
+    "path",
+    "dirty",
+    "untracked",
+    "localCommits",
+    "current",
+    "primary",
   ];
 
-  const widths = headers.map(header =>
-    Math.max(header.length, ...rows.map(row => row[header].length)),
+  const widths = headers.map((header) =>
+    Math.max(header.length, ...rows.map((row) => row[header].length))
   );
 
   const headerLine = headers
     .map((header, index) => header.padEnd(widths[index] ?? header.length))
-    .join('  ');
-  const separatorLine = widths.map(width => '-'.repeat(width)).join('  ');
+    .join("  ");
+  const separatorLine = widths.map((width) => "-".repeat(width)).join("  ");
 
-  process.stdout.write(`${headerLine}\n${separatorLine}\n`);
+  console.log(`${headerLine}\n${separatorLine}`);
   for (const row of rows) {
     const line = headers
-      .map((header, index) => row[header].padEnd(widths[index] ?? header.length))
-      .join('  ');
-    process.stdout.write(`${line}\n`);
+      .map((header, index) =>
+        row[header].padEnd(widths[index] ?? header.length)
+      )
+      .join("  ");
+    console.log(line);
   }
 }
 
@@ -468,14 +567,21 @@ function runNewBranch(
 ): void {
   const branchName = args[0];
   if (!branchName || args.length !== 1) {
-    throw new Error('Command "new-branch" requires exactly one new branch name.');
+    throw new Error(
+      'Command "new-branch" requires exactly one new branch name.',
+    );
   }
 
   if (!fromRef) {
     throw new Error('Command "new-branch" requires "--from <ref>".');
   }
 
-  const target = buildNewBranchTarget(context, branchName, fromRef, pathOverride);
+  const target = buildNewBranchTarget(
+    context,
+    branchName,
+    fromRef,
+    pathOverride,
+  );
   createOrReuseWorktree(context, target, runSetup, dryRun);
 }
 
@@ -488,20 +594,27 @@ function runNewFromMain(
 ): void {
   const branchName = args[0];
   if (!branchName || args.length !== 1) {
-    throw new Error('Command "new-from-main" requires exactly one new branch name.');
+    throw new Error(
+      'Command "new-from-main" requires exactly one new branch name.',
+    );
   }
 
   if (dryRun) {
-    process.stdout.write('Dry run only. Skipping fetch for origin/main.\n');
+    console.log("Dry run only. Skipping fetch for origin/main.");
   } else {
-    process.stdout.write('Fetching origin/main...\n');
-    runCommand('git', ['fetch', 'origin', 'main'], {
+    console.log("Fetching origin/main...");
+    runCommand("git", ["fetch", "origin", "main"], {
       cwd: context.repoRoot,
-      stdio: 'inherit',
+      stdio: "inherit",
     });
   }
 
-  const target = buildNewBranchTarget(context, branchName, 'origin/main', pathOverride);
+  const target = buildNewBranchTarget(
+    context,
+    branchName,
+    "origin/main",
+    pathOverride,
+  );
   createOrReuseWorktree(context, target, runSetup, dryRun);
 }
 
@@ -514,7 +627,9 @@ function runNewFromPr(
 ): void {
   const prSelector = args[0];
   if (!prSelector || args.length !== 1) {
-    throw new Error('Command "new-from-pr" requires exactly one PR URL or number.');
+    throw new Error(
+      'Command "new-from-pr" requires exactly one PR URL or number.',
+    );
   }
 
   const metadata = resolvePullRequestMetadata(context, prSelector);
@@ -533,12 +648,14 @@ function runNewFromPr(
   }
 
   if (dryRun) {
-    process.stdout.write(`Dry run only. Skipping fetch for origin/${metadata.headRefName}.\n`);
+    console.log(
+      `Dry run only. Skipping fetch for origin/${metadata.headRefName}.`,
+    );
   } else {
-    process.stdout.write(`Fetching origin/${metadata.headRefName}...\n`);
-    runCommand('git', ['fetch', 'origin', metadata.headRefName], {
+    console.log(`Fetching origin/${metadata.headRefName}...`);
+    runCommand("git", ["fetch", "origin", metadata.headRefName], {
       cwd: context.repoRoot,
-      stdio: 'inherit',
+      stdio: "inherit",
     });
   }
 
@@ -570,13 +687,13 @@ function resolvePullRequestMetadata(
   prSelector: string,
 ): PullRequestMetadata {
   const json = runCommand(
-    'gh',
+    "gh",
     [
-      'pr',
-      'view',
+      "pr",
+      "view",
       prSelector,
-      '--json',
-      'number,headRefName,isCrossRepository,headRepository,headRepositoryOwner',
+      "--json",
+      "number,headRefName,isCrossRepository,headRepository,headRepositoryOwner",
     ],
     {
       cwd: context.repoRoot,
@@ -601,13 +718,12 @@ function resolvePullRequestMetadata(
     isCrossRepository: parsed.isCrossRepository,
     headRepository: parsed.headRepository
       ? {
-          name: parsed.headRepository.name,
-          nameWithOwner: parsed.headRepository.nameWithOwner,
-          ownerLogin:
-            parsed.headRepository.owner?.login ??
-            parsed.headRepositoryOwner?.login ??
-            context.repoIdentity.owner,
-        }
+        name: parsed.headRepository.name,
+        nameWithOwner: parsed.headRepository.nameWithOwner,
+        ownerLogin: parsed.headRepository.owner?.login ??
+          parsed.headRepositoryOwner?.login ??
+          context.repoIdentity.owner,
+      }
       : null,
   };
 }
@@ -618,7 +734,7 @@ export function resolvePrHeadSource(headRefName: string): string {
 
 export function isExplicitRemoteBranchRequest(
   requestedRef: string,
-  remoteBranch: Pick<RemoteBranchResolution, 'remoteRef'> | null,
+  remoteBranch: Pick<RemoteBranchResolution, "remoteRef"> | null,
 ): boolean {
   return remoteBranch !== null && requestedRef === remoteBranch.remoteRef;
 }
@@ -629,7 +745,9 @@ function resolveCheckoutTarget(
   pathOverride: string | null,
 ): CreationTarget {
   const remoteBranch = resolveRemoteBranch(context.repoRoot, requestedRef);
-  if (remoteBranch && isExplicitRemoteBranchRequest(requestedRef, remoteBranch)) {
+  if (
+    remoteBranch && isExplicitRemoteBranchRequest(requestedRef, remoteBranch)
+  ) {
     const existingLocalBranch = resolveExistingLocalBranch(
       context.repoRoot,
       remoteBranch.localBranchName,
@@ -652,9 +770,18 @@ function resolveCheckoutTarget(
     );
   }
 
-  const localBranch = resolveExistingLocalBranch(context.repoRoot, requestedRef);
+  const localBranch = resolveExistingLocalBranch(
+    context.repoRoot,
+    requestedRef,
+  );
   if (localBranch) {
-    return buildBranchTarget(context, localBranch, localBranch, false, pathOverride);
+    return buildBranchTarget(
+      context,
+      localBranch,
+      localBranch,
+      false,
+      pathOverride,
+    );
   }
 
   if (remoteBranch) {
@@ -683,12 +810,22 @@ function resolveCheckoutTarget(
 
   if (refExists(context.repoRoot, `refs/tags/${requestedRef}`)) {
     const resolvedCommit = resolveCommitish(context.repoRoot, requestedRef);
-    return buildDetachedTarget(context, requestedRef, resolvedCommit, pathOverride);
+    return buildDetachedTarget(
+      context,
+      requestedRef,
+      resolvedCommit,
+      pathOverride,
+    );
   }
 
   const resolvedCommit = tryResolveCommitish(context.repoRoot, requestedRef);
   if (resolvedCommit) {
-    return buildDetachedTarget(context, requestedRef, resolvedCommit, pathOverride);
+    return buildDetachedTarget(
+      context,
+      requestedRef,
+      resolvedCommit,
+      pathOverride,
+    );
   }
 
   throw new Error(`Could not resolve ref: ${requestedRef}`);
@@ -717,18 +854,21 @@ function buildBranchTarget(
   createNewBranch = false,
   pathOverride: string | null = null,
 ): CreationTarget {
-  const worktreePath = getBranchWorktreePath(context.repoRoot, branchName, pathOverride);
+  const worktreePath = getBranchWorktreePath(
+    context.repoRoot,
+    branchName,
+    pathOverride,
+  );
   const createArgs = createNewBranch
-    ? ['worktree', 'add', '-b', branchName, worktreePath, sourceRef]
-    : ['worktree', 'add', worktreePath, branchName];
+    ? ["worktree", "add", "-b", branchName, worktreePath, sourceRef]
+    : ["worktree", "add", worktreePath, branchName];
 
-  const actualCreateArgs =
-    !createNewBranch && sourceRef !== branchName
-      ? ['worktree', 'add', '-b', branchName, worktreePath, sourceRef]
-      : createArgs;
+  const actualCreateArgs = !createNewBranch && sourceRef !== branchName
+    ? ["worktree", "add", "-b", branchName, worktreePath, sourceRef]
+    : createArgs;
 
   return {
-    kind: 'branch',
+    kind: "branch",
     worktreePath,
     branchName,
     createArgs: actualCreateArgs,
@@ -742,14 +882,18 @@ function buildDetachedTarget(
   resolvedCommit: string,
   pathOverride: string | null,
 ): CreationTarget {
-  const worktreePath = getDetachedWorktreePath(context.repoRoot, requestedRef, pathOverride);
+  const worktreePath = getDetachedWorktreePath(
+    context.repoRoot,
+    requestedRef,
+    pathOverride,
+  );
 
   return {
-    kind: 'detached',
+    kind: "detached",
     worktreePath,
     resolvedCommit,
     requestedRef,
-    createArgs: ['worktree', 'add', '--detach', worktreePath, resolvedCommit],
+    createArgs: ["worktree", "add", "--detach", worktreePath, resolvedCommit],
     displaySource: requestedRef,
   };
 }
@@ -763,37 +907,50 @@ function createOrReuseWorktree(
   const existingWorktrees = listWorktrees(context.repoRoot);
   const collisionDecision = evaluateCreateCollision(existingWorktrees, target);
 
-  if (collisionDecision.kind === 'reuse-existing') {
-    process.stdout.write(
-      `already exists: ${formatDisplayPath(context.repoRoot, collisionDecision.existingWorktree.path)}\n`,
+  if (collisionDecision.kind === "reuse-existing") {
+    console.log(
+      `already exists: ${
+        formatDisplayPath(
+          context.repoRoot,
+          collisionDecision.existingWorktree.path,
+        )
+      }`,
     );
     return;
   }
 
-  if (collisionDecision.kind === 'path-conflict') {
+  if (collisionDecision.kind === "path-conflict") {
     throw new Error(
-      `Target path already belongs to a different worktree: ${formatDisplayPath(
-        context.repoRoot,
-        collisionDecision.existingWorktree.path,
-      )}`,
+      `Target path already belongs to a different worktree: ${
+        formatDisplayPath(
+          context.repoRoot,
+          collisionDecision.existingWorktree.path,
+        )
+      }`,
     );
   }
 
-  if (collisionDecision.kind === 'branch-conflict') {
+  if (collisionDecision.kind === "branch-conflict") {
     throw new Error(
-      `Branch "${target.kind === 'branch' ? target.branchName : '(detached)'}" is already checked out in ${formatDisplayPath(
-        context.repoRoot,
-        collisionDecision.existingWorktree.path,
-      )}.`,
+      `Branch "${
+        target.kind === "branch" ? target.branchName : "(detached)"
+      }" is already checked out in ${
+        formatDisplayPath(
+          context.repoRoot,
+          collisionDecision.existingWorktree.path,
+        )
+      }.`,
     );
   }
 
-  if (fs.existsSync(target.worktreePath)) {
+  if (pathExists(target.worktreePath)) {
     throw new Error(
-      `Target path exists but is not a registered worktree: ${formatDisplayPath(
-        context.repoRoot,
-        target.worktreePath,
-      )}. Remove it or choose a different target.`,
+      `Target path exists but is not a registered worktree: ${
+        formatDisplayPath(
+          context.repoRoot,
+          target.worktreePath,
+        )
+      }. Remove it or choose a different target.`,
     );
   }
 
@@ -802,58 +959,64 @@ function createOrReuseWorktree(
     return;
   }
 
-  fs.mkdirSync(path.dirname(target.worktreePath), { recursive: true });
+  Deno.mkdirSync(path.dirname(target.worktreePath), { recursive: true });
 
-  process.stdout.write(
-    `Creating worktree at ${formatDisplayPath(context.repoRoot, target.worktreePath)} from ${target.displaySource}...\n`,
+  console.log(
+    `Creating worktree at ${
+      formatDisplayPath(context.repoRoot, target.worktreePath)
+    } from ${target.displaySource}...`,
   );
-  runCommand('git', target.createArgs, {
+  runCommand("git", target.createArgs, {
     cwd: context.repoRoot,
-    stdio: 'inherit',
+    stdio: "inherit",
   });
 
-  runSetupWorktreeHookIfPresent(context.repoRoot, target.worktreePath, runSetup);
+  runSetupWorktreeHookIfPresent(
+    context.repoRoot,
+    target.worktreePath,
+    runSetup,
+  );
 }
 
 export function evaluateCreateCollision(
   existingWorktrees: readonly WorktreeRecord[],
   target: CreationTarget,
 ): CreateCollisionDecision {
-  const existingByPath = existingWorktrees.find(worktree =>
-    areSamePath(worktree.path, target.worktreePath),
+  const existingByPath = existingWorktrees.find((worktree) =>
+    areSamePath(worktree.path, target.worktreePath)
   );
 
   if (existingByPath) {
     if (isReusableExistingWorktree(existingByPath, target)) {
       return {
-        kind: 'reuse-existing',
+        kind: "reuse-existing",
         existingWorktree: existingByPath,
       };
     }
 
     return {
-      kind: 'path-conflict',
+      kind: "path-conflict",
       existingWorktree: existingByPath,
     };
   }
 
-  if (target.kind === 'branch') {
+  if (target.kind === "branch") {
     const existingBranchWorktree = existingWorktrees.find(
-      worktree =>
+      (worktree) =>
         worktree.branchName === target.branchName &&
         !areSamePath(worktree.path, target.worktreePath),
     );
 
     if (existingBranchWorktree) {
       return {
-        kind: 'branch-conflict',
+        kind: "branch-conflict",
         existingWorktree: existingBranchWorktree,
       };
     }
   }
 
   return {
-    kind: 'create-new',
+    kind: "create-new",
   };
 }
 
@@ -861,14 +1024,18 @@ export function isReusableExistingWorktree(
   existingWorktree: WorktreeRecord,
   target: CreationTarget,
 ): boolean {
-  if (target.kind === 'branch') {
+  if (target.kind === "branch") {
     return existingWorktree.branchName === target.branchName;
   }
 
-  return existingWorktree.detached && existingWorktree.head === target.resolvedCommit;
+  return existingWorktree.detached &&
+    existingWorktree.head === target.resolvedCommit;
 }
 
-function resolveExistingLocalBranch(repoRoot: string, branchName: string): string | null {
+function resolveExistingLocalBranch(
+  repoRoot: string,
+  branchName: string,
+): string | null {
   return refExists(repoRoot, `refs/heads/${branchName}`) ? branchName : null;
 }
 
@@ -892,7 +1059,8 @@ export function resolveRemoteBranchFromRefs(
   }
 
   const matches = remoteRefs.filter(
-    remoteRef => deriveLocalBranchNameFromRemoteRef(remoteRef) === requestedRef,
+    (remoteRef) =>
+      deriveLocalBranchNameFromRemoteRef(remoteRef) === requestedRef,
   );
   if (matches.length === 0) {
     return null;
@@ -900,7 +1068,9 @@ export function resolveRemoteBranchFromRefs(
 
   if (matches.length > 1) {
     throw new Error(
-      `Ref "${requestedRef}" matches multiple remote branches: ${matches.join(', ')}. Use an explicit remote ref.`,
+      `Ref "${requestedRef}" matches multiple remote branches: ${
+        matches.join(", ")
+      }. Use an explicit remote ref.`,
     );
   }
 
@@ -911,9 +1081,11 @@ export function resolveRemoteBranchFromRefs(
 }
 
 function deriveLocalBranchNameFromRemoteRef(remoteRef: string): string {
-  const separatorIndex = remoteRef.indexOf('/');
+  const separatorIndex = remoteRef.indexOf("/");
   if (separatorIndex === -1 || separatorIndex === remoteRef.length - 1) {
-    throw new Error(`Expected remote ref in "<remote>/<branch>" form, got: ${remoteRef}`);
+    throw new Error(
+      `Expected remote ref in "<remote>/<branch>" form, got: ${remoteRef}`,
+    );
   }
 
   return remoteRef.slice(separatorIndex + 1);
@@ -921,20 +1093,20 @@ function deriveLocalBranchNameFromRemoteRef(remoteRef: string): string {
 
 function listRemoteTrackingRefs(repoRoot: string): string[] {
   const output = runCommand(
-    'git',
-    ['for-each-ref', '--format=%(refname:strip=2)', 'refs/remotes'],
+    "git",
+    ["for-each-ref", "--format=%(refname:strip=2)", "refs/remotes"],
     { cwd: repoRoot },
   ).stdout;
 
   return output
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0 && !line.endsWith('/HEAD'));
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.endsWith("/HEAD"));
 }
 
 function refExists(repoRoot: string, ref: string): boolean {
   return (
-    runCommand('git', ['show-ref', '--verify', '--quiet', ref], {
+    runCommand("git", ["show-ref", "--verify", "--quiet", ref], {
       cwd: repoRoot,
       allowFailure: true,
     }).status === 0
@@ -951,10 +1123,14 @@ function resolveCommitish(repoRoot: string, ref: string): string {
 }
 
 function tryResolveCommitish(repoRoot: string, ref: string): string | null {
-  const result = runCommand('git', ['rev-parse', '--verify', `${ref}^{commit}`], {
-    cwd: repoRoot,
-    allowFailure: true,
-  });
+  const result = runCommand(
+    "git",
+    ["rev-parse", "--verify", `${ref}^{commit}`],
+    {
+      cwd: repoRoot,
+      allowFailure: true,
+    },
+  );
 
   return result.status === 0 ? result.stdout.trim() : null;
 }
@@ -973,12 +1149,21 @@ export function resolveCreateWorktreePath(
     : path.resolve(repoRoot, pathOverride);
 }
 
-function getDefaultBranchWorktreeRelativePath(repoRoot: string, branchName: string): string {
-  return path.join('..', `${path.basename(repoRoot)}-${branchName}`);
+function getDefaultBranchWorktreeRelativePath(
+  repoRoot: string,
+  branchName: string,
+): string {
+  return path.join("..", `${path.basename(repoRoot)}-${branchName}`);
 }
 
-function getDefaultDetachedWorktreeRelativePath(repoRoot: string, requestedRef: string): string {
-  return path.join('..', `${path.basename(repoRoot)}-detached-${sanitizePathToken(requestedRef)}`);
+function getDefaultDetachedWorktreeRelativePath(
+  repoRoot: string,
+  requestedRef: string,
+): string {
+  return path.join(
+    "..",
+    `${path.basename(repoRoot)}-detached-${sanitizePathToken(requestedRef)}`,
+  );
 }
 
 function getBranchWorktreePath(
@@ -1007,103 +1192,128 @@ function getDetachedWorktreePath(
 
 export function sanitizePathToken(value: string): string {
   const normalized = value
-    .replace(/[^A-Za-z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return normalized.length > 0 ? normalized : 'ref';
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized.length > 0 ? normalized : "ref";
 }
 
-async function runRemove(
+function runRemove(
   context: CommandContext,
   args: readonly string[],
   deleteBranch: boolean,
   force: boolean,
   dryRun: boolean,
-): Promise<void> {
+): void {
   const targetArg = args[0];
   if (!targetArg || args.length !== 1) {
-    throw new Error('Command "remove" requires exactly one branch name or path.');
+    throw new Error(
+      'Command "remove" requires exactly one branch name or path.',
+    );
   }
 
   const statuses = collectWorktreeStatuses(context);
   const target = resolveRemovalTarget(statuses, context.repoRoot, targetArg);
 
   if (target.isCurrent) {
-    throw new Error(`Refusing to remove the current worktree: ${target.worktree.path}`);
+    throw new Error(
+      `Refusing to remove the current worktree: ${target.worktree.path}`,
+    );
   }
 
   if (target.isPrimary) {
-    throw new Error(`Refusing to remove the primary repository checkout: ${target.worktree.path}`);
+    throw new Error(
+      `Refusing to remove the primary repository checkout: ${target.worktree.path}`,
+    );
   }
 
   const dirtyRemovalConfirmed = force
     ? hasChanges(target)
     : dryRun
-      ? hasChanges(target)
-      : hasChanges(target)
-        ? await confirmDirtyRemoval(context.repoRoot, target)
-        : false;
+    ? hasChanges(target)
+    : hasChanges(target)
+    ? confirmDirtyRemoval(context.repoRoot, target)
+    : false;
   if (!dryRun && hasChanges(target) && !dirtyRemovalConfirmed) {
     return;
   }
 
   if (dryRun) {
-    process.stdout.write('Dry run only. No changes were made.\n');
-    process.stdout.write(
-      `Would remove: ${formatDisplayPath(context.repoRoot, target.worktree.path)}\n`,
+    console.log("Dry run only. No changes were made.");
+    console.log(
+      `Would remove: ${
+        formatDisplayPath(context.repoRoot, target.worktree.path)
+      }`,
     );
-    process.stdout.write(`Force remove: ${toYesNo(dirtyRemovalConfirmed)}\n`);
-    process.stdout.write(
-      `Delete branch: ${deleteBranch && target.worktree.branchName ? target.worktree.branchName : 'no'}\n`,
+    console.log(`Force remove: ${toYesNo(dirtyRemovalConfirmed)}`);
+    console.log(
+      `Delete branch: ${
+        deleteBranch && target.worktree.branchName
+          ? target.worktree.branchName
+          : "no"
+      }`,
     );
     return;
   }
 
-  process.stdout.write(
-    `Removing worktree ${formatDisplayPath(context.repoRoot, target.worktree.path)}...\n`,
+  console.log(
+    `Removing worktree ${
+      formatDisplayPath(context.repoRoot, target.worktree.path)
+    }...`,
   );
   const removeArgs = dirtyRemovalConfirmed
-    ? ['worktree', 'remove', '--force', target.worktree.path]
-    : ['worktree', 'remove', target.worktree.path];
-  runCommand('git', removeArgs, {
+    ? ["worktree", "remove", "--force", target.worktree.path]
+    : ["worktree", "remove", target.worktree.path];
+  runCommand("git", removeArgs, {
     cwd: context.repoRoot,
-    stdio: 'inherit',
+    stdio: "inherit",
   });
 
   if (deleteBranch && target.worktree.branchName) {
-    process.stdout.write(`Deleting branch ${target.worktree.branchName}...\n`);
+    console.log(`Deleting branch ${target.worktree.branchName}...`);
     const deleteBranchFlag = getBranchDeletionFlag(target, force);
-    runCommand('git', ['branch', deleteBranchFlag, target.worktree.branchName], {
-      cwd: context.repoRoot,
-      stdio: 'inherit',
-    });
+    runCommand(
+      "git",
+      ["branch", deleteBranchFlag, target.worktree.branchName],
+      {
+        cwd: context.repoRoot,
+        stdio: "inherit",
+      },
+    );
   }
 }
 
 export function getBranchDeletionFlag(
   status: WorktreeStatus,
   force: boolean,
-): '-d' | '-D' {
-  return force || status.localCommits > 0 ? '-D' : '-d';
+): "-d" | "-D" {
+  return force || status.localCommits > 0 ? "-D" : "-d";
 }
 
-async function confirmDirtyRemoval(repoRoot: string, status: WorktreeStatus): Promise<boolean> {
+function confirmDirtyRemoval(
+  repoRoot: string,
+  status: WorktreeStatus,
+): boolean {
   if (!hasChanges(status)) {
     return false;
   }
 
   const details = [
-    status.worktree.detached ? 'detached HEAD (commits may be unpublished)' : null,
-    status.dirty ? 'tracked changes' : null,
-    status.untracked ? 'untracked files' : null,
+    status.worktree.detached
+      ? "detached HEAD (commits may be unpublished)"
+      : null,
+    status.dirty ? "tracked changes" : null,
+    status.untracked ? "untracked files" : null,
     status.localCommits > 0 ? `${status.localCommits} local commit(s)` : null,
   ].filter(isPresent);
 
-  const confirmed = await confirmDestructiveAction(
-    `Worktree ${formatDisplayPath(repoRoot, status.worktree.path)} has ${details.join(', ')}. Remove it? [y/N] `,
+  const confirmed = confirmDestructiveAction(
+    `Worktree ${formatDisplayPath(repoRoot, status.worktree.path)} has ${
+      details.join(", ")
+    }. Remove it? [y/N] `,
   );
   if (!confirmed) {
-    process.stdout.write('Removal cancelled.\n');
+    console.log("Removal cancelled.");
     return false;
   }
 
@@ -1115,22 +1325,22 @@ function runSetupWorktreeHookIfPresent(
   worktreePath: string,
   runSetup: boolean,
 ): void {
-  const setupScriptPath = path.join(repoRoot, 'setup-worktree.sh');
+  const setupScriptPath = path.join(repoRoot, "setup-worktree.sh");
 
-  if (!fs.existsSync(setupScriptPath)) {
-    process.stdout.write('No setup-worktree.sh found. Skipping post-create setup.\n');
+  if (!pathExists(setupScriptPath)) {
+    console.log("No setup-worktree.sh found. Skipping post-create setup.");
     return;
   }
 
   if (!runSetup) {
-    process.stdout.write('Skipped setup-worktree.sh because --no-setup was provided.\n');
+    console.log("Skipped setup-worktree.sh because --no-setup was provided.");
     return;
   }
 
-  process.stdout.write('Running setup-worktree.sh...\n');
-  runCommand('bash', ['./setup-worktree.sh', worktreePath], {
+  console.log("Running setup-worktree.sh...");
+  runCommand("bash", ["./setup-worktree.sh", worktreePath], {
     cwd: repoRoot,
-    stdio: 'inherit',
+    stdio: "inherit",
   });
 }
 
@@ -1138,37 +1348,44 @@ export function buildWorktreeListRows(
   repoRoot: string,
   statuses: readonly WorktreeStatus[],
 ): WorktreeListRow[] {
-  return statuses.map(status => ({
-    branch: status.worktree.branchName ?? '(detached)',
-    source: status.worktree.detached ? 'detached' : 'branch',
+  return statuses.map((status) => ({
+    branch: status.worktree.branchName ?? "(detached)",
+    source: status.worktree.detached ? "detached" : "branch",
     pathKind: getWorktreePathKind(repoRoot, status.worktree),
-    upstream: status.upstreamRef ?? '(none)',
+    upstream: status.upstreamRef ?? "(none)",
     comparison: status.comparisonRef,
     path: formatDisplayPath(repoRoot, status.worktree.path),
     dirty: toYesNo(status.dirty),
     untracked: toYesNo(status.untracked),
-    localCommits: status.worktree.detached ? 'n/a' : String(status.localCommits),
+    localCommits: status.worktree.detached
+      ? "n/a"
+      : String(status.localCommits),
     current: toYesNo(status.isCurrent),
     primary: toYesNo(status.isPrimary),
   }));
 }
 
 function collectWorktreeStatuses(context: CommandContext): WorktreeStatus[] {
-  return listWorktrees(context.repoRoot).map(worktree => {
-    const statusOutput = runCommand('git', ['status', '--porcelain', '--untracked-files=all'], {
-      cwd: worktree.path,
-    }).stdout;
+  return listWorktrees(context.repoRoot).map((worktree) => {
+    const statusOutput =
+      runCommand("git", ["status", "--porcelain", "--untracked-files=all"], {
+        cwd: worktree.path,
+      }).stdout;
 
     const statusLines = statusOutput
-      .split('\n')
-      .map(line => line.trimEnd())
+      .split("\n")
+      .map((line) => line.trimEnd())
       .filter(Boolean);
 
-    const dirty = statusLines.some(line => !line.startsWith('??'));
-    const untracked = statusLines.some(line => line.startsWith('??'));
+    const dirty = statusLines.some((line) => !line.startsWith("??"));
+    const untracked = statusLines.some((line) => line.startsWith("??"));
     const upstreamRef = getUpstreamRef(worktree);
     const comparisonRef = getComparisonRef(worktree, upstreamRef);
-    const localCommits = getLocalCommitCount(worktree.path, comparisonRef, worktree.detached);
+    const localCommits = getLocalCommitCount(
+      worktree.path,
+      comparisonRef,
+      worktree.detached,
+    );
 
     return {
       worktree,
@@ -1184,7 +1401,7 @@ function collectWorktreeStatuses(context: CommandContext): WorktreeStatus[] {
 }
 
 function listWorktrees(repoRoot: string): WorktreeRecord[] {
-  const output = runCommand('git', ['worktree', 'list', '--porcelain'], {
+  const output = runCommand("git", ["worktree", "list", "--porcelain"], {
     cwd: repoRoot,
   }).stdout;
 
@@ -1203,7 +1420,7 @@ function listWorktrees(repoRoot: string): WorktreeRecord[] {
       path: currentPath,
       head,
       branchRef,
-      branchName: branchRef ? branchRef.replace(/^refs\/heads\//, '') : null,
+      branchName: branchRef ? branchRef.replace(/^refs\/heads\//, "") : null,
       detached,
     });
 
@@ -1213,29 +1430,29 @@ function listWorktrees(repoRoot: string): WorktreeRecord[] {
     detached = false;
   };
 
-  for (const line of output.split('\n')) {
-    if (line === '') {
+  for (const line of output.split("\n")) {
+    if (line === "") {
       flush();
       continue;
     }
 
-    if (line.startsWith('worktree ')) {
+    if (line.startsWith("worktree ")) {
       flush();
-      currentPath = line.slice('worktree '.length);
+      currentPath = line.slice("worktree ".length);
       continue;
     }
 
-    if (line.startsWith('HEAD ')) {
-      head = line.slice('HEAD '.length);
+    if (line.startsWith("HEAD ")) {
+      head = line.slice("HEAD ".length);
       continue;
     }
 
-    if (line.startsWith('branch ')) {
-      branchRef = line.slice('branch '.length);
+    if (line.startsWith("branch ")) {
+      branchRef = line.slice("branch ".length);
       continue;
     }
 
-    if (line === 'detached') {
+    if (line === "detached") {
       detached = true;
     }
   }
@@ -1244,14 +1461,16 @@ function listWorktrees(repoRoot: string): WorktreeRecord[] {
   return records;
 }
 
-export function getUpstreamRef(worktree: Pick<WorktreeRecord, 'path' | 'detached'>): string | null {
+export function getUpstreamRef(
+  worktree: Pick<WorktreeRecord, "path" | "detached">,
+): string | null {
   if (worktree.detached) {
     return null;
   }
 
   const upstream = runCommand(
-    'git',
-    ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+    "git",
+    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
     {
       cwd: worktree.path,
       allowFailure: true,
@@ -1269,14 +1488,14 @@ export function getUpstreamRef(worktree: Pick<WorktreeRecord, 'path' | 'detached
 }
 
 export function getComparisonRef(
-  worktree: Pick<WorktreeRecord, 'path' | 'detached'>,
+  worktree: Pick<WorktreeRecord, "path" | "detached">,
   upstreamRef: string | null = getUpstreamRef(worktree),
 ): string {
   if (worktree.detached) {
-    return 'HEAD';
+    return "HEAD";
   }
 
-  return upstreamRef ?? 'origin/main';
+  return upstreamRef ?? "origin/main";
 }
 
 function getLocalCommitCount(
@@ -1284,11 +1503,15 @@ function getLocalCommitCount(
   comparisonRef: string,
   detached: boolean,
 ): number {
-  if (detached || comparisonRef === 'HEAD') {
+  if (detached || comparisonRef === "HEAD") {
     return 0;
   }
 
-  const result = runCommand('git', ['rev-list', '--count', `${comparisonRef}..HEAD`], {
+  const result = runCommand("git", [
+    "rev-list",
+    "--count",
+    `${comparisonRef}..HEAD`,
+  ], {
     cwd: worktreePath,
     allowFailure: true,
   });
@@ -1310,7 +1533,9 @@ export function resolveRemovalTarget(
   repoRoot: string,
   targetArg: string,
 ): WorktreeStatus {
-  const byBranch = statuses.find(status => status.worktree.branchName === targetArg);
+  const byBranch = statuses.find((status) =>
+    status.worktree.branchName === targetArg
+  );
   if (byBranch) {
     return byBranch;
   }
@@ -1319,7 +1544,9 @@ export function resolveRemovalTarget(
     ? path.resolve(targetArg)
     : path.resolve(repoRoot, targetArg);
 
-  const byPath = statuses.find(status => areSamePath(status.worktree.path, absoluteTargetPath));
+  const byPath = statuses.find((status) =>
+    areSamePath(status.worktree.path, absoluteTargetPath)
+  );
   if (byPath) {
     return byPath;
   }
@@ -1335,58 +1562,67 @@ export function resolveRemovalTarget(
  * without a stable comparison ref.
  */
 export function hasChanges(status: WorktreeStatus): boolean {
-  return status.worktree.detached || status.dirty || status.untracked || status.localCommits > 0;
+  return status.worktree.detached || status.dirty || status.untracked ||
+    status.localCommits > 0;
 }
 
-function printDryRunPlan(repoRoot: string, target: CreationTarget, runSetup: boolean): void {
-  process.stdout.write('Dry run only. No changes were made.\n');
-  process.stdout.write(`Resolved path: ${formatDisplayPath(repoRoot, target.worktreePath)}\n`);
-  process.stdout.write(`Source: ${target.displaySource}\n`);
-  process.stdout.write(`Git command: git ${target.createArgs.join(' ')}\n`);
-  process.stdout.write(
-    `Run setup-worktree.sh: ${runSetup && fs.existsSync(path.join(repoRoot, 'setup-worktree.sh')) ? 'yes' : 'no'}\n`,
+function printDryRunPlan(
+  repoRoot: string,
+  target: CreationTarget,
+  runSetup: boolean,
+): void {
+  console.log("Dry run only. No changes were made.");
+  console.log(
+    `Resolved path: ${formatDisplayPath(repoRoot, target.worktreePath)}`,
+  );
+  console.log(`Source: ${target.displaySource}`);
+  console.log(`Git command: git ${target.createArgs.join(" ")}`);
+  console.log(
+    `Run setup-worktree.sh: ${
+      runSetup && pathExists(path.join(repoRoot, "setup-worktree.sh"))
+        ? "yes"
+        : "no"
+    }`,
   );
 }
 
-async function confirmDestructiveAction(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    throw new Error('Confirmation is required, but no interactive terminal is available.');
+function confirmDestructiveAction(question: string): boolean {
+  if (!Deno.stdin.isTerminal() || !Deno.stdout.isTerminal()) {
+    throw new Error(
+      "Confirmation is required, but no interactive terminal is available.",
+    );
   }
 
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  try {
-    const answer = await rl.question(question);
-    const normalized = answer.trim().toLowerCase();
-    return normalized === 'y' || normalized === 'yes';
-  } finally {
-    rl.close();
-  }
+  const answer = prompt(question) ?? "";
+  const normalized = answer.trim().toLowerCase();
+  return normalized === "y" || normalized === "yes";
 }
 
-export function formatDisplayPath(repoRoot: string, worktreePath: string): string {
+export function formatDisplayPath(
+  repoRoot: string,
+  worktreePath: string,
+): string {
   const relativePath = path.relative(repoRoot, worktreePath);
-  return relativePath === '' || relativePath.startsWith('..') ? worktreePath : relativePath;
+  return relativePath === "" || relativePath.startsWith("..")
+    ? worktreePath
+    : relativePath;
 }
 
 export function getWorktreePathKind(
   repoRoot: string,
-  worktree: Pick<WorktreeRecord, 'path' | 'branchName' | 'detached'>,
-): 'default' | 'custom' {
+  worktree: Pick<WorktreeRecord, "path" | "branchName" | "detached">,
+): "default" | "custom" {
   if (worktree.branchName) {
     return areSamePath(
-      worktree.path,
-      resolveCreateWorktreePath(
-        repoRoot,
-        getDefaultBranchWorktreeRelativePath(repoRoot, worktree.branchName),
-        null,
-      ),
-    )
-      ? 'default'
-      : 'custom';
+        worktree.path,
+        resolveCreateWorktreePath(
+          repoRoot,
+          getDefaultBranchWorktreeRelativePath(repoRoot, worktree.branchName),
+          null,
+        ),
+      )
+      ? "default"
+      : "custom";
   }
 
   const repoParent = path.dirname(path.resolve(repoRoot));
@@ -1395,34 +1631,40 @@ export function getWorktreePathKind(
   const worktreeBaseName = path.basename(path.resolve(worktree.path));
 
   return worktree.detached &&
-    areSamePath(worktreeParent, repoParent) &&
-    worktreeBaseName.startsWith(`${repoName}-detached-`)
-    ? 'default'
-    : 'custom';
+      areSamePath(worktreeParent, repoParent) &&
+      worktreeBaseName.startsWith(`${repoName}-detached-`)
+    ? "default"
+    : "custom";
 }
 
 export function toYesNo(value: boolean): string {
-  return value ? 'yes' : 'no';
+  return value ? "yes" : "no";
 }
 
 function areSamePath(left: string, right: string): boolean {
   return path.resolve(left) === path.resolve(right);
 }
 
-function runCommand(command: string, args: readonly string[], options: RunOptions = {}): RunResult {
-  const result = spawnSync(command, args, {
+function runCommand(
+  command: string,
+  args: readonly string[],
+  options: RunOptions = {},
+): RunResult {
+  const result = new Deno.Command(command, {
+    args: [...args],
     cwd: options.cwd,
-    stdio: options.stdio ?? 'pipe',
-    encoding: 'utf8',
-  });
+    stdout: options.stdio === "inherit" ? "inherit" : "piped",
+    stderr: options.stdio === "inherit" ? "inherit" : "piped",
+  }).outputSync();
 
-  const stdout = result.stdout ?? '';
-  const stderr = result.stderr ?? '';
-  const status = result.status ?? 1;
+  const stdout = options.stdio === "inherit" ? "" : decodeText(result.stdout);
+  const stderr = options.stdio === "inherit" ? "" : decodeText(result.stderr);
+  const status = result.code;
 
   if (status !== 0 && !options.allowFailure) {
-    const renderedCommand = [command, ...args].join(' ');
-    const message = stderr.trim() || stdout.trim() || `Command failed with exit code ${status}.`;
+    const renderedCommand = [command, ...args].join(" ");
+    const message = stderr.trim() || stdout.trim() ||
+      `Command failed with exit code ${status}.`;
     throw new Error(`${renderedCommand}: ${message}`);
   }
 
@@ -1431,11 +1673,11 @@ function runCommand(command: string, args: readonly string[], options: RunOption
 
 function reportError(error: unknown): void {
   if (error instanceof Error) {
-    process.stderr.write(`${error.message}\n`);
+    console.error(error.message);
     return;
   }
 
-  process.stderr.write(`Unknown error: ${String(error)}\n`);
+  console.error(`Unknown error: ${String(error)}`);
 }
 
 function isPresent<T>(value: T | null | undefined): value is T {
@@ -1446,21 +1688,9 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled command: ${String(value)}`);
 }
 
-function installBrokenPipeHandler(): void {
-  process.stdout.on('error', error => {
-    if ((error as NodeJS.ErrnoException).code === 'EPIPE') {
-      process.exit(0);
-    }
-
-    throw error;
-  });
-}
-
-installBrokenPipeHandler();
-
-if (!process.env.VITEST) {
-  void main().catch(error => {
+if (import.meta.main) {
+  void main().catch((error) => {
     reportError(error);
-    process.exitCode = 1;
+    Deno.exit(1);
   });
 }

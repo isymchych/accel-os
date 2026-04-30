@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${ACCEL_OS:?ACCEL_OS must point at repo root}"
+export AI_CWD="$PWD"
+export DENO_NO_UPDATE_CHECK=1
+cd "$ACCEL_OS/scripts"
+exec deno task --quiet mb-worktree "$@"
