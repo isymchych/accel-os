@@ -303,7 +303,7 @@ const hasExplicitToolSelection = passthrough.some(
   (arg) => arg === "--tools" || arg.startsWith("--tools=") || arg === "--no-tools",
 );
 if (!hasExplicitToolSelection) {
-  appendArgs.push("--tools", "read,bash,edit,write,grep,find,ls");
+  appendArgs.push("--tools", "read,bash,edit,write,grep,find,ls,codex_web_search");
 }
 const { main } = await import("@mariozechner/pi-coding-agent");
 await main([...appendArgs, ...passthrough]);
