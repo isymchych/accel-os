@@ -57,9 +57,7 @@ function normalizeAllowedDomains(domains: readonly string[] | undefined): string
     return undefined;
   }
 
-  const normalized = domains
-    .map((domain) => domain.trim())
-    .filter((domain) => domain.length > 0);
+  const normalized = domains.map((domain) => domain.trim()).filter((domain) => domain.length > 0);
 
   return normalized.length > 0 ? normalized : undefined;
 }

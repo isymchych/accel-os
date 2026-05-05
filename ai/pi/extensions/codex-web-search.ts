@@ -15,12 +15,11 @@ const PROVIDER_ID = "openai-codex";
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 
 const codexWebSearchParameters = Type.Object({
-  query: Type.String({ description: "Search query to send to the OpenAI Codex web search backend." }),
+  query: Type.String({
+    description: "Search query to send to the OpenAI Codex web search backend.",
+  }),
   mode: Type.Optional(
-    Type.Union([
-      Type.Literal("live"),
-      Type.Literal("cached"),
-    ], {
+    Type.Union([Type.Literal("live"), Type.Literal("cached")], {
       description: "Whether Codex should use live web access or cached search results.",
     }),
   ),
@@ -30,11 +29,7 @@ const codexWebSearchParameters = Type.Object({
     }),
   ),
   context_size: Type.Optional(
-    Type.Union([
-      Type.Literal("low"),
-      Type.Literal("medium"),
-      Type.Literal("high"),
-    ], {
+    Type.Union([Type.Literal("low"), Type.Literal("medium"), Type.Literal("high")], {
       description: "How much search context Codex should retrieve.",
     }),
   ),
@@ -85,7 +80,8 @@ export default function codexWebSearchExtension(pi: ExtensionAPI): void {
     label: "Codex Web Search",
     description:
       "Search the web using OpenAI Codex native web search via the ChatGPT Codex backend.",
-    promptSnippet: "Search the web via the OpenAI Codex native web search backend for current information",
+    promptSnippet:
+      "Search the web via the OpenAI Codex native web search backend for current information",
     promptGuidelines: [
       "Use codex_web_search when the user asks for current or external web information.",
     ],

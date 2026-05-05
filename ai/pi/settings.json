@@ -1,6 +1,6 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.71.0",
+  "lastChangelogVersion": "0.73.0",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
@@ -25,5 +25,9 @@
     "openai-codex/gpt-5.4-mini",
     "openai-codex/gpt-5.4"
   ],
-  "treeFilterMode": "no-tools"
+  "treeFilterMode": "no-tools",
+  "transport": "websocket-cached",
+  "terminal": {
+    "showTerminalProgress": true
+  }
 }

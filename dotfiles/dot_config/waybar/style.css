@@ -43,13 +43,17 @@ window#waybar {
 }
 
 #clock {
-  font-size: 1.2em;
-  padding: 4px 2px 4px 4px;
+  font-size: 1.1em;
+  padding: 4px 1px 4px 2px;
 }
 #clock:hover {
   transition: background-color 0.2s;
   background: @highlight-bg-color;
   color: @highlight-color;
+}
+
+#workspaces {
+  margin-bottom: 32px;
 }
 
 #workspaces button {
@@ -80,6 +84,8 @@ window#waybar {
 
 #tray {
   padding-top: 0.5em;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 #tray * {
@@ -90,7 +96,7 @@ window#waybar {
 
 #idle_inhibitor {
   font-size: 1.5em;
-  padding-right: 7px;
+  padding-right: 4px;
 }
 #idle_inhibitor.activated {
   color: @highlight-color;
@@ -100,14 +106,14 @@ window#waybar {
 #memory,
 #disk,
 #temperature {
-  padding: 8px 2px 8px 5px;
+  padding: 8px 1px 8px 3px;
 }
 
 #backlight {
-  padding: 8px 2px 8px 10px;
+  padding: 8px 1px 8px 5px;
 }
 #battery {
-  padding: 5px 0px 5px 8px;
+  padding: 5px 0px 5px 4px;
 }
 
 #custom-pomodoro {
@@ -177,8 +183,8 @@ window#waybar {
   padding-top: 8px;
   padding-bottom: 8px;
 
-  padding-left: 10px;
-  padding-right: 5px;
+  padding-left: 6px;
+  padding-right: 3px;
 }
 #pulseaudio.playback.muted, #pulseaudio.mic.source-muted {
   background-color: @muted-bg-color;
@@ -224,7 +230,7 @@ window#waybar {
   font-size: 1.2em;
   padding-top: 8px;
   padding-bottom: 8px;
-  padding-right: 10px;
+  padding-right: 5px;
 }
 #power-profiles-daemon:hover {
   transition: background-color 0.2s;

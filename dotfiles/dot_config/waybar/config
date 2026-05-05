@@ -35,8 +35,8 @@
     "format": "<span style='italic'>{}</span>"
   },
   "tray": {
-    "icon-size": 28,
-    "spacing": 12
+    "icon-size": 24,
+    "spacing": 8
   },
   "idle_inhibitor": {
     "format": "{icon}",
@@ -48,7 +48,9 @@
   "clock": {
     "interval": 20,
     "tooltip-format": "{calendar}",
-    "format": "<big>{0:^7%H:%M}</big>\n<span line_height='2' size='small'>{0:^10%a %b %d}</span>",
+    "format": "<big>{0:%H:%M}</big>\n<span line_height='1.7' size='small'>{0:%b %d}</span>\n<span size='small'>{0:%a}</span>",
+    "align": 0.5,
+    "justify": "center",
     "calendar": {
       "mode": "month",
       "format": {
@@ -61,11 +63,11 @@
     "on-click": "gsimplecal"
   },
   "cpu": {
-    "format": " CPU{usage:>3}%",
+    "format": " {usage:2}%",
     "tooltip": true
   },
   "memory": {
-    "format": " MEM{percentage:3}%",
+    "format": "RAM {percentage:2}%",
     "tooltip-format": "{used:0.1f}GiB out of {total:0.1f}GiB used"
   },
   "memory#swap": {
@@ -74,26 +76,26 @@
   },
   "disk": {
     "interval": 30,
-    "format": "DISK{percentage_used:3}%",
+    "format": "  {percentage_used:2}%",
     "path": "/home"
   },
   "temperature": {
     "hwmon-path": "/sys/class/hwmon/hwmon1/temp1_input",
     "critical-threshold": 98,
-    "format": "TEMP{temperatureC:3}°"
+    "format": " {temperatureC:2}°"
   },
   "battery": {
     "states": {
       "warning": 30,
       "critical": 15
     },
-    "format": "<span size='large' rise='-2500'>{icon}</span> {capacity:3}%",
+    "format": "<span size='large'>{icon}</span> {capacity:3}%",
     "format-charging": " {capacity}%",
-    "format-plugged": "  {capacity}%",
-    "format-icons": [" ", " ", " ", " ", " "]
+    "format-plugged": " {capacity}%",
+    "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
   },
   "pulseaudio#playback": {
-    "format": "<span size='large'>{icon}</span>  {volume:2}%",
+    "format": "<span size='large'>{icon}</span> {volume:2}%",
     "format-bluetooth": "<span size='large'>{icon}</span>  {volume:2}%",
     "format-bluetooth-muted": "<span size='large' rise='-2000'>{icon}</span>  ",
     "format-muted": "<span size='large'></span>",
@@ -118,7 +120,7 @@
     "on-scroll-down": ""
   },
   "backlight": {
-    "format": "<span size='large' rise='-1000'>󰃞</span>  {percent:3}%",
+    "format": "<span size='large' rise='-1000'>󰃞</span> {percent:3}%",
     "tooltip-format": "Backlight: {percent}%"
   },
   "sway/language": {

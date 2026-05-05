@@ -3,12 +3,9 @@
 * `openai-codex`
 
 # TODO
-* pi use openai web search
 * pi use openai verbosity levels
-* pi use project-specific codex skills
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 * pi - compact/compress file reads 
-* show account in status
 * show timer next to Working...
 * switch thinking modes with alt-1-2-3-4-5
 

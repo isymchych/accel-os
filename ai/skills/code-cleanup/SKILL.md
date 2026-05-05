@@ -1,6 +1,6 @@
 ---
 name: code-cleanup
-description: Perform focused, behavior-safe cleanup refactors in Rust, TypeScript, and JavaScript codebases
+description: Use when asked to do code cleanup.
 ---
 
 # Code Cleanup
