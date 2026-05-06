@@ -45,6 +45,7 @@ window#waybar {
 #clock {
   font-size: 1.1em;
   padding: 4px 1px 4px 2px;
+  margin-bottom: 8px;
 }
 #clock:hover {
   transition: background-color 0.2s;
@@ -97,6 +98,7 @@ window#waybar {
 #idle_inhibitor {
   font-size: 1.5em;
   padding-right: 4px;
+  color: @muted-bg-color;
 }
 #idle_inhibitor.activated {
   color: @highlight-color;
@@ -149,6 +151,12 @@ window#waybar {
   }
 }
 
+@keyframes mic-live-blink {
+  to {
+    opacity: 0.55;
+  }
+}
+
 #battery.critical:not(.charging) {
   color: @critical-color;
   background-color: @critical-bg-color;
@@ -176,7 +184,7 @@ window#waybar {
 }
 
 #pulseaudio {
-  font-size: 1.2em;
+  font-size: 1.1em;
 
   min-height: 30px;
 
@@ -186,9 +194,22 @@ window#waybar {
   padding-left: 6px;
   padding-right: 3px;
 }
-#pulseaudio.playback.muted, #pulseaudio.mic.source-muted {
-  background-color: @muted-bg-color;
-  color: @muted-color;
+#pulseaudio.mic {
+  min-width: 28px;
+  padding-left: 0;
+  padding-right: 0;
+}
+#pulseaudio.mic:not(.source-muted) {
+  animation-name: mic-live-blink;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+#pulseaudio.mic.source-muted {
+  padding-right: 6px;
+  padding-left: 0;
 }
 #pulseaudio:hover:not(.muted):not(.source-muted) {
   transition: background-color 0.2s;

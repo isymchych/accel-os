@@ -356,8 +356,20 @@ bindsym XF86Launch1 exec mb-run-app
 bindsym $mod+Escape exec makoctl dismiss --all
 bindsym $mod+Shift+Escape exec makoctl restore
 
+set $mode_screenshot  [s]creen [w]indow [r]egion [S/W/R] +4s
+mode "$mode_screenshot" {
+     bindsym --to-code s exec mb-screenshot screen; mode "default"
+     bindsym --to-code w exec mb-screenshot window; mode "default"
+     bindsym --to-code r exec mb-screenshot region; mode "default"
+     bindsym --to-code Shift+s exec mb-screenshot screen 4; mode "default"
+     bindsym --to-code Shift+w exec mb-screenshot window 4; mode "default"
+     bindsym --to-code Shift+r exec mb-screenshot region 4; mode "default"
+     bindsym Return mode "default"
+     bindsym Escape mode "default"
+}
+
 # screenshot
-bindsym Print exec mb-screenshot
+bindsym Print mode "$mode_screenshot"
 
 # file manager
 bindsym --to-code $mod+n exec xterm run -- yazi

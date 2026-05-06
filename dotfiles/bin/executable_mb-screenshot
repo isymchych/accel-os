@@ -4,12 +4,43 @@ set -euo pipefail
 screenshots_dir="$HOME/temp/screenshots"
 mkdir -p "$screenshots_dir"
 
-if [[ $# -gt 1 ]]; then
-  echo "usage: mb-screenshot [delay_seconds]" >&2
-  exit 2
-fi
+usage() {
+  echo "usage: mb-screenshot [screen|window|region|menu] [delay_seconds]" >&2
+  echo "       mb-screenshot [delay_seconds]" >&2
+}
 
-delay_seconds="${1:-0}"
+capture_mode="menu"
+delay_seconds="0"
+
+case $# in
+  0)
+    ;;
+  1)
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
+      delay_seconds="$1"
+    else
+      capture_mode="$1"
+    fi
+    ;;
+  2)
+    capture_mode="$1"
+    delay_seconds="$2"
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
+
+case "$capture_mode" in
+  screen|window|region|menu)
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
+
 if [[ ! "$delay_seconds" =~ ^[0-9]+$ ]]; then
   echo "delay_seconds must be a non-negative integer" >&2
   exit 2
@@ -18,13 +49,14 @@ fi
 timestamp="$(date +%Y%m%d_%H%M%S_%3N)"
 screenshot_outfile="$screenshots_dir/screenshot_${timestamp}.png"
 
-cases="screen
-window
-part of the screen"
+if [[ "$capture_mode" == "menu" ]]; then
+  capture_mode="$(printf '%s\n' screen window region | wofi --dmenu)"
+fi
 
-res=$(echo "$cases" | wofi --dmenu)
-
-case "$res" in
+case "$capture_mode" in
+    "")
+        exit 0
+        ;;
     "screen")
         sleep "$delay_seconds"
         grim - | satty -f - -o "$screenshot_outfile"
@@ -33,7 +65,7 @@ case "$res" in
         sleep "$delay_seconds"
         grim -g "$(swaymsg -t get_tree | jq -r '.. | select(.focused?) | .rect | "\(.x),\(.y) \(.width)x\(.height)"')" - | satty -f - -o "$screenshot_outfile"
         ;;
-    "part of the screen")
+    "region")
         sleep "$delay_seconds"
         grim -g "$(slurp)" - | satty -f - -o "$screenshot_outfile"
         ;;
