@@ -343,7 +343,13 @@ require("lazy").setup({
 		"folke/tokyonight.nvim",
 		priority = 1000,
 		init = function()
-			vim.cmd.colorscheme("tokyonight-night")
+			vim.opt.termguicolors = true
+
+			require("tokyonight").setup({
+				style = vim.o.background == "light" and "day" or "night",
+			})
+
+			vim.cmd.colorscheme("tokyonight")
 			vim.cmd.hi("Comment gui=none")
 		end,
 	},
