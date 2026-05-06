@@ -21,25 +21,30 @@
 * pragmatic
 * human-in-the-loop
 * digital exoskeleton - to amplify user capabilities
+* mutual amplification, not delegation
 
 
 # USEFUL PATTERNS / IDEAS
 * "distill"/"compress"/"high signal"
-* scoring rubrics
 * chain-of-thought reasoning
 * human-in-the-loop
-* Critic(/Verifier) pass
+* Critic(/Verifier) pass; argue against itself
 * **build pipelines** even if the end result is an AGENTS.md or SKILL.md - keep "source doc" -> ask agent to build a skill based on it -> improve/compress/"distill"
-* (self)-checklists
+* (self)-checklists; approval gates
+* scoring rubrics
 * error log
 * progressive disclosure
 * red/green TDD
+* require evidence
 * Spec-driven development
 * AI-first company - markdown spec graph; crypto contracts
+  * describe one's company clearly—including its goals, workflows, operations, decisions, teams, and spending—in a clear and consumable fashion.
+  * https://danielmiessler.com/blog/most-companies-arent-ready-for-ai
 * Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions.
 * refactor: Pilot change + rollout
 * avoid negative framing
 * provide examples instead of complicated instructions
+* cognitive offloading vs cognitive surrender
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
@@ -48,6 +53,7 @@
 
 # USEFUL QUESTIONS
 * what are pain points of ...?
+* why? what are the tradeoffs?
 * approaches, best practices?
 * what is better question
 * Explain this change at 3 levels:

@@ -1,38 +1,58 @@
 /**
- * Shows a live response timer in Pi's footer while the agent is working.
+ * Shows a live response timer in Pi's working row while the agent is working,
+ * then appends the final elapsed time to the finalized assistant reply.
  *
- * It starts timing on `agent_start`, updates a footer status entry every 200ms, and leaves the final
- * elapsed time visible when the response completes until the next session start clears it.
+ * The appended timer is stripped from future LLM context so it stays UI-only.
  */
+import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-const STATUS_KEY = "response-timer";
 const UPDATE_INTERVAL_MS = 200;
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 const MINUTE_MS = MS_PER_SECOND * SECONDS_PER_MINUTE;
-
-type StatusContext = {
-  ui: {
-    setStatus(key: string, text: string | undefined): void;
-  };
-};
+const TIMER_PREFIX = "\n\n⏱ ";
 
 function formatElapsed(ms: number): string {
   if (ms < MINUTE_MS) {
-    return `resp ${(ms / MS_PER_SECOND).toFixed(1)}s`;
+    return `${(ms / MS_PER_SECOND).toFixed(1)}s`;
   }
 
   const totalSeconds = Math.floor(ms / MS_PER_SECOND);
   const minutes = Math.floor(totalSeconds / SECONDS_PER_MINUTE);
   const seconds = totalSeconds % SECONDS_PER_MINUTE;
-  return `resp ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+}
+
+function createTimerText(elapsedMs: number): string {
+  return `${TIMER_PREFIX}${formatElapsed(elapsedMs)}`;
+}
+
+function isTimerTextContent(content: AssistantMessage["content"][number]): content is TextContent {
+  return content.type === "text" && content.text.startsWith(TIMER_PREFIX);
+}
+
+function stripTimerFromMessage(message: AgentMessage): AgentMessage {
+  if (message.role !== "assistant") {
+    return message;
+  }
+
+  const content = [...message.content];
+  const lastContent = content.at(-1);
+  if (lastContent === undefined || !isTimerTextContent(lastContent)) {
+    return message;
+  }
+
+  return {
+    ...message,
+    content: content.slice(0, -1),
+  };
 }
 
 export default function responseTimerExtension(pi: ExtensionAPI): void {
   let startedAt: number | undefined;
   let interval: ReturnType<typeof setInterval> | undefined;
-  let lastContext: StatusContext | undefined;
 
   const clearIntervalIfRunning = (): void => {
     if (interval !== undefined) {
@@ -41,31 +61,63 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
     }
   };
 
-  const updateStatus = (): void => {
-    if (lastContext === undefined || startedAt === undefined) {
+  const updateWorkingMessage = (setWorkingMessage: (text?: string) => void): void => {
+    if (startedAt === undefined) {
       return;
     }
-    lastContext.ui.setStatus(STATUS_KEY, formatElapsed(Date.now() - startedAt));
+
+    setWorkingMessage(`resp ${formatElapsed(Date.now() - startedAt)}`);
   };
+
+  pi.on("context", (event) => ({
+    messages: event.messages.map((message) => stripTimerFromMessage(message)),
+  }));
 
   pi.on("session_start", (_event, ctx) => {
     clearIntervalIfRunning();
     startedAt = undefined;
-    lastContext = ctx;
-    ctx.ui.setStatus(STATUS_KEY, undefined);
+    ctx.ui.setWorkingMessage();
   });
 
   pi.on("agent_start", (_event, ctx) => {
     clearIntervalIfRunning();
     startedAt = Date.now();
-    lastContext = ctx;
-    updateStatus();
-    interval = setInterval(updateStatus, UPDATE_INTERVAL_MS);
+    updateWorkingMessage(ctx.ui.setWorkingMessage.bind(ctx.ui));
+    interval = setInterval(() => {
+      updateWorkingMessage(ctx.ui.setWorkingMessage.bind(ctx.ui));
+    }, UPDATE_INTERVAL_MS);
+  });
+
+  pi.on("message_end", (event) => {
+    if (
+      startedAt === undefined ||
+      event.message.role !== "assistant" ||
+      event.message.stopReason === "toolUse"
+    ) {
+      return undefined;
+    }
+
+    return {
+      message: {
+        ...event.message,
+        content: [
+          ...event.message.content,
+          {
+            type: "text",
+            text: createTimerText(Date.now() - startedAt),
+          },
+        ],
+      },
+    };
   });
 
   pi.on("agent_end", (_event, ctx) => {
-    lastContext = ctx;
-    updateStatus();
+    startedAt = undefined;
+    ctx.ui.setWorkingMessage();
+    clearIntervalIfRunning();
+  });
+
+  pi.on("session_shutdown", () => {
     clearIntervalIfRunning();
   });
 }
