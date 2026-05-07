@@ -1,10 +1,5 @@
-/**
- * Dense collapsed rendering for Pi's built-in `read`, `find`, `grep`, `ls`, and `write` tools.
- *
- * Execution still delegates to Pi's built-ins. The collapsed TUI view is reduced to a single
- * self-rendered line per tool row; expanded and error rendering still delegate to Pi's built-ins.
- * `bash` and `edit` are intentionally left unchanged.
- */
+import { homedir } from "node:os";
+
 import type {
   ExtensionAPI,
   FindToolDetails,
@@ -21,7 +16,14 @@ import {
   createWriteToolDefinition,
 } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
-import { homedir } from "node:os";
+
+/**
+ * Dense collapsed rendering for Pi's built-in `read`, `find`, `grep`, `ls`, and `write` tools.
+ *
+ * Execution still delegates to Pi's built-ins. The collapsed TUI view is reduced to a single
+ * self-rendered line per tool row; expanded and error rendering still delegate to Pi's built-ins.
+ * `bash` and `edit` are intentionally left unchanged.
+ */
 
 type ReadToolDefinition = ReturnType<typeof createReadToolDefinition>;
 type FindToolDefinition = ReturnType<typeof createFindToolDefinition>;
@@ -140,7 +142,11 @@ function firstLine(text: string): string {
   return line;
 }
 
-function formatReadTarget(path: string, offset: number | undefined, limit: number | undefined): string {
+function formatReadTarget(
+  path: string,
+  offset: number | undefined,
+  limit: number | undefined,
+): string {
   let target = shortenPath(path);
   if (offset !== undefined || limit !== undefined) {
     const startLine = offset ?? 1;
@@ -158,12 +164,14 @@ function renderCollapsedCall(
   target: string,
 ): Text {
   const state = getCompactState(context.state);
-  let text = theme.fg("toolTitle", theme.bold(toolLabel));
+  let text = "  " + theme.fg("toolTitle", theme.bold(toolLabel));
   if (target.length > 0) {
     text += ` ${theme.fg("accent", target)}`;
   }
 
-  if (!context.expanded && !context.isError && state.collapsedSummary !== undefined) {
+  if (context.isError) {
+    text = theme.bg("toolErrorBg", ` ${text} `);
+  } else if (!context.expanded && state.collapsedSummary !== undefined) {
     text += theme.fg("muted", " -> ");
     text += theme.fg(state.collapsedSummary.status, state.collapsedSummary.label);
   } else if (!context.expanded && context.executionStarted) {
@@ -210,7 +218,10 @@ function registerReadTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
     renderResult(result, options, theme, context) {
       const builtIn = getBuiltInTools(context.cwd).read;
       if (options.expanded || options.isPartial || context.isError) {
-        return builtIn.renderResult?.(result, options, theme, context) ?? emptyText(context.lastComponent);
+        return (
+          builtIn.renderResult?.(result, options, theme, context) ??
+          emptyText(context.lastComponent)
+        );
       }
 
       const imageBlock = result.content.find((block) => block.type === "image");
@@ -251,7 +262,10 @@ function registerFindTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
     renderResult(result, options, theme, context) {
       const builtIn = getBuiltInTools(context.cwd).find;
       if (options.expanded || options.isPartial || context.isError) {
-        return builtIn.renderResult?.(result, options, theme, context) ?? emptyText(context.lastComponent);
+        return (
+          builtIn.renderResult?.(result, options, theme, context) ??
+          emptyText(context.lastComponent)
+        );
       }
 
       const textContent = getFirstTextBlock(result.content) ?? "";
@@ -285,21 +299,31 @@ function registerGrepTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
       if (args.glob !== undefined) {
         target += ` (${truncate(args.glob, 24)})`;
       }
-      return renderCollapsedCall(context.lastComponent, theme, context, "grep", truncate(target, 90));
+      return renderCollapsedCall(
+        context.lastComponent,
+        theme,
+        context,
+        "grep",
+        truncate(target, 90),
+      );
     },
     renderResult(result, options, theme, context) {
       const builtIn = getBuiltInTools(context.cwd).grep;
       if (options.expanded || options.isPartial || context.isError) {
-        return builtIn.renderResult?.(result, options, theme, context) ?? emptyText(context.lastComponent);
+        return (
+          builtIn.renderResult?.(result, options, theme, context) ??
+          emptyText(context.lastComponent)
+        );
       }
 
       const textContent = getFirstTextBlock(result.content) ?? "";
       const outputLineCount = countNonEmptyLines(textContent);
       const details: GrepToolDetails | undefined = result.details;
       const contextLines = typeof context.args.context === "number" ? context.args.context : 0;
-      const labelBase = contextLines > 0
-        ? pluralize(outputLineCount, "output line", "output lines")
-        : pluralize(outputLineCount, "match", "matches");
+      const labelBase =
+        contextLines > 0
+          ? pluralize(outputLineCount, "output line", "output lines")
+          : pluralize(outputLineCount, "match", "matches");
 
       let label = labelBase;
       if (details?.matchLimitReached !== undefined) {
@@ -337,7 +361,10 @@ function registerLsTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
     renderResult(result, options, theme, context) {
       const builtIn = getBuiltInTools(context.cwd).ls;
       if (options.expanded || options.isPartial || context.isError) {
-        return builtIn.renderResult?.(result, options, theme, context) ?? emptyText(context.lastComponent);
+        return (
+          builtIn.renderResult?.(result, options, theme, context) ??
+          emptyText(context.lastComponent)
+        );
       }
 
       const textContent = getFirstTextBlock(result.content) ?? "";
@@ -373,7 +400,10 @@ function registerWriteTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
     renderResult(result, options, theme, context) {
       const builtIn = getBuiltInTools(context.cwd).write;
       if (options.expanded || options.isPartial || context.isError) {
-        return builtIn.renderResult?.(result, options, theme, context) ?? emptyText(context.lastComponent);
+        return (
+          builtIn.renderResult?.(result, options, theme, context) ??
+          emptyText(context.lastComponent)
+        );
       }
 
       const textContent = getFirstTextBlock(result.content);

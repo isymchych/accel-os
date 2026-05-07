@@ -72,11 +72,26 @@ function buildPersonalContextSection(contextFiles: PersonalContextFile[]): strin
   return `${PERSONAL_CONTEXT_HEADER}${blocks.join("")}`;
 }
 
+function buildStartupNotice(contextFiles: PersonalContextFile[]): string {
+  const paths = contextFiles.map((contextFile) => contextFile.path).join(", ");
+  return `Personal context: ${paths}`;
+}
+
 export default function personalContext(pi: ExtensionAPI): void {
   let cachedContextFiles: PersonalContextFile[] = [];
 
-  pi.on("session_start", async (_event, ctx) => {
+  pi.on("session_start", async (event, ctx) => {
     cachedContextFiles = discoverPersonalContextFiles(ctx.cwd);
+
+    if (!ctx.hasUI || cachedContextFiles.length === 0) {
+      return;
+    }
+
+    if (event.reason !== "startup" && event.reason !== "reload") {
+      return;
+    }
+
+    ctx.ui.notify(buildStartupNotice(cachedContextFiles), "info");
   });
 
   pi.on("before_agent_start", async (_event, ctx) => {

@@ -1,58 +1,125 @@
 /**
- * Shows a live response timer in Pi's working row while the agent is working,
- * then appends the final elapsed time to the finalized assistant reply.
+ * Owns Pi's streaming working row: a compact animated Nyan Cat plus a live
+ * response timer, then appends the final elapsed time to the finalized
+ * assistant reply.
  *
  * The appended timer is stripped from future LLM context so it stays UI-only.
  */
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { homedir } from "node:os";
+
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  WorkingIndicatorOptions,
+} from "@mariozechner/pi-coding-agent";
+
+import {
+  createResponseTimerText,
+  createWorkingTimerMessage,
+  stripResponseTimerFromMessage,
+} from "../lib/response-timer.ts";
 
 const UPDATE_INTERVAL_MS = 200;
-const MS_PER_SECOND = 1000;
-const SECONDS_PER_MINUTE = 60;
-const MINUTE_MS = MS_PER_SECOND * SECONDS_PER_MINUTE;
-const TIMER_PREFIX = "\n\n⏱ ";
+const TITLE_PREFIX = "π   ";
+const RESET_FG = "\x1b[39m";
+const FRAME_INTERVAL_MS = 90;
+const MAX_SHIFT = 4;
+const TRAIL_WIDTH = 16;
+const SHIFT_STEPS = [0, 1, 2, 3, 4, 3, 2, 1] as const;
+const FACE_FRAMES = ["=^.^=", "=^-^="] as const;
+const PASTRY_PATTERNS = ["::::", ".::.", ":..:"] as const;
+const RAINBOW_COLORS = [
+  "\x1b[38;2;255;0;0m",
+  "\x1b[38;2;255;153;0m",
+  "\x1b[38;2;255;255;0m",
+  "\x1b[38;2;51;204;51m",
+  "\x1b[38;2;51;153;255m",
+  "\x1b[38;2;153;102;255m",
+] as const;
+const PASTRY_CRUST = "\x1b[38;2;194;140;92m";
+const PASTRY_FILL = "\x1b[38;2;255;182;193m";
+const CAT_FUR = "\x1b[38;2;170;170;170m";
 
-function formatElapsed(ms: number): string {
-  if (ms < MINUTE_MS) {
-    return `${(ms / MS_PER_SECOND).toFixed(1)}s`;
-  }
-
-  const totalSeconds = Math.floor(ms / MS_PER_SECOND);
-  const minutes = Math.floor(totalSeconds / SECONDS_PER_MINUTE);
-  const seconds = totalSeconds % SECONDS_PER_MINUTE;
-  return `${minutes}m ${seconds}s`;
+function colorize(text: string, color: string): string {
+  return `${color}${text}${RESET_FG}`;
 }
 
-function createTimerText(elapsedMs: number): string {
-  return `${TIMER_PREFIX}${formatElapsed(elapsedMs)}`;
+function createRainbowTrail(offset: number): string {
+  let trail = "";
+  for (let index = 0; index < TRAIL_WIDTH; index += 1) {
+    const colorIndex = (index + offset) % RAINBOW_COLORS.length;
+    const color = RAINBOW_COLORS[colorIndex] ?? RAINBOW_COLORS[0];
+    trail += colorize("~", color);
+  }
+  return trail;
 }
 
-function isTimerTextContent(content: AssistantMessage["content"][number]): content is TextContent {
-  return content.type === "text" && content.text.startsWith(TIMER_PREFIX);
+function createPastry(pattern: string): string {
+  return `${colorize(",[", PASTRY_CRUST)}${colorize(pattern, PASTRY_FILL)}${colorize("],", PASTRY_CRUST)}`;
 }
 
-function stripTimerFromMessage(message: AgentMessage): AgentMessage {
-  if (message.role !== "assistant") {
-    return message;
-  }
+function createCatFrame(face: string, pastryPattern: string): string {
+  return `${createPastry(pastryPattern)}${colorize(face, CAT_FUR)}`;
+}
 
-  const content = [...message.content];
-  const lastContent = content.at(-1);
-  if (lastContent === undefined || !isTimerTextContent(lastContent)) {
-    return message;
-  }
+function createFrame(shift: number, rainbowOffset: number, catFrame: string): string {
+  const leadingSpaces = " ".repeat(shift);
+  const trailingSpaces = " ".repeat(MAX_SHIFT - shift);
+  return `${leadingSpaces}${createRainbowTrail(rainbowOffset)}${catFrame}${trailingSpaces}`;
+}
+
+function createNyanWorkingIndicator(): WorkingIndicatorOptions {
+  const catFrames = FACE_FRAMES.flatMap((face) =>
+    PASTRY_PATTERNS.map((pastryPattern) => createCatFrame(face, pastryPattern)),
+  );
+  const frames = SHIFT_STEPS.flatMap((shift, step) =>
+    catFrames.map((catFrame, catFrameIndex) => createFrame(shift, step + catFrameIndex, catFrame)),
+  );
 
   return {
-    ...message,
-    content: content.slice(0, -1),
+    frames,
+    intervalMs: FRAME_INTERVAL_MS,
   };
 }
+
+function formatDisplayPath(cwd: string): string {
+  const home = homedir();
+  if (cwd === home) {
+    return "~";
+  }
+  if (cwd.startsWith(`${home}/`)) {
+    return `~${cwd.slice(home.length)}`;
+  }
+  return cwd;
+}
+
+async function getGitBranch(pi: ExtensionAPI, cwd: string): Promise<string | undefined> {
+  const result = await pi.exec("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+    cwd,
+    timeout: 5_000,
+  });
+
+  if (result.code !== 0) {
+    return undefined;
+  }
+
+  const branch = result.stdout.trim();
+  return branch.length > 0 ? branch : undefined;
+}
+
+async function getBaseTitle(pi: ExtensionAPI, cwd: string): Promise<string> {
+  const displayPath = formatDisplayPath(cwd);
+  const branch = await getGitBranch(pi, cwd);
+  const location = branch !== undefined ? `${displayPath} (${branch})` : displayPath;
+  return `${TITLE_PREFIX}  ${location}`;
+}
+
+const NYAN_WORKING_INDICATOR = createNyanWorkingIndicator();
 
 export default function responseTimerExtension(pi: ExtensionAPI): void {
   let startedAt: number | undefined;
   let interval: ReturnType<typeof setInterval> | undefined;
+  let baseTitle = TITLE_PREFIX;
 
   const clearIntervalIfRunning = (): void => {
     if (interval !== undefined) {
@@ -61,30 +128,52 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
     }
   };
 
-  const updateWorkingMessage = (setWorkingMessage: (text?: string) => void): void => {
+  const refreshBaseTitle = async (ctx: ExtensionContext): Promise<void> => {
+    baseTitle = await getBaseTitle(pi, ctx.cwd);
+  };
+
+  const setIdleTitle = (ctx: ExtensionContext): void => {
+    ctx.ui.setTitle(baseTitle);
+  };
+
+  const applyWorkingIndicator = (ctx: ExtensionContext): void => {
+    ctx.ui.setWorkingIndicator(NYAN_WORKING_INDICATOR);
+  };
+
+  const clearWorkingTimer = (ctx: ExtensionContext): void => {
+    ctx.ui.setWorkingMessage();
+  };
+
+  const updateWorkingTimer = (ctx: ExtensionContext): void => {
     if (startedAt === undefined) {
       return;
     }
 
-    setWorkingMessage(`resp ${formatElapsed(Date.now() - startedAt)}`);
+    applyWorkingIndicator(ctx);
+    ctx.ui.setWorkingMessage(createWorkingTimerMessage(Date.now() - startedAt));
   };
 
   pi.on("context", (event) => ({
-    messages: event.messages.map((message) => stripTimerFromMessage(message)),
+    messages: event.messages.map((message) => stripResponseTimerFromMessage(message)),
   }));
 
-  pi.on("session_start", (_event, ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     clearIntervalIfRunning();
     startedAt = undefined;
-    ctx.ui.setWorkingMessage();
+    await refreshBaseTitle(ctx);
+    setIdleTitle(ctx);
+    applyWorkingIndicator(ctx);
+    clearWorkingTimer(ctx);
   });
 
-  pi.on("agent_start", (_event, ctx) => {
+  pi.on("agent_start", async (_event, ctx) => {
     clearIntervalIfRunning();
     startedAt = Date.now();
-    updateWorkingMessage(ctx.ui.setWorkingMessage.bind(ctx.ui));
+    await refreshBaseTitle(ctx);
+    setIdleTitle(ctx);
+    updateWorkingTimer(ctx);
     interval = setInterval(() => {
-      updateWorkingMessage(ctx.ui.setWorkingMessage.bind(ctx.ui));
+      updateWorkingTimer(ctx);
     }, UPDATE_INTERVAL_MS);
   });
 
@@ -104,20 +193,26 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
           ...event.message.content,
           {
             type: "text",
-            text: createTimerText(Date.now() - startedAt),
+            text: createResponseTimerText(Date.now() - startedAt),
           },
         ],
       },
     };
   });
 
-  pi.on("agent_end", (_event, ctx) => {
+  pi.on("agent_end", async (_event, ctx) => {
     startedAt = undefined;
-    ctx.ui.setWorkingMessage();
     clearIntervalIfRunning();
+    await refreshBaseTitle(ctx);
+    setIdleTitle(ctx);
+    applyWorkingIndicator(ctx);
+    clearWorkingTimer(ctx);
   });
 
-  pi.on("session_shutdown", () => {
+  pi.on("session_shutdown", (_event, ctx) => {
     clearIntervalIfRunning();
+    setIdleTitle(ctx);
+    clearWorkingTimer(ctx);
+    ctx.ui.setWorkingIndicator();
   });
 }
