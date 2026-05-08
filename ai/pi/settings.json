@@ -1,9 +1,9 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.73.1",
+  "lastChangelogVersion": "0.74.0",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.4-mini",
+  "defaultModel": "gpt-5.4",
   "defaultThinkingLevel": "high",
   "autocompleteMaxVisible": 16,
   "skills": [
@@ -28,6 +28,6 @@
   "treeFilterMode": "no-tools",
   "transport": "websocket-cached",
   "terminal": {
-    "showTerminalProgress": true
+    "showTerminalProgress": false
   }
 }
