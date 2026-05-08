@@ -5,8 +5,8 @@
  * normalizes the response into primary/secondary limit windows, and renders the remaining quota plus
  * reset timing in a dismissible centered modal.
  */
-import { AuthStorage, type ExtensionAPI, type Theme } from "@mariozechner/pi-coding-agent";
-import { matchesKey, visibleWidth } from "@mariozechner/pi-tui";
+import { AuthStorage, type ExtensionAPI, type Theme } from "@earendil-works/pi-coding-agent";
+import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 
 import { isRecord } from "../lib/guards.ts";
 import {

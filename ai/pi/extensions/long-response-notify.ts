@@ -8,7 +8,7 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const NOTIFY_THRESHOLD_MS = 3_000;
 const TITLE_LIMIT = 80;

@@ -23,8 +23,8 @@
  */
 import { existsSync } from "node:fs";
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import type { AutocompleteProvider, AutocompleteSuggestions } from "@mariozechner/pi-tui";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { AutocompleteProvider, AutocompleteSuggestions } from "@earendil-works/pi-tui";
 
 import {
   buildFdPattern,

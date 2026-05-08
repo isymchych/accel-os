@@ -7,15 +7,15 @@ import type {
   LsToolDetails,
   ReadToolDetails,
   Theme,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   createFindToolDefinition,
   createGrepToolDefinition,
   createLsToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
-} from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 
 /**
  * Dense collapsed rendering for Pi's built-in `read`, `find`, `grep`, `ls`, and `write` tools.

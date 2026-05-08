@@ -8,7 +8,7 @@ import {
 } from "node:fs/promises";
 import { dirname, isAbsolute, resolve as resolvePath } from "node:path";
 
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import * as Diff from "diff";
 import { type Static, Type } from "typebox";
 

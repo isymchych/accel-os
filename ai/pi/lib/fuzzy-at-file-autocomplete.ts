@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, resolve } from "node:path";
 
-import type { AutocompleteItem } from "@mariozechner/pi-tui";
-import { fuzzyMatch } from "@mariozechner/pi-tui";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import { fuzzyMatch } from "@earendil-works/pi-tui";
 
 const PATH_DELIMITERS = new Set([" ", "\t", '"', "'", "="]);
 const DIRECTORY_BONUS = 20;

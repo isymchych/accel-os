@@ -61,6 +61,7 @@
 ## Pi Configuration
 - Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.
 - Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.
+- When adding a new Pi tool that should be agent-callable by default, also add it to the default `--tools` allowlist in `ai/pi/ai.ts`; loading an extension alone does not enable the tool when `ai.ts` passes an explicit allowlist.
 - Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
 - On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshrc_tools` exports `PI_CODING_AGENT_DIR` to that path.
 

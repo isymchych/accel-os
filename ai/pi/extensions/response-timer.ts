@@ -11,7 +11,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
   WorkingIndicatorOptions,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 import {
   createResponseTimerText,

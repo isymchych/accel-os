@@ -2012,12 +2012,6 @@ targets."
        'flycheck-working-directory
        #'mb/flycheck-javascript-oxlint-working-directory)
 
-  (flycheck-add-mode 'javascript-eslint 'html-ts-mode)
-  (add-hook 'html-ts-mode-hook
-            (lambda ()
-              (setq-local flycheck-checker 'javascript-eslint)
-              (flycheck-mode)))
-
   ;; from Spacemacs
   (defun mb/toggle-flyckeck-errors-list ()
     "Toggle flycheck's error list window."

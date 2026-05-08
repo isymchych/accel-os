@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;

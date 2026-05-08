@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { AssistantMessage, UserMessage, Usage } from "@mariozechner/pi-ai";
+import type { AssistantMessage, UserMessage, Usage } from "@earendil-works/pi-ai";
 
 import {
   createResponseTimerText,

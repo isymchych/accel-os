@@ -6,7 +6,7 @@
  * - add `multi` cross-file edits and `patch` apply_patch payloads
  * - participate in Pi's file mutation queue for safe parallel tool execution
  */
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { executeMultiEditTool, multiEditSchema } from "../lib/multi-edit.ts";
 
