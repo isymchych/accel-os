@@ -42,7 +42,7 @@ const FD_BINARY = "fd";
 const ERROR_STATUS_KEY = "fuzzy-at-file-autocomplete";
 
 async function loadFdCandidates(
-  pi: ExtensionAPI,
+  execApi: Pick<ExtensionAPI, "exec">,
   searchRoot: string,
   fuzzyQuery: string,
   includeHidden: boolean,
@@ -70,7 +70,7 @@ async function loadFdCandidates(
   const pattern = buildFdPattern(fuzzyQuery);
 
   const runFd = async (type: "d" | "f"): Promise<CandidateEntry[]> => {
-    const result = await pi.exec(FD_BINARY, [...baseArgs, "--type", type, pattern], {
+    const result = await execApi.exec(FD_BINARY, [...baseArgs, "--type", type, pattern], {
       cwd: searchRoot,
       signal,
       timeout: FD_TIMEOUT_MS,
@@ -93,11 +93,13 @@ async function loadFdCandidates(
   return dedupeCandidates([...directories, ...files]);
 }
 
-function createAutocompleteProvider(
+export function createAutocompleteProvider(
   current: AutocompleteProvider,
-  pi: ExtensionAPI,
+  execApi: Pick<ExtensionAPI, "exec">,
   cwd: string,
 ): AutocompleteProvider {
+  let ownsActiveAtAutocomplete = false;
+
   return {
     async getSuggestions(
       lines,
@@ -109,13 +111,19 @@ function createAutocompleteProvider(
       const textBeforeCursor = currentLine.slice(0, cursorCol);
       const token = extractAtFileToken(textBeforeCursor);
       if (token === null) {
+        if (ownsActiveAtAutocomplete) {
+          ownsActiveAtAutocomplete = false;
+          return null;
+        }
+
+        ownsActiveAtAutocomplete = false;
         return current.getSuggestions(lines, cursorLine, cursorCol, options);
       }
 
       const { quoted, rawQuery } = parseAtFileToken(token);
       const plan = planFdQuery(cwd, rawQuery);
       const candidates = await loadFdCandidates(
-        pi,
+        execApi,
         plan.searchRoot,
         plan.fuzzyQuery,
         plan.includeHidden,
@@ -129,6 +137,7 @@ function createAutocompleteProvider(
         displayPrefix: plan.displayPrefix,
         quoted,
       });
+      ownsActiveAtAutocomplete = suggestions.length > 0;
       return {
         items: suggestions,
         prefix: token,
