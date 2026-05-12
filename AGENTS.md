@@ -64,6 +64,7 @@
 - When adding a new Pi tool that should be agent-callable by default, also add it to the default `--tools` allowlist in `ai/pi/ai.ts`; loading an extension alone does not enable the tool when `ai.ts` passes an explicit allowlist.
 - Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
 - On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshrc_tools` exports `PI_CODING_AGENT_DIR` to that path.
+* When adding new Pi extension - don't forget to add high-level tsdoc to it
 
 ## Machine-Specific Configuration
 - Favor templates (`.tmpl`) or `.chezmoi.osRelease` checks over duplicating configs.

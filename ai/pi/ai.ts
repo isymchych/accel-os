@@ -5,6 +5,10 @@ import path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
 
+import {
+  isManagedEphemeralSessionPath,
+  removeEphemeralSessionArtifactsSync,
+} from "./lib/ephemeral-session.ts";
 import { isRecord } from "./lib/guards.ts";
 import {
   parseOpenAICodexCredential,
@@ -23,6 +27,7 @@ Notes:
   - By default, ai appends both ai/SYSTEM.md and ai/docs/engineering-principles.md.
   - \`chat\` skips appending ai/docs/engineering-principles.md.
   - \`account\` swaps ai/pi/auth.json between saved OpenAI Codex logins.
+  - \`ephemeral-session <session.jsonl>\` is an internal launcher for temp child sessions.
   - Saved accounts are stored as <accountId>.auth.json next to auth.json.
   - Use \`ai -- --help\` to show Pi CLI docs.`;
 
@@ -34,6 +39,38 @@ if (accelOs === undefined || accelOs.length === 0) {
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
 const engineeringPrinciplesPath = path.join(accelOs, "ai", "docs", "engineering-principles.md");
+
+const hasExplicitToolSelection = (args: readonly string[]): boolean => {
+  return args.some(
+    (arg) => arg === "--tools" || arg.startsWith("--tools=") || arg === "--no-tools",
+  );
+};
+
+const buildAppendArgs = (
+  passthrough: readonly string[],
+  includeEngineeringPrinciples: boolean,
+): string[] => {
+  const appendArgs = ["--append-system-prompt", appendSystemPromptPath];
+  if (includeEngineeringPrinciples) {
+    appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
+  }
+  if (!hasExplicitToolSelection(passthrough)) {
+    appendArgs.push("--tools", "read,bash,edit,write,grep,find,ls,codex_web_search,todo");
+  }
+  return appendArgs;
+};
+
+const installEphemeralCleanup = (sessionFile: string): void => {
+  process.once("exit", () => {
+    removeEphemeralSessionArtifactsSync(sessionFile);
+  });
+
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      process.exit(signal === "SIGINT" ? 130 : 143);
+    });
+  }
+};
 
 type AccountInfo = {
   id: string;
@@ -245,6 +282,36 @@ const runAccountSwitcher = async (): Promise<void> => {
   writeStdout(`Switched to ${selected.target.id}. Previous stored at ${renamed}.`);
 };
 
+const rawArgs = process.argv.slice(2);
+if (rawArgs[0] === "ephemeral-session") {
+  const sessionPathArg = rawArgs[1];
+  if (sessionPathArg === undefined || sessionPathArg.length === 0) {
+    writeStderr("ai ephemeral-session: missing session path");
+    process.exit(1);
+  }
+
+  const resolvedSessionPath = path.resolve(sessionPathArg);
+  if (!isManagedEphemeralSessionPath(resolvedSessionPath)) {
+    writeStderr(
+      `ai ephemeral-session: refusing to open unmanaged temp session ${resolvedSessionPath}`,
+    );
+    process.exit(1);
+  }
+
+  const cwd = process.env["AI_CWD"] ?? process.cwd();
+  process.chdir(cwd);
+  installEphemeralCleanup(resolvedSessionPath);
+
+  const { main } = await import("@earendil-works/pi-coding-agent");
+  await main([
+    ...buildAppendArgs(rawArgs.slice(2), true),
+    "--session",
+    resolvedSessionPath,
+    ...rawArgs.slice(2),
+  ]);
+  process.exit(0);
+}
+
 const passthrough: string[] = [];
 let parseModifiers = true;
 let showHelp = false;
@@ -295,15 +362,6 @@ if (useAccountSwitcher) {
 const cwd = process.env["AI_CWD"] ?? process.cwd();
 process.chdir(cwd);
 
-const appendArgs = ["--append-system-prompt", appendSystemPromptPath];
-if (!chatMode) {
-  appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
-}
-const hasExplicitToolSelection = passthrough.some(
-  (arg) => arg === "--tools" || arg.startsWith("--tools=") || arg === "--no-tools",
-);
-if (!hasExplicitToolSelection) {
-  appendArgs.push("--tools", "read,bash,edit,write,grep,find,ls,codex_web_search,todo");
-}
+const appendArgs = buildAppendArgs(passthrough, !chatMode);
 const { main } = await import("@earendil-works/pi-coding-agent");
 await main([...appendArgs, ...passthrough]);

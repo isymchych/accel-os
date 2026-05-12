@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions } from "@earendil-works/pi-tui";
+import type {
+  AutocompleteItem,
+  AutocompleteProvider,
+  AutocompleteSuggestions,
+} from "@earendil-works/pi-tui";
 
 import { createAutocompleteProvider } from "../extensions/fuzzy-at-file-autocomplete.ts";
 
