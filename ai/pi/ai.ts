@@ -55,7 +55,7 @@ const buildAppendArgs = (
     appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
   }
   if (!hasExplicitToolSelection(passthrough)) {
-    appendArgs.push("--tools", "read,bash,edit,write,grep,find,ls,codex_web_search,todo");
+    appendArgs.push("--tools", "read,bash,apply_patch,grep,find,ls");
   }
   return appendArgs;
 };

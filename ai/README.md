@@ -8,6 +8,8 @@
 * pi - compact/compress file reads 
 * show timer next to Working...
 * switch thinking modes with alt-1-2-3-4-5
+* Pi instance might have its own temp directory, that would be auto-cleaned on close. Might use it for storing temp files & stuff. Might use for emphemeral?
+* add tool for: `$ nl -ba /home/isymchych/accel-os/ai/pi/extensions/apply-patch.ts | sed -n '1,120p'` - print first 120 lines with line numbers
 
 * based on https://github.com/can1357/oh-my-pi
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
