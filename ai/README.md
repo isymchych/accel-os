@@ -20,6 +20,10 @@
 * thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
 
 
+* create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
+  * only up to latest user message? or more - with user confirmation?
+  * what about cache reuse?
+
 
 # PRINCIPLES
 * pragmatic

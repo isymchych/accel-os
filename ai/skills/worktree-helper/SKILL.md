@@ -1,6 +1,6 @@
 ---
 name: worktree-helper
-description: Manage repo-local git worktrees through the standalone `mb-worktree` command. Use when asked to create, inspect, or remove a project worktree from an existing ref, a new branch from an explicit base ref, `origin/main`, or a same-repo GitHub pull request, and when flags like `--no-setup`, `--force`, or `--delete-branch` are relevant.
+description: Manage repo-local git worktrees through the standalone `mb-worktree` command. Use when asked to create, inspect, or remove a project worktree from an existing ref, a new branch from an explicit base ref, `origin/main`, or a same-repo GitHub pull request.
 ---
 
 # Worktree Helper
