@@ -3,10 +3,7 @@
 * `openai-codex`
 
 # TODO
-* pi use openai verbosity levels
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
-* pi - compact/compress file reads 
-* show timer next to Working...
 * switch thinking modes with alt-1-2-3-4-5
 * Pi instance might have its own temp directory, that would be auto-cleaned on close. Might use it for storing temp files & stuff. Might use for emphemeral?
   * not necessary "temp" directory - might be per-session so that restored sessions may keep using it
@@ -23,6 +20,10 @@
 * create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
   * only up to latest user message? or more - with user confirmation?
   * what about cache reuse?
+  
+* I don't need exact locations since it triggers redundant file reads: 
+> I’m grabbing the final line references for the changed renderer so the report points to exact locations.  
+ 
 
 
 # PRINCIPLES
