@@ -9,11 +9,13 @@
 * show timer next to Working...
 * switch thinking modes with alt-1-2-3-4-5
 * Pi instance might have its own temp directory, that would be auto-cleaned on close. Might use it for storing temp files & stuff. Might use for emphemeral?
-* add tool for: `$ nl -ba /home/isymchych/accel-os/ai/pi/extensions/apply-patch.ts | sed -n '1,120p'` - print first 120 lines with line numbers
+  * not necessary "temp" directory - might be per-session so that restored sessions may keep using it
+* add grill-me prompt
+* improve summarization - check how pi does it, check how codex does it
 
 * based on https://github.com/can1357/oh-my-pi
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
-* AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep
+* AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
 * LSP?
 * thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
 

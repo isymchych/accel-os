@@ -23,7 +23,8 @@
   "shellPath": "/usr/bin/bash",
   "enabledModels": [
     "openai-codex/gpt-5.4-mini",
-    "openai-codex/gpt-5.4"
+    "openai-codex/gpt-5.4",
+    "openai-codex/gpt-5.5"
   ],
   "treeFilterMode": "no-tools",
   "transport": "websocket-cached",

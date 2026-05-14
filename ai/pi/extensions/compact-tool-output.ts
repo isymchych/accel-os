@@ -14,8 +14,12 @@ import {
   createLsToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
+  defineTool,
 } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { Type } from "typebox";
+
+import { executeNumberedRead } from "../lib/read-with-line-numbers.ts";
 
 /**
  * Dense collapsed rendering for Pi's built-in `read`, `find`, `grep`, `ls`, and `write` tools.
@@ -146,6 +150,7 @@ function formatReadTarget(
   path: string,
   offset: number | undefined,
   limit: number | undefined,
+  showLineNumbers: boolean | undefined,
 ): string {
   let target = shortenPath(path);
   if (offset !== undefined || limit !== undefined) {
@@ -153,7 +158,43 @@ function formatReadTarget(
     const endLine = limit !== undefined ? startLine + limit - 1 : undefined;
     target += endLine !== undefined ? `:${startLine}-${endLine}` : `:${startLine}`;
   }
+  if (showLineNumbers === true) {
+    target += " [numbered]";
+  }
   return truncate(target, 90);
+}
+
+const numberedReadSchema = Type.Object({
+  path: Type.String({ description: "Path to the file to read (relative or absolute)" }),
+  offset: Type.Optional(
+    Type.Number({ description: "Line number to start reading from (1-indexed)" }),
+  ),
+  limit: Type.Optional(Type.Number({ description: "Maximum number of lines to read" })),
+  show_line_numbers: Type.Optional(
+    Type.Boolean({
+      description:
+        "Whether to prefix each returned text line with its file line number. Useful when line references matter.",
+    }),
+  ),
+});
+
+type NumberedReadParams = {
+  path: string;
+  offset?: number;
+  limit?: number;
+  show_line_numbers?: boolean;
+};
+
+function toBuiltInReadParams(params: NumberedReadParams): {
+  path: string;
+  offset?: number;
+  limit?: number;
+} {
+  return {
+    path: params.path,
+    ...(params.offset !== undefined ? { offset: params.offset } : {}),
+    ...(params.limit !== undefined ? { limit: params.limit } : {}),
+  };
 }
 
 function renderCollapsedCall(
@@ -205,14 +246,37 @@ function getBuiltInTools(cwd: string): BuiltInTools {
 }
 
 function registerReadTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
-  const tool: ReadToolDefinition = {
+  const tool = defineTool<typeof numberedReadSchema, ReadToolDetails | undefined>({
     ...startupTools.read,
+    description:
+      `${startupTools.read.description} ` +
+      "Set show_line_numbers=true to prefix returned text lines with their original file line numbers.",
+    ...(startupTools.read.promptSnippet !== undefined
+      ? { promptSnippet: startupTools.read.promptSnippet }
+      : {}),
+    promptGuidelines: [
+      ...(startupTools.read.promptGuidelines ?? []),
+      "Use show_line_numbers=true when you need exact file line references in read output.",
+    ],
+    parameters: numberedReadSchema,
     renderShell: "self",
     async execute(toolCallId, params, signal, onUpdate, ctx) {
-      return getBuiltInTools(ctx.cwd).read.execute(toolCallId, params, signal, onUpdate, ctx);
+      const builtIn = getBuiltInTools(ctx.cwd).read;
+      const builtInParams = toBuiltInReadParams(params);
+
+      if (params.show_line_numbers !== true) {
+        return builtIn.execute(toolCallId, builtInParams, signal, onUpdate, ctx);
+      }
+
+      const builtInResult = await builtIn.execute(toolCallId, builtInParams, signal, onUpdate, ctx);
+      if (builtInResult.content.some((block) => block.type === "image")) {
+        return builtInResult;
+      }
+
+      return executeNumberedRead(builtInParams, ctx.cwd, signal);
     },
     renderCall(args, theme, context) {
-      const target = formatReadTarget(args.path, args.offset, args.limit);
+      const target = formatReadTarget(args.path, args.offset, args.limit, args.show_line_numbers);
       return renderCollapsedCall(context.lastComponent, theme, context, "read", target);
     },
     renderResult(result, options, theme, context) {
@@ -241,7 +305,7 @@ function registerReadTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
       });
       return emptyText(context.lastComponent);
     },
-  };
+  });
 
   pi.registerTool(tool);
 }
