@@ -16,7 +16,6 @@
     "./extensions/ephemeral-fork/index.ts",
     "./extensions/fuzzy-at-file-autocomplete/index.ts",
     "./extensions/long-response-notify/index.ts",
-    "./extensions/multi-edit/index.ts",
     "./extensions/openai-codex/index.ts",
     "./extensions/personal-context/index.ts",
     "./extensions/response-timer/index.ts"
