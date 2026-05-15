@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { isAbsolute, relative, resolve } from "node:path";
 
 import type {
   ExtensionAPI,
@@ -118,12 +119,21 @@ function emptyText(lastComponent: unknown): Text {
   return setText(lastComponent, "");
 }
 
-function shortenPath(path: string): string {
-  const home = homedir();
-  if (path.startsWith(home)) {
-    return `~${path.slice(home.length)}`;
+function expandHome(path: string): string {
+  if (path === "~") {
+    return homedir();
+  }
+  if (path.startsWith("~/")) {
+    return resolve(homedir(), path.slice(2));
   }
   return path;
+}
+
+function formatRelativePath(path: string, cwd: string): string {
+  const expanded = expandHome(path);
+  const absolutePath = isAbsolute(expanded) ? expanded : resolve(cwd, expanded);
+  const displayPath = relative(cwd, absolutePath);
+  return displayPath.length === 0 ? "." : displayPath;
 }
 
 function truncate(text: string, maxLength: number): string {
@@ -147,12 +157,13 @@ function firstLine(text: string): string {
 }
 
 function formatReadTarget(
+  cwd: string,
   path: string,
   offset: number | undefined,
   limit: number | undefined,
   showLineNumbers: boolean | undefined,
 ): string {
-  let target = shortenPath(path);
+  let target = formatRelativePath(path, cwd);
   if (offset !== undefined || limit !== undefined) {
     const startLine = offset ?? 1;
     const endLine = limit !== undefined ? startLine + limit - 1 : undefined;
@@ -161,7 +172,7 @@ function formatReadTarget(
   if (showLineNumbers === true) {
     target += " [numbered]";
   }
-  return truncate(target, 90);
+  return target;
 }
 
 const numberedReadSchema = Type.Object({
@@ -276,7 +287,13 @@ function registerReadTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
       return executeNumberedRead(builtInParams, ctx.cwd, signal);
     },
     renderCall(args, theme, context) {
-      const target = formatReadTarget(args.path, args.offset, args.limit, args.show_line_numbers);
+      const target = formatReadTarget(
+        context.cwd,
+        args.path,
+        args.offset,
+        args.limit,
+        args.show_line_numbers,
+      );
       return renderCollapsedCall(context.lastComponent, theme, context, "read", target);
     },
     renderResult(result, options, theme, context) {
@@ -319,8 +336,8 @@ function registerFindTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
     },
     renderCall(args, theme, context) {
       const pattern = truncate(args.pattern, 40);
-      const path = shortenPath(args.path ?? ".");
-      const target = truncate(`${pattern} in ${path}`, 90);
+      const path = formatRelativePath(args.path ?? ".", context.cwd);
+      const target = `${pattern} in ${path}`;
       return renderCollapsedCall(context.lastComponent, theme, context, "find", target);
     },
     renderResult(result, options, theme, context) {
@@ -358,18 +375,12 @@ function registerGrepTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
     },
     renderCall(args, theme, context) {
       const pattern = truncate(args.pattern, 40);
-      const path = shortenPath(args.path ?? ".");
+      const path = formatRelativePath(args.path ?? ".", context.cwd);
       let target = `/${pattern}/ in ${path}`;
       if (args.glob !== undefined) {
         target += ` (${truncate(args.glob, 24)})`;
       }
-      return renderCollapsedCall(
-        context.lastComponent,
-        theme,
-        context,
-        "grep",
-        truncate(target, 90),
-      );
+      return renderCollapsedCall(context.lastComponent, theme, context, "grep", target);
     },
     renderResult(result, options, theme, context) {
       const builtIn = getBuiltInTools(context.cwd).grep;
@@ -419,7 +430,7 @@ function registerLsTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
         theme,
         context,
         "ls",
-        truncate(shortenPath(args.path ?? "."), 90),
+        formatRelativePath(args.path ?? ".", context.cwd),
       );
     },
     renderResult(result, options, theme, context) {
@@ -456,9 +467,9 @@ function registerWriteTool(pi: ExtensionAPI, startupTools: BuiltInTools): void {
       return getBuiltInTools(ctx.cwd).write.execute(toolCallId, params, signal, onUpdate, ctx);
     },
     renderCall(args, theme, context) {
-      const path = shortenPath(args.path);
+      const path = formatRelativePath(args.path, context.cwd);
       const lineCount = countLines(args.content);
-      const target = truncate(`${path} (${pluralize(lineCount, "line", "lines")})`, 90);
+      const target = `${path} (${pluralize(lineCount, "line", "lines")})`;
       return renderCollapsedCall(context.lastComponent, theme, context, "write", target);
     },
     renderResult(result, options, theme, context) {

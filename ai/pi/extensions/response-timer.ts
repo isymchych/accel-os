@@ -1,9 +1,9 @@
 /**
  * Owns Pi's streaming working row: a compact animated Nyan Cat plus a live
- * response timer, then appends the final elapsed time to the finalized
- * assistant reply.
+ * response timer and TPS estimate, then shows a final toast summary.
  *
- * The appended timer is stripped from future LLM context so it stays UI-only.
+ * Legacy appended timer markers are stripped from future LLM context so they
+ * stay UI-only.
  */
 import { homedir } from "node:os";
 
@@ -14,8 +14,9 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 
 import {
-  createResponseTimerText,
+  createCompletedTimerSummary,
   createWorkingTimerMessage,
+  estimateTokensFromTextDelta,
   stripResponseTimerFromMessage,
 } from "../lib/response-timer.ts";
 
@@ -120,6 +121,26 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
   let startedAt: number | undefined;
   let interval: ReturnType<typeof setInterval> | undefined;
   let baseTitle = TITLE_PREFIX;
+  let assistantMessageStartedAt: number | undefined;
+  let streamStartedAt: number | undefined;
+  let estimatedStreamedTokens = 0;
+  let liveOutputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalStreamMs = 0;
+
+  const resetAssistantStreamState = (): void => {
+    assistantMessageStartedAt = undefined;
+    streamStartedAt = undefined;
+    estimatedStreamedTokens = 0;
+    liveOutputTokens = 0;
+  };
+
+  const resetRunState = (): void => {
+    startedAt = undefined;
+    totalOutputTokens = 0;
+    totalStreamMs = 0;
+    resetAssistantStreamState();
+  };
 
   const clearIntervalIfRunning = (): void => {
     if (interval !== undefined) {
@@ -150,7 +171,23 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
     }
 
     applyWorkingIndicator(ctx);
-    ctx.ui.setWorkingMessage(createWorkingTimerMessage(Date.now() - startedAt));
+    const now = Date.now();
+    const currentTokens = liveOutputTokens > 0 ? liveOutputTokens : estimatedStreamedTokens;
+    const currentStreamStartedAt = streamStartedAt;
+    const hasLiveTps = currentStreamStartedAt !== undefined && currentTokens > 0;
+
+    ctx.ui.setWorkingMessage(
+      createWorkingTimerMessage(
+        now - startedAt,
+        hasLiveTps
+          ? {
+              estimated: liveOutputTokens <= 0,
+              outputTokens: currentTokens,
+              streamElapsedMs: now - currentStreamStartedAt,
+            }
+          : undefined,
+      ),
+    );
   };
 
   pi.on("context", (event) => ({
@@ -159,7 +196,7 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
 
   pi.on("session_start", async (_event, ctx) => {
     clearIntervalIfRunning();
-    startedAt = undefined;
+    resetRunState();
     await refreshBaseTitle(ctx);
     setIdleTitle(ctx);
     applyWorkingIndicator(ctx);
@@ -168,6 +205,7 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
 
   pi.on("agent_start", async (_event, ctx) => {
     clearIntervalIfRunning();
+    resetRunState();
     startedAt = Date.now();
     await refreshBaseTitle(ctx);
     setIdleTitle(ctx);
@@ -177,31 +215,68 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
     }, UPDATE_INTERVAL_MS);
   });
 
-  pi.on("message_end", (event) => {
-    if (
-      startedAt === undefined ||
-      event.message.role !== "assistant" ||
-      event.message.stopReason === "toolUse"
-    ) {
-      return undefined;
+  pi.on("message_start", (event) => {
+    if (event.message.role !== "assistant") {
+      return;
     }
 
-    return {
-      message: {
-        ...event.message,
-        content: [
-          ...event.message.content,
-          {
-            type: "text",
-            text: createResponseTimerText(Date.now() - startedAt),
-          },
-        ],
-      },
-    };
+    assistantMessageStartedAt = Date.now();
+    streamStartedAt = undefined;
+    estimatedStreamedTokens = 0;
+    liveOutputTokens = 0;
+  });
+
+  pi.on("message_update", (event) => {
+    if (event.message.role !== "assistant") {
+      return;
+    }
+
+    const streamEvent = event.assistantMessageEvent;
+    if (
+      streamEvent.type !== "text_delta" &&
+      streamEvent.type !== "thinking_delta" &&
+      streamEvent.type !== "toolcall_delta"
+    ) {
+      return;
+    }
+
+    streamStartedAt ??= Date.now();
+    estimatedStreamedTokens += estimateTokensFromTextDelta(streamEvent.delta);
+    liveOutputTokens = Math.max(liveOutputTokens, event.message.usage.output);
+  });
+
+  pi.on("message_end", (event) => {
+    if (event.message.role === "assistant") {
+      const messageOutputTokens = event.message.usage.output;
+      const streamTimingStartedAt = streamStartedAt ?? assistantMessageStartedAt;
+      if (messageOutputTokens > 0 && streamTimingStartedAt !== undefined) {
+        totalOutputTokens += messageOutputTokens;
+        totalStreamMs += Math.max(0, Date.now() - streamTimingStartedAt);
+      }
+      resetAssistantStreamState();
+    }
+
+    return undefined;
   });
 
   pi.on("agent_end", async (_event, ctx) => {
-    startedAt = undefined;
+    const elapsedMs = startedAt === undefined ? undefined : Date.now() - startedAt;
+
+    if (elapsedMs !== undefined) {
+      const theme = ctx.ui.theme;
+      const summary = createCompletedTimerSummary(
+        elapsedMs,
+        totalOutputTokens > 0 && totalStreamMs > 0
+          ? {
+              outputTokens: totalOutputTokens,
+              streamElapsedMs: totalStreamMs,
+            }
+          : undefined,
+      );
+      ctx.ui.notify(`${theme.fg("success", "✓")} ${theme.fg("accent", summary)}`, "info");
+    }
+
+    resetRunState();
     clearIntervalIfRunning();
     await refreshBaseTitle(ctx);
     setIdleTitle(ctx);
@@ -211,6 +286,7 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
 
   pi.on("session_shutdown", (_event, ctx) => {
     clearIntervalIfRunning();
+    resetRunState();
     setIdleTitle(ctx);
     clearWorkingTimer(ctx);
     ctx.ui.setWorkingIndicator();

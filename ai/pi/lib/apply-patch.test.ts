@@ -43,6 +43,7 @@ interface ToolResult {
       removed: number;
     };
     progress?: {
+      phase?: string;
       applied: number;
       failed: number;
       total: number;
@@ -86,6 +87,7 @@ interface ToolUpdate {
   }>;
   details?: {
     progress?: {
+      phase?: string;
       applied: number;
       failed: number;
       total: number;
@@ -258,17 +260,58 @@ test("apply_patch adds, updates, and deletes files", async (t) => {
   assert.ok(details);
   const progress = details.progress;
   assert.ok(progress);
+  assert.equal(progress.phase, "done");
   assert.equal(progress.applied, 3);
   assert.equal(progress.failed, 0);
   assert.equal(progress.total, 3);
   assert.match(details.diff ?? "", /File: added.txt/);
   assert.match(details.diff ?? "", /File: keep.txt/);
   assert.match(details.diff ?? "", /File: remove.txt/);
-  assert.equal(updates.length, 4);
+  assert.equal(updates.length, 10);
   assert.deepEqual(
     updates.map((update) => update.details?.progress),
     [
       {
+        phase: "preflight",
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 1,
+          filePath: "added.txt",
+          operation: "add",
+          added: 0,
+          removed: 0,
+        },
+      },
+      {
+        phase: "preflight",
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 2,
+          filePath: "keep.txt",
+          operation: "update",
+          added: 0,
+          removed: 0,
+        },
+      },
+      {
+        phase: "preflight",
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 3,
+          filePath: "remove.txt",
+          operation: "delete",
+          added: 0,
+          removed: 0,
+        },
+      },
+      {
+        phase: "revalidate",
         applied: 0,
         failed: 0,
         total: 3,
@@ -281,6 +324,46 @@ test("apply_patch adds, updates, and deletes files", async (t) => {
         },
       },
       {
+        phase: "revalidate",
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 2,
+          filePath: "keep.txt",
+          operation: "update",
+          added: 1,
+          removed: 1,
+        },
+      },
+      {
+        phase: "revalidate",
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 3,
+          filePath: "remove.txt",
+          operation: "delete",
+          added: 0,
+          removed: 1,
+        },
+      },
+      {
+        phase: "apply",
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 1,
+          filePath: "added.txt",
+          operation: "add",
+          added: 2,
+          removed: 0,
+        },
+      },
+      {
+        phase: "apply",
         applied: 1,
         failed: 0,
         total: 3,
@@ -293,6 +376,7 @@ test("apply_patch adds, updates, and deletes files", async (t) => {
         },
       },
       {
+        phase: "apply",
         applied: 2,
         failed: 0,
         total: 3,
@@ -304,7 +388,7 @@ test("apply_patch adds, updates, and deletes files", async (t) => {
           removed: 1,
         },
       },
-      { applied: 3, failed: 0, total: 3 },
+      { phase: "apply", applied: 3, failed: 0, total: 3 },
     ],
   );
 });
@@ -321,6 +405,7 @@ test("apply_patch progress identifies the current move target while pending", as
   });
 
   assert.deepEqual(updates[0]?.details?.progress, {
+    phase: "preflight",
     applied: 0,
     failed: 0,
     total: 1,
@@ -334,10 +419,89 @@ test("apply_patch progress identifies the current move target while pending", as
     },
   });
   assert.deepEqual(updates[1]?.details?.progress, {
+    phase: "revalidate",
+    applied: 0,
+    failed: 0,
+    total: 1,
+    current: {
+      index: 1,
+      filePath: "src.txt",
+      moveTo: "moved.txt",
+      operation: "update",
+      added: 0,
+      removed: 0,
+    },
+  });
+  assert.deepEqual(updates[2]?.details?.progress, {
+    phase: "apply",
+    applied: 0,
+    failed: 0,
+    total: 1,
+    current: {
+      index: 1,
+      filePath: "src.txt",
+      moveTo: "moved.txt",
+      operation: "update",
+      added: 0,
+      removed: 0,
+    },
+  });
+  assert.deepEqual(updates[3]?.details?.progress, {
+    phase: "apply",
     applied: 1,
     failed: 0,
     total: 1,
   });
+});
+
+test("apply_patch yields after progress updates so the UI can render them before writes", async (t) => {
+  const cwd = await createTempWorkspace(t);
+
+  let progressFlushed = false;
+  let writeObservedFlushedProgress = false;
+  const injectedWorkspace = {
+    readText: async (absolutePath: string): Promise<string> => readFile(absolutePath, "utf-8"),
+    writeText: async (absolutePath: string, content: string): Promise<void> => {
+      writeObservedFlushedProgress = progressFlushed;
+      await mkdir(dirname(absolutePath), { recursive: true });
+      await writeFile(absolutePath, content, "utf-8");
+    },
+    deleteFile: async (absolutePath: string): Promise<void> => {
+      await unlink(absolutePath);
+    },
+    renameFile: async (fromPath: string, toPath: string): Promise<void> => {
+      await mkdir(dirname(toPath), { recursive: true });
+      await rename(fromPath, toPath);
+    },
+    exists: async (absolutePath: string): Promise<boolean> => {
+      try {
+        await access(absolutePath);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
+
+  await runApplyPatch(
+    cwd,
+    {
+      input: `*** Begin Patch
+*** Add File: added.txt
++hello
+*** End Patch`,
+    },
+    {
+      onUpdate: () => {
+        setImmediate(() => {
+          progressFlushed = true;
+        });
+      },
+      createRealWorkspace: () => injectedWorkspace,
+    },
+  );
+
+  assert.equal(writeObservedFlushedProgress, true);
 });
 
 test("apply_patch supports move-only updates", async (t) => {

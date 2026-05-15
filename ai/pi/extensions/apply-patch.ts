@@ -9,6 +9,7 @@
  * - Show each patched file explicitly in collapsed mode.
  * - Show per-file `+added -removed` deltas instead of only aggregate totals.
  * - Show the current file and its per-file `+added -removed` deltas while a patch is running.
+ * - Show the current execution phase while previewing, revalidating, and applying the patch.
  * - Render multi-file collapsed summaries as one file per line inside the tool block.
  * - Keep move-only operations explicit with `from -> to (move)` style labels.
  * - Render file paths relative to the current working directory, even when the patch used absolute paths.
@@ -31,6 +32,7 @@ import {
   executeApplyPatchTool,
   prepareApplyPatchArguments,
   type ApplyPatchProgressCurrent,
+  type ApplyPatchProgressPhase,
   type ApplyPatchPreview,
   type ApplyPatchPreviewFile,
   type ApplyPatchResult,
@@ -59,6 +61,8 @@ type CollapsedSummary =
 
 interface ApplyPatchRenderState {
   collapsedSummary?: CollapsedSummary;
+  callComponent?: CollapsedHeaderComponent;
+  callTarget?: string;
 }
 
 interface RenderContextLike {
@@ -229,6 +233,32 @@ function formatProgressLabel(preview: ApplyPatchPreview | undefined): string {
   return label;
 }
 
+function getProgressPhaseLabel(phase: ApplyPatchProgressPhase): string {
+  if (phase === "preflight") {
+    return "Preflighting patch";
+  }
+  if (phase === "revalidate") {
+    return "Revalidating patch";
+  }
+  if (phase === "apply") {
+    return "Applying patch";
+  }
+  return "Patch complete";
+}
+
+function getProgressPhaseTag(phase: ApplyPatchProgressPhase): string {
+  if (phase === "preflight") {
+    return "preflight";
+  }
+  if (phase === "revalidate") {
+    return "revalidate";
+  }
+  if (phase === "apply") {
+    return "apply";
+  }
+  return "done";
+}
+
 function renderDeltaSummary(added: number, removed: number, theme: Theme | undefined): string {
   if (theme === undefined) {
     return `+${added} -${removed}`;
@@ -388,14 +418,14 @@ function buildPartialCollapsedSummary(details: ApplyPatchToolDetails): Collapsed
       status: "warning",
       kind: "files",
       files: [toCollapsedSummaryFile(progress.current)],
-      suffixText: `${progress.current.index}/${progress.total}`,
+      suffixText: `${getProgressPhaseTag(progress.phase)} ${progress.current.index}/${progress.total}`,
     };
   }
 
   return {
     status: "warning",
     kind: "text",
-    text: `${progress.applied + progress.failed}/${progress.total}`,
+    text: `${getProgressPhaseTag(progress.phase)} ${progress.applied + progress.failed}/${progress.total}`,
   };
 }
 
@@ -454,10 +484,40 @@ function renderCollapsedCall(theme: Theme, context: RenderContextLike, target: s
   const component = isCollapsedHeaderComponent(context.lastComponent)
     ? context.lastComponent
     : createCollapsedHeaderComponent(theme, background, lines);
+  state.callComponent = component;
+  state.callTarget = target;
   component.setTheme(theme);
   component.setBackground(background);
   component.setContentLines(lines);
   return component;
+}
+
+function syncCollapsedCallComponent(theme: Theme, context: RenderContextLike): void {
+  const state = getRenderState(context.state);
+  const component = state.callComponent;
+  const target = state.callTarget;
+  if (component === undefined || target === undefined) {
+    return;
+  }
+
+  const summary = state.collapsedSummary;
+  const background =
+    context.isError || summary?.status === "error"
+      ? "toolErrorBg"
+      : summary?.status === "success"
+        ? "toolSuccessBg"
+        : "toolPendingBg";
+  const lines = buildCollapsedCallLines(
+    target,
+    summary,
+    theme,
+    context.expanded,
+    context.executionStarted,
+  );
+
+  component.setTheme(theme);
+  component.setBackground(background);
+  component.setContentLines(lines);
 }
 
 function renderDiffLines(diff: string, theme: Theme): string[] {
@@ -514,7 +574,12 @@ function buildPartialSummary(details: ApplyPatchToolDetails, hint: string, theme
   const progress = details.progress;
   const current = progress?.current;
 
-  let summary = theme.fg("warning", current === undefined ? formatProgressLabel(details.preview) : "Applying patch");
+  let summary = theme.fg(
+    "warning",
+    progress === undefined
+      ? formatProgressLabel(details.preview)
+      : getProgressPhaseLabel(progress.phase),
+  );
   if (progress !== undefined) {
     const position = current === undefined ? progress.applied + progress.failed : current.index;
     summary += theme.fg("dim", ` (${position}/${progress.total})`);
@@ -622,10 +687,11 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
 
       if (options.isPartial) {
         rememberCollapsedSummary(context, buildPartialCollapsedSummary(details));
+        syncCollapsedCallComponent(theme, context);
         const summary = buildPartialSummary(details, hint, theme);
         const lines = [summary];
         if (!options.expanded) {
-          return setText(context.lastComponent, lines.join("\n"));
+          return emptyText(context.lastComponent);
         }
 
         appendPreviewSection(lines, details.preview, theme);
@@ -633,6 +699,7 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
       }
 
       rememberCollapsedSummary(context, buildFinalCollapsedSummary(details, context.isError));
+      syncCollapsedCallComponent(theme, context);
       const summary = buildFinalSummary(details, context.isError, hint, theme);
 
       if (!options.expanded) {

@@ -75,3 +75,6 @@
 ## Local Environment
 - Current host OS: Arch Linux (ID=arch).
 - DE/WM: Sway (Wayland).
+
+# Tips
+* download small files to tmp folder instead of repeated web fetches

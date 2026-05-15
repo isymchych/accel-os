@@ -21,6 +21,7 @@
 * create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
   * only up to latest user message? or more - with user confirmation?
   * what about cache reuse?
+  * pi-boomerang
   
 * I don't need exact locations since it triggers redundant file reads: 
 > I’m grabbing the final line references for the changed renderer so the report points to exact locations.  
@@ -28,6 +29,10 @@
 
 * ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
 * setup terminal multiplexer - as a part of ai?
+
+# mb-spotify
+* ai to manage my playlists
+* i may do manual tweaks to playlists - i.e. if i removed song from playlist-don't add it there again
  
 
 

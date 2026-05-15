@@ -59,7 +59,10 @@ export interface ApplyPatchPreview {
   removed: number;
 }
 
+export type ApplyPatchProgressPhase = "preflight" | "revalidate" | "apply" | "done";
+
 export interface ApplyPatchProgress {
+  phase: ApplyPatchProgressPhase;
   applied: number;
   failed: number;
   total: number;
@@ -940,8 +943,22 @@ function formatPendingCurrent(current: ApplyPatchProgressCurrent): string {
   return `Current: ${label} ${formatPreviewFilePath(current)} (+${current.added} -${current.removed})`;
 }
 
+function getProgressPhaseLabel(phase: ApplyPatchProgressPhase): string {
+  if (phase === "preflight") {
+    return "Preflighting patch";
+  }
+  if (phase === "revalidate") {
+    return "Revalidating patch";
+  }
+  if (phase === "apply") {
+    return "Applying patch";
+  }
+  return "Patch complete";
+}
+
 function buildPendingMessage(preview: ApplyPatchPreview, progress: ApplyPatchProgress): string {
-  const lines = [`Applying patch (${progress.applied + progress.failed}/${progress.total})...`];
+  const position = progress.current?.index ?? progress.applied + progress.failed;
+  const lines = [`${getProgressPhaseLabel(progress.phase)} (${position}/${progress.total})...`];
   if (progress.current !== undefined) {
     lines.push(formatPendingCurrent(progress.current));
   }
@@ -949,7 +966,7 @@ function buildPendingMessage(preview: ApplyPatchPreview, progress: ApplyPatchPro
   return lines.join("\n");
 }
 
-function buildProgressCurrent(
+function buildProgressCurrentFromPreview(
   preview: ApplyPatchPreview | undefined,
   operationIndex: number,
 ): ApplyPatchProgressCurrent | undefined {
@@ -968,21 +985,84 @@ function buildProgressCurrent(
   };
 }
 
+function buildProgressCurrentFromOperation(
+  operations: readonly PatchOperation[],
+  operationIndex: number,
+): ApplyPatchProgressCurrent | undefined {
+  const operation = operations[operationIndex];
+  if (operation === undefined) {
+    return undefined;
+  }
+
+  return {
+    index: operationIndex + 1,
+    filePath: operation.path,
+    ...(operation.kind === "update" && operation.moveTo !== undefined
+      ? { moveTo: operation.moveTo }
+      : {}),
+    operation: operation.kind,
+    added: 0,
+    removed: 0,
+  };
+}
+
 function buildProgress(
+  phase: ApplyPatchProgressPhase,
   applied: number,
   failed: number,
   total: number,
-  preview?: ApplyPatchPreview,
   nextOperationIndex?: number,
+  preview?: ApplyPatchPreview,
+  operations?: readonly PatchOperation[],
 ): ApplyPatchProgress {
-  const progress: ApplyPatchProgress = { applied, failed, total };
+  const progress: ApplyPatchProgress = { phase, applied, failed, total };
   if (nextOperationIndex !== undefined) {
-    const current = buildProgressCurrent(preview, nextOperationIndex);
+    const current =
+      buildProgressCurrentFromPreview(preview, nextOperationIndex) ??
+      (operations === undefined
+        ? undefined
+        : buildProgressCurrentFromOperation(operations, nextOperationIndex));
     if (current !== undefined) {
       progress.current = current;
     }
   }
   return progress;
+}
+
+async function yieldForProgressRender(
+  onUpdate:
+    | ((partialResult: {
+        content: [{ type: "text"; text: string }];
+        details: ApplyPatchToolDetails;
+      }) => void)
+    | undefined,
+): Promise<void> {
+  if (onUpdate === undefined) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
+async function emitProgressUpdate(
+  onUpdate:
+    | ((partialResult: {
+        content: [{ type: "text"; text: string }];
+        details: ApplyPatchToolDetails;
+      }) => void)
+    | undefined,
+  details: ApplyPatchToolDetails,
+): Promise<void> {
+  const preview = details.preview ?? { files: [], added: 0, removed: 0 };
+  const progress =
+    details.progress ?? buildProgress("preflight", 0, 0, preview.files.length, undefined, preview);
+  onUpdate?.({
+    content: [{ type: "text", text: buildPendingMessage(preview, progress) }],
+    details,
+  });
+  await yieldForProgressRender(onUpdate);
 }
 
 function getFailureRecoveryPaths(failure: ApplyPatchFailure): string[] {
@@ -1234,11 +1314,15 @@ async function buildPreviewState(
   workspace: Workspace,
   cwd: string,
   signal?: AbortSignal,
+  onProgress?: (nextOperationIndex: number) => Promise<void>,
 ): Promise<PreviewState> {
   const applied: PatchApplySuccess[] = [];
 
-  await runSequentially(operations, async (operation) => {
+  await runSequentially(operations, async (operation, index) => {
     applied.push(await applyPatchOperation(operation, workspace, cwd, signal));
+    if (index + 1 < operations.length) {
+      await onProgress?.(index + 1);
+    }
   });
 
   const firstChangedLine = buildFirstChangedLine(applied);
@@ -1341,26 +1425,73 @@ export async function executeApplyPatchTool(
   const operations = parsePatch(patchText);
   const targetPaths = getTargetPaths(cwd, operations);
 
+  await emitProgressUpdate(
+    onUpdate,
+    buildDetails(
+      "",
+      undefined,
+      buildProgress(
+        "preflight",
+        0,
+        0,
+        operations.length,
+        operations.length > 0 ? 0 : undefined,
+        undefined,
+        operations,
+      ),
+    ),
+  );
+
   let preflight: PreviewState;
   try {
-    preflight = await buildPreviewState(operations, createVirtualWorkspace(cwd), cwd, signal);
+    preflight = await buildPreviewState(
+      operations,
+      createVirtualWorkspace(cwd),
+      cwd,
+      signal,
+      async (nextOperationIndex) => {
+        await emitProgressUpdate(
+          onUpdate,
+          buildDetails(
+            "",
+            undefined,
+            buildProgress(
+              "preflight",
+              0,
+              0,
+              operations.length,
+              nextOperationIndex,
+              undefined,
+              operations,
+            ),
+          ),
+        );
+      },
+    );
   } catch (error) {
     throw new Error(`Preflight failed before mutating files.\n${getErrorMessage(error)}`, {
       cause: error,
     });
   }
 
-  const initialProgress = buildProgress(0, 0, operations.length, preflight.preview, 0);
-  onUpdate?.({
-    content: [{ type: "text", text: buildPendingMessage(preflight.preview, initialProgress) }],
-    details: buildDetails(
+  await emitProgressUpdate(
+    onUpdate,
+    buildDetails(
       preflight.diff,
       preflight.preview,
-      initialProgress,
+      buildProgress(
+        "revalidate",
+        0,
+        0,
+        operations.length,
+        operations.length > 0 ? 0 : undefined,
+        preflight.preview,
+        operations,
+      ),
       undefined,
       preflight.firstChangedLine,
     ),
-  });
+  );
 
   return withWorkspaceLocks(targetPaths, async () => {
     let lockedPreflight: PreviewState;
@@ -1370,12 +1501,51 @@ export async function executeApplyPatchTool(
         createVirtualWorkspace(cwd),
         cwd,
         signal,
+        async (nextOperationIndex) => {
+          await emitProgressUpdate(
+            onUpdate,
+            buildDetails(
+              preflight.diff,
+              preflight.preview,
+              buildProgress(
+                "revalidate",
+                0,
+                0,
+                operations.length,
+                nextOperationIndex,
+                preflight.preview,
+                operations,
+              ),
+              undefined,
+              preflight.firstChangedLine,
+            ),
+          );
+        },
       );
     } catch (error) {
       throw new Error(`Preflight failed before mutating files.\n${getErrorMessage(error)}`, {
         cause: error,
       });
     }
+
+    await emitProgressUpdate(
+      onUpdate,
+      buildDetails(
+        lockedPreflight.diff,
+        lockedPreflight.preview,
+        buildProgress(
+          "apply",
+          0,
+          0,
+          operations.length,
+          operations.length > 0 ? 0 : undefined,
+          lockedPreflight.preview,
+          operations,
+        ),
+        undefined,
+        lockedPreflight.firstChangedLine,
+      ),
+    );
 
     const summaries: string[] = [];
     const appliedFiles: string[] = [];
@@ -1406,29 +1576,31 @@ export async function executeApplyPatchTool(
       }
 
       const progress = buildProgress(
+        "apply",
         summaries.length,
         failures.length,
         operations.length,
+        index + 1 < operations.length ? index + 1 : undefined,
         lockedPreflight.preview,
-        index + 1,
+        operations,
       );
-      onUpdate?.({
-        content: [{ type: "text", text: buildPendingMessage(lockedPreflight.preview, progress) }],
-        details: buildDetails(
+      await emitProgressUpdate(
+        onUpdate,
+        buildDetails(
           lockedPreflight.diff,
           lockedPreflight.preview,
           progress,
           undefined,
           lockedPreflight.firstChangedLine,
         ),
-      });
+      );
     });
 
     const result = buildApplyPatchResult(summaries, appliedFiles, failures, fuzz);
     const appliedPreview = buildPreview(appliedPreviewFiles);
     const appliedDiff = buildCombinedDiff(appliedPreviewFiles);
     const appliedFirstChangedLine = buildFirstChangedLine(appliedChangedLines);
-    const progress = buildProgress(summaries.length, failures.length, operations.length);
+    const progress = buildProgress("done", summaries.length, failures.length, operations.length);
 
     if (failures.length > 0) {
       return {

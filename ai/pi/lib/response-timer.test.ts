@@ -4,8 +4,10 @@ import test from "node:test";
 import type { AssistantMessage, UserMessage, Usage } from "@earendil-works/pi-ai";
 
 import {
-  createResponseTimerText,
+  createCompletedTimerSummary,
+  createTotalElapsedSummary,
   createWorkingTimerMessage,
+  estimateTokensFromTextDelta,
   formatElapsed,
   stripResponseTimerFromMessage,
 } from "./response-timer.ts";
@@ -59,7 +61,32 @@ test("formatElapsed formats sub-minute and minute durations", () => {
 
 test("timer text helpers use the expected prefixes", () => {
   assert.equal(createWorkingTimerMessage(1_500), "⏱ 1.5s");
-  assert.equal(createResponseTimerText(125_000), "\n\n⏱ 2m 5s");
+  assert.equal(
+    createWorkingTimerMessage(1_500, {
+      estimated: false,
+      outputTokens: 170,
+      streamElapsedMs: 2_000,
+    }),
+    "⏱ 1.5s · 85 tok/s",
+  );
+  assert.equal(
+    createWorkingTimerMessage(1_500, {
+      estimated: true,
+      outputTokens: 170,
+      streamElapsedMs: 2_000,
+    }),
+    "⏱ 1.5s · ~85 tok/s",
+  );
+  assert.equal(createTotalElapsedSummary(1_500), "⏱ 1.5s");
+  assert.equal(
+    createCompletedTimerSummary(1_500, {
+      outputTokens: 170,
+      streamElapsedMs: 2_000,
+    }),
+    "⏱ 1.5s · 85 tok/s · 170 tokens",
+  );
+  assert.equal(createCompletedTimerSummary(1_500), "⏱ 1.5s");
+  assert.equal(estimateTokensFromTextDelta("abcd"), 1);
 });
 
 test("stripResponseTimerFromMessage removes only a trailing assistant timer block", () => {
