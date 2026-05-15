@@ -63,6 +63,16 @@ export interface ApplyPatchProgress {
   applied: number;
   failed: number;
   total: number;
+  current?: ApplyPatchProgressCurrent;
+}
+
+export interface ApplyPatchProgressCurrent {
+  index: number;
+  filePath: string;
+  moveTo?: string;
+  operation: ApplyPatchPreviewFile["operation"];
+  added: number;
+  removed: number;
 }
 
 export interface ApplyPatchFailure {
@@ -918,8 +928,61 @@ function formatPatchPreview(preview: ApplyPatchPreview): string {
     .join("\n");
 }
 
+function formatPendingCurrent(current: ApplyPatchProgressCurrent): string {
+  const label =
+    current.operation === "add"
+      ? "Add"
+      : current.operation === "delete"
+        ? "Delete"
+        : current.moveTo === undefined
+          ? "Update"
+          : "Move";
+  return `Current: ${label} ${formatPreviewFilePath(current)} (+${current.added} -${current.removed})`;
+}
+
 function buildPendingMessage(preview: ApplyPatchPreview, progress: ApplyPatchProgress): string {
-  return `Applying patch (${progress.applied + progress.failed}/${progress.total})...\n${formatPatchPreview(preview)}`;
+  const lines = [`Applying patch (${progress.applied + progress.failed}/${progress.total})...`];
+  if (progress.current !== undefined) {
+    lines.push(formatPendingCurrent(progress.current));
+  }
+  lines.push(formatPatchPreview(preview));
+  return lines.join("\n");
+}
+
+function buildProgressCurrent(
+  preview: ApplyPatchPreview | undefined,
+  operationIndex: number,
+): ApplyPatchProgressCurrent | undefined {
+  const file = preview?.files[operationIndex];
+  if (file === undefined) {
+    return undefined;
+  }
+
+  return {
+    index: operationIndex + 1,
+    filePath: file.filePath,
+    ...(file.moveTo === undefined ? {} : { moveTo: file.moveTo }),
+    operation: file.operation,
+    added: file.added,
+    removed: file.removed,
+  };
+}
+
+function buildProgress(
+  applied: number,
+  failed: number,
+  total: number,
+  preview?: ApplyPatchPreview,
+  nextOperationIndex?: number,
+): ApplyPatchProgress {
+  const progress: ApplyPatchProgress = { applied, failed, total };
+  if (nextOperationIndex !== undefined) {
+    const current = buildProgressCurrent(preview, nextOperationIndex);
+    if (current !== undefined) {
+      progress.current = current;
+    }
+  }
+  return progress;
 }
 
 function getFailureRecoveryPaths(failure: ApplyPatchFailure): string[] {
@@ -1287,7 +1350,7 @@ export async function executeApplyPatchTool(
     });
   }
 
-  const initialProgress: ApplyPatchProgress = { applied: 0, failed: 0, total: operations.length };
+  const initialProgress = buildProgress(0, 0, operations.length, preflight.preview, 0);
   onUpdate?.({
     content: [{ type: "text", text: buildPendingMessage(preflight.preview, initialProgress) }],
     details: buildDetails(
@@ -1322,7 +1385,7 @@ export async function executeApplyPatchTool(
     let fuzz = 0;
 
     const realWorkspace = options?.createRealWorkspace?.() ?? createRealWorkspace();
-    await runSequentially(operations, async (operation) => {
+    await runSequentially(operations, async (operation, index) => {
       if (isAborted(signal)) {
         throw new Error("Operation aborted.");
       }
@@ -1342,11 +1405,13 @@ export async function executeApplyPatchTool(
         failures.push(toApplyPatchFailure(operation, error));
       }
 
-      const progress: ApplyPatchProgress = {
-        applied: summaries.length,
-        failed: failures.length,
-        total: operations.length,
-      };
+      const progress = buildProgress(
+        summaries.length,
+        failures.length,
+        operations.length,
+        lockedPreflight.preview,
+        index + 1,
+      );
       onUpdate?.({
         content: [{ type: "text", text: buildPendingMessage(lockedPreflight.preview, progress) }],
         details: buildDetails(
@@ -1363,11 +1428,7 @@ export async function executeApplyPatchTool(
     const appliedPreview = buildPreview(appliedPreviewFiles);
     const appliedDiff = buildCombinedDiff(appliedPreviewFiles);
     const appliedFirstChangedLine = buildFirstChangedLine(appliedChangedLines);
-    const progress: ApplyPatchProgress = {
-      applied: summaries.length,
-      failed: failures.length,
-      total: operations.length,
-    };
+    const progress = buildProgress(summaries.length, failures.length, operations.length);
 
     if (failures.length > 0) {
       return {

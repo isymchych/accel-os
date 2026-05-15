@@ -132,3 +132,24 @@ export function readOpenAICodexAccountProfile(token: string): OpenAICodexAccount
 
   return profile;
 }
+
+/**
+ * Resolve the runtime OpenAI Codex account identity.
+ *
+ * The access token is the freshest account source, so token claims win over persisted file metadata.
+ * Persisted `accountId` remains a fallback for older or partial token payloads.
+ */
+export function resolveOpenAICodexRuntimeAccountProfile(
+  credential: Pick<OpenAICodexSavedCredential, "accountId"> | null | undefined,
+  accessToken: string | undefined,
+): OpenAICodexAccountProfile {
+  const profile = accessToken === undefined ? {} : readOpenAICodexAccountProfile(accessToken);
+  const accountId = profile.accountId ?? credential?.accountId;
+  if (accountId === undefined) {
+    return profile;
+  }
+  return {
+    ...profile,
+    accountId,
+  };
+}

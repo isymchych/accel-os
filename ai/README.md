@@ -7,6 +7,7 @@
 * switch thinking modes with alt-1-2-3-4-5
 * Pi instance might have its own temp directory, that would be auto-cleaned on close. Might use it for storing temp files & stuff. Might use for emphemeral?
   * not necessary "temp" directory - might be per-session so that restored sessions may keep using it
+  * have shared pi temp directory; show size on startup
 * add grill-me prompt
 * improve summarization - check how pi does it, check how codex does it
 
@@ -23,6 +24,10 @@
   
 * I don't need exact locations since it triggers redundant file reads: 
 > I’m grabbing the final line references for the changed renderer so the report points to exact locations.  
+
+
+* ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
+* setup terminal multiplexer - as a part of ai?
  
 
 

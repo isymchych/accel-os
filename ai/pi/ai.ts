@@ -12,7 +12,7 @@ import {
 import { isRecord } from "./lib/guards.ts";
 import {
   parseOpenAICodexCredential,
-  readOpenAICodexAccountProfile,
+  resolveOpenAICodexRuntimeAccountProfile,
 } from "./lib/openai-codex-auth.ts";
 
 const usage = `ai [chat] [account] [-- <pi args...>]
@@ -132,9 +132,8 @@ const parseAccountInfo = (raw: string, filePath: string, isCurrent: boolean): Ac
     throw new Error(`missing openai-codex OAuth credential in ${filePath}`);
   }
 
-  const profile =
-    credential.access === undefined ? {} : readOpenAICodexAccountProfile(credential.access);
-  const accountId = credential.accountId ?? profile.accountId;
+  const profile = resolveOpenAICodexRuntimeAccountProfile(credential, credential.access);
+  const accountId = profile.accountId;
   if (accountId === undefined || accountId.length === 0) {
     throw new Error(`missing openai-codex.accountId in ${filePath}`);
   }

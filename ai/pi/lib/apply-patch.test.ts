@@ -46,6 +46,14 @@ interface ToolResult {
       applied: number;
       failed: number;
       total: number;
+      current?: {
+        index: number;
+        filePath: string;
+        moveTo?: string;
+        operation: string;
+        added: number;
+        removed: number;
+      };
     };
     result?: {
       summaries: string[];
@@ -81,6 +89,14 @@ interface ToolUpdate {
       applied: number;
       failed: number;
       total: number;
+      current?: {
+        index: number;
+        filePath: string;
+        moveTo?: string;
+        operation: string;
+        added: number;
+        removed: number;
+      };
     };
   };
 }
@@ -252,12 +268,76 @@ test("apply_patch adds, updates, and deletes files", async (t) => {
   assert.deepEqual(
     updates.map((update) => update.details?.progress),
     [
-      { applied: 0, failed: 0, total: 3 },
-      { applied: 1, failed: 0, total: 3 },
-      { applied: 2, failed: 0, total: 3 },
+      {
+        applied: 0,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 1,
+          filePath: "added.txt",
+          operation: "add",
+          added: 2,
+          removed: 0,
+        },
+      },
+      {
+        applied: 1,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 2,
+          filePath: "keep.txt",
+          operation: "update",
+          added: 1,
+          removed: 1,
+        },
+      },
+      {
+        applied: 2,
+        failed: 0,
+        total: 3,
+        current: {
+          index: 3,
+          filePath: "remove.txt",
+          operation: "delete",
+          added: 0,
+          removed: 1,
+        },
+      },
       { applied: 3, failed: 0, total: 3 },
     ],
   );
+});
+
+test("apply_patch progress identifies the current move target while pending", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "src.txt", "alpha\n");
+
+  const { updates } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: src.txt
+*** Move to: moved.txt
+*** End Patch`,
+  });
+
+  assert.deepEqual(updates[0]?.details?.progress, {
+    applied: 0,
+    failed: 0,
+    total: 1,
+    current: {
+      index: 1,
+      filePath: "src.txt",
+      moveTo: "moved.txt",
+      operation: "update",
+      added: 0,
+      removed: 0,
+    },
+  });
+  assert.deepEqual(updates[1]?.details?.progress, {
+    applied: 1,
+    failed: 0,
+    total: 1,
+  });
 });
 
 test("apply_patch supports move-only updates", async (t) => {

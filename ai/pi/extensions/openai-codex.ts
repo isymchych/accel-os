@@ -5,18 +5,13 @@
  * native web search prompt/payload wiring, session-scoped verbosity control,
  * and the existing usage status overlay command.
  */
-import {
-  AuthStorage,
-  type ExtensionAPI,
-  type ExtensionContext,
-  type Theme,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 
 import { isRecord } from "../lib/guards.ts";
 import {
   parseOpenAICodexCredential,
-  readOpenAICodexAccountProfile,
+  resolveOpenAICodexRuntimeAccountProfile,
 } from "../lib/openai-codex-auth.ts";
 import {
   type LimitWindow,
@@ -171,26 +166,20 @@ function normalizePayload(payload: RawRateLimitStatusPayload): StatusSnapshot {
   return snapshot;
 }
 
-async function getCodexCredential(authStorage: AuthStorage): Promise<CodexCredential | null> {
-  authStorage.reload();
-  const currentCredential = parseOpenAICodexCredential(authStorage.get(PROVIDER_ID));
-  if (currentCredential === null) {
-    return null;
-  }
-
-  const accessToken = await authStorage.getApiKey(PROVIDER_ID);
+async function getCodexCredential(
+  modelRegistry: ExtensionContext["modelRegistry"],
+): Promise<CodexCredential | null> {
+  const accessToken = await modelRegistry.getApiKeyForProvider(PROVIDER_ID);
   if (accessToken === undefined || accessToken.length === 0) {
     return null;
   }
 
+  const authStorage = modelRegistry.authStorage;
   authStorage.reload();
   const refreshedCredential = parseOpenAICodexCredential(authStorage.get(PROVIDER_ID));
-  if (refreshedCredential === null) {
-    return null;
-  }
 
-  const profile = readOpenAICodexAccountProfile(accessToken);
-  const accountId = refreshedCredential.accountId ?? profile.accountId;
+  const profile = resolveOpenAICodexRuntimeAccountProfile(refreshedCredential, accessToken);
+  const accountId = profile.accountId;
   if (accountId === undefined || accountId.length === 0) {
     throw new Error("OpenAI Codex credential is missing ChatGPT account id.");
   }
@@ -208,8 +197,10 @@ async function getCodexCredential(authStorage: AuthStorage): Promise<CodexCreden
   return credential;
 }
 
-async function fetchUsageSnapshot(authStorage: AuthStorage): Promise<StatusSnapshot> {
-  const credential = await getCodexCredential(authStorage);
+async function fetchUsageSnapshot(
+  modelRegistry: ExtensionContext["modelRegistry"],
+): Promise<StatusSnapshot> {
+  const credential = await getCodexCredential(modelRegistry);
   if (!credential) {
     throw new Error("Not logged into OpenAI Codex. Run /login and choose OpenAI Codex.");
   }
@@ -290,7 +281,6 @@ class StatusOverlay {
 }
 
 export default function openAICodexExtension(pi: ExtensionAPI): void {
-  const authStorage = AuthStorage.create();
   let sessionOverride: VerbosityLevel | undefined;
 
   const syncFromBranch = (ctx: ExtensionContext): void => {
@@ -309,7 +299,7 @@ export default function openAICodexExtension(pi: ExtensionAPI): void {
     description: "Show OpenAI Codex usage in a closable overlay",
     handler: async (_args, ctx) => {
       try {
-        const snapshot = await fetchUsageSnapshot(authStorage);
+        const snapshot = await fetchUsageSnapshot(ctx.modelRegistry);
         const lines = renderStatusLines(snapshot);
         await ctx.ui.custom(
           (_tui, theme, _keybindings, done) =>

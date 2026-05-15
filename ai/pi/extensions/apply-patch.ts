@@ -4,10 +4,12 @@
  * This keeps hunk-based patch application separate from exact-text editing.
  *
  * Rendering principles:
- * - Keep collapsed output to a single row.
+ * - Keep collapsed output to a single row for single-file summaries.
  * - Prefer observability over aggressive compaction in collapsed mode.
  * - Show each patched file explicitly in collapsed mode.
  * - Show per-file `+added -removed` deltas instead of only aggregate totals.
+ * - Show the current file and its per-file `+added -removed` deltas while a patch is running.
+ * - Render multi-file collapsed summaries as one file per line inside the tool block.
  * - Keep move-only operations explicit with `from -> to (move)` style labels.
  * - Render file paths relative to the current working directory, even when the patch used absolute paths.
  * - Use a distinct background for this mutating tool instead of read-only styling.
@@ -28,6 +30,7 @@ import {
   applyPatchSchema,
   executeApplyPatchTool,
   prepareApplyPatchArguments,
+  type ApplyPatchProgressCurrent,
   type ApplyPatchPreview,
   type ApplyPatchPreviewFile,
   type ApplyPatchResult,
@@ -70,7 +73,7 @@ interface RenderContextLike {
 interface CollapsedHeaderComponent extends Component {
   setTheme: (theme: Theme) => void;
   setBackground: (background: ThemeBg) => void;
-  setContent: (content: string) => void;
+  setContentLines: (contentLines: string[]) => void;
 }
 
 function countLines(text: string): number {
@@ -93,11 +96,11 @@ function setText(lastComponent: unknown, content: string): Text {
 function createCollapsedHeaderComponent(
   theme: Theme,
   background: ThemeBg,
-  content: string,
+  contentLines: string[],
 ): CollapsedHeaderComponent {
   let currentTheme = theme;
   let currentBackground = background;
-  let currentContent = content;
+  let currentContentLines = contentLines;
 
   return {
     setTheme(nextTheme) {
@@ -106,31 +109,33 @@ function createCollapsedHeaderComponent(
     setBackground(nextBackground) {
       currentBackground = nextBackground;
     },
-    setContent(nextContent) {
-      currentContent = nextContent;
+    setContentLines(nextContentLines) {
+      currentContentLines = nextContentLines;
     },
     render(width) {
       if (width <= 0) {
-        return ["", "", ""];
+        return [];
       }
 
       const blankLine = currentTheme.bg(currentBackground, " ".repeat(width));
-      if (width === 1) {
-        return [blankLine, blankLine, blankLine];
-      }
-      if (width === 2) {
-        return [blankLine, blankLine, blankLine];
+      if (width <= 2) {
+        return new Array(currentContentLines.length + 2).fill(blankLine);
       }
 
-      const inner = truncateToWidth(currentContent, width - 2, "...", true);
-      return [blankLine, currentTheme.bg(currentBackground, ` ${inner} `), blankLine];
+      const lines = [blankLine];
+      for (const contentLine of currentContentLines) {
+        const inner = truncateToWidth(contentLine, width - 2, "...", true);
+        lines.push(currentTheme.bg(currentBackground, ` ${inner} `));
+      }
+      lines.push(blankLine);
+      return lines;
     },
     invalidate() {},
   };
 }
 
 function isCollapsedHeaderComponent(value: unknown): value is CollapsedHeaderComponent {
-  return typeof value === "object" && value !== null && "setTheme" in value;
+  return typeof value === "object" && value !== null && "setContentLines" in value;
 }
 
 function isRenderState(value: unknown): value is ApplyPatchRenderState {
@@ -302,6 +307,18 @@ function renderExpandedPreviewSummary(
   return text;
 }
 
+function toCollapsedSummaryFile(
+  file: Pick<ApplyPatchProgressCurrent, "filePath" | "moveTo" | "operation" | "added" | "removed">,
+): CollapsedSummaryFile {
+  return {
+    filePath: file.filePath,
+    ...(file.moveTo === undefined ? {} : { moveTo: file.moveTo }),
+    operation: file.operation,
+    added: file.added,
+    removed: file.removed,
+  };
+}
+
 function buildPreviewSummary(preview: ApplyPatchPreview | undefined): CollapsedSummary {
   if (preview === undefined) {
     return { status: "success", kind: "text", text: "applied" };
@@ -330,11 +347,51 @@ function renderCollapsedSummary(summary: CollapsedSummary, theme: Theme): string
   return text;
 }
 
+function buildCollapsedCallLines(
+  target: string,
+  summary: CollapsedSummary | undefined,
+  theme: Theme,
+  expanded: boolean,
+  executionStarted: boolean,
+): string[] {
+  let title = theme.fg("toolTitle", theme.bold("apply_patch"));
+  title += ` ${theme.fg("accent", target)}`;
+
+  if (!expanded && summary !== undefined) {
+    if (summary.kind === "files" && summary.files.length > 1) {
+      if (summary.suffixText !== undefined) {
+        title += theme.fg("muted", " -> ");
+        title += theme.fg(summary.status, summary.suffixText);
+      }
+      return [title, ...summary.files.map((file) => renderCollapsedFileSummary(file, theme))];
+    }
+
+    title += theme.fg("muted", " -> ");
+    title += renderCollapsedSummary(summary, theme);
+    return [title];
+  }
+
+  if (!expanded && executionStarted) {
+    title += theme.fg("warning", " ...");
+  }
+  return [title];
+}
+
 function buildPartialCollapsedSummary(details: ApplyPatchToolDetails): CollapsedSummary {
   const progress = details.progress;
   if (progress === undefined) {
     return { status: "warning", kind: "text", text: "running" };
   }
+
+  if (progress.current !== undefined) {
+    return {
+      status: "warning",
+      kind: "files",
+      files: [toCollapsedSummaryFile(progress.current)],
+      suffixText: `${progress.current.index}/${progress.total}`,
+    };
+  }
+
   return {
     status: "warning",
     kind: "text",
@@ -379,16 +436,13 @@ function buildFinalCollapsedSummary(
 function renderCollapsedCall(theme: Theme, context: RenderContextLike, target: string): Component {
   const state = getRenderState(context.state);
   const summary = state.collapsedSummary;
-
-  let text = theme.fg("toolTitle", theme.bold("apply_patch"));
-  text += ` ${theme.fg("accent", target)}`;
-
-  if (!context.expanded && summary !== undefined) {
-    text += theme.fg("muted", " -> ");
-    text += renderCollapsedSummary(summary, theme);
-  } else if (!context.expanded && context.executionStarted) {
-    text += theme.fg("warning", " ...");
-  }
+  const lines = buildCollapsedCallLines(
+    target,
+    summary,
+    theme,
+    context.expanded,
+    context.executionStarted,
+  );
 
   const background =
     context.isError || summary?.status === "error"
@@ -399,10 +453,10 @@ function renderCollapsedCall(theme: Theme, context: RenderContextLike, target: s
 
   const component = isCollapsedHeaderComponent(context.lastComponent)
     ? context.lastComponent
-    : createCollapsedHeaderComponent(theme, background, text);
+    : createCollapsedHeaderComponent(theme, background, lines);
   component.setTheme(theme);
   component.setBackground(background);
-  component.setContent(text);
+  component.setContentLines(lines);
   return component;
 }
 
@@ -458,9 +512,16 @@ function pushBlankLine(lines: string[]): void {
 
 function buildPartialSummary(details: ApplyPatchToolDetails, hint: string, theme: Theme): string {
   const progress = details.progress;
-  let summary = theme.fg("warning", formatProgressLabel(details.preview));
+  const current = progress?.current;
+
+  let summary = theme.fg("warning", current === undefined ? formatProgressLabel(details.preview) : "Applying patch");
   if (progress !== undefined) {
-    summary += theme.fg("dim", ` (${progress.applied + progress.failed}/${progress.total})`);
+    const position = current === undefined ? progress.applied + progress.failed : current.index;
+    summary += theme.fg("dim", ` (${position}/${progress.total})`);
+  }
+  if (current !== undefined) {
+    summary += theme.fg("muted", " -> ");
+    summary += renderCollapsedFileSummary(toCollapsedSummaryFile(current), theme);
   }
   summary += theme.fg("muted", ` (${hint})`);
   return summary;
@@ -562,11 +623,11 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
       if (options.isPartial) {
         rememberCollapsedSummary(context, buildPartialCollapsedSummary(details));
         const summary = buildPartialSummary(details, hint, theme);
+        const lines = [summary];
         if (!options.expanded) {
-          return emptyText(context.lastComponent);
+          return setText(context.lastComponent, lines.join("\n"));
         }
 
-        const lines = [summary];
         appendPreviewSection(lines, details.preview, theme);
         return setText(context.lastComponent, lines.join("\n"));
       }
