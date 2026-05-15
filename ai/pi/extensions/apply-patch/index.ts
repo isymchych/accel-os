@@ -2,23 +2,7 @@
  * Register a dedicated apply_patch tool for Codex-style patch edits.
  *
  * This keeps hunk-based patch application separate from exact-text editing.
- *
- * Rendering principles:
- * - Keep collapsed output to a single row for single-file summaries.
- * - Prefer observability over aggressive compaction in collapsed mode.
- * - Show each patched file explicitly in collapsed mode.
- * - Show per-file `+added -removed` deltas instead of only aggregate totals.
- * - Show the current file and its per-file `+added -removed` deltas while a patch is running.
- * - Show the current execution phase while previewing, revalidating, and applying the patch.
- * - Render multi-file collapsed summaries as one file per line inside the tool block.
- * - Keep move-only operations explicit with `from -> to (move)` style labels.
- * - Render file paths relative to the current working directory, even when the patch used absolute paths.
- * - Use a distinct background for this mutating tool instead of read-only styling.
- * - Reserve full preview details and the diff for expanded mode via `app.tools.expand`.
  */
-import { isAbsolute, relative, resolve as resolvePath } from "node:path";
-import process from "node:process";
-
 import {
   defineTool,
   keyHint,
@@ -28,11 +12,16 @@ import {
 import { Text, truncateToWidth, type Component } from "@earendil-works/pi-tui";
 
 import {
-  applyPatchSchema,
+  formatDisplayPath,
+  getOperationLabel,
+  isPartialFailure,
+  relativizeDisplayPath,
+  relativizeDisplayPathText,
+} from "./presentation.ts";
+import {
   executeApplyPatchTool,
+  applyPatchSchema,
   prepareApplyPatchArguments,
-  type ApplyPatchProgressCurrent,
-  type ApplyPatchProgressPhase,
   type ApplyPatchPreview,
   type ApplyPatchPreviewFile,
   type ApplyPatchResult,
@@ -62,10 +51,10 @@ type CollapsedSummary =
 interface ApplyPatchRenderState {
   collapsedSummary?: CollapsedSummary;
   callComponent?: CollapsedHeaderComponent;
-  callTarget?: string;
 }
 
 interface RenderContextLike {
+  args: unknown;
   state: unknown;
   lastComponent: unknown;
   invalidate: () => void;
@@ -78,6 +67,11 @@ interface CollapsedHeaderComponent extends Component {
   setTheme: (theme: Theme) => void;
   setBackground: (background: ThemeBg) => void;
   setContentLines: (contentLines: string[]) => void;
+}
+
+interface CollapsedHeaderViewModel {
+  background: ThemeBg;
+  lines: string[];
 }
 
 function countLines(text: string): number {
@@ -200,84 +194,12 @@ function formatPatchCall(input: string): string {
   return pluralize(countLines(input), "line", "lines");
 }
 
-function relativizePath(filePath: string): string {
-  const trimmed = filePath.trim();
-  if (trimmed.length === 0) {
-    return filePath;
-  }
-
-  const cwd = process.cwd();
-  const absolutePath = isAbsolute(trimmed) ? resolvePath(trimmed) : resolvePath(cwd, trimmed);
-  const relativePath = relative(cwd, absolutePath);
-  return relativePath.length === 0 ? "." : relativePath;
-}
-
-function formatFilePath(file: Pick<ApplyPatchPreviewFile, "filePath" | "moveTo">): string {
-  const fromPath = relativizePath(file.filePath);
-  if (file.moveTo === undefined) {
-    return fromPath;
-  }
-
-  return `${fromPath} -> ${relativizePath(file.moveTo)}`;
-}
-
-function formatProgressLabel(preview: ApplyPatchPreview | undefined): string {
-  if (preview === undefined) {
-    return "Applying patch";
-  }
-
-  let label = `Applying patch: ${pluralize(preview.files.length, "operation", "operations")}`;
-  if (preview.added > 0 || preview.removed > 0) {
-    label += ` (+${preview.added} -${preview.removed})`;
-  }
-  return label;
-}
-
-function getProgressPhaseLabel(phase: ApplyPatchProgressPhase): string {
-  if (phase === "preflight") {
-    return "Preflighting patch";
-  }
-  if (phase === "revalidate") {
-    return "Revalidating patch";
-  }
-  if (phase === "apply") {
-    return "Applying patch";
-  }
-  return "Patch complete";
-}
-
-function getProgressPhaseTag(phase: ApplyPatchProgressPhase): string {
-  if (phase === "preflight") {
-    return "preflight";
-  }
-  if (phase === "revalidate") {
-    return "revalidate";
-  }
-  if (phase === "apply") {
-    return "apply";
-  }
-  return "done";
-}
-
 function renderDeltaSummary(added: number, removed: number, theme: Theme | undefined): string {
   if (theme === undefined) {
     return `+${added} -${removed}`;
   }
 
   return `${theme.fg("success", `+${added}`)} ${theme.fg("error", `-${removed}`)}`;
-}
-
-function getOperationLabel(file: Pick<ApplyPatchPreviewFile, "operation" | "moveTo">): string {
-  if (file.operation === "add") {
-    return "add";
-  }
-  if (file.operation === "delete") {
-    return "delete";
-  }
-  if (file.moveTo !== undefined) {
-    return "move";
-  }
-  return "update";
 }
 
 function buildCollapsedSummaryFiles(
@@ -295,7 +217,7 @@ function buildCollapsedSummaryFiles(
 function renderCollapsedFileSummary(file: CollapsedSummaryFile, theme: Theme): string {
   let text = theme.fg(
     "accent",
-    formatFilePath({
+    formatDisplayPath({
       filePath: file.filePath,
       ...(file.moveTo !== undefined ? { moveTo: file.moveTo } : {}),
     }),
@@ -313,9 +235,7 @@ function renderCollapsedFileSummary(file: CollapsedSummaryFile, theme: Theme): s
 }
 
 function renderPreviewFile(file: ApplyPatchPreviewFile, theme: Theme): string {
-  const operationLabel = getOperationLabel(file);
-
-  let line = theme.fg("dim", `- ${operationLabel} ${formatFilePath(file)}`);
+  let line = theme.fg("dim", `- ${getOperationLabel(file)} ${formatDisplayPath(file)}`);
   if (file.added > 0 || file.removed > 0) {
     line += ` (${renderDeltaSummary(file.added, file.removed, theme)})`;
   }
@@ -335,18 +255,6 @@ function renderExpandedPreviewSummary(
     text += ` ${renderDeltaSummary(preview.added, preview.removed, theme)}`;
   }
   return text;
-}
-
-function toCollapsedSummaryFile(
-  file: Pick<ApplyPatchProgressCurrent, "filePath" | "moveTo" | "operation" | "added" | "removed">,
-): CollapsedSummaryFile {
-  return {
-    filePath: file.filePath,
-    ...(file.moveTo === undefined ? {} : { moveTo: file.moveTo }),
-    operation: file.operation,
-    added: file.added,
-    removed: file.removed,
-  };
 }
 
 function buildPreviewSummary(preview: ApplyPatchPreview | undefined): CollapsedSummary {
@@ -407,25 +315,24 @@ function buildCollapsedCallLines(
   return [title];
 }
 
-function buildPartialCollapsedSummary(details: ApplyPatchToolDetails): CollapsedSummary {
-  const progress = details.progress;
-  if (progress === undefined) {
-    return { status: "warning", kind: "text", text: "running" };
-  }
-
-  if (progress.current !== undefined) {
-    return {
-      status: "warning",
-      kind: "files",
-      files: [toCollapsedSummaryFile(progress.current)],
-      suffixText: `${getProgressPhaseTag(progress.phase)} ${progress.current.index}/${progress.total}`,
-    };
-  }
+function buildCollapsedHeaderViewModel(
+  theme: Theme,
+  target: string,
+  summary: CollapsedSummary | undefined,
+  expanded: boolean,
+  executionStarted: boolean,
+  isError: boolean,
+): CollapsedHeaderViewModel {
+  const background =
+    isError || summary?.status === "error"
+      ? "toolErrorBg"
+      : summary?.status === "success"
+        ? "toolSuccessBg"
+        : "toolPendingBg";
 
   return {
-    status: "warning",
-    kind: "text",
-    text: `${getProgressPhaseTag(progress.phase)} ${progress.applied + progress.failed}/${progress.total}`,
+    background,
+    lines: buildCollapsedCallLines(target, summary, theme, expanded, executionStarted),
   };
 }
 
@@ -436,6 +343,7 @@ function buildFinalCollapsedSummary(
   const patchResult = details.result;
   const appliedCount = patchResult?.appliedFiles.length ?? 0;
   const failureCount = patchResult?.failures.length ?? 0;
+  const partialFailure = patchResult !== undefined && isPartialFailure(patchResult);
 
   if (isError) {
     const files = buildCollapsedSummaryFiles(details.preview);
@@ -444,15 +352,18 @@ function buildFinalCollapsedSummary(
         status: "error",
         kind: "files",
         files,
-        suffixText: `${failureCount} failed`,
+        suffixText: partialFailure
+          ? `partial failure: ${failureCount} failed`
+          : `${failureCount} failed`,
       };
     }
 
     return {
       status: "error",
       kind: "text",
-      text:
-        appliedCount > 0
+      text: partialFailure
+        ? `partial failure: ${appliedCount} applied, ${failureCount} failed`
+        : appliedCount > 0
           ? `${appliedCount} applied, ${failureCount} failed`
           : `${failureCount} failed`,
     };
@@ -466,64 +377,53 @@ function buildFinalCollapsedSummary(
 function renderCollapsedCall(theme: Theme, context: RenderContextLike, target: string): Component {
   const state = getRenderState(context.state);
   const summary = state.collapsedSummary;
-  const lines = buildCollapsedCallLines(
+  const viewModel = buildCollapsedHeaderViewModel(
+    theme,
     target,
     summary,
-    theme,
     context.expanded,
     context.executionStarted,
+    context.isError,
   );
 
-  const background =
-    context.isError || summary?.status === "error"
-      ? "toolErrorBg"
-      : summary?.status === "success"
-        ? "toolSuccessBg"
-        : "toolPendingBg";
-
-  const component = isCollapsedHeaderComponent(context.lastComponent)
-    ? context.lastComponent
-    : createCollapsedHeaderComponent(theme, background, lines);
+  const component =
+    (isCollapsedHeaderComponent(context.lastComponent) ? context.lastComponent : undefined) ??
+    state.callComponent ??
+    createCollapsedHeaderComponent(theme, viewModel.background, viewModel.lines);
   state.callComponent = component;
-  state.callTarget = target;
   component.setTheme(theme);
-  component.setBackground(background);
-  component.setContentLines(lines);
+  component.setBackground(viewModel.background);
+  component.setContentLines(viewModel.lines);
   return component;
 }
 
 function syncCollapsedCallComponent(theme: Theme, context: RenderContextLike): void {
   const state = getRenderState(context.state);
   const component = state.callComponent;
-  const target = state.callTarget;
-  if (component === undefined || target === undefined) {
+  if (component === undefined) {
     return;
   }
 
+  const target = formatPatchCall(prepareApplyPatchArguments(context.args).input);
   const summary = state.collapsedSummary;
-  const background =
-    context.isError || summary?.status === "error"
-      ? "toolErrorBg"
-      : summary?.status === "success"
-        ? "toolSuccessBg"
-        : "toolPendingBg";
-  const lines = buildCollapsedCallLines(
+  const viewModel = buildCollapsedHeaderViewModel(
+    theme,
     target,
     summary,
-    theme,
     context.expanded,
     context.executionStarted,
+    context.isError,
   );
-
   component.setTheme(theme);
-  component.setBackground(background);
-  component.setContentLines(lines);
+  component.setBackground(viewModel.background);
+  component.setContentLines(viewModel.lines);
 }
 
 function renderDiffLines(diff: string, theme: Theme): string[] {
   return diff.split("\n").map((line) => {
     if (line.startsWith("File: ")) {
-      return theme.fg("accent", theme.bold(`File: ${relativizePath(line.slice("File: ".length))}`));
+      const filePathText = relativizeDisplayPathText(line.slice("File: ".length));
+      return theme.fg("accent", theme.bold(`File: ${filePathText}`));
     }
     if (line.startsWith("+")) {
       return theme.fg("toolDiffAdded", line);
@@ -547,17 +447,17 @@ function renderFailureLines(result: ApplyPatchResult): string[] {
 
   lines.push("Failures:");
   for (const failure of result.failures) {
-    lines.push(`- ${relativizePath(failure.filePath)}: ${failure.message}`);
+    lines.push(`- ${relativizeDisplayPath(failure.filePath)}: ${failure.message}`);
   }
 
   if (result.recoveryInstructions.mustReadFiles.length > 0) {
     lines.push(
-      `Recovery: read ${result.recoveryInstructions.mustReadFiles.map(relativizePath).join(", ")} before retrying.`,
+      `Recovery: reread ${result.recoveryInstructions.mustReadFiles.map((filePath) => relativizeDisplayPath(filePath)).join(", ")} before retrying.`,
     );
   }
   if (result.recoveryInstructions.mustNotReadFiles.length > 0) {
     lines.push(
-      `Recovery: do not trust ${result.recoveryInstructions.mustNotReadFiles.map(relativizePath).join(", ")} without rereading failed paths.`,
+      `Recovery: do not trust ${result.recoveryInstructions.mustNotReadFiles.map((filePath) => relativizeDisplayPath(filePath)).join(", ")} until rereading the failed paths.`,
     );
   }
 
@@ -570,28 +470,6 @@ function pushBlankLine(lines: string[]): void {
   }
 }
 
-function buildPartialSummary(details: ApplyPatchToolDetails, hint: string, theme: Theme): string {
-  const progress = details.progress;
-  const current = progress?.current;
-
-  let summary = theme.fg(
-    "warning",
-    progress === undefined
-      ? formatProgressLabel(details.preview)
-      : getProgressPhaseLabel(progress.phase),
-  );
-  if (progress !== undefined) {
-    const position = current === undefined ? progress.applied + progress.failed : current.index;
-    summary += theme.fg("dim", ` (${position}/${progress.total})`);
-  }
-  if (current !== undefined) {
-    summary += theme.fg("muted", " -> ");
-    summary += renderCollapsedFileSummary(toCollapsedSummaryFile(current), theme);
-  }
-  summary += theme.fg("muted", ` (${hint})`);
-  return summary;
-}
-
 function buildFinalSummary(
   details: ApplyPatchToolDetails,
   isError: boolean,
@@ -601,13 +479,16 @@ function buildFinalSummary(
   const patchResult = details.result;
   const appliedCount = patchResult?.appliedFiles.length ?? details.preview?.files.length ?? 0;
   const failureCount = patchResult?.failures.length ?? 0;
+  const partialFailure = patchResult !== undefined && isPartialFailure(patchResult);
 
   let summary = isError
     ? theme.fg(
         "error",
-        appliedCount > 0
+        partialFailure
           ? `apply_patch partial failure (${appliedCount} applied, ${failureCount} failed)`
-          : `apply_patch failed (${failureCount} failed)`,
+          : appliedCount > 0
+            ? `apply_patch failed (${appliedCount} applied, ${failureCount} failed)`
+            : `apply_patch failed (${failureCount} failed)`,
       )
     : theme.fg("success", "apply_patch applied ") +
       renderExpandedPreviewSummary(details.preview, theme);
@@ -684,19 +565,6 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
     renderResult(result, options, theme, context) {
       const hint = keyHint("app.tools.expand", options.expanded ? "to collapse" : "to expand");
       const details = result.details;
-
-      if (options.isPartial) {
-        rememberCollapsedSummary(context, buildPartialCollapsedSummary(details));
-        syncCollapsedCallComponent(theme, context);
-        const summary = buildPartialSummary(details, hint, theme);
-        const lines = [summary];
-        if (!options.expanded) {
-          return emptyText(context.lastComponent);
-        }
-
-        appendPreviewSection(lines, details.preview, theme);
-        return setText(context.lastComponent, lines.join("\n"));
-      }
 
       rememberCollapsedSummary(context, buildFinalCollapsedSummary(details, context.isError));
       syncCollapsedCallComponent(theme, context);

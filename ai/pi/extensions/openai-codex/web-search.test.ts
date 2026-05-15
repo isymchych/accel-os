@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  addCodexNativeWebSearchToPayload,
-  OPENAI_CODEX_WEB_SEARCH_SECTION,
-} from "./web-search.ts";
+import { addCodexNativeWebSearchToPayload, OPENAI_CODEX_WEB_SEARCH_SECTION } from "./web-search.ts";
 
 test("addCodexNativeWebSearchToPayload appends native web search", () => {
   assert.deepEqual(

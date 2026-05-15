@@ -6,14 +6,14 @@ import process from "node:process";
 import { createInterface } from "node:readline/promises";
 
 import {
+  parseOpenAICodexCredential,
+  resolveOpenAICodexRuntimeAccountProfile,
+} from "./extensions/openai-codex/auth.ts";
+import {
   isManagedEphemeralSessionPath,
   removeEphemeralSessionArtifactsSync,
 } from "./runtime/ephemeral-session.ts";
 import { isRecord } from "./shared/guards.ts";
-import {
-  parseOpenAICodexCredential,
-  resolveOpenAICodexRuntimeAccountProfile,
-} from "./extensions/openai-codex/auth.ts";
 
 const usage = `ai [chat] [account] [-- <pi args...>]
 

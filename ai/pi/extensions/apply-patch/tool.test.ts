@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
 import {
   access,
   mkdtemp,
@@ -42,20 +41,6 @@ interface ToolResult {
       added: number;
       removed: number;
     };
-    progress?: {
-      phase?: string;
-      applied: number;
-      failed: number;
-      total: number;
-      current?: {
-        index: number;
-        filePath: string;
-        moveTo?: string;
-        operation: string;
-        added: number;
-        removed: number;
-      };
-    };
     result?: {
       summaries: string[];
       appliedFiles: string[];
@@ -80,28 +65,7 @@ interface ToolResult {
   terminate?: boolean;
 }
 
-interface ToolUpdate {
-  content: Array<{
-    type: string;
-    text?: string;
-  }>;
-  details?: {
-    progress?: {
-      phase?: string;
-      applied: number;
-      failed: number;
-      total: number;
-      current?: {
-        index: number;
-        filePath: string;
-        moveTo?: string;
-        operation: string;
-        added: number;
-        removed: number;
-      };
-    };
-  };
-}
+type ToolUpdate = ToolResult;
 
 async function createTempWorkspace(t: TestContext): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), "pi-apply-patch-"));
@@ -198,8 +162,9 @@ async function runApplyPatch(
     params,
     undefined,
     (partial) => {
-      updates.push(partial);
-      options?.onUpdate?.(partial);
+      const update = normalizeToolResult(partial);
+      updates.push(update);
+      options?.onUpdate?.(update);
     },
     cwd,
     executionOptions,
@@ -229,7 +194,7 @@ test("prepareArguments accepts raw strings and legacy patch objects", () => {
   });
 });
 
-test("apply_patch adds, updates, and deletes files", async (t) => {
+test("apply_patch adds, updates, and deletes files without partial UI updates", async (t) => {
   const cwd = await createTempWorkspace(t);
   await writeWorkspaceFile(cwd, "keep.txt", "alpha\nbeta\n");
   await writeWorkspaceFile(cwd, "remove.txt", "gone\n");
@@ -253,255 +218,17 @@ test("apply_patch adds, updates, and deletes files", async (t) => {
   assert.equal(await fileExists(cwd, "remove.txt"), false);
   assert.equal(
     getTextOutput(result),
-    "Applied patch with 3 operation(s).\n1. Added file added.txt.\n2. Updated keep.txt.\n3. Deleted file remove.txt.",
+    "Applied 3 operations.\n1. Added file added.txt.\n2. Updated keep.txt.\n3. Deleted file remove.txt.",
   );
   assert.equal(result.isError, undefined);
+  assert.equal(updates.length, 0);
+
   const details = result.details;
   assert.ok(details);
-  const progress = details.progress;
-  assert.ok(progress);
-  assert.equal(progress.phase, "done");
-  assert.equal(progress.applied, 3);
-  assert.equal(progress.failed, 0);
-  assert.equal(progress.total, 3);
+  assert.equal("progress" in details, false);
   assert.match(details.diff ?? "", /File: added.txt/);
   assert.match(details.diff ?? "", /File: keep.txt/);
   assert.match(details.diff ?? "", /File: remove.txt/);
-  assert.equal(updates.length, 10);
-  assert.deepEqual(
-    updates.map((update) => update.details?.progress),
-    [
-      {
-        phase: "preflight",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 1,
-          filePath: "added.txt",
-          operation: "add",
-          added: 0,
-          removed: 0,
-        },
-      },
-      {
-        phase: "preflight",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 2,
-          filePath: "keep.txt",
-          operation: "update",
-          added: 0,
-          removed: 0,
-        },
-      },
-      {
-        phase: "preflight",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 3,
-          filePath: "remove.txt",
-          operation: "delete",
-          added: 0,
-          removed: 0,
-        },
-      },
-      {
-        phase: "revalidate",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 1,
-          filePath: "added.txt",
-          operation: "add",
-          added: 2,
-          removed: 0,
-        },
-      },
-      {
-        phase: "revalidate",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 2,
-          filePath: "keep.txt",
-          operation: "update",
-          added: 1,
-          removed: 1,
-        },
-      },
-      {
-        phase: "revalidate",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 3,
-          filePath: "remove.txt",
-          operation: "delete",
-          added: 0,
-          removed: 1,
-        },
-      },
-      {
-        phase: "apply",
-        applied: 0,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 1,
-          filePath: "added.txt",
-          operation: "add",
-          added: 2,
-          removed: 0,
-        },
-      },
-      {
-        phase: "apply",
-        applied: 1,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 2,
-          filePath: "keep.txt",
-          operation: "update",
-          added: 1,
-          removed: 1,
-        },
-      },
-      {
-        phase: "apply",
-        applied: 2,
-        failed: 0,
-        total: 3,
-        current: {
-          index: 3,
-          filePath: "remove.txt",
-          operation: "delete",
-          added: 0,
-          removed: 1,
-        },
-      },
-      { phase: "apply", applied: 3, failed: 0, total: 3 },
-    ],
-  );
-});
-
-test("apply_patch progress identifies the current move target while pending", async (t) => {
-  const cwd = await createTempWorkspace(t);
-  await writeWorkspaceFile(cwd, "src.txt", "alpha\n");
-
-  const { updates } = await runApplyPatch(cwd, {
-    input: `*** Begin Patch
-*** Update File: src.txt
-*** Move to: moved.txt
-*** End Patch`,
-  });
-
-  assert.deepEqual(updates[0]?.details?.progress, {
-    phase: "preflight",
-    applied: 0,
-    failed: 0,
-    total: 1,
-    current: {
-      index: 1,
-      filePath: "src.txt",
-      moveTo: "moved.txt",
-      operation: "update",
-      added: 0,
-      removed: 0,
-    },
-  });
-  assert.deepEqual(updates[1]?.details?.progress, {
-    phase: "revalidate",
-    applied: 0,
-    failed: 0,
-    total: 1,
-    current: {
-      index: 1,
-      filePath: "src.txt",
-      moveTo: "moved.txt",
-      operation: "update",
-      added: 0,
-      removed: 0,
-    },
-  });
-  assert.deepEqual(updates[2]?.details?.progress, {
-    phase: "apply",
-    applied: 0,
-    failed: 0,
-    total: 1,
-    current: {
-      index: 1,
-      filePath: "src.txt",
-      moveTo: "moved.txt",
-      operation: "update",
-      added: 0,
-      removed: 0,
-    },
-  });
-  assert.deepEqual(updates[3]?.details?.progress, {
-    phase: "apply",
-    applied: 1,
-    failed: 0,
-    total: 1,
-  });
-});
-
-test("apply_patch yields after progress updates so the UI can render them before writes", async (t) => {
-  const cwd = await createTempWorkspace(t);
-
-  let progressFlushed = false;
-  let writeObservedFlushedProgress = false;
-  const injectedWorkspace = {
-    readText: async (absolutePath: string): Promise<string> => readFile(absolutePath, "utf-8"),
-    writeText: async (absolutePath: string, content: string): Promise<void> => {
-      writeObservedFlushedProgress = progressFlushed;
-      await mkdir(dirname(absolutePath), { recursive: true });
-      await writeFile(absolutePath, content, "utf-8");
-    },
-    deleteFile: async (absolutePath: string): Promise<void> => {
-      await unlink(absolutePath);
-    },
-    renameFile: async (fromPath: string, toPath: string): Promise<void> => {
-      await mkdir(dirname(toPath), { recursive: true });
-      await rename(fromPath, toPath);
-    },
-    exists: async (absolutePath: string): Promise<boolean> => {
-      try {
-        await access(absolutePath);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  };
-
-  await runApplyPatch(
-    cwd,
-    {
-      input: `*** Begin Patch
-*** Add File: added.txt
-+hello
-*** End Patch`,
-    },
-    {
-      onUpdate: () => {
-        setImmediate(() => {
-          progressFlushed = true;
-        });
-      },
-      createRealWorkspace: () => injectedWorkspace,
-    },
-  );
-
-  assert.equal(writeObservedFlushedProgress, true);
 });
 
 test("apply_patch supports move-only updates", async (t) => {
@@ -517,10 +244,7 @@ test("apply_patch supports move-only updates", async (t) => {
 
   assert.equal(await fileExists(cwd, "src.txt"), false);
   assert.equal(await readWorkspaceFile(cwd, "moved.txt"), "alpha\n");
-  assert.equal(
-    getTextOutput(result),
-    "Applied patch with 1 operation(s).\n1. Moved src.txt to moved.txt.",
-  );
+  assert.equal(getTextOutput(result), "Applied 1 operation.\n1. Moved src.txt to moved.txt.");
   assert.equal(result.details?.preview?.files[0]?.moveTo, "moved.txt");
 });
 
@@ -545,7 +269,7 @@ test("apply_patch supports move with content changes and end-of-file hunks", asy
   assert.equal(await readWorkspaceFile(cwd, "src/main.ts"), "one\nsecond\nthird\n");
   assert.equal(
     getTextOutput(result),
-    "Applied patch with 1 operation(s).\n1. Updated src/app.ts and moved it to src/main.ts.",
+    "Applied 1 operation.\n1. Updated src/app.ts and moved it to src/main.ts.",
   );
   assert.match(result.details?.diff ?? "", /File: src\/app.ts -> src\/main.ts/);
 });
@@ -566,6 +290,181 @@ PATCH`,
   });
 
   assert.equal(await readWorkspaceFile(cwd, "note.txt"), "beta\n");
+});
+
+test("apply_patch resolves @-prefixed paths without creating literal @ files", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "alpha\n");
+
+  await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: @note.txt
+*** Move to: @renamed.txt
+@@
+-alpha
++beta
+*** End Patch`,
+  });
+
+  assert.equal(await fileExists(cwd, "note.txt"), false);
+  assert.equal(await fileExists(cwd, "@note.txt"), false);
+  assert.equal(await fileExists(cwd, "@renamed.txt"), false);
+  assert.equal(await readWorkspaceFile(cwd, "renamed.txt"), "beta\n");
+});
+
+test("apply_patch uses fuzzy matching and reports non-zero fuzz", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(
+    cwd,
+    "note.txt",
+    `greeting = “hello”\nrange = a–b\nspace = a\u00A0b\ntrail = value   \n`,
+  );
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: note.txt
+@@
+-greeting = "hello"
++greeting = "hi"
+-range = a-b
++range = a-c
+-space = a b
++space = a c
+-trail = value
++trail = updated
+*** End Patch`,
+  });
+
+  assert.equal(
+    await readWorkspaceFile(cwd, "note.txt"),
+    `greeting = "hi"\nrange = a-c\nspace = a c\ntrail = updated\n`,
+  );
+  assert.ok((result.details?.result?.details.fuzz ?? 0) > 0);
+});
+
+test("apply_patch preserves trailing newline state on update", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "no-newline.txt", "alpha");
+  await writeWorkspaceFile(cwd, "with-newline.txt", "alpha\n");
+
+  await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: no-newline.txt
+@@
+-alpha
++beta
+*** Update File: with-newline.txt
+@@
+-alpha
++beta
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "no-newline.txt"), "beta");
+  assert.equal(await readWorkspaceFile(cwd, "with-newline.txt"), "beta\n");
+});
+
+test("apply_patch supports add then update in the same patch", async (t) => {
+  const cwd = await createTempWorkspace(t);
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Add File: note.txt
++alpha
++beta
+*** Update File: note.txt
+@@
+-alpha
++one
+ beta
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "one\nbeta");
+  assert.equal(
+    getTextOutput(result),
+    "Applied 2 operations.\n1. Added file note.txt.\n2. Updated note.txt.",
+  );
+});
+
+test("apply_patch supports delete then move to the same destination in one patch", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "src.txt", "alpha\n");
+  await writeWorkspaceFile(cwd, "dst.txt", "stale\n");
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Delete File: dst.txt
+*** Update File: src.txt
+*** Move to: dst.txt
+*** End Patch`,
+  });
+
+  assert.equal(await fileExists(cwd, "src.txt"), false);
+  assert.equal(await readWorkspaceFile(cwd, "dst.txt"), "alpha\n");
+  assert.equal(
+    getTextOutput(result),
+    "Applied 2 operations.\n1. Deleted file dst.txt.\n2. Moved src.txt to dst.txt.",
+  );
+});
+
+test("apply_patch applies hunks containing blank lines", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "alpha\n\nbeta\n");
+
+  await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: note.txt
+@@
+ alpha
+-
++middle
+ beta
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "alpha\nmiddle\nbeta\n");
+});
+
+test("apply_patch supports explicit end-of-file insertion hunks", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "alpha\nbeta\n");
+
+  await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: note.txt
+@@
+ beta
++gamma
+*** End of File
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "alpha\nbeta\ngamma\n");
+});
+
+test("apply_patch reports accurate preview metadata for deep edits", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  const initialContent = Array.from({ length: 12 }, (_, index) => `line ${index + 1}`).join("\n");
+  await writeWorkspaceFile(cwd, "note.txt", `${initialContent}\n`);
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: note.txt
+@@
+-line 6
++updated 6
+*** End Patch`,
+  });
+
+  const details = result.details;
+  assert.ok(details);
+  const previewFile = details.preview?.files[0];
+  assert.ok(previewFile);
+  assert.equal(details.firstChangedLine, 6);
+  assert.equal(previewFile.added, 1);
+  assert.equal(previewFile.removed, 1);
+  assert.match(details.diff ?? "", / \.+/);
 });
 
 test("apply_patch preserves files when preflight fails", async (t) => {
@@ -593,38 +492,42 @@ test("apply_patch preserves files when preflight fails", async (t) => {
   assert.equal(await readWorkspaceFile(cwd, "note.txt"), "alpha\n");
 });
 
-test("apply_patch reports partial failure and keeps earlier successes", async (t) => {
-  const cwd = await createTempWorkspace(t);
-  await writeWorkspaceFile(cwd, "a.txt", "alpha\n");
-  await writeWorkspaceFile(cwd, "b.txt", "beta\n");
-
-  const { result } = await runApplyPatch(cwd, {
-    input: `*** Begin Patch
-*** Update File: a.txt
-@@
--alpha
-+one
-*** Update File: b.txt
-*** Move to: c.txt
-@@
--beta
-+two
-*** End Patch`,
-  });
-
-  assert.equal(await readWorkspaceFile(cwd, "a.txt"), "one\n");
-  assert.equal(await fileExists(cwd, "b.txt"), false);
-  assert.equal(await readWorkspaceFile(cwd, "c.txt"), "two\n");
-  assert.equal(result.isError, undefined);
-});
-
 test("apply_patch marks partial failure as an error when a later operation fails", async (t) => {
   const cwd = await createTempWorkspace(t);
   await writeWorkspaceFile(cwd, "a.txt", "alpha\n");
   await writeWorkspaceFile(cwd, "b.txt", "beta\n");
 
-  let injectedConflict = false;
-  const { result } = await runApplyPatch(
+  let firstWriteApplied = false;
+  const injectedWorkspace = {
+    readText: async (absolutePath: string): Promise<string> => readFile(absolutePath, "utf-8"),
+    writeText: async (absolutePath: string, content: string): Promise<void> => {
+      await mkdir(dirname(absolutePath), { recursive: true });
+      await writeFile(absolutePath, content, "utf-8");
+      if (absolutePath === join(cwd, "a.txt")) {
+        firstWriteApplied = true;
+      }
+    },
+    deleteFile: async (absolutePath: string): Promise<void> => {
+      await unlink(absolutePath);
+    },
+    renameFile: async (fromPath: string, toPath: string): Promise<void> => {
+      await mkdir(dirname(toPath), { recursive: true });
+      await rename(fromPath, toPath);
+    },
+    exists: async (absolutePath: string): Promise<boolean> => {
+      if (absolutePath === join(cwd, "c.txt") && firstWriteApplied) {
+        return true;
+      }
+      try {
+        await access(absolutePath);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
+
+  const { result, updates } = await runApplyPatch(
     cwd,
     {
       input: `*** Begin Patch
@@ -637,24 +540,19 @@ test("apply_patch marks partial failure as an error when a later operation fails
 *** End Patch`,
     },
     {
-      onUpdate: (partial) => {
-        const progress = partial.details?.progress;
-        if (injectedConflict || progress?.applied !== 1 || progress.failed !== 0) {
-          return;
-        }
-        writeFileSync(join(cwd, "c.txt"), "existing\n", "utf-8");
-        injectedConflict = true;
-      },
+      createRealWorkspace: () => injectedWorkspace,
     },
   );
 
   assert.equal(await readWorkspaceFile(cwd, "a.txt"), "one\n");
   assert.equal(await readWorkspaceFile(cwd, "b.txt"), "beta\n");
-  assert.equal(await readWorkspaceFile(cwd, "c.txt"), "existing\n");
+  assert.equal(await fileExists(cwd, "c.txt"), false);
   assert.equal(result.isError, true);
   assert.equal(result.terminate, true);
-  assert.match(getTextOutput(result), /apply_patch partially failed\./);
-  assert.match(getTextOutput(result), /Recovery: MUST read b\.txt before retrying\./);
+  assert.equal(updates.length, 0);
+  assert.match(getTextOutput(result), /apply_patch failed after applying 1 operation\./);
+  assert.match(getTextOutput(result), /Recovery: reread b\.txt before retrying\./);
+
   const details = result.details;
   assert.ok(details);
   const patchResult = details.result;
@@ -725,13 +623,8 @@ test("apply_patch reports a failed move-with-content-change that already wrote t
   assert.equal(await readWorkspaceFile(cwd, "dst.txt"), "beta\n");
   assert.equal(result.isError, true);
   assert.equal(result.terminate, true);
-  assert.match(getTextOutput(result), /apply_patch partially failed\./);
-  assert.match(getTextOutput(result), /Recovery: MUST read src\.txt, dst\.txt before retrying\./);
-  assert.match(
-    getTextOutput(result),
-    /Some file actions were already applied before this patch failed\./,
-  );
-  assert.doesNotMatch(getTextOutput(result), /No file actions were applied\./);
+  assert.match(getTextOutput(result), /apply_patch failed after partially applying operations\./);
+  assert.match(getTextOutput(result), /Recovery: reread src\.txt, dst\.txt before retrying\./);
 
   const patchResult = result.details?.result;
   assert.ok(patchResult);

@@ -6,12 +6,12 @@ import test, { type TestContext } from "node:test";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
+import { isRecord } from "../shared/guards.ts";
 import {
   createEphemeralSessionFile,
   isManagedEphemeralSessionPath,
   removeEphemeralSessionArtifacts,
 } from "./ephemeral-session.ts";
-import { isRecord } from "../shared/guards.ts";
 
 function createUserMessage(
   text: string,
