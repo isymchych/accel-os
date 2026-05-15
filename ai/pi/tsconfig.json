@@ -18,6 +18,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["ai.ts", "extensions/**/*.ts", "lib/**/*.ts"],
+  "include": ["ai.ts", "extensions/**/*.ts", "runtime/**/*.ts", "shared/**/*.ts"],
   "exclude": ["node_modules/**"]
 }

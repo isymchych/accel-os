@@ -35,7 +35,7 @@ import {
   rankCandidates,
   parseAtFileToken,
   type CandidateEntry,
-} from "../lib/fuzzy-at-file-autocomplete.ts";
+} from "./query.ts";
 
 const FD_TIMEOUT_MS = 2_000;
 const FD_BINARY = "fd";

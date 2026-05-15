@@ -10,7 +10,7 @@ import {
   rankCandidates,
   shouldIncludeHidden,
   type CandidateEntry,
-} from "./fuzzy-at-file-autocomplete.ts";
+} from "./query.ts";
 
 test("extractAtFileToken handles plain and quoted @ paths", () => {
   assert.equal(extractAtFileToken("open @rea"), "@rea");
@@ -33,9 +33,9 @@ test("planFdQuery scopes search roots and hidden-file policy by active segment",
 });
 
 test("planFdQuery scopes only when the directory prefix exists", () => {
-  const scoped = planFdQuery(process.cwd(), "lib/fuzzy");
-  assert.equal(scoped.searchRoot, `${process.cwd()}/lib`);
-  assert.equal(scoped.displayPrefix, "lib/");
+  const scoped = planFdQuery(process.cwd(), "extensions/fuzzy");
+  assert.equal(scoped.searchRoot, `${process.cwd()}/extensions`);
+  assert.equal(scoped.displayPrefix, "extensions/");
   assert.equal(scoped.fuzzyQuery, "fuzzy");
   assert.equal(scoped.includeHidden, false);
 

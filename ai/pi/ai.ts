@@ -8,12 +8,12 @@ import { createInterface } from "node:readline/promises";
 import {
   isManagedEphemeralSessionPath,
   removeEphemeralSessionArtifactsSync,
-} from "./lib/ephemeral-session.ts";
-import { isRecord } from "./lib/guards.ts";
+} from "./runtime/ephemeral-session.ts";
+import { isRecord } from "./shared/guards.ts";
 import {
   parseOpenAICodexCredential,
   resolveOpenAICodexRuntimeAccountProfile,
-} from "./lib/openai-codex-auth.ts";
+} from "./extensions/openai-codex/auth.ts";
 
 const usage = `ai [chat] [account] [-- <pi args...>]
 

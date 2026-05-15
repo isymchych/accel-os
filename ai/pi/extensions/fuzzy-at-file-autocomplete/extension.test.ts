@@ -8,7 +8,7 @@ import type {
   AutocompleteSuggestions,
 } from "@earendil-works/pi-tui";
 
-import { createAutocompleteProvider } from "../extensions/fuzzy-at-file-autocomplete.ts";
+import { createAutocompleteProvider } from "./index.ts";
 
 function createCurrentProvider(
   getSuggestions: AutocompleteProvider["getSuggestions"],

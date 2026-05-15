@@ -1,5 +1,5 @@
 {
-  "theme": "light",
+  "theme": "dark",
   "lastChangelogVersion": "0.74.0",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
@@ -10,7 +10,16 @@
     "../skills"
   ],
   "extensions": [
-    "./extensions"
+    "./extensions/apply-patch/index.ts",
+    "./extensions/compact-tool-output/index.ts",
+    "./extensions/context/index.ts",
+    "./extensions/ephemeral-fork/index.ts",
+    "./extensions/fuzzy-at-file-autocomplete/index.ts",
+    "./extensions/long-response-notify/index.ts",
+    "./extensions/multi-edit/index.ts",
+    "./extensions/openai-codex/index.ts",
+    "./extensions/personal-context/index.ts",
+    "./extensions/response-timer/index.ts"
   ],
   "prompts": [
     "../prompts"

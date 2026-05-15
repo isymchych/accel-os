@@ -10,7 +10,7 @@ import {
   estimateTokensFromTextDelta,
   formatElapsed,
   stripResponseTimerFromMessage,
-} from "./response-timer.ts";
+} from "./timer.ts";
 
 const EMPTY_USAGE: Usage = {
   input: 0,

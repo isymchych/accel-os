@@ -4,7 +4,7 @@
  * This module owns JWT payload decoding, saved-credential parsing, and claim extraction at the auth
  * boundary so callers can work with normalized account data instead of raw token shape details.
  */
-import { isRecord } from "./guards.ts";
+import { isRecord } from "../../shared/guards.ts";
 
 export interface OpenAICodexAccountProfile {
   accountId?: string;

@@ -20,7 +20,7 @@ import {
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-import { executeNumberedRead } from "../lib/read-with-line-numbers.ts";
+import { executeNumberedRead } from "./numbered-read.ts";
 
 /**
  * Dense collapsed rendering for Pi's built-in `read`, `find`, `grep`, `ls`, and `write` tools.

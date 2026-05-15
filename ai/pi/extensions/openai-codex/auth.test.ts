@@ -6,7 +6,7 @@ import {
   parseOpenAICodexCredential,
   readOpenAICodexAccountProfile,
   resolveOpenAICodexRuntimeAccountProfile,
-} from "./openai-codex-auth.ts";
+} from "./auth.ts";
 
 function encodeJwtPayload(payload: Record<string, unknown>): string {
   return Buffer.from(JSON.stringify(payload)).toString("base64url");

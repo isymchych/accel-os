@@ -11,7 +11,7 @@ import {
   isManagedEphemeralSessionPath,
   removeEphemeralSessionArtifacts,
 } from "./ephemeral-session.ts";
-import { isRecord } from "./guards.ts";
+import { isRecord } from "../shared/guards.ts";
 
 function createUserMessage(
   text: string,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildContextReport, renderContextReport } from "./context-report.ts";
+import { buildContextReport, renderContextReport } from "./report.ts";
 
 test("buildContextReport normalizes bucket totals to Pi's exact usage", () => {
   const report = buildContextReport({

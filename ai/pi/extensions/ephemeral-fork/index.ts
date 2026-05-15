@@ -5,7 +5,7 @@
  * The extension owns only selection and launch flow: it lets the user choose a prior user
  * message, extracts the branch up to that point into a temp session, and starts `ai`
  * in a child terminal. Session-file lifecycle and cleanup stay centralized in the launcher
- * and shared ephemeral-session helpers.
+ * and shared runtime/session helpers.
  */
 import { execFile } from "node:child_process";
 import { join } from "node:path";
@@ -16,8 +16,8 @@ import type { ExtensionAPI, SessionEntry } from "@earendil-works/pi-coding-agent
 import {
   createEphemeralSessionFile,
   removeEphemeralSessionArtifacts,
-} from "../lib/ephemeral-session.ts";
-import { isRecord } from "../lib/guards.ts";
+} from "../../runtime/ephemeral-session.ts";
+import { isRecord } from "../../shared/guards.ts";
 
 const execFileAsync = promisify(execFile);
 const WINDOW_CLASS = "pi-ephemeral-fork";

@@ -9,7 +9,7 @@ import {
   renderProgressBar,
   renderStatusLines,
   renderWindowLine,
-} from "./openai-codex-status.ts";
+} from "./status.ts";
 
 test("renderProgressBar draws a fixed-width bar", () => {
   assert.equal(renderProgressBar(100, 10), "[██████████]");

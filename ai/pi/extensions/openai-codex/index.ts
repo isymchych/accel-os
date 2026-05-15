@@ -8,16 +8,16 @@
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 
-import { isRecord } from "../lib/guards.ts";
+import { isRecord } from "../../shared/guards.ts";
 import {
   parseOpenAICodexCredential,
   resolveOpenAICodexRuntimeAccountProfile,
-} from "../lib/openai-codex-auth.ts";
+} from "./auth.ts";
 import {
   type LimitWindow,
   type StatusSnapshot,
   renderStatusLines,
-} from "../lib/openai-codex-status.ts";
+} from "./status.ts";
 import {
   type PersistedVerbosityState,
   type VerbosityLevel,
@@ -27,11 +27,11 @@ import {
   OPENAI_CODEX_VERBOSITY_ENTRY_TYPE,
   readPersistedVerbosityState,
   resolveOpenAICodexVerbosity,
-} from "../lib/openai-codex-verbosity.ts";
+} from "./verbosity.ts";
 import {
   addCodexNativeWebSearchToPayload,
   OPENAI_CODEX_WEB_SEARCH_SECTION,
-} from "../lib/openai-codex-web-search.ts";
+} from "./web-search.ts";
 
 interface RawRateLimitWindowSnapshot {
   used_percent?: number | string | null;

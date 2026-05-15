@@ -20,7 +20,7 @@ import {
   executeApplyPatchTool,
   prepareApplyPatchArguments,
   type ApplyPatchInput,
-} from "./apply-patch.ts";
+} from "./tool.ts";
 
 interface ToolResult {
   content: Array<{

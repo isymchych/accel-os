@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   addCodexNativeWebSearchToPayload,
   OPENAI_CODEX_WEB_SEARCH_SECTION,
-} from "./openai-codex-web-search.ts";
+} from "./web-search.ts";
 
 test("addCodexNativeWebSearchToPayload appends native web search", () => {
   assert.deepEqual(

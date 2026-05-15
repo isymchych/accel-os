@@ -21,7 +21,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, matchesKey, Text } from "@earendil-works/pi-tui";
 
-import { buildContextReport, renderContextReport } from "../lib/context-report.ts";
+import { buildContextReport, renderContextReport } from "./report.ts";
 
 const AGENT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 

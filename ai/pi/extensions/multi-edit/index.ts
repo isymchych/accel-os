@@ -8,9 +8,9 @@
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import { executeMultiEditTool, multiEditSchema } from "../lib/multi-edit.ts";
+import { executeMultiEditTool, multiEditSchema } from "./tool.ts";
 
-export { executeMultiEditTool } from "../lib/multi-edit.ts";
+export { executeMultiEditTool } from "./tool.ts";
 
 export default function multiEditExtension(pi: ExtensionAPI): void {
   pi.registerTool({

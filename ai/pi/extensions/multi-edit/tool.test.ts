@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test, { type TestContext } from "node:test";
 
-import { executeMultiEditTool, multiEditSchema, type MultiEditInput } from "./multi-edit.ts";
+import { executeMultiEditTool, multiEditSchema, type MultiEditInput } from "./tool.ts";
 
 interface ToolResult {
   content: Array<{

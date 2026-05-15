@@ -7,7 +7,7 @@ import {
   getVerbositySelections,
   readPersistedVerbosityState,
   resolveOpenAICodexVerbosity,
-} from "./openai-codex-verbosity.ts";
+} from "./verbosity.ts";
 
 test("DEFAULT_VERBOSITY_BY_MODEL matches the known Codex defaults", () => {
   assert.deepEqual(DEFAULT_VERBOSITY_BY_MODEL, {

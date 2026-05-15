@@ -37,7 +37,7 @@ import {
   type ApplyPatchPreviewFile,
   type ApplyPatchResult,
   type ApplyPatchToolDetails,
-} from "../lib/apply-patch.ts";
+} from "./tool.ts";
 
 type SummaryStatus = "success" | "warning" | "error";
 type ThemeBg = Parameters<Theme["bg"]>[0];

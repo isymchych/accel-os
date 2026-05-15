@@ -18,7 +18,7 @@ import {
   createWorkingTimerMessage,
   estimateTokensFromTextDelta,
   stripResponseTimerFromMessage,
-} from "../lib/response-timer.ts";
+} from "./timer.ts";
 
 const UPDATE_INTERVAL_MS = 200;
 const TITLE_PREFIX = "π   ";

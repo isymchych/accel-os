@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test, { type TestContext } from "node:test";
 
-import { executeNumberedRead, type NumberedReadInput } from "./read-with-line-numbers.ts";
+import { executeNumberedRead, type NumberedReadInput } from "./numbered-read.ts";
 
 interface ToolResult {
   content: Array<{

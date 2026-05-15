@@ -1,4 +1,4 @@
-import { isRecord } from "./guards.ts";
+import { isRecord } from "../../shared/guards.ts";
 
 export type VerbosityLevel = "low" | "medium" | "high";
 export type VerbositySelection = VerbosityLevel | "default";

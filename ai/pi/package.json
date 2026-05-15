@@ -7,7 +7,7 @@
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "test": "node --test $(find lib -name '*.test.ts' -print | sort)",
+    "test": "node --test $(find extensions runtime shared -name '*.test.ts' -print | sort)",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
