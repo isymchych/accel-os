@@ -1,6 +1,7 @@
 ---
 name: postmortem
 description: Distill a failure into a reusable principle and preflight check.
+disable-model-invocation: true
 ---
 
 # Postmortem

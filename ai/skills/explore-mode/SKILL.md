@@ -1,6 +1,7 @@
 ---
 name: explore-mode
 description: Discovery-first collaboration mode for clarifying problems, inspecting repo/environment state, and surfacing options with trade-offs without implementing. Use when the user asks to explore, investigate, analyze, compare approaches, de-risk a direction, or gather context before planning/execution. Also use when uncertainty is high and the user is not yet decision-complete.
+disable-model-invocation: true
 ---
 
 # Explore Mode

@@ -1,6 +1,7 @@
 ---
 name: remember
 description: Extract durable, evidence-backed learnings from a conversation, distill them into generalized principles, and route each learning to a new skill or an AGENTS.md memory update. Use when asked to remember lessons, capture best practices, distill decision rationale, create a memento, or convert recurring workflows into reusable skills.
+disable-model-invocation: true
 ---
 
 # Remember

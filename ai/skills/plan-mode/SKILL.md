@@ -1,6 +1,7 @@
 ---
 name: plan-mode
 description: Decision-complete planning protocol for CLI coding work that prepares an auditable plan and can write it to `plans/slug.md` with explicit user approval before implementation.
+disable-model-invocation: true
 ---
 
 # Plan Mode

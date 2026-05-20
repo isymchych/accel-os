@@ -1,6 +1,7 @@
 ---
 name: code-quality-review
 description: Review code changes for code quality, adherence to repository guidelines, and high-impact engineering best practices with actionable fixes. Use when asked for a code review, PR review, style/convention assessment, maintainability review, consistency check, or best-practices review that should prioritize impact over line-by-line commentary and return findings with severity/confidence, assumptions, and a clear verdict.
+disable-model-invocation: true
 ---
 
 # Code Quality Review

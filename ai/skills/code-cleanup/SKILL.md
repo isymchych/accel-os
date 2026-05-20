@@ -1,6 +1,7 @@
 ---
 name: code-cleanup
 description: Use when asked to do code cleanup.
+disable-model-invocation: true
 ---
 
 # Code Cleanup

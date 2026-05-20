@@ -1,6 +1,7 @@
 ---
 name: architecture-review
 description: Architecture-focused review for boundary design, information leakage, dependency shape, and long-term complexity risk. Trigger when the user asks for "architecture review" (or equivalent), especially when a PR changes module interfaces, ownership boundaries, layering, shared data flow, or introduces refactors likely to affect maintainability.
+disable-model-invocation: true
 ---
 
 # Architecture Review
