@@ -1,9 +1,7 @@
 /**
  * Owns Pi's streaming working row: a compact animated Nyan Cat plus a live
- * response timer and TPS estimate, then shows a final toast summary.
- *
- * Legacy appended timer markers are stripped from future LLM context so they
- * stay UI-only.
+ * response status row with a live timer and TPS estimate, then shows a final toast summary and a
+ * long-response terminal notification.
  */
 import { homedir } from "node:os";
 
@@ -17,8 +15,8 @@ import {
   createCompletedTimerSummary,
   createWorkingTimerMessage,
   estimateTokensFromTextDelta,
-  stripResponseTimerFromMessage,
 } from "./timer.ts";
+import { notifyForLongResponse } from "./notify.ts";
 
 const UPDATE_INTERVAL_MS = 200;
 const TITLE_PREFIX = "π   ";
@@ -117,7 +115,7 @@ async function getBaseTitle(pi: ExtensionAPI, cwd: string): Promise<string> {
 
 const NYAN_WORKING_INDICATOR = createNyanWorkingIndicator();
 
-export default function responseTimerExtension(pi: ExtensionAPI): void {
+export default function responseStatusExtension(pi: ExtensionAPI): void {
   let startedAt: number | undefined;
   let interval: ReturnType<typeof setInterval> | undefined;
   let baseTitle = TITLE_PREFIX;
@@ -190,10 +188,6 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
     );
   };
 
-  pi.on("context", (event) => ({
-    messages: event.messages.map((message) => stripResponseTimerFromMessage(message)),
-  }));
-
   pi.on("session_start", async (_event, ctx) => {
     clearIntervalIfRunning();
     resetRunState();
@@ -259,7 +253,7 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
     return undefined;
   });
 
-  pi.on("agent_end", async (_event, ctx) => {
+  pi.on("agent_end", async (event, ctx) => {
     const elapsedMs = startedAt === undefined ? undefined : Date.now() - startedAt;
 
     if (elapsedMs !== undefined) {
@@ -274,6 +268,11 @@ export default function responseTimerExtension(pi: ExtensionAPI): void {
           : undefined,
       );
       ctx.ui.notify(`${theme.fg("success", "✓")} ${theme.fg("accent", summary)}`, "info");
+      notifyForLongResponse({
+        elapsedMs,
+        messages: event.messages,
+        summary,
+      });
     }
 
     resetRunState();

@@ -1,6 +1,7 @@
 ---
 name: prune-stale-branches
 description: Prune stale GitHub remote branches in the current repo using a safe dry-run-first workflow. Use when asked to delete old branches, clean up stale remote branches, or identify branches older than 3 weeks; for `spr/*`, prune only when linked PR is closed/merged, and for other branches prune only when not ahead of the main branch.
+disable-model-invocation: true
 ---
 
 # Prune Stale Branches

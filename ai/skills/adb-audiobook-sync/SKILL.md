@@ -1,6 +1,7 @@
 ---
 name: adb-audiobook-sync
 description: Sync local audiobook folders to an Android phone over adb and verify integrity. Use when a user wants audiobook transfer to /sdcard/Audiobooks, when MTP is unreliable, or when transfer correctness must be confirmed with local-vs-phone file and byte checks.
+disable-model-invocation: true
 ---
 
 # Adb Audiobook Sync

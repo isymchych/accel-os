@@ -1,6 +1,7 @@
 ---
 name: find-rss-atom-feed
 description: Find a website's recommended RSS or Atom feed URL from a page or domain. Use when a user asks for a feed link (RSS/Atom), wants to subscribe to a blog/site in a feed reader, or asks to verify whether a site exposes a feed.
+disable-model-invocation: true
 ---
 
 # Find RSS Atom Feed
