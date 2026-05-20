@@ -11,16 +11,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.74.0",
-    "@earendil-works/pi-tui": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.75.0",
+    "@earendil-works/pi-tui": "^0.75.0",
     "diff": "^9.0.0",
     "typebox": "^1.1.36"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
-    "oxfmt": "^0.49.0",
+    "oxfmt": "^0.51.0",
     "oxlint": "^1.61.0",
-    "oxlint-tsgolint": "^0.22.0",
+    "oxlint-tsgolint": "^0.23.0",
     "typescript": "^6.0.3"
   }
 }

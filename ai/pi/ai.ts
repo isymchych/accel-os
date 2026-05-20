@@ -38,7 +38,7 @@ if (accelOs === undefined || accelOs.length === 0) {
 }
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
-const engineeringPrinciplesPath = path.join(accelOs, "ai", "docs", "engineering-principles.md");
+// const engineeringPrinciplesPath = path.join(accelOs, "ai", "docs", "engineering-principles.md");
 
 const hasExplicitToolSelection = (args: readonly string[]): boolean => {
   return args.some(
@@ -52,7 +52,7 @@ const buildAppendArgs = (
 ): string[] => {
   const appendArgs = ["--append-system-prompt", appendSystemPromptPath];
   if (includeEngineeringPrinciples) {
-    appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
+    // appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
   }
   if (!hasExplicitToolSelection(passthrough)) {
     appendArgs.push("--tools", "read,bash,apply_patch,grep,find,ls");

@@ -108,6 +108,7 @@
 * iterate, polish - both the plan and the code
 * semports - semantic ports
 * **Cognitive Debt** - before writing code was slow, now understanding code is slow -> document rationale, comprehension is first-class eng task
+  * https://addyosmani.com/blog/dont-outsource-learning/
 * https://addyosmani.com/blog/agentic-engineering/
 * https://cursor.com/blog/agent-best-practices
 *  > In a system where agent throughput far exceeds human attention, corrections are cheap, and waiting is expensive.

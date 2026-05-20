@@ -1,6 +1,6 @@
 {
-  "theme": "dark",
-  "lastChangelogVersion": "0.74.0",
+  "theme": "light",
+  "lastChangelogVersion": "0.75.3",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
