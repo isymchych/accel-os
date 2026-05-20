@@ -17,7 +17,8 @@
     "./extensions/fuzzy-at-file-autocomplete/index.ts",
     "./extensions/openai-codex/index.ts",
     "./extensions/personal-context/index.ts",
-    "./extensions/response-status/index.ts"
+    "./extensions/response-status/index.ts",
+    "./extensions/write-file/index.ts"
   ],
   "prompts": [
     "../prompts"

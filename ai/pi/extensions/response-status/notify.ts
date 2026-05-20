@@ -17,10 +17,7 @@ type MessageLike = {
 
 function isTextPart(value: unknown): value is TextPart {
   return (
-    typeof value === "object" &&
-    value !== null &&
-    "text" in value &&
-    typeof value.text === "string"
+    typeof value === "object" && value !== null && "text" in value && typeof value.text === "string"
   );
 }
 
@@ -34,7 +31,7 @@ function notifyOSC99(title: string, body: string): void {
 }
 
 function notify(title: string, body: string): void {
-  if (process.stdout.isTTY !== true) {
+  if (!process.stdout.isTTY) {
     return;
   }
 
@@ -47,7 +44,7 @@ function notify(title: string, body: string): void {
 }
 
 function playNotificationSound(): void {
-  if (process.stdout.isTTY !== true) {
+  if (!process.stdout.isTTY) {
     return;
   }
 

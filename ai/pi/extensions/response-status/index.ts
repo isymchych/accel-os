@@ -11,12 +11,12 @@ import type {
   WorkingIndicatorOptions,
 } from "@earendil-works/pi-coding-agent";
 
+import { notifyForLongResponse } from "./notify.ts";
 import {
   createCompletedTimerSummary,
   createWorkingTimerMessage,
   estimateTokensFromTextDelta,
 } from "./timer.ts";
-import { notifyForLongResponse } from "./notify.ts";
 
 const UPDATE_INTERVAL_MS = 200;
 const TITLE_PREFIX = "π   ";
