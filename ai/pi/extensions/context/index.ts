@@ -13,6 +13,8 @@ import type {
   BuildSystemPromptOptions,
   ExtensionAPI,
   ExtensionCommandContext,
+  SessionEntry,
+  SessionMessageEntry,
 } from "@earendil-works/pi-coding-agent";
 import {
   buildSessionContext,
@@ -21,7 +23,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, matchesKey, Text } from "@earendil-works/pi-tui";
 
-import { buildContextReport, renderContextReport } from "./report.ts";
+import { buildContextReport, type CacheTurnInput, renderContextReport } from "./report.ts";
 
 const AGENT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -54,6 +56,46 @@ function listContextFiles(
   return loadProjectContextFiles({ cwd, agentDir: AGENT_DIR });
 }
 
+function isMessageEntry(entry: SessionEntry): entry is SessionMessageEntry {
+  return entry.type === "message";
+}
+
+function isAssistantMessage(
+  message: SessionMessageEntry["message"],
+): message is Extract<SessionMessageEntry["message"], { role: "assistant" }> {
+  return message.role === "assistant";
+}
+
+function collectCacheTurns(
+  entries: readonly SessionEntry[],
+  activeBranchEntryIds: ReadonlySet<string>,
+): CacheTurnInput[] {
+  const turns: CacheTurnInput[] = [];
+  let sequence = 0;
+
+  for (const entry of entries) {
+    if (!isMessageEntry(entry) || !isAssistantMessage(entry.message)) {
+      continue;
+    }
+
+    sequence += 1;
+    turns.push({
+      sequence,
+      isOnActiveBranch: activeBranchEntryIds.has(entry.id),
+      timestamp: entry.timestamp,
+      provider: entry.message.provider,
+      model: entry.message.model,
+      input: entry.message.usage.input,
+      output: entry.message.usage.output,
+      cacheRead: entry.message.usage.cacheRead,
+      cacheWrite: entry.message.usage.cacheWrite,
+      totalTokens: entry.message.usage.totalTokens,
+    });
+  }
+
+  return turns;
+}
+
 async function showSummary(reportText: string, ctx: ExtensionCommandContext): Promise<void> {
   if (!ctx.hasUI) {
     return;
@@ -63,7 +105,6 @@ async function showSummary(reportText: string, ctx: ExtensionCommandContext): Pr
     const container = new Container();
     const border = new DynamicBorder((s: string) => theme.fg("accent", s));
     container.addChild(border);
-    container.addChild(new Text(theme.fg("accent", theme.bold("Context")), 1, 0));
     container.addChild(new Text(reportText, 1, 0));
     container.addChild(
       new Text(theme.fg("dim", "Enter/Esc close · /context prompt for the prompt"), 1, 0),
@@ -120,9 +161,11 @@ export default function contextExtension(pi: ExtensionAPI): void {
       await ctx.waitForIdle();
 
       const promptSnapshot = lastPromptSnapshot;
+      const allEntries = ctx.sessionManager.getEntries();
       const branchEntries = ctx.sessionManager.getBranch();
+      const activeBranchEntryIds = new Set(branchEntries.map((entry) => entry.id));
       const contextMessages = buildSessionContext(
-        ctx.sessionManager.getEntries(),
+        allEntries,
         ctx.sessionManager.getLeafId(),
       ).messages;
       const latestCompactionEntry = [...branchEntries]
@@ -133,6 +176,7 @@ export default function contextExtension(pi: ExtensionAPI): void {
         promptSource: promptSnapshot === undefined ? "current" : "last-turn",
         contextUsage: ctx.getContextUsage(),
         messages: contextMessages,
+        cacheTurns: collectCacheTurns(allEntries, activeBranchEntryIds),
         allTools: pi.getAllTools(),
         activeToolNames: pi.getActiveTools(),
         contextFiles: listContextFiles(ctx.cwd, promptSnapshot),

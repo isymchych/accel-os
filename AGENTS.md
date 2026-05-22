@@ -64,6 +64,7 @@
 - When adding a new Pi tool that should be agent-callable by default, also add it to the default `--tools` allowlist in `ai/pi/ai.ts`; loading an extension alone does not enable the tool when `ai.ts` passes an explicit allowlist.
 - Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
 - On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshrc_tools` exports `PI_CODING_AGENT_DIR` to that path.
+- For local MCP servers in `ai/pi/mcp.json`, prefer repo-local package binaries over `npx`; use the package's public bin name, set `cwd` to `${ACCEL_OS}/ai/pi`, and extend `PATH` with `${ACCEL_OS}/ai/pi/node_modules/.bin` so the config stays reproducible without wrapper scripts or internal package paths.
 * When adding new Pi extension - don't forget to add high-level tsdoc to it
 
 ## Machine-Specific Configuration

@@ -5,6 +5,11 @@ const ESTIMATED_CHARS_PER_TOKEN = 4;
 
 export const WORKING_TIMER_PREFIX = "⏱ ";
 
+export interface PromptCacheUsage {
+  inputTokens: number;
+  cacheReadTokens: number;
+}
+
 export function formatElapsed(ms: number): string {
   if (ms < MINUTE_MS) {
     return `${(ms / MS_PER_SECOND).toFixed(1)}s`;
@@ -24,6 +29,48 @@ function formatTokensPerSecond(outputTokens: number, elapsedMs: number): number 
   return Math.round(outputTokens / (elapsedMs / MS_PER_SECOND));
 }
 
+function formatCompactTokens(tokens: number): string {
+  if (tokens >= 10_000) {
+    return `${Math.round(tokens / 1_000)}k`;
+  }
+
+  if (tokens >= 1_000) {
+    return `${(tokens / 1_000).toFixed(1)}k`;
+  }
+
+  return `${tokens}`;
+}
+
+function formatPromptCacheHitRate(cacheUsage: PromptCacheUsage): string | undefined {
+  const totalPromptTokens = cacheUsage.inputTokens + cacheUsage.cacheReadTokens;
+  if (totalPromptTokens <= 0) {
+    return undefined;
+  }
+
+  return `${Math.round((cacheUsage.cacheReadTokens / totalPromptTokens) * 100)}%`;
+}
+
+function getPromptCacheSummaryParts(
+  cacheUsage: PromptCacheUsage | undefined,
+  includeRawTokens: boolean,
+): string[] {
+  if (cacheUsage === undefined) {
+    return [];
+  }
+
+  const parts: string[] = [];
+  const hitRate = formatPromptCacheHitRate(cacheUsage);
+  if (hitRate !== undefined) {
+    parts.push(`cache ${hitRate}`);
+  }
+
+  if (includeRawTokens && cacheUsage.cacheReadTokens > 0) {
+    parts.push(`R${formatCompactTokens(cacheUsage.cacheReadTokens)}`);
+  }
+
+  return parts;
+}
+
 export function estimateTokensFromTextDelta(delta: string): number {
   return Math.max(0, delta.length / ESTIMATED_CHARS_PER_TOKEN);
 }
@@ -35,19 +82,20 @@ export function createWorkingTimerMessage(
     outputTokens: number;
     streamElapsedMs: number;
   },
+  cacheUsage?: PromptCacheUsage,
 ): string {
-  const elapsed = `${WORKING_TIMER_PREFIX}${formatElapsed(elapsedMs)}`;
-  if (tps === undefined) {
-    return elapsed;
+  const summaryParts = [`${WORKING_TIMER_PREFIX}${formatElapsed(elapsedMs)}`];
+
+  if (tps !== undefined) {
+    const tokensPerSecond = formatTokensPerSecond(tps.outputTokens, tps.streamElapsedMs);
+    if (tokensPerSecond !== undefined) {
+      const prefix = tps.estimated ? "~" : "";
+      summaryParts.push(`${prefix}${tokensPerSecond} tok/s`);
+    }
   }
 
-  const tokensPerSecond = formatTokensPerSecond(tps.outputTokens, tps.streamElapsedMs);
-  if (tokensPerSecond === undefined) {
-    return elapsed;
-  }
-
-  const prefix = tps.estimated ? "~" : "";
-  return `${elapsed} · ${prefix}${tokensPerSecond} tok/s`;
+  summaryParts.push(...getPromptCacheSummaryParts(cacheUsage, false));
+  return summaryParts.join(" · ");
 }
 
 export function createTotalElapsedSummary(elapsedMs: number): string {
@@ -60,18 +108,18 @@ export function createCompletedTimerSummary(
     outputTokens: number;
     streamElapsedMs: number;
   },
+  cacheUsage?: PromptCacheUsage,
 ): string {
   const summaryParts = [createTotalElapsedSummary(elapsedMs)];
-  if (tps === undefined) {
-    return summaryParts.join(" · ");
+
+  if (tps !== undefined) {
+    const tokensPerSecond = formatTokensPerSecond(tps.outputTokens, tps.streamElapsedMs);
+    if (tokensPerSecond !== undefined) {
+      summaryParts.push(`${tokensPerSecond} tok/s`);
+      summaryParts.push(`${tps.outputTokens} tokens`);
+    }
   }
 
-  const tokensPerSecond = formatTokensPerSecond(tps.outputTokens, tps.streamElapsedMs);
-  if (tokensPerSecond === undefined) {
-    return summaryParts.join(" · ");
-  }
-
-  summaryParts.push(`${tokensPerSecond} tok/s`);
-  summaryParts.push(`${tps.outputTokens} tokens`);
+  summaryParts.push(...getPromptCacheSummaryParts(cacheUsage, true));
   return summaryParts.join(" · ");
 }

@@ -17,4 +17,4 @@ lint:
 test:
   npm run test
 
-check: typecheck fmt-check lint test
+check: typecheck lint test fmt-check

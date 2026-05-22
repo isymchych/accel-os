@@ -82,6 +82,19 @@ export type ContextMessage =
   | BranchSummaryContextMessage
   | CompactionSummaryContextMessage;
 
+export interface CacheTurnInput {
+  sequence: number;
+  isOnActiveBranch: boolean;
+  timestamp: string;
+  provider: string;
+  model: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  totalTokens: number;
+}
+
 export interface SessionInfoSnapshot {
   branchEntryCount: number;
   messageCount: number;
@@ -93,6 +106,7 @@ export interface ContextReportInput {
   promptSource: "last-turn" | "current";
   contextUsage: ContextUsage | undefined;
   messages: readonly ContextMessage[];
+  cacheTurns: readonly CacheTurnInput[];
   allTools: readonly ToolInfo[];
   activeToolNames: readonly string[];
   contextFiles: NonNullable<BuildSystemPromptOptions["contextFiles"]>;
@@ -110,6 +124,39 @@ export interface ResourceItem {
   name: string;
   path: string | undefined;
   description: string | undefined;
+  tokens: number;
+  percentOfWindow: number | undefined;
+}
+
+export interface CacheTurnSnapshot {
+  sequence: number;
+  isOnActiveBranch: boolean;
+  timestamp: string;
+  provider: string;
+  model: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  totalTokens: number;
+  cacheHitPercent: number;
+}
+
+export interface CacheTotalsSnapshot {
+  assistantMessages: number;
+  input: number;
+  output: number;
+  cacheRead: number;
+  totalTokens: number;
+  cacheHitPercent: number;
+}
+
+export interface CacheSummarySnapshot {
+  activeBranch: CacheTotalsSnapshot;
+  wholeTree: CacheTotalsSnapshot;
+  turns: CacheTurnSnapshot[];
+  latestHitPercent: number | undefined;
+  minHitPercent: number | undefined;
+  maxHitPercent: number | undefined;
 }
 
 export interface ContextReport {
@@ -121,8 +168,9 @@ export interface ContextReport {
   systemPrompt: string;
   promptSource: "last-turn" | "current";
   buckets: BucketSnapshot[];
-  activeTools: ResourceItem[];
   contextFiles: ResourceItem[];
+  activeTools: ResourceItem[];
+  cache: CacheSummarySnapshot;
   session: SessionInfoSnapshot;
   notes: string[];
 }
@@ -146,6 +194,15 @@ interface RawMessageBreakdown {
   branchSummaryTokens: number;
   compactionSummaryTokens: number;
 }
+
+interface RawTokenItem {
+  name: string;
+  path: string | undefined;
+  description: string | undefined;
+  tokens: number;
+}
+
+const RECENT_CACHE_TURN_COUNT = 6;
 
 function estimatePlainTextTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -299,48 +356,285 @@ function normalizeBuckets(buckets: readonly RawBucket[], targetTotal: number): B
   }));
 }
 
-function formatCompactTokens(tokens: number): string {
-  if (tokens >= 100_000) {
-    return `${Math.round(tokens / 1_000)}k`;
+function compareResourceItems(left: ResourceItem, right: ResourceItem): number {
+  if (right.tokens !== left.tokens) {
+    return right.tokens - left.tokens;
   }
-  if (tokens >= 10_000) {
-    return `${Math.round(tokens / 1_000)}k`;
-  }
-  if (tokens >= 1_000) {
-    const thousands = tokens / 1_000;
-    return thousands >= 10 ? `${Math.round(thousands)}k` : `${thousands.toFixed(1)}k`;
-  }
-  return `${tokens}`;
+
+  const leftLabel = left.path ?? left.name;
+  const rightLabel = right.path ?? right.name;
+  return leftLabel.localeCompare(rightLabel);
 }
 
-function formatPercent(percent: number | undefined): string {
-  if (percent === undefined) {
-    return "   ?";
-  }
-  return percent.toFixed(1).padStart(5, " ");
-}
-
-function formatTokenAndPercent(
-  label: string,
-  tokens: number,
-  percent: number | undefined,
-  width: number,
-): string {
-  const padded = label.padEnd(width, " ");
-  return `${padded} ${formatCompactTokens(tokens).padStart(6, " ")} (${formatPercent(percent)}%)`;
-}
-
-function toResourceItems(
-  items: readonly { name: string; path: string | undefined; description: string | undefined }[],
+function normalizeTokenItems(
+  items: readonly RawTokenItem[],
+  targetTotal: number,
+  contextWindow: number | undefined,
 ): ResourceItem[] {
-  return items.map((item) => ({ ...item }));
+  const rawTotal = items.reduce((sum, item) => sum + item.tokens, 0);
+  if (rawTotal <= 0) {
+    return [...items]
+      .map((item) => ({
+        ...item,
+        tokens: 0,
+        percentOfWindow: undefined,
+      }))
+      .sort(compareResourceItems);
+  }
+
+  const scaled = items.map((item, index) => {
+    const exactTokens = (item.tokens / rawTotal) * targetTotal;
+    const whole = Math.floor(exactTokens);
+    return {
+      index,
+      whole,
+      fraction: exactTokens - whole,
+    };
+  });
+
+  let remaining = targetTotal - scaled.reduce((sum, item) => sum + item.whole, 0);
+  const byRemainder = [...scaled].sort((left, right) => {
+    if (right.fraction !== left.fraction) {
+      return right.fraction - left.fraction;
+    }
+    return left.index - right.index;
+  });
+
+  for (const item of byRemainder) {
+    if (remaining <= 0) {
+      break;
+    }
+    item.whole += 1;
+    remaining -= 1;
+  }
+
+  return items
+    .map((item, index) => ({
+      name: item.name,
+      path: item.path,
+      description: item.description,
+      tokens: scaled[index]?.whole ?? 0,
+      percentOfWindow:
+        contextWindow === undefined || contextWindow === 0
+          ? undefined
+          : ((scaled[index]?.whole ?? 0) / contextWindow) * 100,
+    }))
+    .sort(compareResourceItems);
+}
+
+function computePercentOfWindow(
+  tokens: number,
+  contextWindow: number | undefined,
+): number | undefined {
+  if (contextWindow === undefined || contextWindow === 0) {
+    return undefined;
+  }
+
+  return (tokens / contextWindow) * 100;
+}
+
+function estimateContextFileItemsRaw(
+  contextFiles: NonNullable<BuildSystemPromptOptions["contextFiles"]>,
+): RawTokenItem[] {
+  return contextFiles.map((file) => ({
+    name: file.path,
+    path: file.path,
+    description: undefined,
+    tokens: estimatePlainTextTokens(file.content),
+  }));
+}
+
+function estimateActiveToolItemsRaw(
+  allTools: readonly ToolInfo[],
+  activeToolNames: readonly string[],
+): RawTokenItem[] {
+  return allTools
+    .filter((tool) => activeToolNames.includes(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      path: undefined,
+      description: tool.description,
+      tokens: estimateToolDefinitionTokens(tool),
+    }));
+}
+
+function sumTokens(items: readonly { tokens: number }[]): number {
+  return items.reduce((sum, item) => sum + item.tokens, 0);
+}
+
+function buildConversationTokensRaw(messageBreakdown: RawMessageBreakdown): number {
+  return (
+    messageBreakdown.userTokens +
+    messageBreakdown.assistantTextTokens +
+    messageBreakdown.assistantThinkingTokens +
+    messageBreakdown.bashTokens +
+    messageBreakdown.customTokens +
+    messageBreakdown.branchSummaryTokens +
+    messageBreakdown.compactionSummaryTokens
+  );
+}
+
+function buildMajorBucketsRaw(input: {
+  systemPromptBaseTokensRaw: number;
+  contextFilesTokensRaw: number;
+  toolTokensRaw: number;
+  messageBreakdown: RawMessageBreakdown;
+  conversationTokensRaw: number;
+}): RawBucket[] {
+  return [
+    { label: "System prompt base", tokens: input.systemPromptBaseTokensRaw, depth: 0 },
+    { label: "Context files", tokens: input.contextFilesTokensRaw, depth: 0 },
+    { label: "Tool definitions", tokens: input.toolTokensRaw, depth: 0 },
+    {
+      label: "Assistant tool calls",
+      tokens: input.messageBreakdown.assistantToolCallTokens,
+      depth: 0,
+    },
+    { label: "Tool results", tokens: input.messageBreakdown.toolResultTokens, depth: 0 },
+    { label: "Conversation", tokens: input.conversationTokensRaw, depth: 0 },
+  ];
+}
+
+function buildNormalizedConversationBuckets(
+  messageBreakdown: RawMessageBreakdown,
+  conversationTotal: number,
+): BucketSnapshot[] {
+  return normalizeBuckets(
+    [
+      { label: "User", tokens: messageBreakdown.userTokens, depth: 1 },
+      { label: "Assistant text", tokens: messageBreakdown.assistantTextTokens, depth: 1 },
+      { label: "Assistant thinking", tokens: messageBreakdown.assistantThinkingTokens, depth: 1 },
+      { label: "Bash history", tokens: messageBreakdown.bashTokens, depth: 1 },
+      {
+        label: "Custom + summaries",
+        tokens:
+          messageBreakdown.customTokens +
+          messageBreakdown.branchSummaryTokens +
+          messageBreakdown.compactionSummaryTokens,
+        depth: 1,
+      },
+    ],
+    conversationTotal,
+  );
+}
+
+function buildBucketsWithPercents(
+  majorBuckets: readonly BucketSnapshot[],
+  conversationBuckets: readonly BucketSnapshot[],
+  contextWindow: number | undefined,
+): BucketSnapshot[] {
+  const buckets: BucketSnapshot[] = [];
+
+  for (const bucket of majorBuckets) {
+    buckets.push({
+      ...bucket,
+      percentOfWindow: computePercentOfWindow(bucket.tokens, contextWindow),
+    });
+
+    if (bucket.label !== "Conversation") {
+      continue;
+    }
+
+    for (const conversationBucket of conversationBuckets) {
+      if (conversationBucket.tokens <= 0) {
+        continue;
+      }
+
+      buckets.push({
+        ...conversationBucket,
+        percentOfWindow: computePercentOfWindow(conversationBucket.tokens, contextWindow),
+      });
+    }
+  }
+
+  return buckets;
+}
+
+function computeCacheHitPercent(input: number, cacheRead: number): number {
+  const denominator = input + cacheRead;
+  if (denominator <= 0) {
+    return 0;
+  }
+  return (cacheRead / denominator) * 100;
+}
+
+function emptyCacheTotals(): CacheTotalsSnapshot {
+  return {
+    assistantMessages: 0,
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    totalTokens: 0,
+    cacheHitPercent: 0,
+  };
+}
+
+function addToCacheTotals(totals: CacheTotalsSnapshot, turn: CacheTurnSnapshot): void {
+  totals.assistantMessages += 1;
+  totals.input += turn.input;
+  totals.output += turn.output;
+  totals.cacheRead += turn.cacheRead;
+  totals.totalTokens += turn.totalTokens;
+  totals.cacheHitPercent = computeCacheHitPercent(totals.input, totals.cacheRead);
+}
+
+function buildCacheSummary(cacheTurns: readonly CacheTurnInput[]): CacheSummarySnapshot {
+  const activeBranch = emptyCacheTotals();
+  const wholeTree = emptyCacheTotals();
+  const turns: CacheTurnSnapshot[] = [];
+
+  let latestHitPercent: number | undefined;
+  let minHitPercent: number | undefined;
+  let maxHitPercent: number | undefined;
+
+  for (const turn of cacheTurns) {
+    const cacheHitPercent = computeCacheHitPercent(turn.input, turn.cacheRead);
+    const snapshot: CacheTurnSnapshot = {
+      sequence: turn.sequence,
+      isOnActiveBranch: turn.isOnActiveBranch,
+      timestamp: turn.timestamp,
+      provider: turn.provider,
+      model: turn.model,
+      input: turn.input,
+      output: turn.output,
+      cacheRead: turn.cacheRead,
+      totalTokens: turn.totalTokens,
+      cacheHitPercent,
+    };
+
+    turns.push(snapshot);
+    addToCacheTotals(wholeTree, snapshot);
+    if (snapshot.isOnActiveBranch) {
+      addToCacheTotals(activeBranch, snapshot);
+    }
+
+    latestHitPercent = snapshot.cacheHitPercent;
+    minHitPercent =
+      minHitPercent === undefined
+        ? snapshot.cacheHitPercent
+        : Math.min(minHitPercent, snapshot.cacheHitPercent);
+    maxHitPercent =
+      maxHitPercent === undefined
+        ? snapshot.cacheHitPercent
+        : Math.max(maxHitPercent, snapshot.cacheHitPercent);
+  }
+
+  return {
+    activeBranch,
+    wholeTree,
+    turns,
+    latestHitPercent,
+    minHitPercent,
+    maxHitPercent,
+  };
 }
 
 function buildNotes(promptSource: "last-turn" | "current", usedTokensExact: boolean): string[] {
   const notes = [
     usedTokensExact
-      ? "Bucket breakdown is estimated with Pi's chars/4 heuristic and normalized to Pi's current total usage."
-      : "Usage is estimated because Pi has no exact post-compaction token count yet.",
+      ? "Total usage is exact; the breakdown uses Pi's chars/4 estimates normalized to the current total."
+      : "Usage and breakdown are estimated because Pi has no exact post-compaction token count yet.",
+    "Cache hit rate = cacheRead / (input + cacheRead).",
   ];
 
   if (promptSource === "current") {
@@ -352,95 +646,186 @@ function buildNotes(promptSource: "last-turn" | "current", usedTokensExact: bool
   return notes;
 }
 
-export function buildContextReport(input: ContextReportInput): ContextReport {
-  const promptTokensRaw = estimatePlainTextTokens(input.systemPrompt);
-  const activeTools = input.allTools.filter((tool) => input.activeToolNames.includes(tool.name));
-  const toolTokensRaw = activeTools.reduce(
-    (sum, tool) => sum + estimateToolDefinitionTokens(tool),
-    0,
-  );
-  const messageBreakdown = estimateMessageBreakdown(input.messages);
+function formatInt(value: number): string {
+  return value.toLocaleString("en-US");
+}
 
-  const conversationTokensRaw =
-    messageBreakdown.userTokens +
-    messageBreakdown.assistantTextTokens +
-    messageBreakdown.assistantThinkingTokens +
-    messageBreakdown.bashTokens +
-    messageBreakdown.customTokens +
-    messageBreakdown.branchSummaryTokens +
-    messageBreakdown.compactionSummaryTokens;
+function formatPercent(percent: number | undefined): string {
+  return percent === undefined ? "?" : `${percent.toFixed(1)}%`;
+}
 
-  const majorBucketsRaw: RawBucket[] = [
-    { label: "System Prompt", tokens: promptTokensRaw, depth: 0 },
-    { label: "System Tools", tokens: toolTokensRaw, depth: 0 },
-    { label: "Assistant Tool Calls", tokens: messageBreakdown.assistantToolCallTokens, depth: 0 },
-    { label: "Tool Results", tokens: messageBreakdown.toolResultTokens, depth: 0 },
-    { label: "Messages", tokens: conversationTokensRaw, depth: 0 },
+function padLeft(value: string, width: number): string {
+  return value.length >= width ? value : `${" ".repeat(width - value.length)}${value}`;
+}
+
+function padRight(value: string, width: number): string {
+  return value.length >= width ? value : `${value}${" ".repeat(width - value.length)}`;
+}
+
+function formatUsageHeadline(report: ContextReport): string {
+  if (report.contextWindow === undefined || report.availableTokens === undefined) {
+    return `Used ${formatInt(report.usedTokens)}`;
+  }
+
+  return `Used ${formatInt(report.usedTokens)} / ${formatInt(report.contextWindow)} (${formatPercent(report.usagePercent)}) · Free ${formatInt(report.availableTokens)}`;
+}
+
+function formatSnapshotLine(report: ContextReport): string {
+  const parts = [
+    `Snapshot: ${report.promptSource === "last-turn" ? "last turn" : "current resources"}`,
+    `${formatInt(report.session.messageCount)} messages`,
+    `${formatInt(report.session.branchEntryCount)} entries`,
   ];
 
-  const rawUsedTokens = majorBucketsRaw.reduce((sum, bucket) => sum + bucket.tokens, 0);
+  if (report.session.latestCompactionTokensBefore !== undefined) {
+    parts.push(`latest compaction ${formatInt(report.session.latestCompactionTokensBefore)}`);
+  }
+
+  return parts.join(" · ");
+}
+
+function renderBucketSection(title: string, buckets: readonly BucketSnapshot[]): string[] {
+  const lines = [title];
+  if (buckets.length === 0) {
+    lines.push("  (none)");
+    return lines;
+  }
+
+  const labelWidth = Math.max(...buckets.map((bucket) => bucket.label.length));
+  const tokenWidth = Math.max(...buckets.map((bucket) => formatInt(bucket.tokens).length));
+  const percentWidth = Math.max(
+    ...buckets.map((bucket) => formatPercent(bucket.percentOfWindow).length),
+  );
+
+  for (const bucket of buckets) {
+    const label = bucket.depth === 0 ? bucket.label : `  ${bucket.label}`;
+    lines.push(
+      `  ${padRight(label, labelWidth + (bucket.depth === 0 ? 0 : 2))}  ${padLeft(formatInt(bucket.tokens), tokenWidth)}  ${padLeft(formatPercent(bucket.percentOfWindow), percentWidth)}`,
+    );
+  }
+
+  return lines;
+}
+
+function renderResourceSection(title: string, items: readonly ResourceItem[]): string[] {
+  const lines = [title];
+  if (items.length === 0) {
+    lines.push("  (none)");
+    return lines;
+  }
+
+  const tokenWidth = Math.max(...items.map((item) => formatInt(item.tokens).length));
+  const percentWidth = Math.max(...items.map((item) => formatPercent(item.percentOfWindow).length));
+
+  for (const item of items) {
+    const label = item.path ?? item.name;
+    lines.push(
+      `  ${padLeft(formatInt(item.tokens), tokenWidth)}  ${padLeft(formatPercent(item.percentOfWindow), percentWidth)}  ${label}`,
+    );
+  }
+
+  return lines;
+}
+
+function formatCacheTotalsLine(label: string, totals: CacheTotalsSnapshot): string {
+  return `${label}: ${formatInt(totals.assistantMessages)} turns · sent ${formatInt(totals.input)} · received ${formatInt(totals.output)} · cache hit ${formatInt(totals.cacheRead)} · hit rate ${formatPercent(totals.cacheHitPercent)}`;
+}
+
+function formatModelLabel(provider: string, model: string): string {
+  if (provider.length === 0) {
+    return model;
+  }
+  if (model.startsWith(`${provider}/`)) {
+    return model;
+  }
+  return `${provider}/${model}`;
+}
+
+function renderCacheTurns(turns: readonly CacheTurnSnapshot[]): string[] {
+  const lines = ["Per-turn cache stats"];
+  if (turns.length === 0) {
+    lines.push("  (no assistant messages with usage data yet)");
+    return lines;
+  }
+
+  const recentTurns = turns.slice(-RECENT_CACHE_TURN_COUNT);
+  const rows = recentTurns.map((turn) => ({
+    sequence: String(turn.sequence),
+    branch: turn.isOnActiveBranch ? "*" : "",
+    hitPercent: formatPercent(turn.cacheHitPercent),
+    input: formatInt(turn.input),
+    cacheRead: formatInt(turn.cacheRead),
+    output: formatInt(turn.output),
+    model: formatModelLabel(turn.provider, turn.model),
+  }));
+
+  const sequenceWidth = Math.max(1, ...rows.map((row) => row.sequence.length));
+  const hitPercentWidth = Math.max(4, ...rows.map((row) => row.hitPercent.length));
+  const inputWidth = Math.max(4, ...rows.map((row) => row.input.length));
+  const cacheReadWidth = Math.max(9, ...rows.map((row) => row.cacheRead.length));
+  const outputWidth = Math.max(4, ...rows.map((row) => row.output.length));
+
+  lines.push(
+    `  ${padLeft("#", sequenceWidth)}  ${padRight("B", 1)}  ${padLeft("hit%", hitPercentWidth)}  ${padLeft("sent", inputWidth)}  ${padLeft("cache-hit", cacheReadWidth)}  ${padLeft("recv", outputWidth)}  model`,
+  );
+
+  for (const row of rows) {
+    lines.push(
+      `  ${padLeft(row.sequence, sequenceWidth)}  ${padRight(row.branch, 1)}  ${padLeft(row.hitPercent, hitPercentWidth)}  ${padLeft(row.input, inputWidth)}  ${padLeft(row.cacheRead, cacheReadWidth)}  ${padLeft(row.output, outputWidth)}  ${row.model}`,
+    );
+  }
+
+  return lines;
+}
+
+export function buildContextReport(input: ContextReportInput): ContextReport {
+  const promptTokensRaw = estimatePlainTextTokens(input.systemPrompt);
+  const contextFileItemsRaw = estimateContextFileItemsRaw(input.contextFiles);
+  const contextFilesTokensRaw = sumTokens(contextFileItemsRaw);
+  const systemPromptBaseTokensRaw = Math.max(0, promptTokensRaw - contextFilesTokensRaw);
+
+  const activeToolItemsRaw = estimateActiveToolItemsRaw(input.allTools, input.activeToolNames);
+  const toolTokensRaw = sumTokens(activeToolItemsRaw);
+
+  const messageBreakdown = estimateMessageBreakdown(input.messages);
+  const conversationTokensRaw = buildConversationTokensRaw(messageBreakdown);
+  const majorBucketsRaw = buildMajorBucketsRaw({
+    systemPromptBaseTokensRaw,
+    contextFilesTokensRaw,
+    toolTokensRaw,
+    messageBreakdown,
+    conversationTokensRaw,
+  });
+
+  const rawUsedTokens = sumTokens(majorBucketsRaw);
   const exactUsedTokens = input.contextUsage?.tokens ?? null;
   const usedTokens = exactUsedTokens ?? rawUsedTokens;
   const contextWindow = input.contextUsage?.contextWindow;
-  const usagePercent =
-    contextWindow === undefined || contextWindow === 0
-      ? undefined
-      : (usedTokens / contextWindow) * 100;
-  const normalizedMajorBuckets = normalizeBuckets(majorBucketsRaw, usedTokens);
-  const normalizedMessages = normalizeBuckets(
-    [
-      { label: "User", tokens: messageBreakdown.userTokens, depth: 1 },
-      { label: "Assistant Text", tokens: messageBreakdown.assistantTextTokens, depth: 1 },
-      { label: "Assistant Thinking", tokens: messageBreakdown.assistantThinkingTokens, depth: 1 },
-      { label: "Bash History", tokens: messageBreakdown.bashTokens, depth: 1 },
-      {
-        label: "Custom + Summaries",
-        tokens:
-          messageBreakdown.customTokens +
-          messageBreakdown.branchSummaryTokens +
-          messageBreakdown.compactionSummaryTokens,
-        depth: 1,
-      },
-    ],
-    normalizedMajorBuckets.find((bucket) => bucket.label === "Messages")?.tokens ?? 0,
-  );
+  const usagePercent = computePercentOfWindow(usedTokens, contextWindow);
 
-  const buckets: BucketSnapshot[] = [];
-  for (const bucket of normalizedMajorBuckets) {
-    const percentOfWindow =
-      contextWindow === undefined || contextWindow === 0
-        ? undefined
-        : (bucket.tokens / contextWindow) * 100;
-    buckets.push({ ...bucket, percentOfWindow });
-    if (bucket.label === "Messages") {
-      for (const messageBucket of normalizedMessages) {
-        if (messageBucket.tokens <= 0) {
-          continue;
-        }
-        const subPercent =
-          contextWindow === undefined || contextWindow === 0
-            ? undefined
-            : (messageBucket.tokens / contextWindow) * 100;
-        buckets.push({ ...messageBucket, percentOfWindow: subPercent });
-      }
-    }
-  }
+  const normalizedMajorBuckets = normalizeBuckets(majorBucketsRaw, usedTokens);
+  const normalizedConversationBuckets = buildNormalizedConversationBuckets(
+    messageBreakdown,
+    normalizedMajorBuckets.find((bucket) => bucket.label === "Conversation")?.tokens ?? 0,
+  );
+  const buckets = buildBucketsWithPercents(
+    normalizedMajorBuckets,
+    normalizedConversationBuckets,
+    contextWindow,
+  );
 
   const availableTokens =
     contextWindow === undefined ? undefined : Math.max(0, contextWindow - usedTokens);
-  const contextFiles = toResourceItems(
-    input.contextFiles.map((file) => ({
-      name: file.path,
-      path: file.path,
-      description: undefined,
-    })),
+
+  const contextFiles = normalizeTokenItems(
+    contextFileItemsRaw,
+    normalizedMajorBuckets.find((bucket) => bucket.label === "Context files")?.tokens ?? 0,
+    contextWindow,
   );
-  const activeToolItems = toResourceItems(
-    activeTools.map((tool) => ({
-      name: tool.name,
-      path: undefined,
-      description: tool.description,
-    })),
+  const activeToolItems = normalizeTokenItems(
+    activeToolItemsRaw,
+    normalizedMajorBuckets.find((bucket) => bucket.label === "Tool definitions")?.tokens ?? 0,
+    contextWindow,
   );
 
   return {
@@ -452,97 +837,52 @@ export function buildContextReport(input: ContextReportInput): ContextReport {
     systemPrompt: input.systemPrompt,
     promptSource: input.promptSource,
     buckets,
-    activeTools: activeToolItems,
     contextFiles,
+    activeTools: activeToolItems,
+    cache: buildCacheSummary(input.cacheTurns),
     session: input.session,
     notes: buildNotes(input.promptSource, exactUsedTokens !== null),
   };
 }
 
-function summarizeItems(items: readonly ResourceItem[], maxItems: number): string[] {
-  if (items.length === 0) {
-    return ["  (none)"];
-  }
-
-  const visible = items.slice(0, maxItems).map((item) => {
-    if (item.path !== undefined) {
-      return `  - ${item.name} — ${item.path}`;
-    }
-    if (item.description !== undefined && item.description.length > 0) {
-      return `  - ${item.name} — ${item.description}`;
-    }
-    return `  - ${item.name}`;
-  });
-
-  const hiddenCount = items.length - visible.length;
-  if (hiddenCount > 0) {
-    visible.push(`  - +${hiddenCount} more`);
-  }
-
-  return visible;
-}
-
 export function renderContextReport(report: ContextReport): string {
   const majorBuckets = report.buckets.filter((bucket) => bucket.depth === 0);
   const detailBuckets = report.buckets.filter((bucket) => bucket.depth === 1);
-  const labelWidth = Math.max(
-    "Available".length,
-    ...majorBuckets.map((bucket) => bucket.label.length),
-  );
-  const detailLabelWidth = Math.max(1, ...detailBuckets.map((bucket) => bucket.label.length));
-  const totalLabel = report.usedTokensExact ? "Total Usage" : "Estimated Usage";
-
   const lines = [
-    formatTokenAndPercent(totalLabel, report.usedTokens, report.usagePercent, labelWidth),
+    "Context",
+    formatUsageHeadline(report),
+    formatSnapshotLine(report),
+    `Note: ${report.usedTokensExact ? "total exact, breakdown estimated" : "usage and breakdown estimated"}`,
     "",
-    ...majorBuckets.map((bucket) =>
-      formatTokenAndPercent(bucket.label, bucket.tokens, bucket.percentOfWindow, labelWidth),
-    ),
+    ...renderBucketSection("Current context breakdown", majorBuckets),
   ];
 
   if (detailBuckets.length > 0) {
-    lines.push(
-      ...detailBuckets.map((bucket) =>
-        formatTokenAndPercent(
-          `  ${bucket.label}`,
-          bucket.tokens,
-          bucket.percentOfWindow,
-          detailLabelWidth + 2,
-        ),
-      ),
-    );
-  }
-
-  if (report.availableTokens !== undefined) {
-    const availablePercent =
-      report.contextWindow === undefined || report.contextWindow === 0
-        ? undefined
-        : (report.availableTokens / report.contextWindow) * 100;
-    lines.push(
-      formatTokenAndPercent("Available", report.availableTokens, availablePercent, labelWidth),
-    );
+    lines.push("", ...renderBucketSection("Conversation detail", detailBuckets));
   }
 
   lines.push(
     "",
-    "Snapshot",
-    `  Prompt source: ${report.promptSource === "last-turn" ? "last turn" : "current resources"}`,
-    `  Active path: ${report.session.messageCount} messages, ${report.session.branchEntryCount} entries`,
+    ...renderResourceSection(`Context files (${report.contextFiles.length})`, report.contextFiles),
+    "",
+    ...renderResourceSection(`Active tools (${report.activeTools.length})`, report.activeTools),
+    "",
+    "Cache summary",
+    formatCacheTotalsLine("Active branch", report.cache.activeBranch),
+    formatCacheTotalsLine("Whole tree", report.cache.wholeTree),
   );
 
-  if (report.session.latestCompactionTokensBefore !== undefined) {
+  if (
+    report.cache.latestHitPercent !== undefined &&
+    report.cache.minHitPercent !== undefined &&
+    report.cache.maxHitPercent !== undefined
+  ) {
     lines.push(
-      `  Latest compaction: summarized ${formatCompactTokens(report.session.latestCompactionTokensBefore)}`,
+      `Latest ${formatPercent(report.cache.latestHitPercent)} · Min ${formatPercent(report.cache.minHitPercent)} · Max ${formatPercent(report.cache.maxHitPercent)}`,
     );
   }
 
-  lines.push("", `Context files (${report.contextFiles.length})`);
-  lines.push(...summarizeItems(report.contextFiles, 5));
-
-  lines.push("", `Active tools (${report.activeTools.length})`);
-  lines.push(...summarizeItems(report.activeTools, 8));
-
-  lines.push("", "Notes");
+  lines.push("", ...renderCacheTurns(report.cache.turns), "", "Notes");
   for (const note of report.notes) {
     lines.push(`  - ${note}`);
   }

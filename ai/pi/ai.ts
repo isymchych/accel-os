@@ -40,6 +40,22 @@ if (accelOs === undefined || accelOs.length === 0) {
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
 // const engineeringPrinciplesPath = path.join(accelOs, "ai", "docs", "engineering-principles.md");
 
+const defaultToolNames = [
+  "bash",
+  "apply_patch",
+  "write_file",
+  "mcp",
+  "mcp_tilth_read",
+  "mcp_tilth_search",
+  "mcp_tilth_files",
+  "mcp_tilth_deps",
+  // "mcp_tilth_diff",
+  // "read",
+  // "grep",
+  // "find",
+  // "ls",
+];
+
 const hasExplicitToolSelection = (args: readonly string[]): boolean => {
   return args.some(
     (arg) => arg === "--tools" || arg.startsWith("--tools=") || arg === "--no-tools",
@@ -55,7 +71,7 @@ const buildAppendArgs = (
     // appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
   }
   if (!hasExplicitToolSelection(passthrough)) {
-    appendArgs.push("--tools", "read,bash,apply_patch,write_file,grep,find,ls");
+    appendArgs.push("--tools", defaultToolNames.join(","));
   }
   return appendArgs;
 };

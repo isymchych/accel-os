@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "chrome-devtools-mcp",
+      "args": [
+        "--browserUrl",
+        "http://127.0.0.1:9222",
+        "--wsEndpoint",
+        "ws://127.0.0.1:9222/devtools/browser",
+        "--no-performance-crux",
+        "--no-usage-statistics",
+        "--no-category-emulation",
+        "--no-category-extensions",
+        "--no-category-performance"
+      ],
+      "env": {
+        "PATH": "${ACCEL_OS}/ai/pi/node_modules/.bin:${PATH}"
+      }
+    },
+    "mcp": {
+      "command": "tilth",
+      "directTools": true,
+      "lifecycle": "eager",
+      "args": [
+        "--mcp"
+      ],
+      "env": {
+        "PATH": "${ACCEL_OS}/ai/pi/node_modules/.bin:${PATH}"
+      }
+    }
+  }
+}

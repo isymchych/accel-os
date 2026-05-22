@@ -34,14 +34,43 @@ test("timer text helpers use the expected prefixes", () => {
     }),
     "⏱ 1.5s · ~85 tok/s",
   );
+  assert.equal(
+    createWorkingTimerMessage(
+      1_500,
+      {
+        estimated: false,
+        outputTokens: 170,
+        streamElapsedMs: 2_000,
+      },
+      {
+        inputTokens: 1_000,
+        cacheReadTokens: 9_000,
+      },
+    ),
+    "⏱ 1.5s · 85 tok/s · cache 90%",
+  );
   assert.equal(createTotalElapsedSummary(1_500), "⏱ 1.5s");
   assert.equal(
-    createCompletedTimerSummary(1_500, {
-      outputTokens: 170,
-      streamElapsedMs: 2_000,
-    }),
-    "⏱ 1.5s · 85 tok/s · 170 tokens",
+    createCompletedTimerSummary(
+      1_500,
+      {
+        outputTokens: 170,
+        streamElapsedMs: 2_000,
+      },
+      {
+        inputTokens: 1_000,
+        cacheReadTokens: 9_000,
+      },
+    ),
+    "⏱ 1.5s · 85 tok/s · 170 tokens · cache 90% · R9.0k",
   );
   assert.equal(createCompletedTimerSummary(1_500), "⏱ 1.5s");
+  assert.equal(
+    createCompletedTimerSummary(1_500, undefined, {
+      inputTokens: 200,
+      cacheReadTokens: 0,
+    }),
+    "⏱ 1.5s · cache 0%",
+  );
   assert.equal(estimateTokensFromTextDelta("abcd"), 1);
 });

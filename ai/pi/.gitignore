@@ -1,5 +1,6 @@
 auth.json
 *.auth.json
 sessions/
+mcp-cache.json
 
 node_modules/

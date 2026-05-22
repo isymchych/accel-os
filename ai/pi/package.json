@@ -6,15 +6,20 @@
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
+    "tilth": "tilth",
     "lint:fix": "oxlint --fix .",
     "test": "node --test $(find extensions runtime shared -name '*.test.ts' -print | sort)",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.75.4",
     "@earendil-works/pi-ai": "^0.75.3",
     "@earendil-works/pi-coding-agent": "^0.75.0",
     "@earendil-works/pi-tui": "^0.75.0",
+    "chrome-devtools-mcp": "^1.0.1",
     "diff": "^9.0.0",
+    "pi-mcp-adapter": "^2.6.1",
+    "tilth": "^0.8.4",
     "typebox": "^1.1.36"
   },
   "devDependencies": {

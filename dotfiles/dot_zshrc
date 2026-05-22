@@ -48,6 +48,10 @@ alias tree='tree -hsFC --du --dirsfirst'
 alias -r jsut='just'
 alias dc='docker-compose'
 
+g-clone1() {
+  git clone --depth=1 --single-branch "$@"
+}
+
 
 
 # History

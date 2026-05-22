@@ -260,7 +260,6 @@
 ## Tooling
 
 - GitHub operations: use `gh`.
-- Shell search/data tools: `fd`, `rg`, `ast-grep`, `jq`, `yq`.
 - Keep shell commands deterministic and non-interactive; scope queries and limit
   noisy output when possible.
 - Run `shellcheck` for modified shell scripts.

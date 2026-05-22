@@ -1,6 +1,6 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.75.3",
+  "lastChangelogVersion": "0.75.4",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
@@ -9,8 +9,12 @@
   "skills": [
     "../skills"
   ],
+  "packages": [
+    "./node_modules/pi-mcp-adapter"
+  ],
   "extensions": [
     "./extensions/apply-patch/index.ts",
+    "./extensions/collapse-tool-calls/index.ts",
     "./extensions/compact-tool-output/index.ts",
     "./extensions/context/index.ts",
     "./extensions/ephemeral-fork/index.ts",

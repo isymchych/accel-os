@@ -16,6 +16,7 @@ import {
   createCompletedTimerSummary,
   createWorkingTimerMessage,
   estimateTokensFromTextDelta,
+  type PromptCacheUsage,
 } from "./timer.ts";
 
 const UPDATE_INTERVAL_MS = 200;
@@ -115,6 +116,30 @@ async function getBaseTitle(pi: ExtensionAPI, cwd: string): Promise<string> {
 
 const NYAN_WORKING_INDICATOR = createNyanWorkingIndicator();
 
+type UsageSnapshot = {
+  input: number;
+  output: number;
+  cacheRead: number;
+};
+
+type MessageLike = {
+  role?: string;
+  stopReason?: string;
+};
+
+function lastAssistantMessageWasError(messages: readonly MessageLike[]): boolean {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role !== "assistant") {
+      continue;
+    }
+
+    return message.stopReason === "error";
+  }
+
+  return false;
+}
+
 export default function responseStatusExtension(pi: ExtensionAPI): void {
   let startedAt: number | undefined;
   let interval: ReturnType<typeof setInterval> | undefined;
@@ -122,23 +147,47 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
   let assistantMessageStartedAt: number | undefined;
   let streamStartedAt: number | undefined;
   let estimatedStreamedTokens = 0;
+  let liveInputTokens = 0;
   let liveOutputTokens = 0;
+  let liveCacheReadTokens = 0;
+  let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let totalCacheReadTokens = 0;
   let totalStreamMs = 0;
 
   const resetAssistantStreamState = (): void => {
     assistantMessageStartedAt = undefined;
     streamStartedAt = undefined;
     estimatedStreamedTokens = 0;
+    liveInputTokens = 0;
     liveOutputTokens = 0;
+    liveCacheReadTokens = 0;
   };
 
   const resetRunState = (): void => {
     startedAt = undefined;
+    totalInputTokens = 0;
     totalOutputTokens = 0;
+    totalCacheReadTokens = 0;
     totalStreamMs = 0;
     resetAssistantStreamState();
   };
+
+  const updateLiveUsage = (usage: UsageSnapshot): void => {
+    liveInputTokens = Math.max(liveInputTokens, usage.input);
+    liveOutputTokens = Math.max(liveOutputTokens, usage.output);
+    liveCacheReadTokens = Math.max(liveCacheReadTokens, usage.cacheRead);
+  };
+
+  const getCurrentPromptCacheUsage = (): PromptCacheUsage => ({
+    inputTokens: totalInputTokens + liveInputTokens,
+    cacheReadTokens: totalCacheReadTokens + liveCacheReadTokens,
+  });
+
+  const getCompletedPromptCacheUsage = (): PromptCacheUsage => ({
+    inputTokens: totalInputTokens,
+    cacheReadTokens: totalCacheReadTokens,
+  });
 
   const clearIntervalIfRunning = (): void => {
     if (interval !== undefined) {
@@ -184,6 +233,7 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
               streamElapsedMs: now - currentStreamStartedAt,
             }
           : undefined,
+        getCurrentPromptCacheUsage(),
       ),
     );
   };
@@ -214,16 +264,16 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
       return;
     }
 
+    resetAssistantStreamState();
     assistantMessageStartedAt = Date.now();
-    streamStartedAt = undefined;
-    estimatedStreamedTokens = 0;
-    liveOutputTokens = 0;
   });
 
   pi.on("message_update", (event) => {
     if (event.message.role !== "assistant") {
       return;
     }
+
+    updateLiveUsage(event.message.usage as UsageSnapshot);
 
     const streamEvent = event.assistantMessageEvent;
     if (
@@ -241,7 +291,10 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
 
   pi.on("message_end", (event) => {
     if (event.message.role === "assistant") {
+      const messageUsage = event.message.usage as UsageSnapshot;
       const messageOutputTokens = event.message.usage.output;
+      totalInputTokens += messageUsage.input;
+      totalCacheReadTokens += messageUsage.cacheRead;
       const streamTimingStartedAt = streamStartedAt ?? assistantMessageStartedAt;
       if (messageOutputTokens > 0 && streamTimingStartedAt !== undefined) {
         totalOutputTokens += messageOutputTokens;
@@ -255,8 +308,9 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
 
   pi.on("agent_end", async (event, ctx) => {
     const elapsedMs = startedAt === undefined ? undefined : Date.now() - startedAt;
+    const shouldNotify = !lastAssistantMessageWasError(event.messages);
 
-    if (elapsedMs !== undefined) {
+    if (elapsedMs !== undefined && shouldNotify) {
       const theme = ctx.ui.theme;
       const summary = createCompletedTimerSummary(
         elapsedMs,
@@ -266,6 +320,7 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
               streamElapsedMs: totalStreamMs,
             }
           : undefined,
+        getCompletedPromptCacheUsage(),
       );
       ctx.ui.notify(`${theme.fg("success", "✓")} ${theme.fg("accent", summary)}`, "info");
       notifyForLongResponse({
