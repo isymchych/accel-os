@@ -263,6 +263,7 @@
 - Keep shell commands deterministic and non-interactive; scope queries and limit
   noisy output when possible.
 - Run `shellcheck` for modified shell scripts.
+- You MUST use tilth mcp tools before falling back to bash
 
 ## Privacy / Ops
 

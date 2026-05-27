@@ -8,14 +8,10 @@
 * add grill-me prompt
 * improve summarization - check how pi does it, check how codex does it
 
-* fix ding/notification on error - i.e. on websocket error
 * summarize_turns
 * custom summary?
 * prompt stash
 * shell wrapper tool to support cwd
-* Pi instance might have its own temp directory, that would be auto-cleaned on close. Might use it for storing temp files & stuff. Might use for emphemeral?
-  * not necessary "temp" directory - might be per-session so that restored sessions may keep using it
-  * have shared pi temp directory; show size on startup
 
 * based on https://github.com/can1357/oh-my-pi
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
