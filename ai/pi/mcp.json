@@ -16,17 +16,6 @@
       "env": {
         "PATH": "${ACCEL_OS}/ai/pi/node_modules/.bin:${PATH}"
       }
-    },
-    "mcp": {
-      "command": "tilth",
-      "directTools": true,
-      "lifecycle": "eager",
-      "args": [
-        "--mcp"
-      ],
-      "env": {
-        "PATH": "${ACCEL_OS}/ai/pi/node_modules/.bin:${PATH}"
-      }
     }
   }
 }
