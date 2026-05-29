@@ -1,6 +1,6 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.76.0",
+  "lastChangelogVersion": "0.77.0",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
@@ -19,6 +19,7 @@
     "./extensions/context/index.ts",
     "./extensions/ephemeral-fork/index.ts",
     "./extensions/fuzzy-at-file-autocomplete/index.ts",
+    "./extensions/draft-stash/index.ts",
     "./extensions/openai-codex/index.ts",
     "./extensions/personal-context/index.ts",
     "./extensions/response-status/index.ts",

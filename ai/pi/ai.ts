@@ -26,7 +26,7 @@ Examples:
 Notes:
   - By default, ai appends both ai/SYSTEM.md and ai/docs/engineering-principles.md.
   - \`chat\` skips appending ai/docs/engineering-principles.md.
-  - \`account\` swaps ai/pi/auth.json between saved OpenAI Codex logins.
+  - \`account\` selects the OpenAI Codex login in ai/pi/auth.json and then opens Pi.
   - \`ephemeral-session <session.jsonl>\` is an internal launcher for temp child sessions.
   - Saved accounts are stored as <accountId>.auth.json next to auth.json.
   - Use \`ai -- --help\` to show Pi CLI docs.`;
@@ -366,7 +366,6 @@ if (showHelp) {
 if (useAccountSwitcher) {
   try {
     await runAccountSwitcher();
-    process.exit(0);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     writeStderr(`ai account: ${message}`);

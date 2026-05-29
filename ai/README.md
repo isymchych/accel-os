@@ -10,8 +10,8 @@
 
 * summarize_turns
 * custom summary?
-* prompt stash
 * shell wrapper tool to support cwd
+* review from DDD point of view
 
 * based on https://github.com/can1357/oh-my-pi
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
