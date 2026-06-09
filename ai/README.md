@@ -12,12 +12,16 @@
 * custom summary?
 * shell wrapper tool to support cwd
 * review from DDD point of view
+* Workflow tool / chain of subagent calls - https://github.com/nicobailon/pi-subagents
 
 * based on https://github.com/can1357/oh-my-pi
 * Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
 * LSP?
 * thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
+* SOUL.md USER.md MEMORY.md AGENTS.md - like in https://github.com/deathbyknowledge/gsv
+* "ai" to start llm with microvm isolation - gondolin?
+* security review prompt
 
 
 * create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
@@ -31,6 +35,51 @@
 
 * ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
 * setup terminal multiplexer - as a part of ai?
+
+DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> PLAN -> EXECUTE
+* decisions must be documented - ADR
+* iterate on high-level plan first, before generating comprehensive plan file
+
+* codemods
+* common failure mode: “helpful overreach.”
+
+automatically ask - do you have any questions?
+don't go to the next step without confirmation
+
+# AI
+* memento - extract valuable patterns
+* PLAN - divide into spec/plan; define template for saving complete plan with all context & details so that other coding agent can pick a task and work on it
+  * research
+  * Create a detailed implementation plan with file paths and code references
+* do a architecture critique/code cleanup pass - a SKILL? 
+  * remove redundant code, unnecessary abstractions, code that doesn't match style/design preferences
+  * tech debt, potential improvements for clarity or simplicity, maintenance 
+* ask for architecture diagrams (mermaid)
+
+    
+I would like to review the following points on the current PR (this branch vs main). Spawn one agent per point, wait for all of them, and summarize the result for each point.
+1. Security issue
+2. Code quality
+3. Bugs
+4. Race
+5. Test flakiness
+6. Maintainability of the code
+
+
+# Design
+Data flow
+State transitions
+Failure cases
+Boundaries
+
+
+# Debug Mode:
+Generates multiple hypotheses about what could be wrong
+Instruments your code with logging statements
+Asks you to reproduce the bug while collecting runtime data
+Analyzes actual behavior to pinpoint the root cause
+Makes targeted fixes based on evidence
+
 
 # mb-spotify
 * ai to manage my playlists
@@ -66,6 +115,8 @@
 * avoid negative framing
 * provide examples instead of complicated instructions
 * cognitive offloading vs cognitive surrender
+* Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness. 
+* Can we make requirements less stupid? what alternative approaches that unlocks?
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit

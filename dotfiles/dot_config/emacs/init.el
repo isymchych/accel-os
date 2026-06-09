@@ -1929,6 +1929,7 @@ targets."
   (setq lsp-keymap-prefix "C-c C-l"
         lsp-idle-delay 0.6
         lsp-keep-workspace-alive nil
+        lsp-disabled-clients '(tailwindcss)
         lsp-enable-suggest-server-download nil
         lsp-auto-execute-action nil
 

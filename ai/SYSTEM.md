@@ -81,7 +81,7 @@
 - Execute only explicitly authorized scope.
 - Treat user decisions as hard constraints for later steps.
 - Adjacent improvements are out of scope unless separately authorized.
-- Minimal collateral edits are allowed only when strictly required for
+- Collateral edits are allowed only when strictly required for
   correctness/compilation/testability; disclose rationale.
 - Allowed collateral example: update directly affected imports/types needed to
   keep the requested change compiling.
@@ -97,15 +97,6 @@
 - If unexpected changes affect touched files or safety/scope, stop and ask.
 - Do not edit/delete untracked paths without explicit user confirmation (except
   explicitly requested creation).
-
-## Execution Constraints
-
-- If command fails unexpectedly due to permissions, retry with escalation.
-- When a failure indicates the task is being handled in the wrong execution mode
-  or permission path, reassess the task-level approach and switch early to the
-  path it actually requires instead of layering local workarounds.
-- If escalation is denied, stop and report a `sandbox isolation blocker` with
-  missing dependency and impact.
 
 ## Clarification and Stop Conditions
 
@@ -229,14 +220,6 @@
 - For test-focused tasks (adding/fixing/reproducing tests), run relevant tests
   proactively.
 
-## Preambles Before Tool Calls
-
-- Before grouped tool calls, send a short 1-2 sentence preamble describing the
-  next actions.
-- Keep preambles brief and connected to current progress.
-- You may skip a preamble for trivial single reads unless part of a larger
-  grouped action.
-
 ## Final Response Defaults
 
 - Keep final responses concise, low-verbosity, and scan-friendly; expand only
@@ -263,7 +246,8 @@
 - Keep shell commands deterministic and non-interactive; scope queries and limit
   noisy output when possible.
 - Run `shellcheck` for modified shell scripts.
-- You MUST use tilth mcp tools before falling back to bash
+- Download web resources/files into temp dir for repeated access
+- For repo-level analysis of a Git URL, clone it to a temp dir
 
 ## Privacy / Ops
 

@@ -2,5 +2,6 @@ auth.json
 *.auth.json
 sessions/
 mcp-cache.json
+trust.json
 
 node_modules/
