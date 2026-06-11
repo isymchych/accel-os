@@ -395,14 +395,6 @@ bindsym --to-code $mod+f exec arhiv-desktop
 
 exec_always wmname Sawfish
 exec_always xrdb -load ~/.Xdefaults
-exec_always ~/.config/sway/kanshi.sh
-exec_always ~/.config/sway/wlsunset.sh
-
-exec ~/.config/sway/polkit.sh
-
-exec_always ~/.config/sway/swayidle.sh
-
-exec wl-paste --watch cliphist store
 
 # Forward bluetooth midi controls via mpris2 so they are picked up by supporting media players
 # exec mpris-proxy
@@ -418,8 +410,6 @@ exec hash dbus-update-activation-environment 2>/dev/null && \
      dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP ACCEL_OS
 exec systemctl --user start sway-session.target
 exec swaymsg -t subscribe '["shutdown"]' && systemctl --user stop sway-session.target
-exec systemctl --user start mako.service # it depends on WAYLAND_DISPLAY
-exec systemctl --user start darkman.service # it depends on ACCEL_OS
 
 
 exec_always {

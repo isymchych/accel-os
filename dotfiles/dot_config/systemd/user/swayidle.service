@@ -1,0 +1,10 @@
+[Unit]
+Description=Sway idle manager
+Documentation=man:swayidle(1)
+PartOf=sway-session.target
+After=sway-session.target graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/swayidle -d -w timeout 140 %h/bin/mb-lock-screen timeout 120 "swaymsg \"output * dpms off\"" resume "swaymsg \"output * dpms on\"" before-sleep %h/bin/mb-lock-screen lock %h/bin/mb-lock-screen
+Restart=on-failure

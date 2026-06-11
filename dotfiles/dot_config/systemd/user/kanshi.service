@@ -1,0 +1,10 @@
+[Unit]
+Description=Dynamic display configuration
+Documentation=man:kanshi(1)
+PartOf=sway-session.target
+After=sway-session.target graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kanshi
+Restart=on-failure
