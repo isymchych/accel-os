@@ -50,7 +50,7 @@ const defaultToolNames = [
   "tilth_files",
   "tilth_deps",
   "tilth_grok",
-  // "read",
+  "read",
   // "grep",
   // "find",
   // "ls",

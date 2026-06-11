@@ -1,9 +1,13 @@
-Review the last commit with a bias toward simplicity.
-I'm trying to clean it up and polish.
+---
+description: Check if we can simplify code
+---
+
+Check the code in **$ARGUMENTS** - if we can simplify it.
+I'm trying to clean it up.
 
 Focus on:
 
-* the smallest change that would solve the problem
+* the smallest, simplest change that would solve the problem
 * code that can be deleted
 * abstractions that may not be earning their keep
 * invariants that should be explicit or tested

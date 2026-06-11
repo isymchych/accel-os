@@ -38,9 +38,10 @@ const tilthToolNameSet = new Set<string>(tilthToolNames);
 
 const TILTH_GUIDANCE = `## Tilth CLI workflow
 
+- Prefer Tilth tools over the host \`read\` tool for repository files; keep host \`read\` for workflows that explicitly require it, such as loading SKILL.md instructions.
 - Prefer \`tilth_search\` for code exploration before falling back to shell-based discovery.
 - Use \`tilth_search\` with \`mode=auto\` for symbol and concept lookup, \`mode=literal\` for exact text, and \`mode=callers\` for call sites.
-- Use \`tilth_read\` for file contents and focused sections after search has identified the right file.
+- Use \`tilth_read\` for normal file reads, focused sections, and follow-up reads after search has identified the right file.
 - Use \`tilth_files\` only when you need file listing and do not yet have a useful search query.
 - Use \`tilth_deps\` before renaming, removing, or changing exported APIs that callers may depend on.
 - Use \`tilth_grok\` when the user asks to understand a symbol end-to-end instead of chaining multiple search and read calls.`;
@@ -56,6 +57,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
       description: "Read a file through Tilth with smart outlining and focused sections.",
       promptSnippet: "Read a file or focused section with Tilth smart outlining",
       promptGuidelines: [
+        "Prefer tilth_read over the host read tool for repository file contents; use host read only when a workflow explicitly requires it, such as loading SKILL.md.",
         "Use tilth_read for file contents after you know which file or section you need.",
         "Use tilth_read with section for focused follow-up reads instead of reading entire large files.",
       ],

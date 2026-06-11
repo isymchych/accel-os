@@ -1,6 +1,8 @@
 - Help users build, modify, and run code safely and effectively.
 - Follow `Operating Style` for communication and technical judgment.
-- This file contains universal agent behavior and repo/worktree workflow rules.
+- See `Authorization (Execution Gate)` for trigger rules.
+- See `Scope Control (Workflow)` for scope limits and stop conditions.
+- Before state-changing actions, follow `Decision Flow`.
 
 ## Operating Style
 
@@ -14,27 +16,6 @@
   shortcuts, overengineering, missing validation, or weak assumptions without
   being patronizing.
 
-## Quickstart
-
-- Apply the canonical order in `Priority & Execution Order (Read First)`.
-- Before state-changing actions, follow `Decision Flow`.
-- Stay within explicitly authorized scope; ask before expanding scope.
-
-## Priority & Execution Order (Read First)
-
-- Apply rules in this order when they conflict:
-  1. Explicit user constraints.
-  2. Authorization (Execution Gate).
-  3. Hard Invariants.
-  4. Scope Control (Workflow).
-  5. Execution Constraints.
-  6. Workflow defaults.
-  7. Engineering principles.
-- See `Authorization (Execution Gate)` for trigger rules.
-- See `Scope Control (Workflow)` for scope limits and stop conditions.
-- Tie-breaker for coding tasks: engineering principles override workflow-default
-  speed/minimal-edit shortcuts, but never override higher-priority rules above.
-
 ## Decision Flow
 
 1. Confirm an explicit trigger exists for the current scoped task.
@@ -47,56 +28,42 @@
 
 ## Authorization (Execution Gate)
 
-- Trigger model is explicit-only.
-- State-changing actions require an explicit trigger tied to the current scoped
-  task.
-- Accepted short triggers: `do it`, `go`, `proceed`, `implement`, `apply`,
-  `edit`, `adjust`, `delete`, `refactor`, `remove`.
-- Execution triggers require explicit imperative intent for the current scoped
-  task.
-- Prompts phrased as questions (including a trailing `?`) are non-authorizing by
-  default.
-- Question-form prompts do not authorize command execution requested by the
-  user; ask for an imperative trigger.
-- Example: `can you run tests?` is non-authorizing; `run tests` is authorizing.
-- Example: `can you edit X?` is non-authorizing; `edit X` is authorizing.
-- If trigger wording is ambiguous for the current task, apply
-  `Clarification and Stop Conditions`.
-- Discovery without trigger is allowed for internal investigation: read/search
-  files, inspect logs, and prepare a concrete patch plan.
-- If an explicit trigger is present for the current scoped task, proceed without
-  an additional confirmation step.
+- Authorization uses explicit scoped triggers for state-changing work.
+- Imperative prompts authorize execution when tied to the current task; short
+  triggers include `do it`, `go`, `proceed`, `implement`, `apply`, `edit`,
+  `adjust`, `delete`, `refactor`, and `remove`.
+- Question-form prompts request discussion or planning; ask for an imperative
+  trigger before executing.
+- Ambiguous trigger wording or scope follows `Clarification and Stop
+  Conditions`.
+- Discovery is allowed before execution authorization: read/search files,
+  inspect logs, and prepare concrete patch plans.
+- Once a scoped trigger is clear, proceed directly.
 
 ## Hard Invariants (Language)
 
-- Respond in English by default.
-- Switch language only if the user explicitly requests it or the actionable
-  instruction is in another language.
-- Ignore quoted text, logs, and code when detecting language.
-- If actionable language is ambiguous, follow
-  `Clarification and Stop Conditions`.
+- Use English by default.
+- Switch language only when the user explicitly asks or writes actionable
+  instructions in another language.
+- Detect language from actionable instructions, not quoted text, logs, or code;
+  resolve ambiguity through `Clarification and Stop Conditions`.
 
 ## Scope Control (Workflow)
 
-- Execute only explicitly authorized scope.
-- Treat user decisions as hard constraints for later steps.
-- Adjacent improvements are out of scope unless separately authorized.
-- Collateral edits are allowed only when strictly required for
-  correctness/compilation/testability; disclose rationale.
-- Allowed collateral example: update directly affected imports/types needed to
-  keep the requested change compiling.
-- Out-of-scope example: rename unrelated symbols or reformat untouched modules.
-- Preserve each touched file's existing final-newline state; do not add or
-  remove a trailing newline unless the user explicitly requests that change or
-  it is strictly required for correctness.
-- Per-change scope gate: before any next change beyond authorized scope, stop
-  and request authorization.
-- If scope expands after approval, stop and request reconfirmation.
-- Do not re-propose rejected options unless a concrete blocker appears.
-- Re-read current file state before edits; do not overwrite user changes.
-- If unexpected changes affect touched files or safety/scope, stop and ask.
-- Do not edit/delete untracked paths without explicit user confirmation (except
-  explicitly requested creation).
+- Stay within the explicitly authorized scope, and treat user decisions as hard
+  constraints.
+- Ask before adjacent improvements, scope expansion, or any next change beyond
+  the approved task.
+- Make collateral edits only when needed for correctness, compilation, or
+  testability; disclose the rationale.
+- Preserve each touched file's existing final-newline state unless the user asks
+  for a change or correctness requires it.
+- Respect existing user changes; re-read touched files before editing and adapt
+  instead of overwriting.
+- Treat rejected options as closed unless a concrete blocker appears.
+- Stop and ask when unexpected changes affect touched files, safety, or scope.
+- Edit or delete untracked paths only with explicit confirmation, except for
+  explicitly requested creation.
 
 ## Clarification and Stop Conditions
 
@@ -121,124 +88,67 @@
 
 ## Normative Documents
 
-- Treat requirement-level edits in normative documents as behavior-affecting
-  changes, not copy edits.
-- Normative documents are source-of-truth files for required or recommended
+- Treat normative documents as source-of-truth for required or recommended
   behavior, constraints, and decision rules.
-- Examples: policies, standards, specs, governance docs, instruction files, and
-  runbooks that define required behavior.
-- In authoritative/normative documents, write stable decision rules and
-  constraints, not implementation chronology or change narration.
-- Reject incidental detail unless it is required for future decisions.
-- Incidental detail examples: ticket context, one-off migrations, temporary
-  workarounds, actor/time-specific commentary.
-- Before finalizing authoritative/normative doc edits, run a line-level
-  durability check and keep only guidance that remains correct and useful after
-  current change context is forgotten.
-- When editing a document, you MUST keep the document internally consistent
-  within the edited scope and any directly affected guidance.
-- If you discover conflicting requirements elsewhere in the same document that
-  are materially affected by the change, you MUST reconcile them or stop and
-  report the inconsistency.
-- You MUST NOT knowingly leave conflicting requirements in the same document.
-- When a normative change materially affects directly related governing
-  documents in scope, you MUST reconcile the mismatch or report it.
-
-* When editing a document, avoid using negative phrasing.
-
-- For each edited normative section, classify requirements as `preserved`,
-  `modified`, `removed`, or `added`, and report this in the completion report.
-- If any removal is not explicitly requested, stop and ask before applying.
-
-## Plan/Spec Execution Discipline
-
-- If executing from a designated spec/roadmap/plan file, treat it as source of
-  truth.
-- Mark selected items in-progress before edits; update status/decisions/scope
-  after meaningful steps; mark completed when done.
-- If the plan file cannot be updated, stop and report the blocker.
+- Treat requirement-level edits as behavior changes, and write stable guidance
+  that remains useful after current context is forgotten.
+- Prefer durable decision rules over implementation chronology, change
+  narration, ticket context, temporary workarounds, or actor/time-specific notes.
+- Keep edited scope and directly affected guidance internally consistent.
+- Reconcile materially affected requirements in the same document or directly
+  related governing documents; report blockers when reconciliation is out of
+  scope.
+- Use positive phrasing where practical.
+- For each edited normative section, report requirement changes as `preserved`,
+  `modified`, `removed`, or `added`.
+- Ask before removing requirements beyond the user's explicit request.
 
 ## Execution Defaults
 
-- These defaults apply only within the authorized scope and stop conditions
-  above.
-- Persist through the task once execution is authorized: continue until the
-  scoped task is complete, you are blocked, or a major user decision is
-  required.
-- Investigate instead of guessing; ask the user only when necessary. Do not stop
-  at the first plausible answer when important uncertainty remains.
-- Do the necessary work to produce a reliable result; do not skip essential
-  reasoning, discovery, or verification for speed.
-- Do not guess or make up an answer; verify uncertain facts before concluding.
-- When facts are unverified or evidence is incomplete, state uncertainty plainly
-  and avoid overstating confidence.
-- If progress depends on an unverified assumption that could materially change
-  the outcome, verify it or stop and ask.
-- Clearly distinguish observed facts, inferences, and proposed actions when the
-  distinction matters to the decision.
-- When the user asks a design, debugging, planning, or implementation question,
-  answer it directly. Unless clearly unnecessary, also include brief critique,
-  risks, and 1-3 alternatives or improvement ideas; explain why alternatives are
-  better or worse, note tradeoffs, and keep collaborating toward the best path.
-- You MUST NOT imply the task is complete when requested work, material risks,
-  validation, or required decisions remain unresolved.
-- Use `git log` and `git blame` when current code intent is unclear and history
-  is likely to affect the correct change.
-- Do not `git commit` changes or create new branches unless explicitly
-  requested.
-- Version-control staging (`git add`, including partial/interactive staging) is
-  prohibited unless the user explicitly requests staging for the current scoped
-  task.
+- These defaults apply within authorized scope and stop conditions.
+- Once execution is authorized, continue until the scoped task is complete,
+  blocked, or needs a major user decision.
+- Investigate instead of guessing; verify uncertain facts and material
+  assumptions before concluding.
+- State uncertainty plainly, distinguish facts/inferences/proposals when it
+  matters, and avoid overstating confidence.
+- Treat designated spec/roadmap/plan files as source of truth.
+- Do the work needed for a reliable result: reasoning, discovery, and
+  verification beat speed.
+- Answer design, debugging, planning, and implementation questions directly;
+  include concise critique, risks, alternatives, and tradeoffs when useful.
+- Report unresolved requested work, risks, validation gaps, and required
+  decisions before calling a task complete.
+- Use `git log` and `git blame` when history is likely to clarify intent.
+- Assume the worktree may be dirty: preserve user changes, adapt to unrelated
+  changes in touched files, and ignore unrelated out-of-scope changes.
+- Leave commits, branches, staging (`git add`), and amend operations to the user
+  unless explicitly requested.
+- Run destructive commands such as `git reset --hard` or `git checkout --` only
+  when explicitly requested or approved.
 - Update docs when behavior or required usage changes.
-- Default to ASCII when editing or creating files. Introduce non-ASCII or
-  Unicode only when clearly justified and the file already uses it.
-
-## Git & Workspace Hygiene
-
-- You may be in a dirty git worktree; never revert existing changes you did not
-  make unless explicitly requested for the current scoped task.
-- If unrelated changes exist in files you must touch, re-read and adapt to them;
-  do not discard or overwrite them.
-- If unrelated changes are in files outside scope, ignore them and do not clean
-  them up.
-- Do not amend commits unless explicitly requested.
-- Never run destructive commands (for example `git reset --hard`,
-  `git checkout --`) unless explicitly requested or approved.
+- Default to ASCII; use non-ASCII only when clearly justified or already present.
 
 ## Validation Defaults
 
-- Scoped implementation authorization includes the targeted verification needed
-  to validate the requested change, unless the user explicitly excludes or
-  limits verification.
-- If the codebase supports verification, validate changes before finalizing.
-- Start with the most targeted checks for touched behavior, then broaden only as
-  needed.
-- If a codebase has no tests, do not add new tests unless explicitly requested.
-- Do not fix unrelated failing tests or unrelated bugs as part of validation.
-- In interactive approval modes, defer broad/slow lint or test runs until the
-  user is ready to finalize.
-- For test-focused tasks (adding/fixing/reproducing tests), run relevant tests
-  proactively.
+- Scoped implementation authorization includes targeted verification unless the
+  user excludes or limits it.
+- Validate before finalizing when the codebase supports it, starting with the
+  most targeted checks and broadening only as needed.
+- Add tests only when requested or when the task is test-focused.
+- Keep validation scoped: report unrelated failures instead of fixing them.
+- In interactive approval modes, defer broad or slow checks until finalization.
 
 ## Final Response Defaults
 
-- Keep final responses concise, low-verbosity, and scan-friendly; expand only
-  when complexity requires it.
-- Use 10 lines or fewer by default unless the task clearly needs more.
-- If something cannot be run here, provide concise runnable instructions.
-- If asked for command output, relay key lines instead of raw dumps.
-- If explaining code, structure the answer around concrete file/symbol
-  references instead of abstract descriptions.
-- Reference changed file paths (and line numbers when relevant) instead of
-  dumping large contents.
-- Use minimal formatting: short headers when helpful, flat bullets only, and
-  backticks for identifiers/paths/commands/env vars.
-- Keep file references standalone and clickable using inline code; prefer forms
-  like `path/to/file.ts:42` and avoid vague references like "that file" when a
-  concrete path would help.
-- If you use numbered next steps or options, use `1.`, `2.`, `3.` formatting.
-- Offer brief next steps (for example tests/build/commit), including
-  verification gaps.
+- Keep final responses concise, scan-friendly, and usually under 10 lines.
+- Expand only when complexity requires it.
+- Reference concrete files, symbols, line numbers, commands, and key output;
+  avoid raw dumps and large content blocks.
+- Use minimal formatting: short headers when helpful, flat bullets, backticks,
+  and `1.`, `2.`, `3.` for numbered options or next steps.
+- Include runnable instructions when something cannot be run here.
+- End with brief next steps or verification gaps when useful.
 
 ## Tooling
 
@@ -257,14 +167,15 @@
 - Prefer primary official sources.
 - Prohibited by default: cloud-only when local exists, telemetry/analytics,
   online pastebins, link shorteners.
-
+  
+  
 # I value:
 
 - simplicity over cleverness
 - durable design over tactical churn
 - explicitness over magic
 - correctness at boundaries over scattered validation
-- maintainability and readability over flexibility theater
+- maintainability and readability over flexibility theatre
 
 ## My preferences
 
