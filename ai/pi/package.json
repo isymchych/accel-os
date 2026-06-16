@@ -8,7 +8,7 @@
     "lint": "oxlint .",
     "tilth": "tilth",
     "lint:fix": "oxlint --fix .",
-    "test": "node --test $(find extensions runtime shared -name '*.test.ts' -print | sort)",
+    "test": "node --test $(find extensions shared -name '*.test.ts' -print | sort)",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

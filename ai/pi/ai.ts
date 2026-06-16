@@ -9,25 +9,18 @@ import {
   parseOpenAICodexCredential,
   resolveOpenAICodexRuntimeAccountProfile,
 } from "./extensions/openai-codex/auth.ts";
-import {
-  isManagedEphemeralSessionPath,
-  removeEphemeralSessionArtifactsSync,
-} from "./runtime/ephemeral-session.ts";
 import { isRecord } from "./shared/guards.ts";
 
-const usage = `ai [chat] [account] [-- <pi args...>]
+const usage = `ai [account] [-- <pi args...>]
 
 Examples:
   ai
-  ai chat
   ai account
   ai -- --help
 
 Notes:
-  - By default, ai appends both ai/SYSTEM.md and ai/docs/engineering-principles.md.
-  - \`chat\` skips appending ai/docs/engineering-principles.md.
+  - By default, ai appends ai/SYSTEM.md.
   - \`account\` selects the OpenAI Codex login in ai/pi/auth.json and then opens Pi.
-  - \`ephemeral-session <session.jsonl>\` is an internal launcher for temp child sessions.
   - Saved accounts are stored as <accountId>.auth.json next to auth.json.
   - Use \`ai -- --help\` to show Pi CLI docs.`;
 
@@ -38,7 +31,6 @@ if (accelOs === undefined || accelOs.length === 0) {
 }
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
-// const engineeringPrinciplesPath = path.join(accelOs, "ai", "docs", "engineering-principles.md");
 
 const defaultToolNames = [
   "bash",
@@ -62,30 +54,12 @@ const hasExplicitToolSelection = (args: readonly string[]): boolean => {
   );
 };
 
-const buildAppendArgs = (
-  passthrough: readonly string[],
-  includeEngineeringPrinciples: boolean,
-): string[] => {
+const buildAppendArgs = (passthrough: readonly string[]): string[] => {
   const appendArgs = ["--append-system-prompt", appendSystemPromptPath];
-  if (includeEngineeringPrinciples) {
-    // appendArgs.push("--append-system-prompt", engineeringPrinciplesPath);
-  }
   if (!hasExplicitToolSelection(passthrough)) {
     appendArgs.push("--tools", defaultToolNames.join(","));
   }
   return appendArgs;
-};
-
-const installEphemeralCleanup = (sessionFile: string): void => {
-  process.once("exit", () => {
-    removeEphemeralSessionArtifactsSync(sessionFile);
-  });
-
-  for (const signal of ["SIGINT", "SIGTERM"] as const) {
-    process.once(signal, () => {
-      process.exit(signal === "SIGINT" ? 130 : 143);
-    });
-  }
 };
 
 type AccountInfo = {
@@ -297,41 +271,10 @@ const runAccountSwitcher = async (): Promise<void> => {
   writeStdout(`Switched to ${selected.target.id}. Previous stored at ${renamed}.`);
 };
 
-const rawArgs = process.argv.slice(2);
-if (rawArgs[0] === "ephemeral-session") {
-  const sessionPathArg = rawArgs[1];
-  if (sessionPathArg === undefined || sessionPathArg.length === 0) {
-    writeStderr("ai ephemeral-session: missing session path");
-    process.exit(1);
-  }
-
-  const resolvedSessionPath = path.resolve(sessionPathArg);
-  if (!isManagedEphemeralSessionPath(resolvedSessionPath)) {
-    writeStderr(
-      `ai ephemeral-session: refusing to open unmanaged temp session ${resolvedSessionPath}`,
-    );
-    process.exit(1);
-  }
-
-  const cwd = process.env["AI_CWD"] ?? process.cwd();
-  process.chdir(cwd);
-  installEphemeralCleanup(resolvedSessionPath);
-
-  const { main } = await import("@earendil-works/pi-coding-agent");
-  await main([
-    ...buildAppendArgs(rawArgs.slice(2), true),
-    "--session",
-    resolvedSessionPath,
-    ...rawArgs.slice(2),
-  ]);
-  process.exit(0);
-}
-
 const passthrough: string[] = [];
 let parseModifiers = true;
 let showHelp = false;
 let useAccountSwitcher = false;
-let chatMode = false;
 
 for (const arg of process.argv.slice(2)) {
   if (!parseModifiers) {
@@ -349,10 +292,6 @@ for (const arg of process.argv.slice(2)) {
   }
   if (arg === "account") {
     useAccountSwitcher = true;
-    continue;
-  }
-  if (arg === "chat") {
-    chatMode = true;
     continue;
   }
   passthrough.push(arg);
@@ -376,6 +315,6 @@ if (useAccountSwitcher) {
 const cwd = process.env["AI_CWD"] ?? process.cwd();
 process.chdir(cwd);
 
-const appendArgs = buildAppendArgs(passthrough, !chatMode);
+const appendArgs = buildAppendArgs(passthrough);
 const { main } = await import("@earendil-works/pi-coding-agent");
 await main([...appendArgs, ...passthrough]);

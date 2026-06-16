@@ -10,6 +10,7 @@
 * review from DDD point of view
 * Workflow tool / chain of subagent calls - https://github.com/nicobailon/pi-subagents
 
+* ai account to show usage info
 * based on https://github.com/can1357/oh-my-pi
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
 * LSP?

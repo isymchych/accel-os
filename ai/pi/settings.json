@@ -17,7 +17,6 @@
     "./extensions/collapse-tool-calls/index.ts",
     "./extensions/compact-tool-output/index.ts",
     "./extensions/context/index.ts",
-    "./extensions/ephemeral-fork/index.ts",
     "./extensions/fuzzy-at-file-autocomplete/index.ts",
     "./extensions/draft-stash/index.ts",
     "./extensions/openai-codex/index.ts",
