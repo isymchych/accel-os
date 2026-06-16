@@ -23,6 +23,7 @@
     "./extensions/openai-codex/index.ts",
     "./extensions/personal-context/index.ts",
     "./extensions/response-status/index.ts",
+    "./extensions/theme-sync/index.ts",
     "./extensions/tilth-cli/index.ts",
     "./extensions/write-file/index.ts"
   ],

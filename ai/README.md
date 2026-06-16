@@ -1,7 +1,3 @@
-# AI setup
-
-* `openai-codex`
-
 # TODO
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 * switch thinking modes with alt-1-2-3-4-5
@@ -15,7 +11,6 @@
 * Workflow tool / chain of subagent calls - https://github.com/nicobailon/pi-subagents
 
 * based on https://github.com/can1357/oh-my-pi
-* Automatic dark/light switching: Mode 2031 terminal detection, native macOS appearance via CoreFoundation FFI, COLORFGBG fallback
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
 * LSP?
 * thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
