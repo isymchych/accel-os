@@ -1,4 +1,8 @@
-import { parseArgs } from "@std/cli/parse-args";
+import { spawn } from "node:child_process";
+import { createServer } from "node:http";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import process from "node:process";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 const SCOPES = [
   "playlist-read-private",
@@ -70,9 +74,7 @@ Export format (JSON):
 
 const encoder = new TextEncoder();
 
-const normalizeFlags = (
-  parsed: Record<string, unknown>,
-): Record<string, string | boolean> => {
+const normalizeFlags = (parsed: Record<string, unknown>): Record<string, string | boolean> => {
   const flags: Record<string, string | boolean> = {};
 
   for (const [key, value] of Object.entries(parsed)) {
@@ -97,24 +99,28 @@ const normalizeFlags = (
 };
 
 const parseCliArgs = (args: string[]): ParsedArgs => {
-  const parsedArgs = parseArgs(args, {
-    boolean: ["help", "create"],
-    string: ["client-id", "playlist", "out", "in"],
-    alias: { h: "help" },
+  const parsedArgs = parseNodeArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      help: { type: "boolean", short: "h" },
+      create: { type: "boolean" },
+      "client-id": { type: "string" },
+      playlist: { type: "string" },
+      out: { type: "string" },
+      in: { type: "string" },
+    },
   });
-  const positionals = parsedArgs._.map((item: unknown) => String(item));
+  const positionals = parsedArgs.positionals.map((item) => String(item));
   const [command, ...rest] = positionals;
   return {
     command: command ?? null,
     positionals: rest,
-    flags: normalizeFlags(parsedArgs as Record<string, unknown>),
+    flags: normalizeFlags(parsedArgs.values as Record<string, unknown>),
   };
 };
 
-const stringFlag = (
-  flags: Record<string, string | boolean>,
-  name: string,
-): string | undefined => {
+const stringFlag = (flags: Record<string, string | boolean>, name: string): string | undefined => {
   const value = flags[name];
   return typeof value === "string" ? value : undefined;
 };
@@ -122,15 +128,12 @@ const stringFlag = (
 const hasHelpFlag = (flags: Record<string, string | boolean>): boolean =>
   flags.help === true || flags.h === true;
 
-const hasBooleanFlag = (
-  flags: Record<string, string | boolean>,
-  name: string,
-): boolean => flags[name] === true;
+const hasBooleanFlag = (flags: Record<string, string | boolean>, name: string): boolean =>
+  flags[name] === true;
 
 const configDir = (): string => {
-  const home = Deno.env.get("HOME") ?? "";
-  const configHome = Deno.env.get("XDG_CONFIG_HOME") ??
-    (home ? `${home}/.config` : ".");
+  const home = process.env["HOME"] ?? "";
+  const configHome = process.env["XDG_CONFIG_HOME"] ?? (home ? `${home}/.config` : ".");
   return `${configHome}/mb-scripts`;
 };
 
@@ -138,7 +141,7 @@ const configPath = (): string => `${configDir()}/spotify.json`;
 
 const readConfig = async (): Promise<Config | null> => {
   try {
-    const raw = await Deno.readTextFile(configPath());
+    const raw = await readFile(configPath(), "utf8");
     const parsed = JSON.parse(raw) as Partial<Config>;
     if (!parsed.client_id) {
       return null;
@@ -153,9 +156,9 @@ const readConfig = async (): Promise<Config | null> => {
 };
 
 const writeConfig = async (config: Config): Promise<void> => {
-  await Deno.mkdir(configDir(), { recursive: true });
+  await mkdir(configDir(), { recursive: true });
   const data = JSON.stringify(config, null, 2);
-  await Deno.writeTextFile(configPath(), `${data}\n`);
+  await writeFile(configPath(), `${data}\n`);
 };
 
 const base64UrlEncode = (bytes: Uint8Array): string => {
@@ -163,10 +166,7 @@ const base64UrlEncode = (bytes: Uint8Array): string => {
   for (const value of bytes) {
     binary += String.fromCharCode(value);
   }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 };
 
 const sha256 = async (input: string): Promise<string> => {
@@ -185,14 +185,10 @@ const fetchJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
     const detail = await response.text();
     throw new Error(`${response.status} ${response.statusText}: ${detail}`);
   }
-  return await response.json() as T;
+  return (await response.json()) as T;
 };
 
-const spotifyRequest = async <T>(
-  path: string,
-  token: string,
-  init?: RequestInit,
-): Promise<T> => {
+const spotifyRequest = async <T>(path: string, token: string, init?: RequestInit): Promise<T> => {
   const url = `https://api.spotify.com/v1${path}`;
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${token}`);
@@ -234,10 +230,7 @@ const refreshToken = async (config: Config): Promise<Token> => {
   };
 };
 
-const hasGrantedScopes = (
-  grantedScope: string | undefined,
-  requiredScopes: string[],
-): boolean => {
+const hasGrantedScopes = (grantedScope: string | undefined, requiredScopes: string[]): boolean => {
   if (requiredScopes.length === 0) {
     return true;
   }
@@ -246,15 +239,11 @@ const hasGrantedScopes = (
     return false;
   }
 
-  const granted = new Set(
-    grantedScope.split(/\s+/).filter((scope) => scope.length > 0),
-  );
+  const granted = new Set(grantedScope.split(/\s+/).filter((scope) => scope.length > 0));
   return requiredScopes.every((scope) => granted.has(scope));
 };
 
-const getAccessToken = async (
-  requiredScopes: string[] = [],
-): Promise<string> => {
+const getAccessToken = async (requiredScopes: string[] = []): Promise<string> => {
   const config = await readConfig();
   if (!config) {
     throw new Error("missing config; run mb-spotify auth");
@@ -267,9 +256,7 @@ const getAccessToken = async (
 
   if (!hasGrantedScopes(existing.scope, requiredScopes)) {
     throw new Error(
-      `missing required Spotify scope(s): ${
-        requiredScopes.join(", ")
-      }; run mb-spotify auth again`,
+      `missing required Spotify scope(s): ${requiredScopes.join(", ")}; run mb-spotify auth again`,
     );
   }
 
@@ -283,23 +270,23 @@ const getAccessToken = async (
   return refreshed.access_token;
 };
 
-const trackEntryFromSpotifyTrack = (
-  track: Record<string, unknown> | null,
-): TrackEntry | null => {
+const trackEntryFromSpotifyTrack = (track: Record<string, unknown> | null): TrackEntry | null => {
   const uri = typeof track?.uri === "string" ? track.uri : "";
   if (!uri) {
     return null;
   }
 
   const name = typeof track?.name === "string" ? track.name : undefined;
-  const album = typeof track?.album === "object" && track.album !== null &&
-      typeof (track.album as Record<string, unknown>).name === "string"
-    ? (track.album as Record<string, unknown>).name as string
-    : undefined;
+  const album =
+    typeof track?.album === "object" &&
+    track.album !== null &&
+    typeof (track.album as Record<string, unknown>).name === "string"
+      ? ((track.album as Record<string, unknown>).name as string)
+      : undefined;
   const artists = Array.isArray(track?.artists)
     ? (track.artists as Array<Record<string, unknown>>)
-      .map((artist) => typeof artist.name === "string" ? artist.name : null)
-      .filter((artist): artist is string => Boolean(artist))
+        .map((artist) => (typeof artist.name === "string" ? artist.name : null))
+        .filter((artist): artist is string => Boolean(artist))
     : undefined;
   const type = typeof track?.type === "string" ? track.type : undefined;
 
@@ -320,13 +307,9 @@ const parsePlaylistFile = (value: unknown): PlaylistFile => {
 
   return {
     version: 1,
-    playlist_id: typeof obj.playlist_id === "string"
-      ? obj.playlist_id
-      : undefined,
+    playlist_id: typeof obj.playlist_id === "string" ? obj.playlist_id : undefined,
     name: typeof obj.name === "string" ? obj.name : undefined,
-    description: typeof obj.description === "string"
-      ? obj.description
-      : undefined,
+    description: typeof obj.description === "string" ? obj.description : undefined,
     public: typeof obj.public === "boolean" ? obj.public : undefined,
     tracks: tracks
       .map((item) => {
@@ -337,9 +320,7 @@ const parsePlaylistFile = (value: unknown): PlaylistFile => {
         const uri = typeof entry.uri === "string" ? entry.uri : "";
         const name = typeof entry.name === "string" ? entry.name : undefined;
         const artists = Array.isArray(entry.artists)
-          ? entry.artists.filter((artist) =>
-            typeof artist === "string"
-          ) as string[]
+          ? (entry.artists.filter((artist) => typeof artist === "string") as string[])
           : undefined;
         const album = typeof entry.album === "string" ? entry.album : undefined;
         const type = typeof entry.type === "string" ? entry.type : undefined;
@@ -358,43 +339,37 @@ const ensurePlaylistFile = (playlist: PlaylistFile): PlaylistFile => {
 };
 
 const readPlaylistFile = async (path: string): Promise<PlaylistFile> => {
-  const raw = await Deno.readTextFile(path);
+  const raw = await readFile(path, "utf8");
   const parsed = JSON.parse(raw) as unknown;
   return ensurePlaylistFile(parsePlaylistFile(parsed));
 };
 
-const writePlaylistFile = async (
-  path: string,
-  playlist: PlaylistFile,
-): Promise<void> => {
+const writePlaylistFile = async (path: string, playlist: PlaylistFile): Promise<void> => {
   const data = JSON.stringify(playlist, null, 2);
-  await Deno.writeTextFile(path, `${data}\n`);
+  await writeFile(path, `${data}\n`);
 };
 
 const openInBrowser = (url: string): void => {
   try {
-    const child = new Deno.Command("xdg-open", {
-      args: [url],
-      stdin: "null",
-      stdout: "null",
-      stderr: "null",
-    }).spawn();
+    const child = spawn("xdg-open", [url], {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.on("error", (error) => {
+      console.error(
+        `failed to open browser: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
     child.unref();
   } catch (error) {
     console.error(
-      `failed to open browser: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `failed to open browser: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 };
 
-const waitForAuthCode = async (
-  expectedPath: string,
-  state: string,
-): Promise<string> => {
+const waitForAuthCode = async (expectedPath: string, state: string): Promise<string> => {
   let settled = false;
-  const abortController = new AbortController();
 
   const codePromise = new Promise<string>((resolve, reject) => {
     const finish = (result: { code?: string; error?: string }) => {
@@ -402,7 +377,7 @@ const waitForAuthCode = async (
         return;
       }
       settled = true;
-      abortController.abort();
+      server.close();
       if (result.error) {
         reject(new Error(result.error));
         return;
@@ -414,51 +389,57 @@ const waitForAuthCode = async (
       resolve(result.code);
     };
 
-    const handle = (request: Request): Response => {
-      const url = new URL(request.url);
+    const server = createServer((request, response) => {
+      const url = new URL(request.url ?? "/", REDIRECT_URI);
 
       if (url.pathname !== expectedPath) {
-        return new Response("Not found", { status: 404 });
+        response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+        response.end("Not found");
+        return;
       }
 
       const error = url.searchParams.get("error");
       if (error) {
         finish({ error: `authorization error: ${error}` });
-        return new Response(`authorization error: ${error}`, { status: 400 });
+        response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+        response.end(`authorization error: ${error}`);
+        return;
       }
 
       const code = url.searchParams.get("code");
       const returnedState = url.searchParams.get("state");
       if (!code) {
-        return new Response("Missing code", { status: 400 });
+        response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+        response.end("Missing code");
+        return;
       }
       if (returnedState !== state) {
         finish({ error: "state mismatch" });
-        return new Response("state mismatch", { status: 400 });
+        response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+        response.end("state mismatch");
+        return;
       }
 
       finish({ code });
 
-      return new Response("Authorization received. You can close this tab.", {
-        headers: { "content-type": "text/plain; charset=utf-8" },
-      });
-    };
+      response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      response.end("Authorization received. You can close this tab.");
+    });
 
-    try {
-      Deno.serve({
-        hostname: REDIRECT_HOST,
-        port: REDIRECT_PORT,
-        signal: abortController.signal,
-        onListen: () => {},
-      }, handle);
-    } catch (error) {
+    server.on("error", (error) => {
       if (!settled) {
+        settled = true;
         reject(error);
       }
-    }
+    });
+    server.listen(REDIRECT_PORT, REDIRECT_HOST);
   });
 
   return await codePromise;
+};
+
+const isErrnoException = (value: unknown): value is NodeJS.ErrnoException => {
+  return value instanceof Error && "code" in value;
 };
 
 const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
@@ -471,9 +452,7 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
     );
   }
 
-  console.log(
-    "Ensure this redirect URI is registered in your Spotify app settings:",
-  );
+  console.log("Ensure this redirect URI is registered in your Spotify app settings:");
   console.log(REDIRECT_URI);
 
   const verifier = randomVerifier();
@@ -496,10 +475,8 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
   try {
     code = await waitForAuthCode(REDIRECT_PATH, state);
   } catch (error) {
-    if (error instanceof Deno.errors.AddrInUse) {
-      throw new Error(
-        `port ${REDIRECT_PORT} is in use; free it or change REDIRECT_PORT`,
-      );
+    if (isErrnoException(error) && error.code === "EADDRINUSE") {
+      throw new Error(`port ${REDIRECT_PORT} is in use; free it or change REDIRECT_PORT`);
     }
     throw error;
   }
@@ -543,12 +520,10 @@ const cmdList = async (): Promise<void> => {
   let url = "/me/playlists?limit=50";
 
   while (url) {
-    const data = await spotifyRequest<
-      { items: { id: string; name: string }[]; next: string | null }
-    >(
-      url,
-      token,
-    );
+    const data = await spotifyRequest<{
+      items: { id: string; name: string }[];
+      next: string | null;
+    }>(url, token);
     for (const item of data.items) {
       console.log(`${item.id}\t${item.name}`);
     }
@@ -570,15 +545,10 @@ const cmdExportLiked = async (parsed: ParsedArgs): Promise<void> => {
   const entries: TrackEntry[] = [];
 
   while (true) {
-    const page = await spotifyRequest<
-      {
-        items: Array<{ track: Record<string, unknown> | null }>;
-        next: string | null;
-      }
-    >(
-      `/me/tracks?limit=50&offset=${offset}`,
-      token,
-    );
+    const page = await spotifyRequest<{
+      items: Array<{ track: Record<string, unknown> | null }>;
+      next: string | null;
+    }>(`/me/tracks?limit=50&offset=${offset}`, token);
 
     for (const item of page.items) {
       const entry = trackEntryFromSpotifyTrack(item.track);
@@ -608,8 +578,7 @@ const cmdExportLiked = async (parsed: ParsedArgs): Promise<void> => {
 };
 
 const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
-  const playlistId = stringFlag(parsed.flags, "playlist") ??
-    parsed.positionals[0];
+  const playlistId = stringFlag(parsed.flags, "playlist") ?? parsed.positionals[0];
   const outPath = stringFlag(parsed.flags, "out") ?? parsed.positionals[1];
 
   if (!playlistId || !outPath) {
@@ -617,29 +586,22 @@ const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
   }
 
   const token = await getAccessToken();
-  const playlist = await spotifyRequest<
-    {
-      name: string;
-      description: string | null;
-      public: boolean | null;
-      tracks: { total: number };
-    }
-  >(
-    `/playlists/${playlistId}`,
-    token,
-  );
+  const playlist = await spotifyRequest<{
+    name: string;
+    description: string | null;
+    public: boolean | null;
+    tracks: { total: number };
+  }>(`/playlists/${playlistId}`, token);
 
   const entries: TrackEntry[] = [];
   const total = playlist.tracks.total;
   let offset = 0;
 
   while (true) {
-    const page = await spotifyRequest<
-      {
-        items: Array<{ track: Record<string, unknown> | null }>;
-        next: string | null;
-      }
-    >(
+    const page = await spotifyRequest<{
+      items: Array<{ track: Record<string, unknown> | null }>;
+      next: string | null;
+    }>(
       `/playlists/${playlistId}/tracks?limit=100&offset=${offset}&additional_types=track,episode`,
       token,
     );
@@ -693,18 +655,14 @@ const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
 
   if (shouldCreate) {
     const profile = await spotifyRequest<{ id: string }>("/me", token);
-    const created = await spotifyRequest<{ id: string }>(
-      `/users/${profile.id}/playlists`,
-      token,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          name: file.name ?? "Imported Playlist",
-          description: file.description ?? "",
-          public: file.public ?? false,
-        }),
-      },
-    );
+    const created = await spotifyRequest<{ id: string }>(`/users/${profile.id}/playlists`, token, {
+      method: "POST",
+      body: JSON.stringify({
+        name: file.name ?? "Imported Playlist",
+        description: file.description ?? "",
+        public: file.public ?? false,
+      }),
+    });
     playlistId = created.id;
     console.error(`created playlist ${playlistId}`);
   }
@@ -715,9 +673,7 @@ const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
     );
   }
 
-  const uris = file.tracks
-    .map((track) => track.uri.trim())
-    .filter((uri) => uri.length > 0);
+  const uris = file.tracks.map((track) => track.uri.trim()).filter((uri) => uri.length > 0);
 
   console.error(`replacing playlist ${playlistId} with ${uris.length} items`);
 
@@ -742,7 +698,7 @@ const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
 };
 
 const main = async () => {
-  const parsed = parseCliArgs(Deno.args);
+  const parsed = parseCliArgs(process.argv.slice(2));
   if (!parsed.command || hasHelpFlag(parsed.flags)) {
     console.log(usage.trim());
     return;
@@ -775,6 +731,6 @@ if (import.meta.main) {
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     console.error("\n" + usage.trim());
-    Deno.exit(1);
+    process.exit(1);
   }
 }

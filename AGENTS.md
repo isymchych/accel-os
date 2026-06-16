@@ -4,7 +4,7 @@
 - `bin-tools/` is the Rust CLI tools crate (backlight/volume/mic/touchpad helpers).
 - `firefox/` holds `user.js` prefs; outside chezmoi because profile IDs vary.
 - `docs/` contains platform notes (`docs/linux`, `docs/mac`); keep secrets out and reference `.chezmoidata` instead.
-- `scripts/` holds Deno tasks (`scripts/scripts/`) and shared modules (`scripts/lib/`).
+- `scripts/` holds Node TypeScript CLIs (`scripts/scripts/`) and shared modules (`scripts/lib/`).
 - `ai/` holds skills and automation for coding agents (Codex, Pi).
 
 ### dotfiles/
@@ -21,6 +21,8 @@
 - `chezmoi apply` — sync confirmed updates; pair with `--include`/`--exclude` to scope risky runs.
 - `chezmoi doctor` — verify environment readiness after dependency changes.
 - `chezmoi data` — inspect template inputs before editing `.tmpl` files.
+- `npm run typecheck --workspace scripts` — verify buildless Node TypeScript scripts before changing wrappers.
+- `npm test --workspace scripts` — run script tests.
 
 ## Coding Style & Naming Conventions
 - `.editorconfig` enforces UTF-8, LF, and two-space indentation; adhere in all languages.
@@ -29,15 +31,14 @@
 - Name executable scripts `executable_<tool>` so chezmoi marks them executable on apply.
 - Keep template variables lowercase snake_case and derive host details from `.chezmoidata`.
 
-## Scripts (Deno)
+## Scripts (Node TypeScript)
 - Store scripts in `scripts/scripts/` and shared modules in `scripts/lib/`.
-- Add tasks in `scripts/deno.json` with `--lock=deno.lock --frozen --cached-only`.
-- Wrap each task with `dotfiles/bin/executable_mb-<name>`; wrapper `cd`s into `$ACCEL_OS/scripts` and runs `deno task mb-<name>`.
-- Put `DENO_NO_UPDATE_CHECK=1` in Deno wrapper shell scripts (`dotfiles/bin/executable_*`, cache scripts) 
-- Cache all entrypoints via `scripts/cache-mb-scripts.sh` (globs `./scripts/*.ts`).
-- Confirm cache/lock policy before dismissing dependency changes.
-- Don’t assume --cached-only means “no new deps”; ask if recache is allowed.
-- When Deno std is needed, prefer jsr:@std/* and align with repo policy or ecosystem guidance.
+- Run scripts directly with Node's native TypeScript type stripping; do not add a build step unless explicitly needed.
+- Keep `scripts/tsconfig.json` aligned with Node type stripping: `erasableSyntaxOnly`, `verbatimModuleSyntax`, `allowImportingTsExtensions`, and `rewriteRelativeImportExtensions` stay enabled.
+- Avoid TypeScript syntax that Node cannot erase, including enums, parameter properties, runtime namespaces, decorators, import aliases, and path aliases.
+- Use explicit `.ts` extensions for relative imports and `import type` for type-only imports.
+- Wrap each CLI with `dotfiles/bin/executable_mb-<name>`; wrappers call `node "$ACCEL_OS/scripts/scripts/<entrypoint>.ts" "$@"` directly.
+- Add runtime dependencies to `scripts/package.json`; keep shared dev tooling at the root workspace.
 
 ## Theme Switching Scripts
 - Pair every app-specific theme toggle with matching scripts in `dotfiles/dot_local/share/dark-mode.d/` and `dotfiles/dot_local/share/light-mode.d/`, named `executable_<app>-theme.sh`.

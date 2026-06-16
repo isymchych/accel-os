@@ -1,3 +1,5 @@
+import test from "node:test";
+
 import {
   buildWorktreeListRows,
   evaluateCreateCollision,
@@ -27,13 +29,10 @@ const assert = (condition: boolean, message = "Assertion failed"): void => {
 };
 
 const assertEquals = <T>(actual: T, expected: T): void => {
-  const same = Object.is(actual, expected) ||
-    JSON.stringify(actual) === JSON.stringify(expected);
+  const same = Object.is(actual, expected) || JSON.stringify(actual) === JSON.stringify(expected);
   if (!same) {
     throw new Error(
-      `Expected ${JSON.stringify(expected, null, 2)}, got ${
-        JSON.stringify(actual, null, 2)
-      }`,
+      `Expected ${JSON.stringify(expected, null, 2)}, got ${JSON.stringify(actual, null, 2)}`,
     );
   }
 };
@@ -47,19 +46,17 @@ const assertThrows = (fn: () => unknown, expectedMessagePart: string): void => {
     }
     assert(
       error.message.includes(expectedMessagePart),
-      `Expected error containing ${JSON.stringify(expectedMessagePart)}, got ${
-        JSON.stringify(error.message)
-      }`,
+      `Expected error containing ${JSON.stringify(expectedMessagePart)}, got ${JSON.stringify(
+        error.message,
+      )}`,
     );
     return;
   }
 
-  throw new Error(
-    `Expected function to throw ${JSON.stringify(expectedMessagePart)}`,
-  );
+  throw new Error(`Expected function to throw ${JSON.stringify(expectedMessagePart)}`);
 };
 
-Deno.test("parseArgs parses create flags including dry-run, repo, and path override", () => {
+test("parseArgs parses create flags including dry-run, repo, and path override", () => {
   const parsed = parseArgs([
     "--repo",
     "../target-repo",
@@ -82,21 +79,18 @@ Deno.test("parseArgs parses create flags including dry-run, repo, and path overr
   assertEquals(parsed.runSetup, false);
 });
 
-Deno.test("parseArgs rejects empty path overrides", () => {
+test("parseArgs rejects empty path overrides", () => {
   assertThrows(
     () => parseArgs(["checkout", "main", "--path="]),
     'Option "--path" requires a directory value.',
   );
 });
 
-Deno.test("parseArgs rejects empty repo overrides", () => {
-  assertThrows(
-    () => parseArgs(["list", "--repo="]),
-    'Option "--repo" requires a directory value.',
-  );
+test("parseArgs rejects empty repo overrides", () => {
+  assertThrows(() => parseArgs(["list", "--repo="]), 'Option "--repo" requires a directory value.');
 });
 
-Deno.test("parseArgs parses remove dry-run flags", () => {
+test("parseArgs parses remove dry-run flags", () => {
   const parsed = parseArgs(["remove", "../PAB-demo", "--force", "--dry-run"]);
   assertEquals(parsed.command, "remove");
   assertEquals(parsed.positional, ["../PAB-demo"]);
@@ -104,31 +98,22 @@ Deno.test("parseArgs parses remove dry-run flags", () => {
   assertEquals(parsed.dryRun, true);
 });
 
-Deno.test("parseArgs parses list json mode", () => {
+test("parseArgs parses list json mode", () => {
   const parsed = parseArgs(["list", "--json"]);
   assertEquals(parsed.command, "list");
   assertEquals(parsed.positional, []);
   assertEquals(parsed.json, true);
 });
 
-Deno.test("repo targeting uses AI_CWD by default and resolves relative --repo from it", () => {
-  assertEquals(
-    getInvocationDirectory("/accel-os/scripts", "/work/project"),
-    "/work/project",
-  );
+test("repo targeting uses AI_CWD by default and resolves relative --repo from it", () => {
+  assertEquals(getInvocationDirectory("/accel-os/scripts", "/work/project"), "/work/project");
   assertEquals(getInvocationDirectory("/work/project", null), "/work/project");
   assertEquals(resolveRepoSearchStart("/work/project", null), "/work/project");
-  assertEquals(
-    resolveRepoSearchStart("/work/project", "../other"),
-    "/work/other",
-  );
-  assertEquals(
-    resolveRepoSearchStart("/work/project", "/tmp/repo"),
-    "/tmp/repo",
-  );
+  assertEquals(resolveRepoSearchStart("/work/project", "../other"), "/work/other");
+  assertEquals(resolveRepoSearchStart("/work/project", "/tmp/repo"), "/tmp/repo");
 });
 
-Deno.test("resolveRemoteBranchFromRefs accepts slash-named remote branches by branch name", () => {
+test("resolveRemoteBranchFromRefs accepts slash-named remote branches by branch name", () => {
   const remoteRefs = [
     "origin/main",
     "origin/change-rank",
@@ -142,15 +127,13 @@ Deno.test("resolveRemoteBranchFromRefs accepts slash-named remote branches by br
       "1331-інструмент-слідкування-за-виплатами-по-контракту-18/24",
     ),
     {
-      remoteRef:
-        "origin/1331-інструмент-слідкування-за-виплатами-по-контракту-18/24",
-      localBranchName:
-        "1331-інструмент-слідкування-за-виплатами-по-контракту-18/24",
+      remoteRef: "origin/1331-інструмент-слідкування-за-виплатами-по-контракту-18/24",
+      localBranchName: "1331-інструмент-слідкування-за-виплатами-по-контракту-18/24",
     },
   );
 });
 
-Deno.test("resolveRemoteBranchFromRefs rejects ambiguous branch names across remotes", () => {
+test("resolveRemoteBranchFromRefs rejects ambiguous branch names across remotes", () => {
   const remoteRefs = ["origin/change-rank", "upstream/change-rank"];
   assertThrows(
     () => resolveRemoteBranchFromRefs(remoteRefs, "change-rank"),
@@ -158,17 +141,14 @@ Deno.test("resolveRemoteBranchFromRefs rejects ambiguous branch names across rem
   );
 });
 
-Deno.test("resolveRemoteBranchFromRefs preserves explicit remote refs", () => {
-  assertEquals(
-    resolveRemoteBranchFromRefs(["origin/change-rank"], "origin/change-rank"),
-    {
-      remoteRef: "origin/change-rank",
-      localBranchName: "change-rank",
-    },
-  );
+test("resolveRemoteBranchFromRefs preserves explicit remote refs", () => {
+  assertEquals(resolveRemoteBranchFromRefs(["origin/change-rank"], "origin/change-rank"), {
+    remoteRef: "origin/change-rank",
+    localBranchName: "change-rank",
+  });
 });
 
-Deno.test("explicit remote checkout requests are remote-first", () => {
+test("explicit remote checkout requests are remote-first", () => {
   assertEquals(
     isExplicitRemoteBranchRequest("origin/change-rank", {
       remoteRef: "origin/change-rank",
@@ -183,63 +163,44 @@ Deno.test("explicit remote checkout requests are remote-first", () => {
   );
 });
 
-Deno.test("resolveRemoteBranchFromRefs returns null when no remote branch matches", () => {
-  assertEquals(
-    resolveRemoteBranchFromRefs(["origin/main"], "missing-branch"),
-    null,
-  );
+test("resolveRemoteBranchFromRefs returns null when no remote branch matches", () => {
+  assertEquals(resolveRemoteBranchFromRefs(["origin/main"], "missing-branch"), null);
 });
 
-Deno.test("path planning uses sibling defaults and respects overrides", () => {
-  assertEquals(
-    resolveCreateWorktreePath("/parent/PAB", "../PAB-demo", null),
-    "/parent/PAB-demo",
-  );
-  assertEquals(
-    resolveCreateWorktreePath("/repo", "../repo-demo", "tmp/demo"),
-    "/repo/tmp/demo",
-  );
+test("path planning uses sibling defaults and respects overrides", () => {
+  assertEquals(resolveCreateWorktreePath("/parent/PAB", "../PAB-demo", null), "/parent/PAB-demo");
+  assertEquals(resolveCreateWorktreePath("/repo", "../repo-demo", "tmp/demo"), "/repo/tmp/demo");
   assertEquals(
     resolveCreateWorktreePath("/repo", "../repo-demo", "/tmp/custom-demo"),
     "/tmp/custom-demo",
   );
 });
 
-Deno.test("sanitizePathToken stays predictable", () => {
+test("sanitizePathToken stays predictable", () => {
   assertEquals(sanitizePathToken("feature/foo bar"), "feature-foo-bar");
   assertEquals(sanitizePathToken("🔥/💥"), "ref");
 });
 
-Deno.test("PR and detached helpers preserve source semantics", () => {
+test("PR and detached helpers preserve source semantics", () => {
   assertEquals(resolvePrHeadSource("change-rank"), "origin/change-rank");
   assert(
-    formatExistingLocalBranchConflict(
-      "change-rank",
-      "remote ref origin/change-rank",
-    ).includes(
+    formatExistingLocalBranchConflict("change-rank", "remote ref origin/change-rank").includes(
       'Local branch "change-rank" already exists',
     ),
   );
   assert(
-    formatExistingLocalBranchConflict(
-      "change-rank",
-      "fetched PR head origin/change-rank",
-    ).includes("refusing to create or reuse it"),
-  );
-  assertEquals(
-    getComparisonRef({ path: "/parent/repo-detached-abc", detached: true }),
-    "HEAD",
-  );
-  assertEquals(
-    getComparisonRef(
-      { path: "/parent/repo-release-fix", detached: false },
-      null,
+    formatExistingLocalBranchConflict("change-rank", "fetched PR head origin/change-rank").includes(
+      "refusing to create or reuse it",
     ),
+  );
+  assertEquals(getComparisonRef({ path: "/parent/repo-detached-abc", detached: true }), "HEAD");
+  assertEquals(
+    getComparisonRef({ path: "/parent/repo-release-fix", detached: false }, null),
     "origin/main",
   );
 });
 
-Deno.test("removal helpers resolve targets and changed-state rules", () => {
+test("removal helpers resolve targets and changed-state rules", () => {
   const branchStatus = {
     worktree: {
       path: "/parent/repo-change-rank",
@@ -275,40 +236,23 @@ Deno.test("removal helpers resolve targets and changed-state rules", () => {
   };
 
   assertEquals(
-    resolveRemovalTarget(
-      [branchStatus, detachedStatus],
-      "/repo",
-      "change-rank",
-    ),
+    resolveRemovalTarget([branchStatus, detachedStatus], "/repo", "change-rank"),
     branchStatus,
   );
   assertEquals(
-    resolveRemovalTarget(
-      [branchStatus, detachedStatus],
-      "/repo",
-      "/parent/repo-detached-abc",
-    ),
+    resolveRemovalTarget([branchStatus, detachedStatus], "/repo", "/parent/repo-detached-abc"),
     detachedStatus,
   );
   assertEquals(hasChanges(branchStatus), false);
   assertEquals(hasChanges({ ...detachedStatus, dirty: false }), true);
   assertEquals(hasChanges({ ...branchStatus, untracked: true }), true);
   assertEquals(hasChanges({ ...branchStatus, localCommits: 2 }), true);
-  assertEquals(
-    getBranchDeletionFlag({ ...branchStatus, localCommits: 0 }, false),
-    "-d",
-  );
-  assertEquals(
-    getBranchDeletionFlag({ ...branchStatus, localCommits: 2 }, false),
-    "-D",
-  );
-  assertEquals(
-    getBranchDeletionFlag({ ...branchStatus, localCommits: 0 }, true),
-    "-D",
-  );
+  assertEquals(getBranchDeletionFlag({ ...branchStatus, localCommits: 0 }, false), "-d");
+  assertEquals(getBranchDeletionFlag({ ...branchStatus, localCommits: 2 }, false), "-D");
+  assertEquals(getBranchDeletionFlag({ ...branchStatus, localCommits: 0 }, true), "-D");
 });
 
-Deno.test("reusable worktree detection works for branch and detached targets", () => {
+test("reusable worktree detection works for branch and detached targets", () => {
   const branchWorktree = {
     path: "/parent/repo-change-rank",
     head: "abc",
@@ -347,7 +291,7 @@ Deno.test("reusable worktree detection works for branch and detached targets", (
   );
 });
 
-Deno.test("display helpers stay predictable", () => {
+test("display helpers stay predictable", () => {
   const branchWorktree = {
     path: "/parent/repo-change-rank",
     head: "abc",
@@ -356,10 +300,7 @@ Deno.test("display helpers stay predictable", () => {
     detached: false,
   };
 
-  assertEquals(
-    formatDisplayPath("/repo", "/parent/repo-change-rank"),
-    "/parent/repo-change-rank",
-  );
+  assertEquals(formatDisplayPath("/repo", "/parent/repo-change-rank"), "/parent/repo-change-rank");
   assertEquals(formatDisplayPath("/repo", "/tmp/external"), "/tmp/external");
   assertEquals(getWorktreePathKind("/repo", branchWorktree), "custom");
   assertEquals(
@@ -380,7 +321,7 @@ Deno.test("display helpers stay predictable", () => {
   assertEquals(toYesNo(false), "no");
 });
 
-Deno.test("buildWorktreeListRows produces rich rows", () => {
+test("buildWorktreeListRows produces rich rows", () => {
   const branchStatus = {
     worktree: {
       path: "/parent/repo-change-rank",
@@ -445,7 +386,7 @@ Deno.test("buildWorktreeListRows produces rich rows", () => {
   ]);
 });
 
-Deno.test("creation collision helpers distinguish reuse, path conflicts, branch conflicts, and create-new", () => {
+test("creation collision helpers distinguish reuse, path conflicts, branch conflicts, and create-new", () => {
   const existingBranchWorktree = {
     path: "/parent/repo-change-rank",
     head: "abc",

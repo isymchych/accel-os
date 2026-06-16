@@ -1,0 +1,12 @@
+{
+  "name": "accel-os-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "test": "node --test scripts/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}
