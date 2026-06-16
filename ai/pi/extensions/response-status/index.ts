@@ -120,6 +120,7 @@ type UsageSnapshot = {
   input: number;
   output: number;
   cacheRead: number;
+  cacheWrite: number;
 };
 
 type MessageLike = {
@@ -150,9 +151,11 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
   let liveInputTokens = 0;
   let liveOutputTokens = 0;
   let liveCacheReadTokens = 0;
+  let liveCacheWriteTokens = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalCacheReadTokens = 0;
+  let totalCacheWriteTokens = 0;
   let totalStreamMs = 0;
 
   const resetAssistantStreamState = (): void => {
@@ -162,6 +165,7 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
     liveInputTokens = 0;
     liveOutputTokens = 0;
     liveCacheReadTokens = 0;
+    liveCacheWriteTokens = 0;
   };
 
   const resetRunState = (): void => {
@@ -169,6 +173,7 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
     totalInputTokens = 0;
     totalOutputTokens = 0;
     totalCacheReadTokens = 0;
+    totalCacheWriteTokens = 0;
     totalStreamMs = 0;
     resetAssistantStreamState();
   };
@@ -177,16 +182,19 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
     liveInputTokens = Math.max(liveInputTokens, usage.input);
     liveOutputTokens = Math.max(liveOutputTokens, usage.output);
     liveCacheReadTokens = Math.max(liveCacheReadTokens, usage.cacheRead);
+    liveCacheWriteTokens = Math.max(liveCacheWriteTokens, usage.cacheWrite);
   };
 
   const getCurrentPromptCacheUsage = (): PromptCacheUsage => ({
     inputTokens: totalInputTokens + liveInputTokens,
     cacheReadTokens: totalCacheReadTokens + liveCacheReadTokens,
+    cacheWriteTokens: totalCacheWriteTokens + liveCacheWriteTokens,
   });
 
   const getCompletedPromptCacheUsage = (): PromptCacheUsage => ({
     inputTokens: totalInputTokens,
     cacheReadTokens: totalCacheReadTokens,
+    cacheWriteTokens: totalCacheWriteTokens,
   });
 
   const clearIntervalIfRunning = (): void => {
@@ -295,6 +303,7 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
       const messageOutputTokens = event.message.usage.output;
       totalInputTokens += messageUsage.input;
       totalCacheReadTokens += messageUsage.cacheRead;
+      totalCacheWriteTokens += messageUsage.cacheWrite;
       const streamTimingStartedAt = streamStartedAt ?? assistantMessageStartedAt;
       if (messageOutputTokens > 0 && streamTimingStartedAt !== undefined) {
         totalOutputTokens += messageOutputTokens;

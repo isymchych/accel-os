@@ -45,9 +45,10 @@ test("timer text helpers use the expected prefixes", () => {
       {
         inputTokens: 1_000,
         cacheReadTokens: 9_000,
+        cacheWriteTokens: 0,
       },
     ),
-    "⏱ 1.5s · 85 tok/s · cache 90%",
+    "⏱ 1.5s · 85 tok/s · turn cache 90.0%",
   );
   assert.equal(createTotalElapsedSummary(1_500), "⏱ 1.5s");
   assert.equal(
@@ -60,17 +61,27 @@ test("timer text helpers use the expected prefixes", () => {
       {
         inputTokens: 1_000,
         cacheReadTokens: 9_000,
+        cacheWriteTokens: 0,
       },
     ),
-    "⏱ 1.5s · 85 tok/s · 170 tokens · cache 90% · R9.0k",
+    "⏱ 1.5s · 85 tok/s · 170 tokens · turn cache 90.0% · R9.0k",
+  );
+  assert.equal(
+    createCompletedTimerSummary(1_500, undefined, {
+      inputTokens: 1_000,
+      cacheReadTokens: 9_000,
+      cacheWriteTokens: 10_000,
+    }),
+    "⏱ 1.5s · turn cache 45.0% · R9.0k · W10k",
   );
   assert.equal(createCompletedTimerSummary(1_500), "⏱ 1.5s");
   assert.equal(
     createCompletedTimerSummary(1_500, undefined, {
       inputTokens: 200,
       cacheReadTokens: 0,
+      cacheWriteTokens: 0,
     }),
-    "⏱ 1.5s · cache 0%",
+    "⏱ 1.5s · turn cache 0.0%",
   );
   assert.equal(estimateTokensFromTextDelta("abcd"), 1);
 });

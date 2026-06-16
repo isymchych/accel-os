@@ -8,6 +8,7 @@ export const WORKING_TIMER_PREFIX = "⏱ ";
 export interface PromptCacheUsage {
   inputTokens: number;
   cacheReadTokens: number;
+  cacheWriteTokens: number;
 }
 
 export function formatElapsed(ms: number): string {
@@ -42,12 +43,13 @@ function formatCompactTokens(tokens: number): string {
 }
 
 function formatPromptCacheHitRate(cacheUsage: PromptCacheUsage): string | undefined {
-  const totalPromptTokens = cacheUsage.inputTokens + cacheUsage.cacheReadTokens;
+  const totalPromptTokens =
+    cacheUsage.inputTokens + cacheUsage.cacheReadTokens + cacheUsage.cacheWriteTokens;
   if (totalPromptTokens <= 0) {
     return undefined;
   }
 
-  return `${Math.round((cacheUsage.cacheReadTokens / totalPromptTokens) * 100)}%`;
+  return `${((cacheUsage.cacheReadTokens / totalPromptTokens) * 100).toFixed(1)}%`;
 }
 
 function getPromptCacheSummaryParts(
@@ -61,11 +63,14 @@ function getPromptCacheSummaryParts(
   const parts: string[] = [];
   const hitRate = formatPromptCacheHitRate(cacheUsage);
   if (hitRate !== undefined) {
-    parts.push(`cache ${hitRate}`);
+    parts.push(`turn cache ${hitRate}`);
   }
 
   if (includeRawTokens && cacheUsage.cacheReadTokens > 0) {
     parts.push(`R${formatCompactTokens(cacheUsage.cacheReadTokens)}`);
+  }
+  if (includeRawTokens && cacheUsage.cacheWriteTokens > 0) {
+    parts.push(`W${formatCompactTokens(cacheUsage.cacheWriteTokens)}`);
   }
 
   return parts;
