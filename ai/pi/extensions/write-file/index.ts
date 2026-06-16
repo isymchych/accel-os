@@ -94,7 +94,8 @@ export default function writeFileExtension(pi: ExtensionAPI): void {
   const tool = defineTool<typeof writeFileSchema, WriteFileToolDetails>({
     name: "write_file",
     label: "write_file",
-    description: "Write a full file in create or replace mode.",
+    description:
+      "Write a full file in create or replace mode. Missing parent directories are created automatically.",
     promptSnippet: "Write complete file contents with explicit create or replace intent",
     promptGuidelines: [
       "Use write_file when you already know the complete desired contents of a file.",
