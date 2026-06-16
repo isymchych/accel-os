@@ -9,6 +9,11 @@ import {
   parseOpenAICodexCredential,
   resolveOpenAICodexRuntimeAccountProfile,
 } from "./extensions/openai-codex/auth.ts";
+import { renderUsageSummary } from "./extensions/openai-codex/status.ts";
+import {
+  type OpenAICodexUsageCredential,
+  fetchUsageSnapshotForCredential,
+} from "./extensions/openai-codex/usage.ts";
 import { isRecord } from "./shared/guards.ts";
 
 const usage = `ai [account] [-- <pi args...>]
@@ -31,6 +36,7 @@ if (accelOs === undefined || accelOs.length === 0) {
 }
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
+const accountUsageTimeoutMs = 5000;
 
 const defaultToolNames = [
   "bash",
@@ -68,12 +74,13 @@ type AccountInfo = {
   plan: string;
   path: string;
   isCurrent: boolean;
+  accessToken?: string;
 };
 
 type AccountAction =
-  | { kind: "noop"; label: string }
-  | { kind: "new"; label: string }
-  | { kind: "switch"; label: string; target: AccountInfo };
+  | { kind: "noop"; labelLines: string[] }
+  | { kind: "new"; labelLines: string[] }
+  | { kind: "switch"; labelLines: string[]; target: AccountInfo };
 
 type LoadedAccount =
   | { kind: "ok"; filePath: string; info: AccountInfo }
@@ -131,7 +138,11 @@ const parseAccountInfo = (raw: string, filePath: string, isCurrent: boolean): Ac
   const email = profile.email ?? "unknown";
   const plan = profile.plan ?? "unknown";
 
-  return { id: accountId, email, plan, path: filePath, isCurrent };
+  const account: AccountInfo = { id: accountId, email, plan, path: filePath, isCurrent };
+  if (credential.access !== undefined && credential.access.length > 0) {
+    account.accessToken = credential.access;
+  }
+  return account;
 };
 
 const loadAccount = async (filePath: string, isCurrent: boolean): Promise<AccountInfo> => {
@@ -139,9 +150,80 @@ const loadAccount = async (filePath: string, isCurrent: boolean): Promise<Accoun
   return parseAccountInfo(raw, filePath, isCurrent);
 };
 
-const formatAccount = (account: AccountInfo, label?: string): string => {
-  const tag = label !== undefined ? ` ${label}` : "";
-  return `${account.email} (${account.plan})${tag} ${account.id}`;
+const formatAccountActionLines = (account: AccountInfo, usageSummary: string): string[] => {
+  const currentMarker = account.isCurrent ? "*" : " ";
+  return [
+    `${currentMarker} ${account.email} (${account.plan})`,
+    `  id: ${account.id}`,
+    `  ${usageSummary}`,
+  ];
+};
+
+const renderAction = (action: AccountAction, index: number): void => {
+  const prefix = `  ${index + 1}) `;
+  const continuationPrefix = " ".repeat(prefix.length);
+  const firstLine = action.labelLines[0];
+  if (firstLine === undefined) {
+    return;
+  }
+
+  writeStdout(`${prefix}${firstLine}`);
+  for (const line of action.labelLines.slice(1)) {
+    writeStdout(`${continuationPrefix}${line}`);
+  }
+};
+
+const resolveUsageIdentityValue = (value: string): string | undefined => {
+  return value === "unknown" ? undefined : value;
+};
+
+const fetchAccountUsageSummary = async (account: AccountInfo): Promise<string> => {
+  if (account.accessToken === undefined) {
+    return "usage unavailable";
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, accountUsageTimeoutMs);
+
+  try {
+    const credential: OpenAICodexUsageCredential = {
+      accessToken: account.accessToken,
+      accountId: account.id,
+    };
+    const email = resolveUsageIdentityValue(account.email);
+    if (email !== undefined) {
+      credential.email = email;
+    }
+    const plan = resolveUsageIdentityValue(account.plan);
+    if (plan !== undefined) {
+      credential.plan = plan;
+    }
+
+    const snapshot = await fetchUsageSnapshotForCredential(credential, {
+      signal: controller.signal,
+    });
+    return renderUsageSummary(snapshot);
+  } catch {
+    return "usage unavailable";
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const fetchAccountUsageSummaries = async (
+  accounts: readonly AccountInfo[],
+): Promise<Map<string, string>> => {
+  const entries = await Promise.all(
+    accounts.map(
+      async (account): Promise<readonly [string, string]> => [
+        account.id,
+        await fetchAccountUsageSummary(account),
+      ],
+    ),
+  );
+  return new Map(entries);
 };
 
 const promptChoice = async (count: number): Promise<number> => {
@@ -225,21 +307,34 @@ const runAccountSwitcher = async (): Promise<void> => {
     throw new Error(`no auth files found in ${authDir}`);
   }
 
+  writeStdout("Loading usage...");
+  const usageByAccountId = await fetchAccountUsageSummaries(accounts);
+
   writeStdout("Select account:");
+  writeStdout("");
   const actions: AccountAction[] = [];
   for (const account of accounts) {
+    const usageSummary = usageByAccountId.get(account.id) ?? "usage unavailable";
+    const labelLines = formatAccountActionLines(account, usageSummary);
     if (account.isCurrent) {
-      actions.push({ kind: "noop", label: formatAccount(account, "[current]") });
+      actions.push({ kind: "noop", labelLines });
     } else {
-      actions.push({ kind: "switch", label: formatAccount(account), target: account });
+      actions.push({
+        kind: "switch",
+        labelLines,
+        target: account,
+      });
     }
   }
   if (current !== null) {
-    actions.push({ kind: "new", label: "new account (rename current auth.json)" });
+    actions.push({ kind: "new", labelLines: ["+ new account"] });
   }
 
   actions.forEach((action, index) => {
-    writeStdout(`  ${index + 1}) ${action.label}`);
+    renderAction(action, index);
+    if (index < actions.length - 1) {
+      writeStdout("");
+    }
   });
 
   const choice = await promptChoice(actions.length);

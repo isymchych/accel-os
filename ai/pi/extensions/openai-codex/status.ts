@@ -91,6 +91,16 @@ export function formatWindow(window: LimitWindow | undefined, now = Date.now()):
   return `${left}% left (${formatReset(window.resetsAt, now)})`;
 }
 
+function describeSummaryWindow(seconds?: number): string {
+  const label = describeWindow(seconds);
+  return label.endsWith(" limit") ? label.slice(0, -" limit".length) : label;
+}
+
+function formatSummaryWindow(window: LimitWindow, now = Date.now()): string {
+  const left = Math.max(0, 100 - window.usedPercent);
+  return `${left}% left, ${formatReset(window.resetsAt, now)}`;
+}
+
 export function formatPlan(plan?: string): string | undefined {
   if (plan === undefined || plan.length === 0) {
     return undefined;
@@ -117,6 +127,25 @@ export function renderWindowLine(
 
   const left = Math.max(0, 100 - window.usedPercent);
   return `${paddedLabel}: ${renderProgressBar(left)} ${formatWindow(window, now)}`;
+}
+
+export function renderUsageSummary(snapshot: StatusSnapshot, now = Date.now()): string {
+  const windows: string[] = [];
+  if (snapshot.primary !== undefined) {
+    windows.push(
+      `${describeSummaryWindow(snapshot.primary.windowSeconds)}: ${formatSummaryWindow(snapshot.primary, now)}`,
+    );
+  }
+  if (snapshot.secondary !== undefined) {
+    windows.push(
+      `${describeSummaryWindow(snapshot.secondary.windowSeconds)}: ${formatSummaryWindow(snapshot.secondary, now)}`,
+    );
+  }
+
+  if (windows.length === 0) {
+    return "usage unavailable";
+  }
+  return windows.join(" | ");
 }
 
 export function renderStatusLines(snapshot: StatusSnapshot, now = Date.now()): string[] {

@@ -8,6 +8,7 @@ import {
   formatWindow,
   renderProgressBar,
   renderStatusLines,
+  renderUsageSummary,
   renderWindowLine,
 } from "./status.ts";
 
@@ -60,4 +61,18 @@ test("renderWindowLine and renderStatusLines produce the expected layout", () =>
     "5h limit    : [████████████████████] 100% left (resets now)",
     "weekly limit: [██████████████████  ] 91% left (resets in 1h)",
   ]);
+});
+
+test("renderUsageSummary produces compact account-list text", () => {
+  const summary = renderUsageSummary(
+    {
+      primary: { usedPercent: 20, windowSeconds: 18_000, resetsAt: 3_601_000 },
+      secondary: { usedPercent: 9, windowSeconds: 604_800, resetsAt: 1_000 },
+      fetchedAt: 1_000,
+    },
+    1_000,
+  );
+
+  assert.equal(summary, "5h: 80% left, resets in 1h | weekly: 91% left, resets now");
+  assert.equal(renderUsageSummary({ fetchedAt: 1_000 }, 1_000), "usage unavailable");
 });
