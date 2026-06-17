@@ -5,7 +5,7 @@ import test from "node:test";
 
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
-import { renderGraphvizToSvg, renderMarkdown } from "./mb-preview.ts";
+import { prepareMarkdown, renderDocument, renderGraphvizToSvg } from "./mb-preview.ts";
 
 class FakeGraphvizChild extends EventEmitter {
   public readonly stdin = new PassThrough();
@@ -23,10 +23,10 @@ class FakeGraphvizChild extends EventEmitter {
   }
 }
 
-test("renderMarkdown renders graphviz fences through the graphviz renderer", async () => {
+test("prepareMarkdown pre-renders graphviz fences and leaves browser rendering to marked", async () => {
   const calls: string[] = [];
 
-  const rendered = await renderMarkdown(
+  const prepared = await prepareMarkdown(
     "before\n\n```dot\ndigraph { a -> b }\n```\n\nafter",
     async (dot) => {
       calls.push(dot);
@@ -35,73 +35,77 @@ test("renderMarkdown renders graphviz fences through the graphviz renderer", asy
   );
 
   assert.deepEqual(calls, ["digraph { a -> b }"]);
-  assert.equal(rendered.hasMermaid, false);
-  assert.equal(rendered.hasGraphviz, true);
-  assert.equal(rendered.hasDiagrams, true);
-  assert.match(rendered.html, /<p>before<\/p>/u);
-  assert.match(rendered.html, /<figure class="diagram diagram-graphviz">/u);
-  assert.match(rendered.html, /<div class="diagram-card">/u);
-  assert.match(rendered.html, /<div class="diagram-toolbar-group" aria-label="View controls">/u);
-  assert.match(rendered.html, /<div class="diagram-viewport"/u);
-  assert.match(rendered.html, /data-diagram-action="fit-width"/u);
-  assert.match(rendered.html, /data-diagram-action="fullscreen"/u);
-  assert.match(rendered.html, /data-diagram-action="download-svg"/u);
-  assert.match(rendered.html, /data-diagram-action="download-png"/u);
-  assert.match(rendered.html, /data-diagram-action="copy-source"/u);
-  assert.doesNotMatch(rendered.html, /data-diagram-action="actual-size"/u);
-  assert.match(
-    rendered.html,
-    /<template data-graphviz-svg>&lt;svg&gt;diagram&lt;\/svg&gt;<\/template>/u,
-  );
-  assert.match(rendered.html, /<details class="diagram-source">/u);
-  assert.match(rendered.html, /<summary>Source<\/summary>/u);
-  assert.match(rendered.html, /<code class="language-dot">digraph \{ a -&gt; b \}<\/code>/u);
-  assert.match(rendered.html, /<p>after<\/p>/u);
+  assert.equal(prepared.hasMermaid, false);
+  assert.equal(prepared.hasGraphviz, true);
+  assert.equal(prepared.hasDiagrams, true);
+  assert.match(prepared.markdown, /```mb-preview-graphviz MB_PREVIEW_GRAPHVIZ_0 dot\n/u);
+  assert.match(prepared.markdown, /digraph \{ a -> b \}/u);
+  assert.deepEqual(prepared.graphvizBlocks, [
+    {
+      id: "MB_PREVIEW_GRAPHVIZ_0",
+      language: "dot",
+      source: "digraph { a -> b }",
+      result: { ok: true, svg: "<svg>diagram</svg>" },
+    },
+  ]);
 });
 
-test("renderMarkdown falls back to an escaped code block when graphviz rendering fails", async () => {
-  const rendered = await renderMarkdown("```graphviz\ndigraph { a -> }\n```", async () => ({
+test("prepareMarkdown stores graphviz failures for browser-side error rendering", async () => {
+  const prepared = await prepareMarkdown("```graphviz\ndigraph { a -> }\n```", async () => ({
     ok: false,
     error: "syntax <bad>",
   }));
 
-  assert.match(rendered.html, /Graphviz render failed: syntax &lt;bad&gt;/u);
-  assert.match(rendered.html, /<code class="language-dot">digraph \{ a -&gt; \}<\/code>/u);
-  assert.equal(rendered.hasGraphviz, false);
-  assert.equal(rendered.hasDiagrams, false);
+  assert.equal(prepared.hasGraphviz, false);
+  assert.equal(prepared.hasDiagrams, false);
+  assert.equal(prepared.graphvizBlocks[0]?.result.ok, false);
+  assert.deepEqual(prepared.graphvizBlocks[0], {
+    id: "MB_PREVIEW_GRAPHVIZ_0",
+    language: "graphviz",
+    source: "digraph { a -> }",
+    result: { ok: false, error: "syntax <bad>" },
+  });
 });
 
-test("renderMarkdown wraps mermaid fences in the shared diagram viewport", async () => {
-  const rendered = await renderMarkdown("```mermaid\ngraph TD; A-->B\n```", async () => {
+test("prepareMarkdown detects mermaid fences without invoking graphviz", async () => {
+  const markdown = "```mermaid\ngraph TD; A-->B\n```";
+  const prepared = await prepareMarkdown(markdown, async () => {
     throw new Error("graphviz renderer should not be called");
   });
 
-  assert.equal(rendered.hasMermaid, true);
-  assert.equal(rendered.hasGraphviz, false);
-  assert.equal(rendered.hasDiagrams, true);
-  assert.match(rendered.html, /<figure class="diagram diagram-mermaid">/u);
-  assert.match(rendered.html, /<div class="diagram-card">/u);
-  assert.match(rendered.html, /<div class="diagram-toolbar-group" aria-label="Zoom controls">/u);
-  assert.match(rendered.html, /<div class="diagram-viewport"/u);
-  assert.match(rendered.html, /data-diagram-action="fit-width"/u);
-  assert.match(rendered.html, /data-diagram-action="fullscreen"/u);
-  assert.match(rendered.html, /data-diagram-action="download-svg"/u);
-  assert.match(rendered.html, /data-diagram-action="download-png"/u);
-  assert.match(rendered.html, /data-diagram-action="copy-source"/u);
-  assert.doesNotMatch(rendered.html, /data-diagram-action="actual-size"/u);
-  assert.match(rendered.html, /<pre class="mermaid">graph TD; A--&gt;B<\/pre>/u);
-  assert.match(rendered.html, /<details class="diagram-source">/u);
-  assert.match(rendered.html, /<code class="language-mermaid">graph TD; A--&gt;B<\/code>/u);
+  assert.equal(prepared.markdown, markdown);
+  assert.equal(prepared.hasMermaid, true);
+  assert.equal(prepared.hasGraphviz, false);
+  assert.equal(prepared.hasDiagrams, true);
+  assert.deepEqual(prepared.graphvizBlocks, []);
 });
 
-test("renderMarkdown leaves normal code fences on marked's default renderer", async () => {
-  const rendered = await renderMarkdown("```ts\nconst x = 1;\n```", async () => {
+test("prepareMarkdown preserves normal code fence info strings", async () => {
+  const markdown = "```ts title=example.ts\nconst x = 1;\n```";
+  const prepared = await prepareMarkdown(markdown, async () => {
     throw new Error("graphviz renderer should not be called");
   });
 
-  assert.match(rendered.html, /<code class="language-ts">const x = 1;\n<\/code>/u);
-  assert.equal(rendered.hasGraphviz, false);
-  assert.equal(rendered.hasDiagrams, false);
+  assert.equal(prepared.markdown, markdown);
+  assert.equal(prepared.hasDiagrams, false);
+});
+
+test("renderDocument embeds marked, DOMPurify, and escaped preview data", async () => {
+  const prepared = await prepareMarkdown(
+    "# Hello\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n```dot\ndigraph { a -> b }\n```",
+    async () => ({ ok: true, svg: "<svg><script>alert(1)</script></svg>" }),
+  );
+
+  const html = await renderDocument(prepared, "unsafe </title>", null);
+
+  assert.match(html, /<title>unsafe &lt;\/title&gt;<\/title>/u);
+  assert.match(html, /<main id="mb-preview-root">/u);
+  assert.match(html, /<script type="application\/json" id="mb-preview-data">/u);
+  assert.match(html, /new markedApi\.Renderer\(\)/u);
+  assert.match(html, /DOMPurify\.sanitize/u);
+  assert.match(html, /"markdown":"# Hello/u);
+  assert.match(html, /\\u003Cscript\\u003Ealert\(1\)\\u003C\/script\\u003E/u);
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/u);
 });
 
 test("renderGraphvizToSvg spawns dot and writes dot input to stdin", async () => {

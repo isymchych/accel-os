@@ -6,7 +6,6 @@ import path from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { marked, Renderer, type Tokens } from "marked";
 
 interface PreviewArgs {
   readonly inputPath: string | null;
@@ -17,11 +16,19 @@ interface PreviewArgs {
   readonly help: boolean;
 }
 
-interface RenderedMarkdown {
-  readonly html: string;
+interface PreparedMarkdown {
+  readonly markdown: string;
   readonly hasMermaid: boolean;
   readonly hasGraphviz: boolean;
   readonly hasDiagrams: boolean;
+  readonly graphvizBlocks: readonly BrowserGraphvizBlock[];
+}
+
+interface BrowserGraphvizBlock {
+  readonly id: string;
+  readonly language: string;
+  readonly source: string;
+  readonly result: GraphvizRenderResult;
 }
 
 interface GraphvizRenderSuccess {
@@ -76,15 +83,8 @@ export async function main(): Promise<void> {
   const title = args.title ?? sourceName;
   const baseHref = args.baseDir === null ? null : baseHrefForDirectory(args.baseDir);
   const markdown = await readInput(args.inputPath);
-  const rendered = await renderMarkdown(markdown);
-  const html = await renderDocument(
-    rendered.html,
-    rendered.hasMermaid,
-    rendered.hasGraphviz,
-    rendered.hasDiagrams,
-    title,
-    baseHref,
-  );
+  const prepared = await prepareMarkdown(markdown);
+  const html = await renderDocument(prepared, title, baseHref);
   const outputPath = args.outputPath ?? (await defaultOutputPath(args.title ?? sourceName));
 
   await mkdir(path.dirname(outputPath), { recursive: true });
@@ -158,61 +158,139 @@ async function readStream(stream: NodeJS.ReadableStream): Promise<string> {
   return data;
 }
 
-export async function renderMarkdown(
+export async function prepareMarkdown(
   markdown: string,
   renderGraphviz: GraphvizRenderer = renderGraphvizToSvg,
-): Promise<RenderedMarkdown> {
+): Promise<PreparedMarkdown> {
   let hasMermaid = false;
   let hasGraphviz = false;
-  let hasDiagrams = false;
-  const graphvizBlocks: Array<{ readonly placeholder: string; readonly dot: string }> = [];
-  const renderer = new Renderer();
-  const defaultCodeRenderer = renderer.code.bind(renderer);
-
-  renderer.code = (token: Tokens.Code): string => {
-    const language = token.lang?.trim().split(/\s+/, 1)[0]?.toLowerCase();
-
+  const graphvizSources: Array<{ readonly id: string; readonly language: string; readonly source: string }> = [];
+  const preparedMarkdown = replaceGraphvizFences(markdown, graphvizSources, (language) => {
     if (language === "mermaid") {
       hasMermaid = true;
-      hasDiagrams = true;
-      return renderDiagramViewport(
-        "mermaid",
-        `<pre class="mermaid">${escapeHtml(token.text)}</pre>`,
-        token.text,
-      );
     }
+  });
+  const graphvizBlocks: BrowserGraphvizBlock[] = [];
 
-    if (language !== undefined && graphvizLanguages.has(language)) {
-      const placeholder = `<!--MB_PREVIEW_GRAPHVIZ_${graphvizBlocks.length}-->`;
-      graphvizBlocks.push({ placeholder, dot: token.text });
-      return placeholder;
-    }
-
-    return defaultCodeRenderer(token);
-  };
-
-  let html = marked(markdown, { async: false, gfm: true, renderer });
-
-  for (const block of graphvizBlocks) {
-    const rendered = await renderGraphviz(block.dot);
+  for (const block of graphvizSources) {
+    const rendered = await renderGraphviz(block.source);
     if (rendered.ok) {
       hasGraphviz = true;
-      hasDiagrams = true;
     }
-    html = html.replace(
-      block.placeholder,
-      rendered.ok
-        ? renderGraphvizSvg(rendered.svg, block.dot)
-        : renderGraphvizFailure(block.dot, rendered.error),
-    );
+    graphvizBlocks.push({ ...block, result: rendered });
   }
 
   return {
-    html,
+    markdown: preparedMarkdown,
     hasMermaid,
     hasGraphviz,
-    hasDiagrams,
+    hasDiagrams: hasMermaid || hasGraphviz,
+    graphvizBlocks,
   };
+}
+
+interface FenceOpening {
+  readonly indent: string;
+  readonly fence: string;
+  readonly language: string | null;
+  readonly rawInfo: string;
+  readonly lineEnding: string;
+}
+
+function replaceGraphvizFences(
+  markdown: string,
+  graphvizSources: Array<{ readonly id: string; readonly language: string; readonly source: string }>,
+  observeLanguage: (language: string | null) => void,
+): string {
+  const lines = markdown.split(/(?<=\n)/u);
+  const output: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const opening = parseFenceOpening(lines[index]);
+    if (opening === null) {
+      output.push(lines[index]);
+      continue;
+    }
+
+    observeLanguage(opening.language);
+    const contentLines: string[] = [];
+    let closingLine: string | null = null;
+
+    index += 1;
+    for (; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (isFenceClosing(line, opening.fence)) {
+        closingLine = line;
+        break;
+      }
+      contentLines.push(line);
+    }
+
+    if (opening.language === null || !graphvizLanguages.has(opening.language)) {
+      output.push(renderOriginalFence(opening, contentLines, closingLine));
+      continue;
+    }
+
+    const id = `MB_PREVIEW_GRAPHVIZ_${graphvizSources.length}`;
+    const source = stripSingleTrailingLineEnding(contentLines.join(""));
+    graphvizSources.push({ id, language: opening.language, source });
+    output.push(renderPreparedGraphvizFence(opening, id, contentLines, closingLine));
+  }
+
+  return output.join("");
+}
+
+function parseFenceOpening(line: string): FenceOpening | null {
+  const match = /^( {0,3})(`{3,}|~{3,})([^\r\n]*)(\r?\n)?$/u.exec(line);
+  if (match === null) {
+    return null;
+  }
+
+  const [, indent, fence, rawInfo, lineEnding = ""] = match;
+  if (fence.startsWith("`") && rawInfo.includes("`")) {
+    return null;
+  }
+
+  const info = rawInfo.trim();
+  const [language] = info.split(/\s+/, 1);
+  return {
+    indent,
+    fence,
+    language: language === undefined || language === "" ? null : language.toLowerCase(),
+    rawInfo,
+    lineEnding,
+  };
+}
+
+function isFenceClosing(line: string, openingFence: string): boolean {
+  const marker = escapeRegExp(openingFence[0]);
+  const minLength = openingFence.length;
+  return new RegExp(`^ {0,3}${marker}{${minLength},}[ \t]*(?:\r?\n)?$`, "u").test(line);
+}
+
+function renderOriginalFence(
+  opening: FenceOpening,
+  contentLines: readonly string[],
+  closingLine: string | null,
+): string {
+  return `${opening.indent}${opening.fence}${opening.rawInfo}${opening.lineEnding}${contentLines.join("")}${closingLine ?? ""}`;
+}
+
+function renderPreparedGraphvizFence(
+  opening: FenceOpening,
+  id: string,
+  contentLines: readonly string[],
+  closingLine: string | null,
+): string {
+  return `${opening.indent}${opening.fence}mb-preview-graphviz ${id} ${opening.language ?? "dot"}${opening.lineEnding}${contentLines.join("")}${closingLine ?? ""}`;
+}
+
+function stripSingleTrailingLineEnding(value: string): string {
+  return value.replace(/\r?\n$/u, "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 export async function renderGraphvizToSvg(
@@ -288,69 +366,17 @@ export async function renderGraphvizToSvg(
   });
 }
 
-function renderGraphvizSvg(svg: string, source: string): string {
-  return renderDiagramViewport(
-    "graphviz",
-    `<template data-graphviz-svg>${escapeHtml(svg)}</template><noscript>Enable JavaScript to render the Graphviz SVG preview.</noscript>`,
-    source,
-  );
-}
-
-function renderDiagramViewport(
-  kind: "graphviz" | "mermaid",
-  contentHtml: string,
-  source: string,
-): string {
-  const label = kind === "graphviz" ? "Graphviz" : "Mermaid";
-  const language = kind === "graphviz" ? "dot" : "mermaid";
-  return `<figure class="diagram diagram-${kind}">
-<div class="diagram-card">
-<div class="diagram-toolbar" aria-label="${label} diagram controls">
-<div class="diagram-toolbar-group" aria-label="View controls">
-<button type="button" data-diagram-action="fit">Fit</button>
-<button type="button" data-diagram-action="fit-width">Fit width</button>
-</div>
-<div class="diagram-toolbar-group" aria-label="Zoom controls">
-<button type="button" data-diagram-action="zoom-out" aria-label="Zoom out">−</button>
-<span class="diagram-zoom" aria-label="zoom level">100%</span>
-<button type="button" data-diagram-action="zoom-in" aria-label="Zoom in">+</button>
-</div>
-<div class="diagram-toolbar-spacer"></div>
-<div class="diagram-toolbar-group" aria-label="Export controls">
-<button type="button" data-diagram-action="download-svg">Download SVG</button>
-<button type="button" data-diagram-action="download-png">Download PNG</button>
-<button type="button" data-diagram-action="fullscreen">Fullscreen</button>
-</div>
-</div>
-<div class="diagram-viewport" tabindex="0" role="region" aria-label="${label} diagram viewport">
-<div class="diagram-canvas"><div class="diagram-content">${contentHtml}</div></div>
-</div>
-<details class="diagram-source">
-<summary>Source</summary>
-<button type="button" data-diagram-action="copy-source">Copy source</button>
-<pre><code class="language-${language}">${escapeHtml(source)}</code></pre>
-</details>
-</div>
-</figure>\n`;
-}
-
-function renderGraphvizFailure(dot: string, error: string): string {
-  return `<figure class="graphviz-error">
-<figcaption>Graphviz render failed: ${escapeHtml(error)}</figcaption>
-<pre><code class="language-dot">${escapeHtml(dot)}</code></pre>
-</figure>\n`;
-}
-
-async function renderDocument(
-  bodyHtml: string,
-  hasMermaid: boolean,
-  hasGraphviz: boolean,
-  hasDiagrams: boolean,
+export async function renderDocument(
+  prepared: PreparedMarkdown,
   title: string,
   baseHref: string | null,
 ): Promise<string> {
-  const diagramScript = hasDiagrams ? await diagramInitializerScript(hasMermaid, hasGraphviz) : "";
+  const previewScript = await previewInitializerScript(prepared.hasMermaid);
   const baseElement = baseHref === null ? "" : `  <base href="${escapeHtml(baseHref)}">\n`;
+  const previewData = jsonScriptContent({
+    graphvizBlocks: prepared.graphvizBlocks,
+    markdown: prepared.markdown,
+  });
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -488,12 +514,145 @@ ${baseElement}  <title>${escapeHtml(title)}</title>
   </style>
 </head>
 <body>
-${bodyHtml}
-${diagramScript}
+<main id="mb-preview-root">
+  <noscript>Enable JavaScript to render this Markdown preview.</noscript>
+</main>
+<script type="application/json" id="mb-preview-data">${previewData}</script>
+${previewScript}
 </body>
 </html>
 `;
 }
+
+const previewRendererJs = `(() => {
+  const dataElement = document.getElementById("mb-preview-data");
+  const root = document.getElementById("mb-preview-root");
+
+  const fail = (message) => {
+    if (root !== null) {
+      root.textContent = message;
+    }
+  };
+
+  if (dataElement === null || root === null) {
+    fail("Preview data is missing.");
+    return;
+  }
+
+  if (globalThis.marked === undefined) {
+    fail("Marked renderer is unavailable.");
+    return;
+  }
+
+  if (globalThis.DOMPurify === undefined) {
+    fail("HTML sanitizer is unavailable.");
+    return;
+  }
+
+  const previewData = JSON.parse(dataElement.textContent || "{}");
+  const graphvizBlocks = new Map(
+    (Array.isArray(previewData.graphvizBlocks) ? previewData.graphvizBlocks : []).map((block) => [block.id, block]),
+  );
+  globalThis.mbPreviewGraphvizBlocks = graphvizBlocks;
+
+  const markedApi = globalThis.marked;
+  const markedFn = typeof markedApi.marked === "function" ? markedApi.marked : markedApi;
+  const renderer = new markedApi.Renderer();
+  const defaultCodeRenderer = renderer.code.bind(renderer);
+
+  const escapeHtml = (value) => String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+  const codeLanguage = (token) => {
+    const language = token.lang?.trim().split(/\\s+/, 1)[0]?.toLowerCase();
+    return language === undefined || language === "" ? null : language;
+  };
+
+  const graphvizBlockId = (token) => {
+    const parts = token.lang?.trim().split(/\\s+/) ?? [];
+    return parts[0] === "mb-preview-graphviz" ? parts[1] ?? null : null;
+  };
+
+  const renderDiagramViewport = (kind, contentHtml, source, sourceLanguage) => {
+    const label = kind === "graphviz" ? "Graphviz" : "Mermaid";
+    return '<figure class="diagram diagram-' + kind + '">\\n'
+      + '<div class="diagram-card">\\n'
+      + '<div class="diagram-toolbar" aria-label="' + label + ' diagram controls">\\n'
+      + '<div class="diagram-toolbar-group" aria-label="View controls">\\n'
+      + '<button type="button" data-diagram-action="fit">Fit</button>\\n'
+      + '<button type="button" data-diagram-action="fit-width">Fit width</button>\\n'
+      + '</div>\\n'
+      + '<div class="diagram-toolbar-group" aria-label="Zoom controls">\\n'
+      + '<button type="button" data-diagram-action="zoom-out" aria-label="Zoom out">−</button>\\n'
+      + '<span class="diagram-zoom" aria-label="zoom level">100%</span>\\n'
+      + '<button type="button" data-diagram-action="zoom-in" aria-label="Zoom in">+</button>\\n'
+      + '</div>\\n'
+      + '<div class="diagram-toolbar-spacer"></div>\\n'
+      + '<div class="diagram-toolbar-group" aria-label="Export controls">\\n'
+      + '<button type="button" data-diagram-action="download-svg">Download SVG</button>\\n'
+      + '<button type="button" data-diagram-action="download-png">Download PNG</button>\\n'
+      + '<button type="button" data-diagram-action="fullscreen">Fullscreen</button>\\n'
+      + '</div>\\n'
+      + '</div>\\n'
+      + '<div class="diagram-viewport" tabindex="0" role="region" aria-label="' + label + ' diagram viewport">\\n'
+      + '<div class="diagram-canvas"><div class="diagram-content">' + contentHtml + '</div></div>\\n'
+      + '</div>\\n'
+      + '<details class="diagram-source">\\n'
+      + '<summary>Source</summary>\\n'
+      + '<button type="button" data-diagram-action="copy-source">Copy source</button>\\n'
+      + '<pre><code class="language-' + escapeHtml(sourceLanguage) + '">' + escapeHtml(source) + '</code></pre>\\n'
+      + '</details>\\n'
+      + '</div>\\n'
+      + '</figure>\\n';
+  };
+
+  const renderGraphvizFailure = (source, error) => '<figure class="graphviz-error">\\n'
+    + '<figcaption>Graphviz render failed: ' + escapeHtml(error) + '</figcaption>\\n'
+    + '<pre><code class="language-dot">' + escapeHtml(source) + '</code></pre>\\n'
+    + '</figure>\\n';
+
+  renderer.code = (token) => {
+    const language = codeLanguage(token);
+
+    if (language === "mermaid") {
+      return renderDiagramViewport(
+        "mermaid",
+        '<pre class="mermaid">' + escapeHtml(token.text) + '</pre>',
+        token.text,
+        "mermaid",
+      );
+    }
+
+    if (language === "mb-preview-graphviz") {
+      const id = graphvizBlockId(token);
+      const block = id === null ? undefined : graphvizBlocks.get(id);
+      if (block === undefined) {
+        return renderGraphvizFailure(token.text, "missing pre-rendered Graphviz payload");
+      }
+      if (block.result.ok !== true) {
+        return renderGraphvizFailure(block.source, block.result.error);
+      }
+      return renderDiagramViewport(
+        "graphviz",
+        '<div data-graphviz-svg="' + escapeHtml(block.id) + '"></div><noscript>Enable JavaScript to render the Graphviz SVG preview.</noscript>',
+        block.source,
+        block.language,
+      );
+    }
+
+    return defaultCodeRenderer(token);
+  };
+
+  const rawHtml = markedFn(previewData.markdown ?? "", { async: false, gfm: true, renderer });
+  root.innerHTML = globalThis.DOMPurify.sanitize(rawHtml, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ["script", "style", "iframe", "object", "embed"],
+    FORBID_ATTR: ["style"],
+  });
+})();`;
 
 const diagramControllerJs = `(() => {
   const absoluteMinScale = 0.05;
@@ -509,7 +668,7 @@ const diagramControllerJs = `(() => {
       normalizeMermaidSvgSize();
     }
 
-    renderGraphvizTemplates();
+    renderGraphvizSvgs();
 
     let diagramIndex = 1;
     for (const diagram of document.querySelectorAll(".diagram")) {
@@ -519,10 +678,19 @@ const diagramControllerJs = `(() => {
     }
   };
 
-  const renderGraphvizTemplates = () => {
-    for (const template of document.querySelectorAll("template[data-graphviz-svg]")) {
-      const content = template.closest(".diagram-content");
+  const renderGraphvizSvgs = () => {
+    const graphvizBlocks = globalThis.mbPreviewGraphvizBlocks;
+
+    for (const target of document.querySelectorAll("[data-graphviz-svg]")) {
+      const content = target.closest(".diagram-content");
       if (content === null) {
+        continue;
+      }
+
+      const blockId = target.getAttribute("data-graphviz-svg");
+      const block = graphvizBlocks instanceof Map && blockId !== null ? graphvizBlocks.get(blockId) : undefined;
+      if (block === undefined || block.result.ok !== true) {
+        content.textContent = "Graphviz SVG payload is unavailable.";
         continue;
       }
 
@@ -531,7 +699,7 @@ const diagramControllerJs = `(() => {
         continue;
       }
 
-      const cleanSvg = globalThis.DOMPurify.sanitize(template.content.textContent ?? "", {
+      const cleanSvg = globalThis.DOMPurify.sanitize(block.result.svg, {
         USE_PROFILES: { svg: true, svgFilters: true },
         FORBID_TAGS: ["foreignObject", "style"],
         FORBID_ATTR: ["style"],
@@ -961,20 +1129,19 @@ const diagramControllerJs = `(() => {
   });
 })();`;
 
-async function diagramInitializerScript(
-  hasMermaid: boolean,
-  hasGraphviz: boolean,
-): Promise<string> {
+async function previewInitializerScript(hasMermaid: boolean): Promise<string> {
+  const markedPackagePath = fileURLToPath(import.meta.resolve("marked/package.json"));
+  const markedJs = await readFile(path.join(path.dirname(markedPackagePath), "lib/marked.umd.js"), "utf8");
+  const domPurifyJs = await readFile(fileURLToPath(import.meta.resolve("dompurify/dist/purify.min.js")), "utf8");
   const mermaidJs = hasMermaid
     ? await readFile(fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min.js")), "utf8")
     : "";
-  const domPurifyJs = hasGraphviz
-    ? await readFile(fileURLToPath(import.meta.resolve("dompurify/dist/purify.min.js")), "utf8")
-    : "";
 
   return `<script>
-${inlineScriptContent(`${mermaidJs}
+${inlineScriptContent(`${markedJs}
 ${domPurifyJs}
+${mermaidJs}
+${previewRendererJs}
 ${diagramControllerJs}`)}
 </script>`;
 }
@@ -1024,6 +1191,15 @@ function escapeHtml(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function jsonScriptContent(value: unknown): string {
+  return JSON.stringify(value)
+    .replaceAll("&", "\\u0026")
+    .replaceAll("<", "\\u003C")
+    .replaceAll(">", "\\u003E")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
 }
 
 function inlineScriptContent(value: string): string {

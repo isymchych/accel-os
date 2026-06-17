@@ -25,3 +25,7 @@ profile home4kpc {
     output eDP-1 disable
     output "Iiyama North America PL4071UH 1143470300509" enable mode 3840x2160@60 scale 2
 }
+profile office4k {
+    output eDP-1 disable
+    output "Dell Inc. DELL P2721Q 5765HH3" enable mode 3840x2160@60 scale 1.5
+}
