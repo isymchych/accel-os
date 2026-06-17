@@ -36,12 +36,26 @@ test("renderMarkdown renders graphviz fences through the graphviz renderer", asy
 
   assert.deepEqual(calls, ["digraph { a -> b }"]);
   assert.equal(rendered.hasMermaid, false);
+  assert.equal(rendered.hasGraphviz, true);
+  assert.equal(rendered.hasDiagrams, true);
   assert.match(rendered.html, /<p>before<\/p>/u);
-  assert.match(rendered.html, /<figure class="graphviz-diagram">/u);
+  assert.match(rendered.html, /<figure class="diagram diagram-graphviz">/u);
+  assert.match(rendered.html, /<div class="diagram-card">/u);
+  assert.match(rendered.html, /<div class="diagram-toolbar-group" aria-label="View controls">/u);
+  assert.match(rendered.html, /<div class="diagram-viewport"/u);
+  assert.match(rendered.html, /data-diagram-action="fit-width"/u);
+  assert.match(rendered.html, /data-diagram-action="fullscreen"/u);
+  assert.match(rendered.html, /data-diagram-action="download-svg"/u);
+  assert.match(rendered.html, /data-diagram-action="download-png"/u);
+  assert.match(rendered.html, /data-diagram-action="copy-source"/u);
+  assert.doesNotMatch(rendered.html, /data-diagram-action="actual-size"/u);
   assert.match(
     rendered.html,
-    new RegExp(Buffer.from("<svg>diagram</svg>", "utf8").toString("base64"), "u"),
+    /<template data-graphviz-svg>&lt;svg&gt;diagram&lt;\/svg&gt;<\/template>/u,
   );
+  assert.match(rendered.html, /<details class="diagram-source">/u);
+  assert.match(rendered.html, /<summary>Source<\/summary>/u);
+  assert.match(rendered.html, /<code class="language-dot">digraph \{ a -&gt; b \}<\/code>/u);
   assert.match(rendered.html, /<p>after<\/p>/u);
 });
 
@@ -53,6 +67,31 @@ test("renderMarkdown falls back to an escaped code block when graphviz rendering
 
   assert.match(rendered.html, /Graphviz render failed: syntax &lt;bad&gt;/u);
   assert.match(rendered.html, /<code class="language-dot">digraph \{ a -&gt; \}<\/code>/u);
+  assert.equal(rendered.hasGraphviz, false);
+  assert.equal(rendered.hasDiagrams, false);
+});
+
+test("renderMarkdown wraps mermaid fences in the shared diagram viewport", async () => {
+  const rendered = await renderMarkdown("```mermaid\ngraph TD; A-->B\n```", async () => {
+    throw new Error("graphviz renderer should not be called");
+  });
+
+  assert.equal(rendered.hasMermaid, true);
+  assert.equal(rendered.hasGraphviz, false);
+  assert.equal(rendered.hasDiagrams, true);
+  assert.match(rendered.html, /<figure class="diagram diagram-mermaid">/u);
+  assert.match(rendered.html, /<div class="diagram-card">/u);
+  assert.match(rendered.html, /<div class="diagram-toolbar-group" aria-label="Zoom controls">/u);
+  assert.match(rendered.html, /<div class="diagram-viewport"/u);
+  assert.match(rendered.html, /data-diagram-action="fit-width"/u);
+  assert.match(rendered.html, /data-diagram-action="fullscreen"/u);
+  assert.match(rendered.html, /data-diagram-action="download-svg"/u);
+  assert.match(rendered.html, /data-diagram-action="download-png"/u);
+  assert.match(rendered.html, /data-diagram-action="copy-source"/u);
+  assert.doesNotMatch(rendered.html, /data-diagram-action="actual-size"/u);
+  assert.match(rendered.html, /<pre class="mermaid">graph TD; A--&gt;B<\/pre>/u);
+  assert.match(rendered.html, /<details class="diagram-source">/u);
+  assert.match(rendered.html, /<code class="language-mermaid">graph TD; A--&gt;B<\/code>/u);
 });
 
 test("renderMarkdown leaves normal code fences on marked's default renderer", async () => {
@@ -61,6 +100,8 @@ test("renderMarkdown leaves normal code fences on marked's default renderer", as
   });
 
   assert.match(rendered.html, /<code class="language-ts">const x = 1;\n<\/code>/u);
+  assert.equal(rendered.hasGraphviz, false);
+  assert.equal(rendered.hasDiagrams, false);
 });
 
 test("renderGraphvizToSvg spawns dot and writes dot input to stdin", async () => {

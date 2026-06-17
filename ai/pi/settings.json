@@ -1,6 +1,6 @@
 {
   "theme": "light",
-  "lastChangelogVersion": "0.79.4",
+  "lastChangelogVersion": "0.79.6",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
@@ -10,7 +10,7 @@
     "../skills"
   ],
   "packages": [
-    "./node_modules/pi-mcp-adapter"
+    "../../node_modules/pi-mcp-adapter"
   ],
   "extensions": [
     "./extensions/apply-patch/index.ts",

@@ -3,8 +3,6 @@
     "chrome-devtools": {
       "command": "chrome-devtools-mcp",
       "args": [
-        "--browserUrl",
-        "http://127.0.0.1:9222",
         "--wsEndpoint",
         "ws://127.0.0.1:9222/devtools/browser",
         "--no-performance-crux",
@@ -14,8 +12,9 @@
         "--no-category-performance"
       ],
       "env": {
-        "PATH": "${ACCEL_OS}/ai/pi/node_modules/.bin:${PATH}"
-      }
+        "PATH": "${ACCEL_OS}/node_modules/.bin:${PATH}"
+      },
+      "directTools": false
     }
   }
 }

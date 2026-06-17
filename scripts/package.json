@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "dompurify": "^3.4.10",
     "marked": "^15.0.12",
     "mermaid": "^11.15.0"
   }
