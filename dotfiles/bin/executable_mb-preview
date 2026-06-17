@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${ACCEL_OS:?ACCEL_OS must point at repo root}"
+exec node "$ACCEL_OS/scripts/scripts/mb-preview.ts" "$@"

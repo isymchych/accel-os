@@ -36,7 +36,7 @@ if (accelOs === undefined || accelOs.length === 0) {
 }
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
-const accountUsageTimeoutMs = 5000;
+const accountUsageTimeoutMs = 20000;
 
 const defaultToolNames = [
   "bash",

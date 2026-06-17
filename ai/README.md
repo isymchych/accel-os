@@ -8,7 +8,12 @@
 * custom summary?
 * shell wrapper tool to support cwd
 * review from DDD point of view
-* Workflow tool / chain of subagent calls - https://github.com/nicobailon/pi-subagents
+* Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation 
+  - https://github.com/nicobailon/pi-subagents
+  - https://github.com/ruizrica/agent-pi
+  - https://github.com/juicesharp/rpiv-mono
+* ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
+* setup terminal multiplexer - as a part of ai?
 
 add to sysprompt:
 >  "use subagents to parallellize or manage context"
@@ -31,9 +36,6 @@ add to sysprompt:
 * I don't need exact locations since it triggers redundant file reads: 
 > I’m grabbing the final line references for the changed renderer so the report points to exact locations.  
 
-
-* ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
-* setup terminal multiplexer - as a part of ai?
 
 DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> PLAN -> EXECUTE
 * decisions must be documented - ADR
@@ -116,6 +118,7 @@ Makes targeted fixes based on evidence
 * cognitive offloading vs cognitive surrender
 * Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness. 
 * Can we make requirements less stupid? what alternative approaches that unlocks?
+* clone git repository into temp dir and explore. **SECURITY?**
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
