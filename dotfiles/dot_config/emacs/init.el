@@ -399,12 +399,12 @@ narrowed."
   (ansi-color-apply-on-region (point-min) (point-max)))
 
 (defun mb/eslint-fix-file ()
-  "Fix some issues in current file using `eslint --fix'."
+  "Fix some issues in current file using `npx eslint --fix'."
   (interactive)
-  (message "mb: eslint --fix this file")
+  (message "mb: npx eslint --fix this file")
   (when (buffer-modified-p)
     (save-buffer))
-  (shell-command (concat "eslint --fix " (buffer-file-name)))
+  (shell-command (format "npx eslint --fix %s" (shell-quote-argument (buffer-file-name))))
   ;; revert buffer to see changes in FS
   (revert-buffer t t))
 
@@ -426,12 +426,6 @@ narrowed."
       (save-buffers-kill-emacs)
     (delete-window)))
 
-
-(defun mb/js-to-json ()
-  "Convert JS value into JSON."
-  (interactive)
-  (save-excursion
-    (shell-command-on-region (mark) (point) "node-transform 'x => JSON.stringify(eval(`(${x})`), null, 2)'" (buffer-name) t "*MB ERROR BUFFER*" t)))
 
 (defun mb/get-selected-text ()
   "Return the currently selected text in the current buffer."

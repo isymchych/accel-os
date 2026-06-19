@@ -5,7 +5,6 @@ model_reasoning_effort = "medium"
 personality = "pragmatic"
 network_access = true
 web_search = 'cached' # OpenAI-maintained cache
-notify = ["ai-notify"]
 suppress_unstable_features_warning = true
 check_for_update_on_startup = false
 

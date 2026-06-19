@@ -27,7 +27,6 @@
 ## Coding Style & Naming Conventions
 - `.editorconfig` enforces UTF-8, LF, and two-space indentation; adhere in all languages.
 - Bash scripts start with `#!/usr/bin/env bash` and `set -euo pipefail`; refactor shared logic into helpers.
-- Node shims stick to CommonJS; extend `bin/.bin-utils.js` instead of cloning lookup logic.
 - Name executable scripts `executable_<tool>` so chezmoi marks them executable on apply.
 - Keep template variables lowercase snake_case and derive host details from `.chezmoidata`.
 
