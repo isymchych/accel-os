@@ -1,6 +1,6 @@
 {
-  "theme": "light",
-  "lastChangelogVersion": "0.79.6",
+  "theme": "light/dark",
+  "lastChangelogVersion": "0.79.7",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
@@ -24,7 +24,6 @@
     "./extensions/preview/index.ts",
     "./extensions/response-status/index.ts",
     "./extensions/shell-tool/index.ts",
-    "./extensions/theme-sync/index.ts",
     "./extensions/tilth-cli/index.ts",
     "./extensions/write-file/index.ts"
   ],
