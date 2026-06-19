@@ -1,8 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=yazi
-Comment=Terminal file manager
-Exec=xterm run -- yazi
+Name=mb-file-manager
+Comment=Personal file manager shim
+TryExec=mb-file-manager
+Exec=mb-file-manager open %F
 Icon=yazi
 MimeType=inode/directory
 Categories=System;FileTools;FileManager;ConsoleOnly

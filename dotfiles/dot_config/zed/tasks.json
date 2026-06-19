@@ -79,9 +79,9 @@
   },
 
   {
-    "label": "yazi:current-folder",
-    "command": "yazi",
-    "args": ["$ZED_DIRNAME"],
+    "label": "file-manager:current-folder",
+    "command": "mb-file-manager",
+    "args": ["open", "$ZED_DIRNAME"],
     "hide": "always",
     "reveal_target": "center",
     "allow_concurrent_runs": true,

@@ -373,7 +373,7 @@ mode "$mode_screenshot" {
 bindsym Print mode "$mode_screenshot"
 
 # file manager
-bindsym --to-code $mod+n exec xterm run -- yazi
+bindsym --to-code $mod+n exec mb-file-manager open
 
 # google translate
 bindsym --to-code $mod+t exec xterm run --class="FLOAT" -- trans -shell

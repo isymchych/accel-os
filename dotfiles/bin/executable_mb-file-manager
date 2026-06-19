@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+
+import subprocess
+import sys
+import warnings
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+
+BUS_NAME = "org.freedesktop.FileManager1"
+OBJECT_PATH = "/org/freedesktop/FileManager1"
+SUPPORTED_BACKENDS = ("yazi",)
+BACKEND = "yazi"
+INTERFACE_XML = """
+<node>
+  <interface name="org.freedesktop.FileManager1">
+    <method name="ShowItems">
+      <arg name="URIs" type="as" direction="in"/>
+      <arg name="StartupId" type="s" direction="in"/>
+    </method>
+    <method name="ShowFolders">
+      <arg name="URIs" type="as" direction="in"/>
+      <arg name="StartupId" type="s" direction="in"/>
+    </method>
+    <method name="ShowItemProperties">
+      <arg name="URIs" type="as" direction="in"/>
+      <arg name="StartupId" type="s" direction="in"/>
+    </method>
+  </interface>
+</node>
+"""
+USAGE = """Usage:
+  mb-file-manager open [PATH...]
+  mb-file-manager reveal [PATH...]
+  mb-file-manager service-filemanager1
+  mb-file-manager help
+"""
+
+
+def fail(message: str) -> int:
+    print(f"mb-file-manager: {message}", file=sys.stderr)
+    print(USAGE, file=sys.stderr, end="")
+    return 2
+
+
+def file_uri_to_path(uri: str) -> str | None:
+    parsed = urlparse(uri)
+
+    if parsed.scheme == "file":
+        if parsed.netloc not in ("", "localhost"):
+            return None
+        return unquote(parsed.path)
+
+    if parsed.scheme == "" and uri.startswith("/"):
+        return uri
+
+    return None
+
+
+def launch_yazi(paths: list[str]) -> None:
+    xterm = Path.home() / "bin" / "xterm"
+    terminal = str(xterm) if xterm.exists() else "xterm"
+
+    subprocess.Popen(
+        [terminal, "run", "--", "yazi", *paths],
+        start_new_session=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def launch_file_manager(paths: list[str]) -> None:
+    if BACKEND == "yazi":
+        launch_yazi(paths)
+        return
+
+    raise RuntimeError(f"unsupported backend: {BACKEND}")
+
+
+def handle_filemanager1_method(gio, glib, method_name, parameters, invocation) -> None:
+    if method_name not in {"ShowItems", "ShowFolders", "ShowItemProperties"}:
+        invocation.return_dbus_error(
+            "org.freedesktop.DBus.Error.UnknownMethod",
+            f"unsupported method: {method_name}",
+        )
+        return
+
+    uris, _startup_id = parameters.unpack()
+    paths = [path for uri in uris if (path := file_uri_to_path(uri)) is not None]
+
+    if len(paths) == 0:
+        invocation.return_value(glib.Variant("()", ()))
+        return
+
+    try:
+        launch_file_manager(paths)
+    except Exception as error:
+        invocation.return_dbus_error(BUS_NAME + ".LaunchFailed", str(error))
+        return
+
+    invocation.return_value(glib.Variant("()", ()))
+
+
+def run_filemanager1_service() -> int:
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message="Gio.DBusConnection.register_object is deprecated",
+    )
+
+    node_info = Gio.DBusNodeInfo.new_for_xml(INTERFACE_XML)
+    loop = GLib.MainLoop()
+
+    def on_bus_acquired(connection, _name):
+        def on_method_call(
+            _connection,
+            _sender,
+            _object_path,
+            _interface_name,
+            method_name,
+            parameters,
+            invocation,
+        ):
+            handle_filemanager1_method(Gio, GLib, method_name, parameters, invocation)
+
+        connection.register_object(
+            OBJECT_PATH,
+            node_info.interfaces[0],
+            on_method_call,
+            None,
+            None,
+        )
+
+    def on_name_lost(_connection, _name):
+        loop.quit()
+
+    owner_id = Gio.bus_own_name(
+        Gio.BusType.SESSION,
+        BUS_NAME,
+        Gio.BusNameOwnerFlags.NONE,
+        on_bus_acquired,
+        None,
+        on_name_lost,
+    )
+
+    try:
+        loop.run()
+    finally:
+        Gio.bus_unown_name(owner_id)
+
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) == 0:
+        return fail("missing command")
+
+    command = argv[0]
+    args = argv[1:]
+
+    if command in {"help", "--help", "-h"}:
+        print(USAGE, end="")
+        return 0
+
+    if command in {"open", "reveal"}:
+        launch_file_manager(args)
+        return 0
+
+    if command == "service-filemanager1":
+        if len(args) != 0:
+            return fail("service-filemanager1 does not accept arguments")
+        return run_filemanager1_service()
+
+    return fail(f"unknown command: {command}")
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

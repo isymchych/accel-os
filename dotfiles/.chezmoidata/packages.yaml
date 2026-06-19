@@ -2,7 +2,8 @@ packages:
   linux:
     arch:
       pacman:
-        - yazi        # file manager; install unarchiver plugin for previews
+        - yazi        # mb-file-manager backend; install unarchiver plugin for previews
+        - python-gobject # mb-file-manager FileManager1 D-Bus support
         - ripgrep     # fast project search
         - fd          # ergonomic file finder
         - tokei       # code line counts
