@@ -164,7 +164,11 @@ export async function prepareMarkdown(
 ): Promise<PreparedMarkdown> {
   let hasMermaid = false;
   let hasGraphviz = false;
-  const graphvizSources: Array<{ readonly id: string; readonly language: string; readonly source: string }> = [];
+  const graphvizSources: Array<{
+    readonly id: string;
+    readonly language: string;
+    readonly source: string;
+  }> = [];
   const preparedMarkdown = replaceGraphvizFences(markdown, graphvizSources, (language) => {
     if (language === "mermaid") {
       hasMermaid = true;
@@ -199,7 +203,11 @@ interface FenceOpening {
 
 function replaceGraphvizFences(
   markdown: string,
-  graphvizSources: Array<{ readonly id: string; readonly language: string; readonly source: string }>,
+  graphvizSources: Array<{
+    readonly id: string;
+    readonly language: string;
+    readonly source: string;
+  }>,
   observeLanguage: (language: string | null) => void,
 ): string {
   const lines = markdown.split(/(?<=\n)/u);
@@ -1131,8 +1139,14 @@ const diagramControllerJs = `(() => {
 
 async function previewInitializerScript(hasMermaid: boolean): Promise<string> {
   const markedPackagePath = fileURLToPath(import.meta.resolve("marked/package.json"));
-  const markedJs = await readFile(path.join(path.dirname(markedPackagePath), "lib/marked.umd.js"), "utf8");
-  const domPurifyJs = await readFile(fileURLToPath(import.meta.resolve("dompurify/dist/purify.min.js")), "utf8");
+  const markedJs = await readFile(
+    path.join(path.dirname(markedPackagePath), "lib/marked.umd.js"),
+    "utf8",
+  );
+  const domPurifyJs = await readFile(
+    fileURLToPath(import.meta.resolve("dompurify/dist/purify.min.js")),
+    "utf8",
+  );
   const mermaidJs = hasMermaid
     ? await readFile(fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min.js")), "utf8")
     : "";

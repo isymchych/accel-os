@@ -38,10 +38,11 @@ const tilthToolNameSet = new Set<string>(tilthToolNames);
 
 const TILTH_GUIDANCE = `## Tilth CLI workflow
 
-- Prefer Tilth tools over the host \`read\` tool for repository files; keep host \`read\` for workflows that explicitly require it, such as loading SKILL.md instructions.
+- Prefer Tilth tools for repository exploration; use the host \`read\` tool when exact raw output formatting matters, such as numbered lines or loading SKILL.md instructions.
 - Prefer \`tilth_search\` for code exploration before falling back to shell-based discovery.
 - Use \`tilth_search\` with \`mode=auto\` for symbol and concept lookup, \`mode=literal\` for exact text, and \`mode=callers\` for call sites.
-- Use \`tilth_read\` for normal file reads, focused sections, and follow-up reads after search has identified the right file.
+- Use \`tilth_read\` to inspect repository files with a concise structured view, especially for large files or focused follow-ups.
+- Use \`tilth_read\` with \`section\` for line ranges like \`45-89\` or headings like \`## Installation\`.
 - Use \`tilth_files\` only when you need file listing and do not yet have a useful search query.
 - Use \`tilth_deps\` before renaming, removing, or changing exported APIs that callers may depend on.
 - Use \`tilth_grok\` when the user asks to understand a symbol end-to-end instead of chaining multiple search and read calls.`;
@@ -54,12 +55,15 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
     defineTool<typeof tilthReadSchema, TilthToolDetails>({
       name: "tilth_read",
       label: "tilth_read",
-      description: "Read a file through Tilth with smart outlining and focused sections.",
-      promptSnippet: "Read a file or focused section with Tilth smart outlining",
+      description:
+        "Inspect repository files with concise structured output, scoped sections, and token budgets.",
+      promptSnippet:
+        "Inspect a repository file with concise structured output or a focused section",
       promptGuidelines: [
-        "Prefer tilth_read over the host read tool for repository file contents; use host read only when a workflow explicitly requires it, such as loading SKILL.md.",
-        "Use tilth_read for file contents after you know which file or section you need.",
-        "Use tilth_read with section for focused follow-up reads instead of reading entire large files.",
+        "Use tilth_read to inspect repository files when you need a concise structured view instead of raw full-file output.",
+        "Use tilth_read for large files because it can return an outline with important sections expanded within a token budget.",
+        'Use tilth_read with section for focused follow-up reads by line range or heading, such as section: "45-89".',
+        "Use the host read tool when exact raw output formatting matters, such as numbered lines.",
       ],
       parameters: tilthReadSchema,
       renderShell: "self",
@@ -79,12 +83,13 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
     defineTool<typeof tilthSearchSchema, TilthToolDetails>({
       name: "tilth_search",
       label: "tilth_search",
-      description: "Search code with Tilth for symbols, concepts, exact text, regexes, or callers.",
-      promptSnippet:
-        "Search code with Tilth for definitions, usages, concepts, exact text, or callers",
+      description:
+        "Find definitions, usages, exact text, regex matches, or callers in repository code.",
+      promptSnippet: "Find repository code by definition, usage, exact text, regex, or caller",
       promptGuidelines: [
-        "Use tilth_search first when exploring code instead of starting with shell-based grep or file listing.",
-        "Use tilth_search with mode=callers when the task is to find call sites of a symbol.",
+        "Use tilth_search first when you need to find where code, symbols, concepts, or text live before reading files.",
+        "Use tilth_search with mode=literal for exact text and mode=regex for pattern searches.",
+        "Use tilth_search with mode=callers when you need call sites for a known symbol.",
       ],
       parameters: tilthSearchSchema,
       renderShell: "self",
@@ -104,10 +109,10 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
     defineTool<typeof tilthFilesSchema, TilthToolDetails>({
       name: "tilth_files",
       label: "tilth_files",
-      description: "List files matching a glob pattern through Tilth.",
-      promptSnippet: "List files matching a glob pattern through Tilth",
+      description: "Find repository files by glob when you need candidate paths.",
+      promptSnippet: "Find repository file paths by glob pattern",
       promptGuidelines: [
-        "Use tilth_files only when you need file listing and do not yet have a useful tilth_search query.",
+        "Use tilth_files to discover candidate file paths by glob when you do not have a useful search query yet.",
       ],
       parameters: tilthFilesSchema,
       renderShell: "self",
@@ -127,10 +132,10 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
     defineTool<typeof tilthDepsSchema, TilthToolDetails>({
       name: "tilth_deps",
       label: "tilth_deps",
-      description: "Check Tilth blast-radius dependencies for a file before breaking changes.",
-      promptSnippet: "Check a file's imports and dependents before a breaking change",
+      description: "Inspect a file's imports and dependents before changing its API or location.",
+      promptSnippet: "Inspect a file's imports and dependents before a breaking change",
       promptGuidelines: [
-        "Use tilth_deps before renaming, removing, or changing exported APIs that other files may call.",
+        "Use tilth_deps before renaming, moving, deleting, or changing exported APIs so you can see affected imports and dependents.",
       ],
       parameters: tilthDepsSchema,
       renderShell: "self",
@@ -150,10 +155,12 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
     defineTool<typeof tilthGrokSchema, TilthToolDetails>({
       name: "tilth_grok",
       label: "tilth_grok",
-      description: "Understand a symbol end-to-end with Tilth grok.",
-      promptSnippet: "Understand a symbol end-to-end with Tilth grok",
+      description:
+        "Build an end-to-end map of a symbol or target, including related definitions, callers, and tests.",
+      promptSnippet: "Map a symbol or target across definitions, callers, and tests",
       promptGuidelines: [
-        "Use tilth_grok when the task is to understand one symbol deeply instead of chaining multiple search and read calls.",
+        "Use tilth_grok when you need to understand one symbol, module, or path:line target deeply before changing it.",
+        "Prefer tilth_search or tilth_read for simple lookup and file inspection tasks.",
       ],
       parameters: tilthGrokSchema,
       renderShell: "self",

@@ -197,6 +197,7 @@
   implementing business logic (like in Clojure)
 - I prefer seeing evidence of verification steps
 
+- pursue low coupling and high cohesion
 - Prefer low complexity over time, not small diffs.
 - Prefer structural fixes over local patches when the boundary is the real
   problem.

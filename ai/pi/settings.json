@@ -23,6 +23,7 @@
     "./extensions/personal-context/index.ts",
     "./extensions/preview/index.ts",
     "./extensions/response-status/index.ts",
+    "./extensions/shell-tool/index.ts",
     "./extensions/theme-sync/index.ts",
     "./extensions/tilth-cli/index.ts",
     "./extensions/write-file/index.ts"

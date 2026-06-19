@@ -27,5 +27,5 @@ profile home4kpc {
 }
 profile office4k {
     output eDP-1 disable
-    output "Dell Inc. DELL P2721Q 5765HH3" enable mode 3840x2160@60 scale 1.5
+    output "Dell Inc. DELL P2721Q 5765HH3" enable mode 3840x2160@60 scale 1.4
 }

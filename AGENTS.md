@@ -59,6 +59,9 @@
 - Skill helper scripts should be Deno TypeScript, not Python.
 - When a skill references cross-folder policy docs, use `$ACCEL_OS` absolute paths because relative paths drift by working directory.
 
+## Best Practices
+- When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria because internal jargon and negative unsupported-argument framing make model tool selection less reliable.
+
 ## Pi Configuration
 - Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.
 - Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.

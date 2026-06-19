@@ -4,8 +4,6 @@
 * add grill-me prompt
 * improve summarization - check how pi does it, check how codex does it
 
-* summarize_turns
-* custom summary?
 * shell wrapper tool to support cwd
 * review from DDD point of view
 * Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation 
@@ -18,6 +16,11 @@
 add to sysprompt:
 >  "use subagents to parallellize or manage context"
 
+add oxfmt/tsconfig/oxlint shared root config
+
+* summarize_turns
+* custom summary?
+* "recap" what was done
 
 * based on https://github.com/can1357/oh-my-pi
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
@@ -128,7 +131,7 @@ Makes targeted fixes based on evidence
 # USEFUL QUESTIONS
 * what are pain points of ...?
 * why? what are the tradeoffs?
-* approaches, best practices?
+* approaches, best practices, conventions?
 * what is better question
 * Explain this change at 3 levels:
     1) High-level intent
