@@ -1,10 +1,10 @@
 {
   "theme": "light/dark",
-  "lastChangelogVersion": "0.79.8",
+  "lastChangelogVersion": "0.80.2",
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "autocompleteMaxVisible": 16,
   "skills": [
     "../skills"

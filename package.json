@@ -15,8 +15,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "oxfmt": "^0.55.0",
+    "@types/node": "^26.0.0",
+    "oxfmt": "^0.56.0",
     "oxlint": "^1.61.0",
     "oxlint-tsgolint": "^0.23.0",
     "typescript": "^6.0.3"

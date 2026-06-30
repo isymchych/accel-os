@@ -4,43 +4,41 @@ description: Critique the normative document
 
 Critique **$ARGUMENTS** as a normative document.
 
-Evaluate:
-- internal consistency
-- gaps in required rules, constraints, or decision guidance
+Focus on:
+- consistency
+- missing rules or decision guidance
+- durability and self-containment
 - concision and sharpness
-- whether wording is durable, self-contained, and domain-shaped
-
-Flag weak text that uses:
-- implementation-shaped wording,
-- migration/history/chronology language,
-- undefined shorthand,
-- negative phrasing about missing implementation details instead of direct domain rules,
-- duplication or noisy wording.
+- noisy, historical, implementation-shaped, or duplicated wording
 
 Return:
 
-## Overall assessment
-- Is it internally consistent?
-- Biggest gaps or missing rules
-- Is it concise and sharp?
-- Top 3 highest-value improvements
+## Verdict
+2-4 bullets.
 
-## High-value improvements / additions
+## Priority findings
+At most 5, sorted by impact.
+
 For each:
-- section
-- issue
-- why it matters
-- concise recommended addition or rewrite
+- P0/P1/P2:
+- Problem:
+- Fix:
 
-## Low-value cleanup
-Include redundancies, weak phrasing, and implementation-chronology/history language that should be removed or simplified.
+Priority:
+- P0: contradiction, wrong decision, or missing required rule
+- P1: ambiguous, non-durable, or weak guidance
+- P2: cleanup only
 
-## Line-level findings
-For each finding, return:
-- section
-- quoted text
-- why it is weak
-- a concise suggested rewrite in durable present-tense domain language
+## Cleanup priorities
+At most 3 repeated cleanup themes worth fixing.
+
+For each:
+- Impact:
+- Pattern:
+- Fix:
+
+Only include cleanup if it materially improves clarity, durability, or skimmability.
+Omit purely cosmetic issues.
 
 Review standard:
 - prefer domain rules over storage/code details
@@ -49,4 +47,7 @@ Review standard:
 - keep negative statements only if the absence itself is an invariant
 - favor durable decision rules over implementation narration
 
-Do not edit files. Be strict, high-signal, and concise.
+Do not produce exhaustive line-level findings.
+Use quotes only when needed as evidence.
+Do not edit files.
+Be strict, concise, and skimmable.

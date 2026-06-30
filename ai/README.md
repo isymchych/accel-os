@@ -22,6 +22,9 @@ add oxfmt/tsconfig/oxlint shared root config
 * custom summary?
 * "recap" what was done
 
+* commit skill script should have an option to bypass hooks
+* local db skill should allow query on stdin
+
 * based on https://github.com/can1357/oh-my-pi
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
 * LSP?
@@ -166,6 +169,7 @@ Makes targeted fixes based on evidence
   * TDD - feedback loop
 * iterate, polish - both the plan and the code
 * semports - semantic ports
+* **Intent Debt** is the missing or decayed record of why a system is built the way it is: goals, constraints, tradeoffs, rejected alternatives, and rationale.
 * **Cognitive Debt** - before writing code was slow, now understanding code is slow -> document rationale, comprehension is first-class eng task
   * https://addyosmani.com/blog/dont-outsource-learning/
 * https://addyosmani.com/blog/agentic-engineering/
