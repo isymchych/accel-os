@@ -281,7 +281,7 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
       return;
     }
 
-    updateLiveUsage(event.message.usage as UsageSnapshot);
+    updateLiveUsage(event.message.usage);
 
     const streamEvent = event.assistantMessageEvent;
     if (

@@ -126,7 +126,7 @@ function normalizeToolResult(result: unknown): ToolResult {
 
   if (details !== undefined) {
     assert.ok(isRecord(details), "Expected tool result details to be an object.");
-    normalizedResult.details = details as NonNullable<ToolResult["details"]>;
+    normalizedResult.details = details;
   }
   if (typeof result["isError"] === "boolean") {
     normalizedResult.isError = result["isError"];
