@@ -7,4 +7,5 @@ After=sway-session.target graphical-session.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/kanshi
+ExecReload=/usr/bin/kill -HUP $MAINPID
 Restart=on-failure

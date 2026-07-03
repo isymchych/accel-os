@@ -79,14 +79,23 @@ bindsym --to-code $mod+Shift+j move down
 bindsym --to-code $mod+Shift+k move up
 bindsym --to-code $mod+Shift+l move right
 
-# split in horizontal orientation
-bindsym --to-code $mod+Alt+g split h
-# split in vertical orientation
-bindsym --to-code $mod+Alt+v split v
-# change container layout (stacked, tabbed, toggle split)
-bindsym --to-code $mod+Alt+s layout stacking
-bindsym --to-code $mod+Alt+w layout tabbed
-bindsym --to-code $mod+Alt+e layout toggle split
+# layout controls
+set $mode_layout layout: [h]split [v]split [t]abbed [s]tacking [e]toggle [r]esize [f]ullscreen [space]float
+mode "$mode_layout" {
+     bindsym --to-code h split h; mode "default"
+     bindsym --to-code v split v; mode "default"
+     bindsym --to-code t layout tabbed; mode "default"
+     bindsym --to-code s layout stacking; mode "default"
+     bindsym --to-code e layout toggle split; mode "default"
+     bindsym --to-code r mode "resize"
+     bindsym --to-code f fullscreen; mode "default"
+     bindsym space floating toggle; mode "default"
+
+     bindsym Return mode "default"
+     bindsym Escape mode "default"
+}
+
+bindsym --to-code $mod+w mode "$mode_layout"
 
 # toggle tiling / floating
 bindsym $mod+Shift+space floating toggle
@@ -160,6 +169,11 @@ mode "resize" {
 }
 
 bindsym --to-code $mod+Alt+r mode "resize"
+
+bindsym --to-code $mod+Ctrl+h resize shrink width 5 ppt
+bindsym --to-code $mod+Ctrl+j resize grow height 5 ppt
+bindsym --to-code $mod+Ctrl+k resize shrink height 5 ppt
+bindsym --to-code $mod+Ctrl+l resize grow width 5 ppt
 
 # toggle waybar
 bindsym --to-code $mod+grave exec killall -SIGUSR1 waybar

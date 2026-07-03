@@ -12,6 +12,7 @@
   - https://github.com/juicesharp/rpiv-mono
 * ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
 * setup terminal multiplexer - as a part of ai?
+* /side (codex) or /btw (pi, claude)
 
 add to sysprompt:
 >  "use subagents to parallellize or manage context"
@@ -20,6 +21,7 @@ add oxfmt/tsconfig/oxlint shared root config
 
 * summarize_turns
 * custom summary?
+  > Команда /compact віддає це рішення людині: можна прямо вказати, що зберегти (поточний стан, активні вимоги, ухвалені рішення) і що викинути (ранні чернетки, відкинуті ідеї, контекст від попередніх задач). 
 * "recap" what was done
 
 * commit skill script should have an option to bypass hooks
@@ -104,7 +106,7 @@ Makes targeted fixes based on evidence
 # USEFUL PATTERNS / IDEAS
 * "distill"/"compress"/"high signal"
 * chain-of-thought reasoning
-* human-in-the-loop
+* ~~human-in-the-loop~~ **better?** agent-in-the-loop
 * Critic(/Verifier) pass; argue against itself
 * **build pipelines** even if the end result is an AGENTS.md or SKILL.md - keep "source doc" -> ask agent to build a skill based on it -> improve/compress/"distill"
 * (self)-checklists; approval gates
@@ -124,7 +126,7 @@ Makes targeted fixes based on evidence
 * cognitive offloading vs cognitive surrender
 * Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness. 
 * Can we make requirements less stupid? what alternative approaches that unlocks?
-* clone git repository into temp dir and explore. **SECURITY?**
+* Intent ledger - ADRs, document "why"/reason not "what" or "how"
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit

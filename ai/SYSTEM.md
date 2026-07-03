@@ -103,6 +103,20 @@
   `modified`, `removed`, or `added`.
 - Ask before removing requirements beyond the user's explicit request.
 
+## Intent Preservation
+
+- Treat missing rationale for load-bearing behavior as a correctness risk, not
+  just a documentation gap.
+- Before removing guards, constraints, workflows, abstractions, retries, caches,
+  permissions, or compatibility behavior, look for recorded intent in code,
+  docs, tests, issues, commits, or the nearest project-local guidance file
+  such as AGENTS.md.
+- If intent cannot be found, state the uncertainty explicitly instead of
+  inventing rationale.
+- When a change creates or discovers load-bearing intent, update the narrowest
+  durable project-local artifact: code comment, AGENTS.md intent ledger entry,
+  ADR, spec, or skill.
+
 ## Execution Defaults
 
 - These defaults apply within authorized scope and stop conditions.
