@@ -8,7 +8,13 @@ import { type Static, Type } from "typebox";
 const require = createRequire(import.meta.url);
 
 const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_READ_BUDGET = 12_000;
+const DEFAULT_SEARCH_BUDGET = 10_000;
+const DEFAULT_FILES_BUDGET = 8_000;
+const DEFAULT_DEPS_BUDGET = 12_000;
+const MAX_BUDGET = 15_000;
 const DEFAULT_SEARCH_EXPAND = 2;
+const MAX_SEARCH_EXPAND = 5;
 const REGEX_METACHAR_PATTERN = /[()[\]{}*+?|\\^$]/;
 
 export const tilthToolNames = [
@@ -41,7 +47,8 @@ export const tilthReadSchema = Type.Object(
     ),
     budget: Type.Optional(
       Type.Number({
-        description: "Optional max token budget for the response.",
+        description:
+          "Rare override. Omit by default; tilth_read applies a small budget. Large values directly increase conversation context.",
       }),
     ),
   },
@@ -76,7 +83,8 @@ export const tilthSearchSchema = Type.Object(
     ),
     budget: Type.Optional(
       Type.Number({
-        description: "Optional max token budget for the response.",
+        description:
+          "Rare override. Omit by default; tilth_search applies a small budget. Large values directly increase conversation context.",
       }),
     ),
     glob: Type.Optional(
@@ -100,7 +108,8 @@ export const tilthFilesSchema = Type.Object(
     ),
     budget: Type.Optional(
       Type.Number({
-        description: "Optional max token budget for the response.",
+        description:
+          "Rare override. Omit by default; tilth_files applies a small budget. Large values directly increase conversation context.",
       }),
     ),
   },
@@ -119,7 +128,8 @@ export const tilthDepsSchema = Type.Object(
     ),
     budget: Type.Optional(
       Type.Number({
-        description: "Optional max token budget for the response.",
+        description:
+          "Rare override. Omit by default; tilth_deps applies a small budget. Large values directly increase conversation context.",
       }),
     ),
   },
@@ -151,6 +161,11 @@ export type TilthFilesInput = Static<typeof tilthFilesSchema>;
 export type TilthDepsInput = Static<typeof tilthDepsSchema>;
 export type TilthGrokInput = Static<typeof tilthGrokSchema>;
 export type TilthSearchMode = NonNullable<TilthSearchInput["mode"]>;
+
+export interface PreparedTilthInput<Input> {
+  input: Input;
+  warnings: string[];
+}
 
 export interface TilthToolDetails {
   command: string;
@@ -188,6 +203,86 @@ function buildBudgetArgs(budget: number | undefined): string[] {
   return ["--budget", String(budget)];
 }
 
+function clampBudget(
+  budget: number | undefined,
+  defaultBudget: number,
+  toolName: string,
+  warnings: string[],
+): number {
+  const requestedBudget = budget ?? defaultBudget;
+  if (requestedBudget <= MAX_BUDGET) {
+    return requestedBudget;
+  }
+
+  warnings.push(
+    `${toolName} budget clamped from ${requestedBudget} to ${MAX_BUDGET}; use section, scope, glob, or a narrower query instead of large budgets.`,
+  );
+  return MAX_BUDGET;
+}
+
+function clampSearchExpand(expand: number | undefined, warnings: string[]): number | undefined {
+  if (expand === undefined || expand <= MAX_SEARCH_EXPAND) {
+    return expand;
+  }
+
+  warnings.push(
+    `tilth_search expand clamped from ${expand} to ${MAX_SEARCH_EXPAND}; read more matches only after the first result set is insufficient.`,
+  );
+  return MAX_SEARCH_EXPAND;
+}
+
+export function prepareTilthReadInput(params: TilthReadInput): PreparedTilthInput<TilthReadInput> {
+  const warnings: string[] = [];
+  return {
+    input: {
+      ...params,
+      budget: clampBudget(params.budget, DEFAULT_READ_BUDGET, "tilth_read", warnings),
+    },
+    warnings,
+  };
+}
+
+export function prepareTilthSearchInput(
+  params: TilthSearchInput,
+): PreparedTilthInput<TilthSearchInput> {
+  const warnings: string[] = [];
+  const input: TilthSearchInput = {
+    ...params,
+    budget: clampBudget(params.budget, DEFAULT_SEARCH_BUDGET, "tilth_search", warnings),
+  };
+  const expand = params.full === true ? undefined : clampSearchExpand(params.expand, warnings);
+  if (expand !== undefined) {
+    input.expand = expand;
+  }
+
+  return {
+    input,
+    warnings,
+  };
+}
+
+export function prepareTilthFilesInput(params: TilthFilesInput): PreparedTilthInput<TilthFilesInput> {
+  const warnings: string[] = [];
+  return {
+    input: {
+      ...params,
+      budget: clampBudget(params.budget, DEFAULT_FILES_BUDGET, "tilth_files", warnings),
+    },
+    warnings,
+  };
+}
+
+export function prepareTilthDepsInput(params: TilthDepsInput): PreparedTilthInput<TilthDepsInput> {
+  const warnings: string[] = [];
+  return {
+    input: {
+      ...params,
+      budget: clampBudget(params.budget, DEFAULT_DEPS_BUDGET, "tilth_deps", warnings),
+    },
+    warnings,
+  };
+}
+
 function escapeRegexLiteral(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -217,46 +312,50 @@ function buildRegexQuery(query: string): string {
 }
 
 export function buildReadArgs(params: TilthReadInput, cwd: string): string[] {
+  const { input } = prepareTilthReadInput(params);
   return [
-    ...buildScopeArgs(cwd, params.scope),
-    ...buildBudgetArgs(params.budget),
-    ...(params.section === undefined ? [] : ["--section", params.section]),
-    ...(params.full === true ? ["--full"] : []),
-    params.path,
+    ...buildScopeArgs(cwd, input.scope),
+    ...buildBudgetArgs(input.budget),
+    ...(input.section === undefined ? [] : ["--section", input.section]),
+    ...(input.full === true ? ["--full"] : []),
+    input.path,
   ];
 }
 
 export function buildSearchArgs(params: TilthSearchInput, cwd: string): string[] {
-  const mode: TilthSearchMode = params.mode ?? "auto";
+  const { input } = prepareTilthSearchInput(params);
+  const mode: TilthSearchMode = input.mode ?? "auto";
   const query =
     mode === "literal"
-      ? buildLiteralRegexQuery(params.query)
+      ? buildLiteralRegexQuery(input.query)
       : mode === "regex"
-        ? buildRegexQuery(params.query)
-        : params.query;
-  const expand = params.full === true ? undefined : (params.expand ?? DEFAULT_SEARCH_EXPAND);
+        ? buildRegexQuery(input.query)
+        : input.query;
+  const expand = input.full === true ? undefined : (input.expand ?? DEFAULT_SEARCH_EXPAND);
 
   return [
-    ...buildScopeArgs(cwd, params.scope),
-    ...buildBudgetArgs(params.budget),
-    ...(params.glob === undefined ? [] : ["--glob", params.glob]),
+    ...buildScopeArgs(cwd, input.scope),
+    ...buildBudgetArgs(input.budget),
+    ...(input.glob === undefined ? [] : ["--glob", input.glob]),
     ...(mode === "callers" ? ["--callers"] : []),
-    ...(params.full === true ? ["--full"] : []),
+    ...(input.full === true ? ["--full"] : []),
     ...(expand === undefined ? [] : [`--expand=${expand}`]),
     query,
   ];
 }
 
 export function buildFilesArgs(params: TilthFilesInput, cwd: string): string[] {
-  return [...buildScopeArgs(cwd, params.scope), ...buildBudgetArgs(params.budget), params.pattern];
+  const { input } = prepareTilthFilesInput(params);
+  return [...buildScopeArgs(cwd, input.scope), ...buildBudgetArgs(input.budget), input.pattern];
 }
 
 export function buildDepsArgs(params: TilthDepsInput, cwd: string): string[] {
+  const { input } = prepareTilthDepsInput(params);
   return [
-    ...buildScopeArgs(cwd, params.scope),
-    ...buildBudgetArgs(params.budget),
+    ...buildScopeArgs(cwd, input.scope),
+    ...buildBudgetArgs(input.budget),
     "--deps",
-    params.path,
+    input.path,
   ];
 }
 

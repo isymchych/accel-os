@@ -4,7 +4,6 @@
 * add grill-me prompt
 * improve summarization - check how pi does it, check how codex does it
 
-* shell wrapper tool to support cwd
 * review from DDD point of view
 * Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation 
   - https://github.com/nicobailon/pi-subagents
@@ -13,12 +12,15 @@
 * ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
 * setup terminal multiplexer - as a part of ai?
 * /side (codex) or /btw (pi, claude)
+* double-esc to stop streaming response
 
 add to sysprompt:
 >  "use subagents to parallellize or manage context"
 
 add oxfmt/tsconfig/oxlint shared root config
 
+* pi summarization doesn't work as i expect - it looses useful info
+  >  the goal, changed files, unresolved errors, decisions, constraints, and open loops
 * summarize_turns
 * custom summary?
   > Команда /compact віддає це рішення людині: можна прямо вказати, що зберегти (поточний стан, активні вимоги, ухвалені рішення) і що викинути (ранні чернетки, відкинуті ідеї, контекст від попередніх задач). 
@@ -112,14 +114,13 @@ Makes targeted fixes based on evidence
 * (self)-checklists; approval gates
 * scoring rubrics
 * error log
-* progressive disclosure
 * red/green TDD
 * require evidence
 * Spec-driven development
 * AI-first company - markdown spec graph; crypto contracts
   * describe one's company clearly—including its goals, workflows, operations, decisions, teams, and spending—in a clear and consumable fashion.
   * https://danielmiessler.com/blog/most-companies-arent-ready-for-ai
-* Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions.
+* Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions. "progressive disclosure"
 * refactor: Pilot change + rollout
 * avoid negative framing
 * provide examples instead of complicated instructions

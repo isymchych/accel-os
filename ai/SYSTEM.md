@@ -152,6 +152,7 @@
 - Add tests only when requested or when the task is test-focused.
 - Keep validation scoped: report unrelated failures instead of fixing them.
 - In interactive approval modes, defer broad or slow checks until finalization.
+- Don't wastefully re-run checks unless there’s a real code change or I ask
 
 ## Final Response Defaults
 

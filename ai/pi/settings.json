@@ -4,7 +4,7 @@
   "hideThinkingBlock": true,
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "autocompleteMaxVisible": 16,
   "skills": [
     "../skills"
