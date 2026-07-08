@@ -56,14 +56,7 @@ test("buildSearchArgs defaults auto mode to a small budget and expand=2", () => 
 test("buildSearchArgs forces literal text through a regex wrapper", () => {
   assert.deepEqual(
     buildSearchArgs({ query: "TODO: fix(this)", mode: "literal", scope: "src" }, "/repo"),
-    [
-      "--scope",
-      "/repo/src",
-      "--budget",
-      "10000",
-      "--expand=2",
-      "/(?:TODO: fix\\(this\\))/",
-    ],
+    ["--scope", "/repo/src", "--budget", "10000", "--expand=2", "/(?:TODO: fix\\(this\\))/"],
   );
 });
 

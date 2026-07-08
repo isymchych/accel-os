@@ -261,7 +261,9 @@ export function prepareTilthSearchInput(
   };
 }
 
-export function prepareTilthFilesInput(params: TilthFilesInput): PreparedTilthInput<TilthFilesInput> {
+export function prepareTilthFilesInput(
+  params: TilthFilesInput,
+): PreparedTilthInput<TilthFilesInput> {
   const warnings: string[] = [];
   return {
     input: {
