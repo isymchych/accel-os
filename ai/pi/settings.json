@@ -25,6 +25,7 @@
     "./extensions/response-status/index.ts",
     "./extensions/shell-tool/index.ts",
     "./extensions/tilth-cli/index.ts",
+    "./extensions/handoff-summary/index.ts",
     "./extensions/write-file/index.ts"
   ],
   "prompts": [

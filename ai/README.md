@@ -2,7 +2,6 @@
 * plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 * switch thinking modes with alt-1-2-3-4-5
 * add grill-me prompt
-* improve summarization - check how pi does it, check how codex does it
 
 * review from DDD point of view
 * Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation 
@@ -14,6 +13,10 @@
 * /side (codex) or /btw (pi, claude)
 * double-esc to stop streaming response
 * /preview should validate mermaid? or add an agent tool to validate mermaid
+* SOUL.md USER.md MEMORY.md AGENTS.md - like in https://github.com/deathbyknowledge/gsv
+  * SOUL.md like in https://hermes-agent.nousresearch.com/docs/user-guide/features/personality
+* EARS specifications
+* personal memory system https://ericmjl.github.io/blog/2026/6/16/my-coding-agent-learned-a-lesson/
 
 add to sysprompt:
 >  "use subagents to parallellize or manage context"
@@ -22,13 +25,6 @@ add to sysprompt:
 
 add oxfmt/tsconfig/oxlint shared root config
 
-* pi summarization doesn't work as i expect - it looses useful info
-  >  the goal, changed files, unresolved errors, decisions, constraints, and open loops
-* summarize_turns
-* custom summary?
-  > Команда /compact віддає це рішення людині: можна прямо вказати, що зберегти (поточний стан, активні вимоги, ухвалені рішення) і що викинути (ранні чернетки, відкинуті ідеї, контекст від попередніх задач). 
-* "recap" what was done
-
 * commit skill script should have an option to bypass hooks
 * local db skill should allow query on stdin
 
@@ -36,7 +32,6 @@ add oxfmt/tsconfig/oxlint shared root config
 * AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
 * LSP?
 * thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
-* SOUL.md USER.md MEMORY.md AGENTS.md - like in https://github.com/deathbyknowledge/gsv
 * "ai" to start llm with microvm isolation - gondolin?
 * security review prompt
 
@@ -155,6 +150,13 @@ Makes targeted fixes based on evidence
 
 # SUBAGENTS
 * subagent to run build/tests/lints/typechecks and analyze failures (RCA?) and provide summary back 
+
+
+# SUMMARIZATION / COMPACTION
+* >  the goal, changed files, unresolved errors, decisions, constraints, and open loops
+* > Команда /compact віддає це рішення людині: можна прямо вказати, що зберегти (поточний стан, активні вимоги, ухвалені рішення) і що викинути (ранні чернетки, відкинуті ідеї, контекст від попередніх задач). 
+* "recap" what was done
+
 
 
 # RESEARCH AREAS
