@@ -13,9 +13,12 @@
 * setup terminal multiplexer - as a part of ai?
 * /side (codex) or /btw (pi, claude)
 * double-esc to stop streaming response
+* /preview should validate mermaid? or add an agent tool to validate mermaid
 
 add to sysprompt:
 >  "use subagents to parallellize or manage context"
+
+> For all coding tasks use your judgement to decide an appropriate lower power model and run that in a subagent
 
 add oxfmt/tsconfig/oxlint shared root config
 
@@ -128,10 +131,12 @@ Makes targeted fixes based on evidence
 * Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness. 
 * Can we make requirements less stupid? what alternative approaches that unlocks?
 * Intent ledger - ADRs, document "why"/reason not "what" or "how"
+* intent engineering -> context engineering -> prompt engineering
 
 * Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
 * setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
 * Keep lots of small proof-of-concept repos (often “just enough code” to demonstrate a technique). With agents that can search and fetch code, you can point them at your own repos/examples (or even have them clone them) and say “build X using patterns from Y,” meaning you only need to figure out a trick once—then reuse it forever.
+* Put the rationale where the agent can read it, especially for decisions that would be expensive to get wrong.
 
 
 # USEFUL QUESTIONS

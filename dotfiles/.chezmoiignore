@@ -23,6 +23,7 @@ macos-defaults.sh
 .config/gtk-3.0/**
 .config/kanshi/**
 .config/mako/**
+.config/swayosd/**
 .config/systemd/**
 .config/sway/**
 .config/waybar/**

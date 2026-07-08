@@ -19,6 +19,9 @@ packages:
         - sad         # structural search/replace, with preview
         - editorconfig-core-c
 
+        # sway
+        - swayosd     # on-screen display for volume, brightness, media, and mode hints
+
         # emacs
         - aspell
         - aspell-en

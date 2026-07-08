@@ -14,3 +14,15 @@ margin=25
 padding=10
 text-alignment=center
 anchor=top-center
+
+[app-name=sway-mode]
+default-timeout=7000
+width=640
+margin=25,125,0,0
+anchor=top-right
+background-color=#2e3440d0
+text-color=#ffffff
+border-color=#434c5e
+border-radius=2
+padding=10
+text-alignment=center

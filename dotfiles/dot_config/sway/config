@@ -80,7 +80,7 @@ bindsym --to-code $mod+Shift+k move up
 bindsym --to-code $mod+Shift+l move right
 
 # layout controls
-set $mode_layout layout: [h]split [v]split [t]abbed [s]tacking [e]toggle [r]esize [f]ullscreen [space]float
+set $mode_layout layout
 mode "$mode_layout" {
      bindsym --to-code h split h; mode "default"
      bindsym --to-code v split v; mode "default"
@@ -95,7 +95,7 @@ mode "$mode_layout" {
      bindsym Escape mode "default"
 }
 
-bindsym --to-code $mod+w mode "$mode_layout"
+bindsym --to-code $mod+w exec notify-send --app-name=sway-mode "layout" "[h]split [v]split [t]abbed [s]tacking [e]toggle [r]esize [f]ullscreen [space]float"; mode "$mode_layout"
 
 # toggle tiling / floating
 bindsym $mod+Shift+space floating toggle
@@ -323,19 +323,19 @@ for_window [app_id="FLOAT"] floating enable, resize set width 60 ppt height 60 p
 # KEYBINDINGS
 
 # control currently active player
-bindsym --locked XF86AudioPlay exec playerctl play
-bindsym --locked XF86AudioPause exec playerctl pause
+bindsym --locked XF86AudioPlay exec swayosd-client --playerctl play
+bindsym --locked XF86AudioPause exec swayosd-client --playerctl pause
 
 # Increase volume
-bindsym --locked XF86AudioRaiseVolume exec mb-audio speakers up
-bindsym $mod+Prior exec mb-audio speakers up # win-pageup
+bindsym --locked XF86AudioRaiseVolume exec swayosd-client --output-volume raise
+bindsym $mod+Prior exec swayosd-client --output-volume raise # win-pageup
 
 # Decrease volume
-bindsym --locked XF86AudioLowerVolume exec mb-audio speakers down
-bindsym $mod+Next exec mb-audio speakers down # win-pagedown
+bindsym --locked XF86AudioLowerVolume exec swayosd-client --output-volume lower
+bindsym $mod+Next exec swayosd-client --output-volume lower # win-pagedown
 
 # Toggle mute
-bindsym --locked XF86AudioMute exec mb-audio speakers toggle
+bindsym --locked XF86AudioMute exec swayosd-client --output-volume mute-toggle
 
 # Toggle mute microphone
 bindsym Shift+XF86AudioMute exec mb-audio -n mic toggle
@@ -346,12 +346,12 @@ bindsym XF86TouchpadToggle exec mb-touchpad -n toggle
 bindsym $mod+F9 exec mb-touchpad -n toggle
 
 # increase backlight
-bindsym XF86MonBrightnessUp exec mb-backlight inc
-bindsym $mod+F8 exec mb-backlight inc
+bindsym XF86MonBrightnessUp exec swayosd-client --brightness raise
+bindsym $mod+F8 exec swayosd-client --brightness raise
 
 # decrease backlight
-bindsym XF86MonBrightnessDown exec mb-backlight dec
-bindsym $mod+F7 exec mb-backlight dec
+bindsym XF86MonBrightnessDown exec swayosd-client --brightness lower
+bindsym $mod+F7 exec swayosd-client --brightness lower
 
 # increase keyboard backlight
 bindsym XF86KbdBrightnessUp exec mb-backlight --keyboard inc
@@ -371,7 +371,7 @@ bindsym XF86Launch1 exec mb-run-app
 bindsym $mod+Escape exec makoctl dismiss --all
 bindsym $mod+Shift+Escape exec makoctl restore
 
-set $mode_screenshot  [s]creen [w]indow [r]egion [S/W/R] +4s
+set $mode_screenshot screenshot
 mode "$mode_screenshot" {
      bindsym --to-code s exec mb-screenshot screen; mode "default"
      bindsym --to-code w exec mb-screenshot window; mode "default"
@@ -384,7 +384,7 @@ mode "$mode_screenshot" {
 }
 
 # screenshot
-bindsym Print mode "$mode_screenshot"
+bindsym Print exec notify-send --app-name=sway-mode "screenshot" "[s]creen [w]indow [r]egion [S/W/R] +4s"; mode "$mode_screenshot"
 
 # file manager
 bindsym --to-code $mod+n exec mb-file-manager open

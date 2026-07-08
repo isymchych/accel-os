@@ -1,0 +1,10 @@
+[Unit]
+Description=SwayOSD server
+Documentation=https://github.com/ErikReider/SwayOSD
+PartOf=sway-session.target
+After=sway-session.target graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/swayosd-server --config %h/.config/swayosd/config.toml --style %h/.config/swayosd/style.css
+Restart=on-failure

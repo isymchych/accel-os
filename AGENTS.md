@@ -61,6 +61,9 @@
 ## Best Practices
 - When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria because internal jargon and negative unsupported-argument framing make model tool selection less reliable.
 
+## Intent Ledger
+- For Sway session daemons, prefer user systemd units pulled by `sway-session.target`; keep `dotfiles/dot_config/sway/config` focused on compositor settings and keybindings.
+
 ## Pi Configuration
 - Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.
 - Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.

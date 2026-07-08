@@ -98,6 +98,7 @@ $ chmod 600 ~/.ssh/key
 * wl-clipboard - cli tools for interacting with clipboard
 * cliphist - clipboard manager
 * mako - notification daemon; enable and start mako service
+* swayosd - on-screen display for volume, brightness, and media; `swayosd-server` is started by `sway-session.target`
 * darkman - enable dark mode on sunset
 * wev - monitor keypresses, like xev
 * wtype - xdotool type for wayland
