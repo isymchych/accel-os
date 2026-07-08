@@ -3,11 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "fmt": "oxfmt .",
-    "fmt:check": "oxfmt --check .",
-    "lint": "oxlint .",
     "tilth": "tilth",
-    "lint:fix": "oxlint --fix .",
     "test": "node --test $(find extensions shared -name '*.test.ts' -print | sort)",
     "typecheck": "tsc --noEmit"
   },

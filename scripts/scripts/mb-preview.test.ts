@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import test from "node:test";
-
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { prepareMarkdown, renderDocument, renderGraphvizToSvg } from "./mb-preview.ts";
 
