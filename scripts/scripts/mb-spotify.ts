@@ -19,31 +19,31 @@ const REDIRECT_URI = `http://${REDIRECT_HOST}:${REDIRECT_PORT}${REDIRECT_PATH}`;
 
 type Token = {
   access_token: string;
-  refresh_token?: string;
+  refresh_token?: string | undefined;
   expires_at: number;
-  scope?: string;
-  token_type?: string;
+  scope?: string | undefined;
+  token_type?: string | undefined;
 };
 
 type Config = {
   client_id: string;
-  token?: Token;
+  token?: Token | undefined;
 };
 
 type TrackEntry = {
   uri: string;
-  name?: string;
-  artists?: string[];
-  album?: string;
-  type?: string;
+  name?: string | undefined;
+  artists?: string[] | undefined;
+  album?: string | undefined;
+  type?: string | undefined;
 };
 
 type PlaylistFile = {
   version: 1;
-  playlist_id?: string;
-  name?: string;
-  description?: string;
-  public?: boolean;
+  playlist_id?: string | undefined;
+  name?: string | undefined;
+  description?: string | undefined;
+  public?: boolean | undefined;
   tracks: TrackEntry[];
 };
 
@@ -126,7 +126,7 @@ const stringFlag = (flags: Record<string, string | boolean>, name: string): stri
 };
 
 const hasHelpFlag = (flags: Record<string, string | boolean>): boolean =>
-  flags.help === true || flags.h === true;
+  flags["help"] === true || flags["h"] === true;
 
 const hasBooleanFlag = (flags: Record<string, string | boolean>, name: string): boolean =>
   flags[name] === true;
@@ -271,24 +271,26 @@ const getAccessToken = async (requiredScopes: string[] = []): Promise<string> =>
 };
 
 const trackEntryFromSpotifyTrack = (track: Record<string, unknown> | null): TrackEntry | null => {
-  const uri = typeof track?.uri === "string" ? track.uri : "";
+  const uri = typeof track?.["uri"] === "string" ? track["uri"] : "";
   if (!uri) {
     return null;
   }
 
-  const name = typeof track?.name === "string" ? track.name : undefined;
+  const name = typeof track?.["name"] === "string" ? track["name"] : undefined;
+  const rawAlbum = track?.["album"];
   const album =
-    typeof track?.album === "object" &&
-    track.album !== null &&
-    typeof (track.album as Record<string, unknown>).name === "string"
-      ? ((track.album as Record<string, unknown>).name as string)
+    typeof rawAlbum === "object" &&
+    rawAlbum !== null &&
+    typeof (rawAlbum as Record<string, unknown>)["name"] === "string"
+      ? ((rawAlbum as Record<string, unknown>)["name"] as string)
       : undefined;
-  const artists = Array.isArray(track?.artists)
-    ? (track.artists as Array<Record<string, unknown>>)
-        .map((artist) => (typeof artist.name === "string" ? artist.name : null))
+  const rawArtists = track?.["artists"];
+  const artists = Array.isArray(rawArtists)
+    ? (rawArtists as Array<Record<string, unknown>>)
+        .map((artist) => (typeof artist["name"] === "string" ? artist["name"] : null))
         .filter((artist): artist is string => Boolean(artist))
     : undefined;
-  const type = typeof track?.type === "string" ? track.type : undefined;
+  const type = typeof track?.["type"] === "string" ? track["type"] : undefined;
 
   return { uri, name, artists, album, type };
 };
@@ -299,31 +301,31 @@ const parsePlaylistFile = (value: unknown): PlaylistFile => {
   }
 
   const obj = value as Record<string, unknown>;
-  if (!Array.isArray(obj.tracks)) {
+  if (!Array.isArray(obj["tracks"])) {
     throw new Error("playlist file missing tracks array");
   }
 
-  const tracks = obj.tracks;
+  const tracks = obj["tracks"];
 
   return {
     version: 1,
-    playlist_id: typeof obj.playlist_id === "string" ? obj.playlist_id : undefined,
-    name: typeof obj.name === "string" ? obj.name : undefined,
-    description: typeof obj.description === "string" ? obj.description : undefined,
-    public: typeof obj.public === "boolean" ? obj.public : undefined,
+    playlist_id: typeof obj["playlist_id"] === "string" ? obj["playlist_id"] : undefined,
+    name: typeof obj["name"] === "string" ? obj["name"] : undefined,
+    description: typeof obj["description"] === "string" ? obj["description"] : undefined,
+    public: typeof obj["public"] === "boolean" ? obj["public"] : undefined,
     tracks: tracks
       .map((item) => {
         if (typeof item !== "object" || item === null) {
           return null;
         }
         const entry = item as Record<string, unknown>;
-        const uri = typeof entry.uri === "string" ? entry.uri : "";
-        const name = typeof entry.name === "string" ? entry.name : undefined;
-        const artists = Array.isArray(entry.artists)
-          ? (entry.artists.filter((artist) => typeof artist === "string") as string[])
+        const uri = typeof entry["uri"] === "string" ? entry["uri"] : "";
+        const name = typeof entry["name"] === "string" ? entry["name"] : undefined;
+        const artists = Array.isArray(entry["artists"])
+          ? (entry["artists"].filter((artist) => typeof artist === "string") as string[])
           : undefined;
-        const album = typeof entry.album === "string" ? entry.album : undefined;
-        const type = typeof entry.type === "string" ? entry.type : undefined;
+        const album = typeof entry["album"] === "string" ? entry["album"] : undefined;
+        const type = typeof entry["type"] === "string" ? entry["type"] : undefined;
 
         return { uri, name, artists, album, type } as TrackEntry;
       })

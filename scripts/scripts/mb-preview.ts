@@ -214,9 +214,14 @@ function replaceGraphvizFences(
   const output: string[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
-    const opening = parseFenceOpening(lines[index]);
+    const line = lines[index];
+    if (line === undefined) {
+      break;
+    }
+
+    const opening = parseFenceOpening(line);
     if (opening === null) {
-      output.push(lines[index]);
+      output.push(line);
       continue;
     }
 
@@ -227,6 +232,9 @@ function replaceGraphvizFences(
     index += 1;
     for (; index < lines.length; index += 1) {
       const line = lines[index];
+      if (line === undefined) {
+        break;
+      }
       if (isFenceClosing(line, opening.fence)) {
         closingLine = line;
         break;
@@ -254,7 +262,13 @@ function parseFenceOpening(line: string): FenceOpening | null {
     return null;
   }
 
-  const [, indent, fence, rawInfo, lineEnding = ""] = match;
+  const indent = match[1];
+  const fence = match[2];
+  const rawInfo = match[3];
+  if (indent === undefined || fence === undefined || rawInfo === undefined) {
+    return null;
+  }
+  const lineEnding = match[4] ?? "";
   if (fence.startsWith("`") && rawInfo.includes("`")) {
     return null;
   }
@@ -271,7 +285,7 @@ function parseFenceOpening(line: string): FenceOpening | null {
 }
 
 function isFenceClosing(line: string, openingFence: string): boolean {
-  const marker = escapeRegExp(openingFence[0]);
+  const marker = escapeRegExp(openingFence.charAt(0));
   const minLength = openingFence.length;
   return new RegExp(`^ {0,3}${marker}{${minLength},}[ \t]*(?:\r?\n)?$`, "u").test(line);
 }

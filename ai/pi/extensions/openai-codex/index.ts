@@ -116,12 +116,15 @@ async function fetchUsageSnapshot(
 class StatusOverlay {
   public readonly width = 84;
   public readonly focused = true;
+  private readonly theme: Theme;
+  private readonly lines: readonly string[];
+  private readonly done: () => void;
 
-  public constructor(
-    private readonly theme: Theme,
-    private readonly lines: readonly string[],
-    private readonly done: () => void,
-  ) {}
+  public constructor(theme: Theme, lines: readonly string[], done: () => void) {
+    this.theme = theme;
+    this.lines = lines;
+    this.done = done;
+  }
 
   public handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "return") || data.toLowerCase() === "q") {

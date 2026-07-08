@@ -218,6 +218,9 @@ export function parseArgs(args: string[]): ParsedArgs {
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+    if (arg === undefined) {
+      continue;
+    }
 
     switch (arg) {
       case "--delete-branch":
@@ -429,6 +432,9 @@ function resolveRepoIdentity(repoRoot: string): RepoIdentity {
   if (sshMatch) {
     const owner = sshMatch[1];
     const name = sshMatch[2];
+    if (owner === undefined || name === undefined) {
+      throw new Error(`Unsupported GitHub origin URL: ${remoteUrl}`);
+    }
     return { owner, name, nameWithOwner: `${owner}/${name}` };
   }
 
@@ -436,6 +442,9 @@ function resolveRepoIdentity(repoRoot: string): RepoIdentity {
   if (httpsMatch) {
     const owner = httpsMatch[1];
     const name = httpsMatch[2];
+    if (owner === undefined || name === undefined) {
+      throw new Error(`Unsupported GitHub origin URL: ${remoteUrl}`);
+    }
     return { owner, name, nameWithOwner: `${owner}/${name}` };
   }
 
@@ -974,9 +983,14 @@ export function resolveRemoteBranchFromRefs(
     );
   }
 
+  const remoteRef = matches[0];
+  if (remoteRef === undefined) {
+    return null;
+  }
+
   return {
-    remoteRef: matches[0],
-    localBranchName: deriveLocalBranchNameFromRemoteRef(matches[0]),
+    remoteRef,
+    localBranchName: deriveLocalBranchNameFromRemoteRef(remoteRef),
   };
 }
 
