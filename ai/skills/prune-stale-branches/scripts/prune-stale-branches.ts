@@ -300,7 +300,7 @@ function buildSprPrQueryArgs(
 }
 
 function isOpenPullRequest(pr: PullRequest): boolean {
-  return (pr.state ?? "") === "OPEN" && (pr.mergedAt ?? "") === "" && (pr.closedAt ?? "") === "";
+  return pr.state === "OPEN" && (pr.mergedAt ?? "") === "" && (pr.closedAt ?? "") === "";
 }
 
 function parsePullRequestPage(text: string): PullRequestPage | null {
