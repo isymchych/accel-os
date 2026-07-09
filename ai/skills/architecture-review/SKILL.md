@@ -20,7 +20,6 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
-- Run bundled `.ts` helper scripts with `deno`, not `node`.
 - For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
 - Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
 - `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the workspace, staged changes, or a base-ref diff.

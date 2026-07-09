@@ -26,7 +26,12 @@ export function classifyGitFailure(stdout: string, stderr: string): ClassifiedGi
     normalized.includes("unable to auto-detect email address") ||
     normalized.includes("please tell me who you are")
   ) {
-    return formatGitError("ERR_GIT_IDENTITY", "git user.name or user.email is not configured", stderr, stdout);
+    return formatGitError(
+      "ERR_GIT_IDENTITY",
+      "git user.name or user.email is not configured",
+      stderr,
+      stdout,
+    );
   }
   if (
     normalized.includes("pre-commit") ||
@@ -43,7 +48,12 @@ export function classifyGitFailure(stdout: string, stderr: string): ClassifiedGi
     normalized.includes("rebase") ||
     normalized.includes("cherry-pick")
   ) {
-    return formatGitError("ERR_GIT_STATE", "git repository state prevents committing", stderr, stdout);
+    return formatGitError(
+      "ERR_GIT_STATE",
+      "git repository state prevents committing",
+      stderr,
+      stdout,
+    );
   }
   return formatGitError("ERR_GIT_COMMIT", "git commit failed", stderr, stdout);
 }

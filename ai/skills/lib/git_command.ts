@@ -1,3 +1,5 @@
+import { runCommand } from "@accel-os/shared/process";
+
 export type GitCommandResult = {
   code: number;
   stdout: string;
@@ -6,26 +8,11 @@ export type GitCommandResult = {
 };
 
 export async function runGit(args: string[]): Promise<GitCommandResult> {
-  const command = new Deno.Command("git", {
-    args: ["--no-pager", ...args],
-    stdin: "null",
-    stdout: "piped",
-    stderr: "piped",
+  return await runCommand("git", ["--no-pager", ...args], {
     env: {
+      ...process.env,
       LC_ALL: "C",
       GIT_PAGER: "cat",
     },
   });
-
-  const { code, stdout, stderr } = await command.output();
-  return {
-    code,
-    stdout: decode(stdout).trimEnd(),
-    stderr: decode(stderr).trimEnd(),
-    success: code === 0,
-  };
-}
-
-function decode(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
 }

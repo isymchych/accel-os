@@ -1,11 +1,6 @@
-#!/usr/bin/env -S deno run --quiet --allow-run=git
-
 import { runGit } from "../../lib/git_command.ts";
 
-type Mode =
-  | { kind: "workspace" }
-  | { kind: "staged" }
-  | { kind: "base"; baseRef: string };
+type Mode = { kind: "workspace" } | { kind: "staged" } | { kind: "base"; baseRef: string };
 
 type BoundaryFinding = {
   file: string;
@@ -14,33 +9,33 @@ type BoundaryFinding = {
   line: string;
 };
 
-const mode = parseMode(Deno.args);
-const diffArgs = getDiffArgs(mode);
+const selectedMode = parseMode(process.argv.slice(2));
+const diffArgs = getDiffArgs(selectedMode);
 const result = await runGit(diffArgs);
 
 if (!result.success) {
   const errorText = result.stderr || result.stdout || `git exited with status ${result.code}`;
   if (/not a git repository/i.test(errorText)) {
     console.error(`ERR_NOT_REPO: ${errorText}`);
-    Deno.exit(65);
+    process.exit(65);
   }
   console.error(`ERR_GIT: ${errorText}`);
-  Deno.exit(66);
+  process.exit(66);
 }
 
 if (result.stdout === "") {
   console.log("No diff.");
-  Deno.exit(0);
+  process.exit(0);
 }
 
-const findings = collectBoundaryFindings(result.stdout);
-if (findings.length === 0) {
+const boundaryFindings = collectBoundaryFindings(result.stdout);
+if (boundaryFindings.length === 0) {
   console.log("No boundary-level interface changes detected.");
-  Deno.exit(0);
+  process.exit(0);
 }
 
 const grouped = new Map<string, BoundaryFinding[]>();
-for (const finding of findings) {
+for (const finding of boundaryFindings) {
   const entries = grouped.get(finding.file) ?? [];
   entries.push(finding);
   grouped.set(finding.file, entries);
@@ -58,27 +53,28 @@ for (const [file, entries] of grouped.entries()) {
 function parseMode(args: string[]): Mode {
   if (args.length === 0) return { kind: "workspace" };
   if (args.length === 1 && args[0] === "--staged") return { kind: "staged" };
-  if (args.length === 2 && args[0] === "--base" && args[1] !== "") {
-    return { kind: "base", baseRef: args[1] };
+  const baseRef = args[1];
+  if (args.length === 2 && args[0] === "--base" && baseRef !== undefined && baseRef !== "") {
+    return { kind: "base", baseRef };
   }
-  usage();
+  return usage();
 }
 
 function usage(): never {
   console.error("ERR_USAGE: expected no args, --staged, or --base <ref>");
-  Deno.exit(64);
+  process.exit(64);
 }
 
-function getDiffArgs(mode: Mode): string[] {
+function getDiffArgs(requestedMode: Mode): string[] {
   const shared = ["diff", "--no-color", "--no-ext-diff", "--unified=0"];
-  if (mode.kind === "workspace") return [...shared, "HEAD"];
-  if (mode.kind === "staged") return [...shared, "--staged"];
-  return [...shared, `${mode.baseRef}...HEAD`];
+  if (requestedMode.kind === "workspace") return [...shared, "HEAD"];
+  if (requestedMode.kind === "staged") return [...shared, "--staged"];
+  return [...shared, `${requestedMode.baseRef}...HEAD`];
 }
 
 function collectBoundaryFindings(diffText: string): BoundaryFinding[] {
   const lines = diffText.split("\n");
-  const findings: BoundaryFinding[] = [];
+  const collectedFindings: BoundaryFinding[] = [];
   let currentFile = "";
 
   for (const line of lines) {
@@ -95,16 +91,16 @@ function collectBoundaryFindings(diffText: string): BoundaryFinding[] {
     if (content === "") continue;
 
     if (isBoundaryExport(content)) {
-      findings.push({ file: currentFile, change, kind: "export", line: content });
+      collectedFindings.push({ file: currentFile, change, kind: "export", line: content });
       continue;
     }
 
     if (isEntrypointChange(currentFile, content)) {
-      findings.push({ file: currentFile, change, kind: "entrypoint", line: content });
+      collectedFindings.push({ file: currentFile, change, kind: "entrypoint", line: content });
     }
   }
 
-  return findings;
+  return collectedFindings;
 }
 
 function isBoundaryExport(content: string): boolean {

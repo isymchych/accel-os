@@ -1,35 +1,35 @@
-#!/usr/bin/env -S deno run --quiet --allow-run=git
+import { assertNever } from "@accel-os/shared/guards";
 
 import { runGit } from "../../lib/git_command.ts";
 
 type Mode = "diff" | "fingerprint" | "names";
 
-const mode = parseMode(Deno.args);
-const gitArgs = getGitArgs(mode);
+const selectedMode = parseMode(process.argv.slice(2));
+const gitArgs = getGitArgs(selectedMode);
 
 const { code, stdout, stderr, success } = await runGit(gitArgs);
 if (success) {
-  if (mode === "fingerprint") {
+  if (selectedMode === "fingerprint") {
     console.log(await sha256Hex(stdout));
-    Deno.exit(0);
+    process.exit(0);
   }
 
   if (stdout !== "") console.log(stdout);
-  Deno.exit(0);
+  process.exit(0);
 }
 
 const errorText = stderr || stdout || `git exited with status ${code}`;
 if (/not a git repository/i.test(errorText)) {
   console.error(`ERR_NOT_REPO: ${errorText}`);
-  Deno.exit(65);
+  process.exit(65);
 }
 
 console.error(`ERR_GIT: ${errorText}`);
-Deno.exit(66);
+process.exit(66);
 
 function parseMode(args: string[]): Mode {
   if (args.length === 0) return "diff";
-  if (args.length > 1) usage();
+  if (args.length > 1) return usage();
 
   switch (args[0]) {
     case "--fingerprint":
@@ -37,24 +37,26 @@ function parseMode(args: string[]): Mode {
     case "--names":
       return "names";
     default:
-      usage();
+      return usage();
   }
 }
 
-function getGitArgs(mode: Mode): string[] {
-  switch (mode) {
+function getGitArgs(requestedMode: Mode): string[] {
+  switch (requestedMode) {
     case "fingerprint":
       return ["diff", "--staged", "--no-color", "--no-ext-diff"];
     case "names":
       return ["diff", "--staged", "--name-only", "--no-color", "--no-ext-diff"];
     case "diff":
       return ["diff", "--staged", "--no-color", "--no-ext-diff"];
+    default:
+      return assertNever(requestedMode);
   }
 }
 
 function usage(): never {
   console.error("ERR_USAGE: expected no args, --fingerprint, or --names");
-  Deno.exit(64);
+  process.exit(64);
 }
 
 async function sha256Hex(text: string): Promise<string> {

@@ -24,7 +24,6 @@ description: Generate a Conventional Commit message from the helper-provided dif
 
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
-- Run bundled `.ts` helper scripts with `deno`, not `node`.
 - For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
 - Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
 - `scripts/show_staged_diff.ts` — Reads the staged diff used to draft the commit message.
@@ -42,7 +41,7 @@ description: Generate a Conventional Commit message from the helper-provided dif
 4. Confirm the chosen working directory is inside the target git repository.
    If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory, stop and report the mismatch.
 5. Read staged diff via helper, with `cwd` set to the target repository:
-   `deno run -A <resolved-path-to>/scripts/show_staged_diff.ts`.
+   `node <resolved-path-to>/scripts/show_staged_diff.ts`.
 6. If the helper fails - optionally run one narrow read-only diagnostic command
    (`git rev-parse --is-inside-work-tree` or `git status --short --branch`) in the same target repository `cwd` to
    clarify the failure, then print the error and stop. Treat any `ERR_*` prefix
@@ -60,7 +59,7 @@ description: Generate a Conventional Commit message from the helper-provided dif
 13. Otherwise, proceed only if the current user request explicitly instructs committing now (e.g., “commit now”, “run git commit”, “go ahead”, “yes, commit”).
 14. If not authorized, ask for confirmation using the confirmation output format and stop.
 15. Commit execution rule: never run `git commit` directly in this skill.
-16. On approval, run `deno run -A <resolved-path-to>/scripts/commit_with_message.ts` with `cwd` set to the target repository and pass the full
+16. On approval, run `node <resolved-path-to>/scripts/commit_with_message.ts` with `cwd` set to the target repository and pass the full
     generated commit message via stdin.
 17. Treat helper output as authoritative:
     - On exit 0, expect stdout line 1 to be `OK <full-sha>` and use that sha for success output.

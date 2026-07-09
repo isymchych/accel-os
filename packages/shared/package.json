@@ -6,7 +6,8 @@
   "exports": {
     "./guards": "./src/guards.ts",
     "./http": "./src/http.ts",
-    "./json": "./src/json.ts"
+    "./json": "./src/json.ts",
+    "./process": "./src/process.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

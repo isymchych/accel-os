@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run --quiet --allow-net
-
 type CandidateSource = "input" | "alternate-link" | "html-link" | "common-endpoint";
 
 type Candidate = {
@@ -35,7 +33,7 @@ const FEED_HINT_RE = /(rss|atom|feed|\.xml($|[?#]))/i;
 
 function usage(): never {
   console.error("Usage: find_feed.ts <website-or-page-url>");
-  Deno.exit(2);
+  process.exit(2);
 }
 
 function normalizeInput(raw: string): URL {
@@ -74,7 +72,7 @@ function parseAttributes(tag: string): Map<string, string> {
   const attrRe = /([a-zA-Z_:][a-zA-Z0-9_:.:-]*)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/g;
 
   for (const match of tag.matchAll(attrRe)) {
-    const key = match[1].toLowerCase();
+    const key = (match[1] ?? "").toLowerCase();
     const value = (match[3] ?? match[4] ?? match[5] ?? "").trim();
     attrs.set(key, value);
   }
@@ -169,7 +167,9 @@ function parseSelfLink(raw: string, baseUrl: string): string | null {
   return resolveHref(baseUrl, attrs.get("href") ?? "");
 }
 
-async function fetchText(url: string): Promise<{ status: number; text: string; contentType: string }> {
+async function fetchText(
+  url: string,
+): Promise<{ status: number; text: string; contentType: string }> {
   const response = await fetch(url, { redirect: "follow" });
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   const text = await response.text();
@@ -182,7 +182,13 @@ async function validateCandidate(candidate: Candidate): Promise<Validation | nul
     if (status !== 200) return null;
     const detection = detectFeed(text);
     if (!detection) {
-      if (!(contentType.includes("xml") || contentType.includes("rss") || contentType.includes("atom"))) {
+      if (
+        !(
+          contentType.includes("xml") ||
+          contentType.includes("rss") ||
+          contentType.includes("atom")
+        )
+      ) {
         return null;
       }
       return null;
@@ -213,7 +219,7 @@ function sourceWeight(source: CandidateSource): number {
   return 3;
 }
 
-const rawInput = Deno.args[0];
+const rawInput = process.argv.slice(2)[0];
 if (!rawInput) usage();
 
 let inputUrl: URL;
@@ -221,7 +227,7 @@ try {
   inputUrl = normalizeInput(rawInput);
 } catch {
   console.error(`ERROR: invalid URL: ${rawInput}`);
-  Deno.exit(2);
+  process.exit(2);
 }
 
 const initialCandidates: Candidate[] = [
@@ -250,22 +256,25 @@ for (const endpoint of COMMON_ENDPOINTS) {
   });
 }
 
-const dedupedCandidates = uniqueUrls(initialCandidates.map((item) => item.url)).map((url) =>
-  initialCandidates.find((item) => item.url === url)!
-);
+const candidateByUrl = new Map(initialCandidates.map((item) => [item.url, item]));
+const dedupedCandidates = uniqueUrls(initialCandidates.map((item) => item.url)).flatMap((url) => {
+  const candidate = candidateByUrl.get(url);
+  return candidate === undefined ? [] : [candidate];
+});
 
-const validations = (await Promise.all(dedupedCandidates.map(validateCandidate))).filter((item): item is Validation =>
-  item !== null
+const validations = (await Promise.all(dedupedCandidates.map(validateCandidate))).filter(
+  (item): item is Validation => item !== null,
 );
 
 if (validations.length === 0) {
   console.error("ERROR: no valid RSS/Atom feed discovered");
-  Deno.exit(3);
+  process.exit(3);
 }
 
 validations.sort((a, b) => sourceWeight(a.source) - sourceWeight(b.source));
 
 const recommended = validations[0];
+if (recommended === undefined) throw new Error("internal error: missing recommended feed");
 
 const result = {
   input: inputUrl.toString(),

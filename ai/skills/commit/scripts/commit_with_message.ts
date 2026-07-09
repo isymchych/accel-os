@@ -1,7 +1,13 @@
-#!/usr/bin/env -S deno run --quiet --allow-run=git --allow-read
+import { readFile } from "node:fs/promises";
 
-import { classifyGitFailure, formatGitError, printStructuredGitError } from "../../lib/git_error.ts";
-import { runGit } from "../../lib/git_command.ts";
+import { getErrorMessage } from "@accel-os/shared/guards";
+
+import { runGit, type GitCommandResult } from "../../lib/git_command.ts";
+import {
+  classifyGitFailure,
+  formatGitError,
+  printStructuredGitError,
+} from "../../lib/git_error.ts";
 
 const BODY_LINE_MAX = 99;
 
@@ -87,17 +93,16 @@ async function readInput(args: string[]): Promise<string> {
   if (fileFlagIndex >= 0) {
     const filePath = args[fileFlagIndex + 1];
     if (!filePath) throw new Error("missing value for --message-file");
-    return await Deno.readTextFile(filePath);
+    return await readFile(filePath, "utf8");
   }
 
-  const decoder = new TextDecoder();
-  let text = "";
-  for await (const chunk of Deno.stdin.readable) text += decoder.decode(chunk, { stream: true });
-  text += decoder.decode();
-  return text;
+  process.stdin.setEncoding("utf8");
+  const chunks: string[] = [];
+  for await (const chunk of process.stdin) chunks.push(String(chunk));
+  return chunks.join("");
 }
 
-async function commitMessage(message: string) {
+async function commitMessage(message: string): Promise<GitCommandResult> {
   const lines = message.split("\n");
   const subject = lines[0] ?? "";
   const body = lines.slice(2).join("\n").trimEnd();
@@ -117,24 +122,25 @@ async function readHeadSha(): Promise<string> {
 
 if (import.meta.main) {
   try {
-    const rawMessage = await readInput(Deno.args);
+    const rawMessage = await readInput(process.argv.slice(2));
     const normalized = normalizeMessage(rawMessage);
     const result = await commitMessage(normalized);
 
     if (result.code === 0) {
       const sha = await readHeadSha();
       console.log(`OK ${sha}`);
-      Deno.exit(0);
+      process.exit(0);
     }
 
     printStructuredGitError(classifyGitFailure(result.stdout, result.stderr));
-    Deno.exit(3);
+    process.exit(3);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const code = message.startsWith("empty commit") || message.startsWith("missing value for --message-file")
-      ? "ERR_MESSAGE_INVALID"
-      : "ERR_INTERNAL";
+    const message = getErrorMessage(error);
+    const code =
+      message.startsWith("empty commit") || message.startsWith("missing value for --message-file")
+        ? "ERR_MESSAGE_INVALID"
+        : "ERR_INTERNAL";
     printStructuredGitError(formatGitError(code, message, ""));
-    Deno.exit(code === "ERR_MESSAGE_INVALID" ? 2 : 4);
+    process.exit(code === "ERR_MESSAGE_INVALID" ? 2 : 4);
   }
 }

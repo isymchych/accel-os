@@ -1,11 +1,8 @@
-#!/usr/bin/env -S deno run --quiet --allow-read --allow-run=git
+import { readFile } from "node:fs/promises";
 
 import { runGit } from "../../lib/git_command.ts";
 
-type Mode =
-  | { kind: "workspace" }
-  | { kind: "staged" }
-  | { kind: "base"; baseRef: string };
+type Mode = { kind: "workspace" } | { kind: "staged" } | { kind: "base"; baseRef: string };
 
 type Finding = {
   file: string;
@@ -14,76 +11,85 @@ type Finding = {
   delegateCall: string;
 };
 
-const mode = parseMode(Deno.args);
-const files = await getChangedFiles(mode);
+const selectedMode = parseMode(process.argv.slice(2));
+const files = await getChangedFiles(selectedMode);
 
 if (files.length === 0) {
   console.log("No changed files.");
-  Deno.exit(0);
+  process.exit(0);
 }
 
-const candidateFiles = files.filter((file) =>
-  file.endsWith(".ts") || file.endsWith(".tsx") || file.endsWith(".js") || file.endsWith(".jsx") ||
-  file.endsWith(".rs")
+const candidateFiles = files.filter(
+  (file) =>
+    file.endsWith(".ts") ||
+    file.endsWith(".tsx") ||
+    file.endsWith(".js") ||
+    file.endsWith(".jsx") ||
+    file.endsWith(".rs"),
 );
 
-const findings: Finding[] = [];
+const detectedFindings: Finding[] = [];
 for (const file of candidateFiles) {
   const fileFindings = await scanFile(file);
-  findings.push(...fileFindings);
+  detectedFindings.push(...fileFindings);
 }
 
-if (findings.length === 0) {
+if (detectedFindings.length === 0) {
   console.log("No likely pass-through wrappers found in changed files.");
-  Deno.exit(0);
+  process.exit(0);
 }
 
 console.log("Likely pass-through wrappers:");
-for (const finding of findings) {
+for (const finding of detectedFindings) {
   console.log(`${finding.file}:${finding.line} ${finding.wrapperName} -> ${finding.delegateCall}`);
 }
 
 function parseMode(args: string[]): Mode {
   if (args.length === 0) return { kind: "workspace" };
   if (args.length === 1 && args[0] === "--staged") return { kind: "staged" };
-  if (args.length === 2 && args[0] === "--base" && args[1] !== "") {
-    return { kind: "base", baseRef: args[1] };
+  const baseRef = args[1];
+  if (args.length === 2 && args[0] === "--base" && baseRef !== undefined && baseRef !== "") {
+    return { kind: "base", baseRef };
   }
-  usage();
+  return usage();
 }
 
 function usage(): never {
   console.error("ERR_USAGE: expected no args, --staged, or --base <ref>");
-  Deno.exit(64);
+  process.exit(64);
 }
 
-async function getChangedFiles(mode: Mode): Promise<string[]> {
+async function getChangedFiles(requestedMode: Mode): Promise<string[]> {
   const shared = ["diff", "--name-only", "--no-color", "--no-ext-diff", "--diff-filter=ACMR"];
-  const diffArgs = mode.kind === "workspace"
-    ? [...shared, "HEAD"]
-    : mode.kind === "staged"
-    ? [...shared, "--staged"]
-    : [...shared, `${mode.baseRef}...HEAD`];
+  const diffArgs =
+    requestedMode.kind === "workspace"
+      ? [...shared, "HEAD"]
+      : requestedMode.kind === "staged"
+        ? [...shared, "--staged"]
+        : [...shared, `${requestedMode.baseRef}...HEAD`];
 
   const result = await runGit(diffArgs);
   if (!result.success) {
     const errorText = result.stderr || result.stdout || `git exited with status ${result.code}`;
     if (/not a git repository/i.test(errorText)) {
       console.error(`ERR_NOT_REPO: ${errorText}`);
-      Deno.exit(65);
+      process.exit(65);
     }
     console.error(`ERR_GIT: ${errorText}`);
-    Deno.exit(66);
+    process.exit(66);
   }
 
   if (result.stdout === "") return [];
-  return result.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== "");
+  return result.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
 }
 
 async function scanFile(path: string): Promise<Finding[]> {
   let text: string;
   try {
-    text = await Deno.readTextFile(path);
+    text = await readFile(path, "utf8");
   } catch {
     return [];
   }
@@ -93,7 +99,7 @@ async function scanFile(path: string): Promise<Finding[]> {
 }
 
 function findTsJsPassThrough(path: string, text: string): Finding[] {
-  const findings: Finding[] = [];
+  const collectedFindings: Finding[] = [];
 
   const functionRe =
     /(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(([^)]*)\)\s*\{\s*return\s+([A-Za-z_$][A-Za-z0-9_$.]*)\(([^)]*)\);?\s*\}/g;
@@ -103,21 +109,32 @@ function findTsJsPassThrough(path: string, text: string): Finding[] {
 
   for (const match of text.matchAll(functionRe)) {
     const finding = toTsJsFinding(path, text, match);
-    if (finding) findings.push(finding);
+    if (finding) collectedFindings.push(finding);
   }
   for (const match of text.matchAll(arrowRe)) {
     const finding = toTsJsFinding(path, text, match);
-    if (finding) findings.push(finding);
+    if (finding) collectedFindings.push(finding);
   }
 
-  return findings;
+  return collectedFindings;
 }
 
 function toTsJsFinding(path: string, text: string, match: RegExpMatchArray): Finding | null {
   const wrapperName = match[1];
-  const wrapperParams = parseTsParams(match[2]);
+  const rawWrapperParams = match[2];
   const delegateCall = match[3];
-  const delegateArgs = parseCallArgs(match[4]);
+  const rawDelegateArgs = match[4];
+
+  if (
+    wrapperName === undefined ||
+    rawWrapperParams === undefined ||
+    delegateCall === undefined ||
+    rawDelegateArgs === undefined
+  )
+    return null;
+
+  const wrapperParams = parseTsParams(rawWrapperParams);
+  const delegateArgs = parseCallArgs(rawDelegateArgs);
 
   if (wrapperName === delegateCall) return null;
   if (!sameArgs(wrapperParams, delegateArgs)) return null;
@@ -127,24 +144,35 @@ function toTsJsFinding(path: string, text: string, match: RegExpMatchArray): Fin
 }
 
 function findRustPassThrough(path: string, text: string): Finding[] {
-  const findings: Finding[] = [];
+  const collectedFindings: Finding[] = [];
   const fnRe =
     /(?:pub\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^{]+)?\{\s*(?:return\s+)?([A-Za-z_][A-Za-z0-9_:]*)\(([^)]*)\);?\s*\}/g;
 
   for (const match of text.matchAll(fnRe)) {
     const wrapperName = match[1];
-    const wrapperParams = parseRustParams(match[2]);
     const delegateCall = match[3];
-    const delegateArgs = parseCallArgs(match[4]);
+    const rawWrapperParams = match[2];
+    const rawDelegateArgs = match[4];
+
+    if (
+      wrapperName === undefined ||
+      rawWrapperParams === undefined ||
+      delegateCall === undefined ||
+      rawDelegateArgs === undefined
+    )
+      continue;
+
+    const wrapperParams = parseRustParams(rawWrapperParams);
+    const delegateArgs = parseCallArgs(rawDelegateArgs);
 
     if (wrapperName === delegateCall) continue;
     if (!sameArgs(wrapperParams, delegateArgs)) continue;
 
-    const line = getLineNumber(text, match.index ?? 0);
-    findings.push({ file: path, line, wrapperName, delegateCall });
+    const line = getLineNumber(text, match.index);
+    collectedFindings.push({ file: path, line, wrapperName, delegateCall });
   }
 
-  return findings;
+  return collectedFindings;
 }
 
 function parseTsParams(rawParams: string): string[] {

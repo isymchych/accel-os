@@ -64,18 +64,20 @@
 
 ## AI / Codex Skills
 
-- Skill helper scripts should be Deno TypeScript, not Python.
+- Skill helper scripts should be Node TypeScript run directly with `node`, not Deno or Python.
 - When a skill references cross-folder policy docs, use `$ACCEL_OS` absolute paths because relative paths drift by working directory.
 
 ## Best Practices
 
 - When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria because internal jargon and negative unsupported-argument framing make model tool selection less reliable.
 - When parsing JSON at Node script boundaries, define a TypeBox schema near the external shape and parse through `@accel-os/shared/json` so validation stays canonical and trusted code receives typed data.
+- Prefer named domain/result types over nested utility types such as `Promise<Awaited<ReturnType<typeof fn>>>`; explicit types keep public helper contracts readable.
 
 ## Intent Ledger
 
 - For Sway session daemons, prefer user systemd units pulled by `sway-session.target`; keep `dotfiles/dot_config/sway/config` focused on compositor settings and keybindings.
 - When runtime helpers are needed by multiple workspaces, put them in an explicit workspace package such as `packages/shared` rather than a root-level `lib/`, so dependency ownership and imports remain clear.
+- For local npm workspace dependencies, use the package's declared version such as `"0.0.0"`; do not use the `workspace:` protocol because npm does not support it.
 
 ## Pi Configuration
 
