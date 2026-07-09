@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@accel-os/shared": "0.0.0"
+    "@accel-os/shared": "0.0.0",
+    "typebox": "^1.1.36"
   }
 }

@@ -1,5 +1,6 @@
-import { isRecord } from "@accel-os/shared/guards";
+import { parseJsonWithSchema } from "@accel-os/shared/json";
 import { runCommand } from "@accel-os/shared/process";
+import { Type, type Static } from "typebox";
 
 type Mode = "dry-run" | "delete";
 
@@ -20,35 +21,65 @@ type Args = {
   confirmDelete: string;
 };
 
-type RefNode = {
-  name: string;
-  target: {
-    committedDate?: string | null;
-    pushedDate?: string | null;
-  } | null;
-};
+const nullableStringSchema = Type.Union([Type.String(), Type.Null()]);
 
-type GraphQlResponse = {
-  data?: {
-    repository?: {
-      refs?: {
-        nodes?: RefNode[];
-        pageInfo?: {
-          hasNextPage?: boolean;
-          endCursor?: string | null;
-        };
-      };
-    };
-  };
-};
+const pageInfoSchema = Type.Object({
+  hasNextPage: Type.Boolean(),
+  endCursor: nullableStringSchema,
+});
 
-type PullRequest = {
-  state?: string;
-  mergedAt?: string | null;
-  closedAt?: string | null;
-  headRepositoryOwner?: {
-    login?: string;
-  } | null;
+const refNodeSchema = Type.Object({
+  name: Type.String(),
+  target: Type.Union([
+    Type.Object({
+      committedDate: Type.Optional(nullableStringSchema),
+      pushedDate: Type.Optional(nullableStringSchema),
+    }),
+    Type.Null(),
+  ]),
+});
+
+const refsResponseSchema = Type.Object({
+  data: Type.Object({
+    repository: Type.Object({
+      refs: Type.Object({
+        nodes: Type.Array(refNodeSchema),
+        pageInfo: pageInfoSchema,
+      }),
+    }),
+  }),
+});
+
+const pullRequestSchema = Type.Object({
+  state: Type.String(),
+  mergedAt: nullableStringSchema,
+  closedAt: nullableStringSchema,
+  headRepositoryOwner: Type.Union([
+    Type.Object({
+      login: Type.String(),
+    }),
+    Type.Null(),
+  ]),
+});
+
+const pullRequestsResponseSchema = Type.Object({
+  data: Type.Object({
+    repository: Type.Object({
+      pullRequests: Type.Object({
+        nodes: Type.Array(pullRequestSchema),
+        pageInfo: pageInfoSchema,
+      }),
+    }),
+  }),
+});
+
+type RefNode = Static<typeof refNodeSchema>;
+type PullRequest = Static<typeof pullRequestSchema>;
+
+type RefPage = {
+  nodes: RefNode[];
+  hasNextPage: boolean;
+  endCursor: string;
 };
 
 type PullRequestPage = {
@@ -273,106 +304,35 @@ function isOpenPullRequest(pr: PullRequest): boolean {
 }
 
 function parsePullRequestPage(text: string): PullRequestPage | null {
-  const value = parseJson(text);
-  if (!isRecord(value)) return null;
-
-  const pullRequests = getNestedRecord(value, ["data", "repository", "pullRequests"]);
-  if (pullRequests === null) return { nodes: [], hasNextPage: false, endCursor: "" };
-
-  const nodesValue = pullRequests["nodes"];
-  const nodes = Array.isArray(nodesValue) ? nodesValue.flatMap(toPullRequest) : [];
-  const pageInfoValue = pullRequests["pageInfo"];
-  const pageInfo = isRecord(pageInfoValue) ? pageInfoValue : {};
-
-  return {
-    nodes,
-    hasNextPage: pageInfo["hasNextPage"] === true,
-    endCursor: optionalString(pageInfo["endCursor"]) ?? "",
-  };
-}
-
-function parseGraphQlResponse(text: string): GraphQlResponse | null {
-  const value = parseJson(text);
-  if (!isRecord(value)) return null;
-
-  const refs = getNestedRecord(value, ["data", "repository", "refs"]);
-  const nodesValue = refs?.["nodes"];
-  const nodes = Array.isArray(nodesValue) ? nodesValue.flatMap(toRefNode) : [];
-  const pageInfoValue = refs?.["pageInfo"];
-  const pageInfo = isRecord(pageInfoValue) ? pageInfoValue : {};
-
-  return {
-    data: {
-      repository: {
-        refs: {
-          nodes,
-          pageInfo: {
-            hasNextPage: pageInfo["hasNextPage"] === true,
-            endCursor: optionalString(pageInfo["endCursor"]) ?? "",
-          },
-        },
-      },
-    },
-  };
-}
-
-function parseJson(text: string): unknown {
   try {
-    return JSON.parse(text) as unknown;
+    const response = parseJsonWithSchema(
+      text,
+      pullRequestsResponseSchema,
+      "GitHub pull requests response",
+    );
+    const pullRequests = response.data.repository.pullRequests;
+    return {
+      nodes: pullRequests.nodes,
+      hasNextPage: pullRequests.pageInfo.hasNextPage,
+      endCursor: pullRequests.pageInfo.endCursor ?? "",
+    };
   } catch {
     return null;
   }
 }
 
-function getNestedRecord(
-  root: Record<string, unknown>,
-  path: string[],
-): Record<string, unknown> | null {
-  let current: unknown = root;
-  for (const key of path) {
-    if (!isRecord(current)) return null;
-    current = current[key];
+function parseGraphQlResponse(text: string): RefPage | null {
+  try {
+    const response = parseJsonWithSchema(text, refsResponseSchema, "GitHub refs response");
+    const refs = response.data.repository.refs;
+    return {
+      nodes: refs.nodes,
+      hasNextPage: refs.pageInfo.hasNextPage,
+      endCursor: refs.pageInfo.endCursor ?? "",
+    };
+  } catch {
+    return null;
   }
-  return isRecord(current) ? current : null;
-}
-
-function toPullRequest(value: unknown): PullRequest[] {
-  if (!isRecord(value)) return [];
-  const owner = isRecord(value["headRepositoryOwner"]) ? value["headRepositoryOwner"] : null;
-  const pullRequest: PullRequest = {};
-  const state = optionalString(value["state"]);
-  const mergedAt = optionalString(value["mergedAt"]);
-  const closedAt = optionalString(value["closedAt"]);
-  if (state !== undefined) pullRequest.state = state;
-  if (mergedAt !== undefined) pullRequest.mergedAt = mergedAt;
-  if (closedAt !== undefined) pullRequest.closedAt = closedAt;
-  if (owner !== null) {
-    const login = optionalString(owner["login"]);
-    pullRequest.headRepositoryOwner = login === undefined ? {} : { login };
-  }
-  return [pullRequest];
-}
-
-function toRefNode(value: unknown): RefNode[] {
-  if (!isRecord(value)) return [];
-  const target = isRecord(value["target"]) ? value["target"] : null;
-  const targetValue: RefNode["target"] = target === null ? null : {};
-  if (target !== null && targetValue !== null) {
-    const committedDate = optionalString(target["committedDate"]);
-    const pushedDate = optionalString(target["pushedDate"]);
-    if (committedDate !== undefined) targetValue.committedDate = committedDate;
-    if (pushedDate !== undefined) targetValue.pushedDate = pushedDate;
-  }
-  return [
-    {
-      name: optionalString(value["name"]) ?? "",
-      target: targetValue,
-    },
-  ];
-}
-
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
 }
 
 async function aheadCount(mainBranch: string, branch: string): Promise<number | null> {
@@ -414,12 +374,7 @@ async function fetchRefsPage(
     process.exit(1);
   }
 
-  const refs = parsed.data?.repository?.refs;
-  return {
-    nodes: refs?.nodes ?? [],
-    hasNextPage: refs?.pageInfo?.hasNextPage === true,
-    endCursor: refs?.pageInfo?.endCursor ?? "",
-  };
+  return parsed;
 }
 
 function printCandidates(candidates: Candidate[]): void {

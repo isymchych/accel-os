@@ -5,6 +5,9 @@ import path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
 
+import { parseJsonWithSchema } from "@accel-os/shared/json";
+import { Type } from "typebox";
+
 import {
   parseOpenAICodexCredential,
   resolveOpenAICodexRuntimeAccountProfile,
@@ -14,7 +17,6 @@ import {
   type OpenAICodexUsageCredential,
   fetchUsageSnapshotForCredential,
 } from "./extensions/openai-codex/usage.ts";
-import { isRecord } from "./shared/guards.ts";
 
 const usage = `ai [account] [-- <pi args...>]
 
@@ -37,6 +39,7 @@ if (accelOs === undefined || accelOs.length === 0) {
 
 const appendSystemPromptPath = path.join(accelOs, "ai", "SYSTEM.md");
 const accountUsageTimeoutMs = 20000;
+const authFileSchema = Type.Record(Type.String(), Type.Unknown());
 
 const defaultToolNames = [
   "bash",
@@ -119,10 +122,7 @@ const resolveAuthDir = async (): Promise<string> => {
 };
 
 const parseAccountInfo = (raw: string, filePath: string, isCurrent: boolean): AccountInfo => {
-  const parsed: unknown = JSON.parse(raw);
-  if (!isRecord(parsed)) {
-    throw new Error(`invalid auth file structure in ${filePath}`);
-  }
+  const parsed = parseJsonWithSchema(raw, authFileSchema, filePath);
 
   const credential = parseOpenAICodexCredential(parsed["openai-codex"]);
   if (credential === null) {

@@ -4,7 +4,21 @@
  * This module owns JWT payload decoding, saved-credential parsing, and claim extraction at the auth
  * boundary so callers can work with normalized account data instead of raw token shape details.
  */
+import { assertSchema, parseJsonWithSchema } from "@accel-os/shared/json";
+import { Type, type Static } from "typebox";
+
 import { isRecord } from "../../shared/guards.ts";
+
+const jwtPayloadSchema = Type.Record(Type.String(), Type.Unknown());
+type JwtPayload = Static<typeof jwtPayloadSchema>;
+
+const openAICodexSavedCredentialSchema = Type.Object({
+  type: Type.Literal("oauth"),
+  access: Type.Optional(Type.String({ minLength: 1 })),
+  refresh: Type.Optional(Type.String({ minLength: 1 })),
+  expires: Type.Optional(Type.Number()),
+  accountId: Type.Optional(Type.String({ minLength: 1 })),
+});
 
 export interface OpenAICodexAccountProfile {
   accountId?: string;
@@ -12,21 +26,7 @@ export interface OpenAICodexAccountProfile {
   plan?: string;
 }
 
-export interface OpenAICodexSavedCredential {
-  type: "oauth";
-  access?: string;
-  refresh?: string;
-  expires?: number;
-  accountId?: string;
-}
-
-function readNonEmptyString(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function readFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
+export type OpenAICodexSavedCredential = Static<typeof openAICodexSavedCredentialSchema>;
 
 function getNestedRecord(
   value: Record<string, unknown> | null,
@@ -50,36 +50,29 @@ function getStringRecordValue(value: Record<string, unknown> | null, key: string
 }
 
 export function parseOpenAICodexCredential(value: unknown): OpenAICodexSavedCredential | null {
-  if (!isRecord(value) || value["type"] !== "oauth") {
+  try {
+    assertSchema(value, openAICodexSavedCredentialSchema, "OpenAI Codex credential");
+  } catch {
     return null;
   }
 
-  const credential: OpenAICodexSavedCredential = { type: "oauth" };
-
-  const access = readNonEmptyString(value["access"]);
-  if (access !== undefined) {
-    credential.access = access;
+  const credential: OpenAICodexSavedCredential = { type: value.type };
+  if (value.access !== undefined) {
+    credential.access = value.access;
   }
-
-  const refresh = readNonEmptyString(value["refresh"]);
-  if (refresh !== undefined) {
-    credential.refresh = refresh;
+  if (value.refresh !== undefined) {
+    credential.refresh = value.refresh;
   }
-
-  const expires = readFiniteNumber(value["expires"]);
-  if (expires !== undefined) {
-    credential.expires = expires;
+  if (value.expires !== undefined) {
+    credential.expires = value.expires;
   }
-
-  const accountId = readNonEmptyString(value["accountId"]);
-  if (accountId !== undefined) {
-    credential.accountId = accountId;
+  if (value.accountId !== undefined) {
+    credential.accountId = value.accountId;
   }
-
   return credential;
 }
 
-export function parseJwtPayload(token: string): Record<string, unknown> | null {
+export function parseJwtPayload(token: string): JwtPayload | null {
   const parts = token.split(".");
   if (parts.length < 2) {
     return null;
@@ -95,8 +88,7 @@ export function parseJwtPayload(token: string): Record<string, unknown> | null {
   const padded = normalized + "=".repeat(padLength);
   try {
     const json = Buffer.from(padded, "base64").toString("utf8");
-    const parsed: unknown = JSON.parse(json);
-    return isRecord(parsed) ? parsed : null;
+    return parseJsonWithSchema(json, jwtPayloadSchema, "JWT payload");
   } catch {
     return null;
   }
