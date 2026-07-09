@@ -4,21 +4,26 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test, { type TestContext } from "node:test";
 
+import { isRecord } from "@accel-os/shared/guards";
+
+import { getTextOutput, normalizeToolResult } from "../../shared/test-helpers.ts";
 import { executeNumberedRead, type NumberedReadInput } from "./numbered-read.ts";
+
+interface NumberedReadToolDetails {
+  truncation?: {
+    truncated: boolean;
+    truncatedBy: "lines" | "bytes" | null;
+    outputLines: number;
+    firstLineExceedsLimit: boolean;
+  };
+}
 
 interface ToolResult {
   content: Array<{
     type: string;
     text?: string;
   }>;
-  details?: {
-    truncation?: {
-      truncated: boolean;
-      truncatedBy: "lines" | "bytes" | null;
-      outputLines: number;
-      firstLineExceedsLimit: boolean;
-    };
-  };
+  details?: NumberedReadToolDetails;
 }
 
 async function createTempWorkspace(t: TestContext): Promise<string> {
@@ -37,38 +42,8 @@ async function writeWorkspaceFile(
   await writeFile(absolutePath, content, "utf-8");
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function normalizeToolResult(result: unknown): ToolResult {
-  assert.ok(isRecord(result), "Expected tool result to be an object.");
-
-  const { content, details } = result;
-  assert.ok(Array.isArray(content), "Expected tool result content to be an array.");
-
-  const normalizedContent = content.map((block) => {
-    assert.ok(isRecord(block), "Expected each content block to be an object.");
-
-    const type = block["type"];
-    if (typeof type !== "string") {
-      throw new Error("Expected each content block to have a string type.");
-    }
-
-    const normalizedBlock: ToolResult["content"][number] = { type };
-    const text = block["text"];
-    if (typeof text === "string") {
-      normalizedBlock.text = text;
-    }
-    return normalizedBlock;
-  });
-
-  if (details === undefined) {
-    return { content: normalizedContent };
-  }
-
-  assert.ok(isRecord(details), "Expected tool result details to be an object.");
-  const normalizedDetails: NonNullable<ToolResult["details"]> = {};
+function normalizeNumberedReadDetails(details: Record<string, unknown>): NumberedReadToolDetails {
+  const normalizedDetails: NumberedReadToolDetails = {};
   const truncation = details["truncation"];
 
   if (isRecord(truncation)) {
@@ -83,24 +58,14 @@ function normalizeToolResult(result: unknown): ToolResult {
     };
   }
 
-  return {
-    content: normalizedContent,
-    details: normalizedDetails,
-  };
+  return normalizedDetails;
 }
 
 async function runRead(cwd: string, params: NumberedReadInput): Promise<ToolResult> {
   const result = await executeNumberedRead(params, cwd);
-  return normalizeToolResult(result);
-}
-
-function getTextOutput(result: ToolResult): string {
-  const block = result.content[0];
-  assert.ok(block, "Expected tool result to include a text content block.");
-  if (block.type !== "text" || typeof block.text !== "string") {
-    throw new Error("Expected tool result to include text content.");
-  }
-  return block.text;
+  return normalizeToolResult<NumberedReadToolDetails>(result, {
+    normalizeDetails: normalizeNumberedReadDetails,
+  });
 }
 
 test("numbered read formats a selected line range with absolute line numbers", async (t) => {

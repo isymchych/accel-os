@@ -60,9 +60,11 @@
 
 ## Best Practices
 - When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria because internal jargon and negative unsupported-argument framing make model tool selection less reliable.
+- When parsing JSON at Node script boundaries, define a TypeBox schema near the external shape and parse through `@accel-os/shared/json` so validation stays canonical and trusted code receives typed data.
 
 ## Intent Ledger
 - For Sway session daemons, prefer user systemd units pulled by `sway-session.target`; keep `dotfiles/dot_config/sway/config` focused on compositor settings and keybindings.
+- When runtime helpers are needed by multiple workspaces, put them in an explicit workspace package such as `packages/shared` rather than a root-level `lib/`, so dependency ownership and imports remain clear.
 
 ## Pi Configuration
 - Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.

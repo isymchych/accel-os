@@ -4,6 +4,12 @@ import { createServer } from "node:http";
 import process from "node:process";
 import { parseArgs as parseNodeArgs } from "node:util";
 
+import { getErrorMessage } from "@accel-os/shared/guards";
+import { fetchJsonWithSchema } from "@accel-os/shared/http";
+import { parseJsonWithSchema } from "@accel-os/shared/json";
+import type { Static, TSchema } from "typebox";
+import { Type } from "typebox";
+
 const SCOPES = [
   "playlist-read-private",
   "playlist-read-collaborative",
@@ -47,10 +53,137 @@ type PlaylistFile = {
   tracks: TrackEntry[];
 };
 
+const TokenSchema = Type.Object(
+  {
+    access_token: Type.String({ minLength: 1 }),
+    refresh_token: Type.Optional(Type.String()),
+    expires_at: Type.Number(),
+    scope: Type.Optional(Type.String()),
+    token_type: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+
+const ConfigSchema = Type.Object(
+  {
+    client_id: Type.String({ minLength: 1 }),
+    token: Type.Optional(TokenSchema),
+  },
+  { additionalProperties: false },
+);
+
+const TrackEntrySchema = Type.Object(
+  {
+    uri: Type.String(),
+    name: Type.Optional(Type.String()),
+    artists: Type.Optional(Type.Array(Type.String())),
+    album: Type.Optional(Type.String()),
+    type: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+
+const PlaylistFileSchema = Type.Object(
+  {
+    version: Type.Literal(1),
+    playlist_id: Type.Optional(Type.String()),
+    name: Type.Optional(Type.String()),
+    description: Type.Optional(Type.String()),
+    public: Type.Optional(Type.Boolean()),
+    tracks: Type.Array(TrackEntrySchema),
+  },
+  { additionalProperties: false },
+);
+
+const TokenResponseSchema = Type.Object({
+  access_token: Type.String({ minLength: 1 }),
+  refresh_token: Type.Optional(Type.String()),
+  expires_in: Type.Number(),
+  scope: Type.Optional(Type.String()),
+  token_type: Type.Optional(Type.String()),
+});
+
+const AuthTokenResponseSchema = Type.Object({
+  access_token: Type.String({ minLength: 1 }),
+  refresh_token: Type.String({ minLength: 1 }),
+  expires_in: Type.Number(),
+  scope: Type.Optional(Type.String()),
+  token_type: Type.Optional(Type.String()),
+});
+
+const PlaylistsPageSchema = Type.Object({
+  items: Type.Array(
+    Type.Object({
+      id: Type.String(),
+      name: Type.String(),
+    }),
+  ),
+  next: Type.Union([Type.String(), Type.Null()]),
+});
+
+const SpotifyTrackSchema = Type.Object({
+  uri: Type.String(),
+  name: Type.Optional(Type.String()),
+  album: Type.Optional(
+    Type.Object({
+      name: Type.Optional(Type.String()),
+    }),
+  ),
+  artists: Type.Optional(
+    Type.Array(
+      Type.Object({
+        name: Type.Optional(Type.String()),
+      }),
+    ),
+  ),
+  type: Type.Optional(Type.String()),
+});
+
+const TracksPageSchema = Type.Object({
+  items: Type.Array(
+    Type.Object({
+      track: Type.Union([SpotifyTrackSchema, Type.Null()]),
+    }),
+  ),
+  next: Type.Union([Type.String(), Type.Null()]),
+});
+
+const PlaylistDetailsSchema = Type.Object({
+  name: Type.String(),
+  description: Type.Union([Type.String(), Type.Null()]),
+  public: Type.Union([Type.Boolean(), Type.Null()]),
+  tracks: Type.Object({
+    total: Type.Number(),
+  }),
+});
+
+const ProfileSchema = Type.Object({
+  id: Type.String(),
+});
+
+const CreatedPlaylistSchema = Type.Object({
+  id: Type.String(),
+});
+
+const SnapshotResponseSchema = Type.Object({
+  snapshot_id: Type.String(),
+});
+
+type SpotifyTrack = Static<typeof SpotifyTrackSchema>;
+
 type ParsedArgs = {
   command: string | null;
   positionals: string[];
-  flags: Record<string, string | boolean>;
+  flags: CliFlags;
+};
+
+type CliFlags = {
+  help?: boolean | undefined;
+  create?: boolean | undefined;
+  "client-id"?: string | undefined;
+  playlist?: string | undefined;
+  out?: string | undefined;
+  in?: string | undefined;
 };
 
 const usage = `mb-spotify auth --client-id <id>
@@ -74,30 +207,6 @@ Export format (JSON):
 
 const encoder = new TextEncoder();
 
-const normalizeFlags = (parsed: Record<string, unknown>): Record<string, string | boolean> => {
-  const flags: Record<string, string | boolean> = {};
-
-  for (const [key, value] of Object.entries(parsed)) {
-    if (key === "_") {
-      continue;
-    }
-
-    if (typeof value === "string" || typeof value === "boolean") {
-      flags[key] = value;
-      continue;
-    }
-
-    if (Array.isArray(value)) {
-      const last = value[value.length - 1];
-      if (typeof last === "string" || typeof last === "boolean") {
-        flags[key] = last;
-      }
-    }
-  }
-
-  return flags;
-};
-
 const parseCliArgs = (args: string[]): ParsedArgs => {
   const parsedArgs = parseNodeArgs({
     args,
@@ -111,25 +220,21 @@ const parseCliArgs = (args: string[]): ParsedArgs => {
       in: { type: "string" },
     },
   });
-  const positionals = parsedArgs.positionals.map((item) => String(item));
+  const positionals = parsedArgs.positionals;
   const [command, ...rest] = positionals;
   return {
     command: command ?? null,
     positionals: rest,
-    flags: normalizeFlags(parsedArgs.values as Record<string, unknown>),
+    flags: parsedArgs.values,
   };
 };
 
-const stringFlag = (flags: Record<string, string | boolean>, name: string): string | undefined => {
-  const value = flags[name];
-  return typeof value === "string" ? value : undefined;
-};
+const stringFlag = (flags: CliFlags, name: keyof CliFlags): string | undefined =>
+  typeof flags[name] === "string" ? flags[name] : undefined;
 
-const hasHelpFlag = (flags: Record<string, string | boolean>): boolean =>
-  flags["help"] === true || flags["h"] === true;
+const hasHelpFlag = (flags: CliFlags): boolean => flags.help === true;
 
-const hasBooleanFlag = (flags: Record<string, string | boolean>, name: string): boolean =>
-  flags[name] === true;
+const hasBooleanFlag = (flags: CliFlags, name: keyof CliFlags): boolean => flags[name] === true;
 
 const configDir = (): string => {
   const home = process.env["HOME"] ?? "";
@@ -142,14 +247,7 @@ const configPath = (): string => `${configDir()}/spotify.json`;
 const readConfig = async (): Promise<Config | null> => {
   try {
     const raw = await readFile(configPath(), "utf8");
-    const parsed = JSON.parse(raw) as Partial<Config>;
-    if (!parsed.client_id) {
-      return null;
-    }
-    return {
-      client_id: parsed.client_id,
-      token: parsed.token,
-    };
+    return parseJsonWithSchema(raw, ConfigSchema, "Spotify config");
   } catch {
     return null;
   }
@@ -179,23 +277,20 @@ const randomVerifier = (): string => {
   return base64UrlEncode(bytes);
 };
 
-const fetchJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`${response.status} ${response.statusText}: ${detail}`);
-  }
-  return (await response.json()) as T;
-};
-
-const spotifyRequest = async <T>(path: string, token: string, init?: RequestInit): Promise<T> => {
+const spotifyRequest = async <Schema extends TSchema>(
+  path: string,
+  token: string,
+  schema: Schema,
+  context: string,
+  init?: RequestInit,
+): Promise<Static<Schema>> => {
   const url = `https://api.spotify.com/v1${path}`;
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${token}`);
-  if (init?.body && !headers.has("Content-Type")) {
+  if (init?.body !== undefined && init.body !== null && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  return await fetchJson<T>(url, { ...init, headers });
+  return await fetchJsonWithSchema(url, schema, context, { ...init, headers });
 };
 
 const refreshToken = async (config: Config): Promise<Token> => {
@@ -209,17 +304,16 @@ const refreshToken = async (config: Config): Promise<Token> => {
     client_id: config.client_id,
   });
 
-  const data = await fetchJson<{
-    access_token: string;
-    expires_in: number;
-    scope?: string;
-    token_type?: string;
-    refresh_token?: string;
-  }>("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const data = await fetchJsonWithSchema(
+    "https://accounts.spotify.com/api/token",
+    TokenResponseSchema,
+    "Spotify token refresh response",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    },
+  );
 
   return {
     access_token: data.access_token,
@@ -270,80 +364,25 @@ const getAccessToken = async (requiredScopes: string[] = []): Promise<string> =>
   return refreshed.access_token;
 };
 
-const trackEntryFromSpotifyTrack = (track: Record<string, unknown> | null): TrackEntry | null => {
-  const uri = typeof track?.["uri"] === "string" ? track["uri"] : "";
+const trackEntryFromSpotifyTrack = (track: SpotifyTrack | null): TrackEntry | null => {
+  const uri = track?.uri;
   if (!uri) {
     return null;
   }
 
-  const name = typeof track?.["name"] === "string" ? track["name"] : undefined;
-  const rawAlbum = track?.["album"];
-  const album =
-    typeof rawAlbum === "object" &&
-    rawAlbum !== null &&
-    typeof (rawAlbum as Record<string, unknown>)["name"] === "string"
-      ? ((rawAlbum as Record<string, unknown>)["name"] as string)
-      : undefined;
-  const rawArtists = track?.["artists"];
-  const artists = Array.isArray(rawArtists)
-    ? (rawArtists as Array<Record<string, unknown>>)
-        .map((artist) => (typeof artist["name"] === "string" ? artist["name"] : null))
-        .filter((artist): artist is string => Boolean(artist))
-    : undefined;
-  const type = typeof track?.["type"] === "string" ? track["type"] : undefined;
+  const name = track.name;
+  const album = track.album?.name;
+  const artists = track.artists
+    ?.map((artist) => artist.name ?? null)
+    .filter((artist): artist is string => artist !== null);
+  const type = track.type;
 
   return { uri, name, artists, album, type };
 };
 
-const parsePlaylistFile = (value: unknown): PlaylistFile => {
-  if (typeof value !== "object" || value === null) {
-    throw new Error("playlist file must be a JSON object");
-  }
-
-  const obj = value as Record<string, unknown>;
-  if (!Array.isArray(obj["tracks"])) {
-    throw new Error("playlist file missing tracks array");
-  }
-
-  const tracks = obj["tracks"];
-
-  return {
-    version: 1,
-    playlist_id: typeof obj["playlist_id"] === "string" ? obj["playlist_id"] : undefined,
-    name: typeof obj["name"] === "string" ? obj["name"] : undefined,
-    description: typeof obj["description"] === "string" ? obj["description"] : undefined,
-    public: typeof obj["public"] === "boolean" ? obj["public"] : undefined,
-    tracks: tracks
-      .map((item) => {
-        if (typeof item !== "object" || item === null) {
-          return null;
-        }
-        const entry = item as Record<string, unknown>;
-        const uri = typeof entry["uri"] === "string" ? entry["uri"] : "";
-        const name = typeof entry["name"] === "string" ? entry["name"] : undefined;
-        const artists = Array.isArray(entry["artists"])
-          ? (entry["artists"].filter((artist) => typeof artist === "string") as string[])
-          : undefined;
-        const album = typeof entry["album"] === "string" ? entry["album"] : undefined;
-        const type = typeof entry["type"] === "string" ? entry["type"] : undefined;
-
-        return { uri, name, artists, album, type } as TrackEntry;
-      })
-      .filter((entry): entry is TrackEntry => Boolean(entry)),
-  };
-};
-
-const ensurePlaylistFile = (playlist: PlaylistFile): PlaylistFile => {
-  if (!Array.isArray(playlist.tracks)) {
-    throw new Error("playlist file missing tracks array");
-  }
-  return playlist;
-};
-
 const readPlaylistFile = async (path: string): Promise<PlaylistFile> => {
   const raw = await readFile(path, "utf8");
-  const parsed = JSON.parse(raw) as unknown;
-  return ensurePlaylistFile(parsePlaylistFile(parsed));
+  return parseJsonWithSchema(raw, PlaylistFileSchema, "playlist file");
 };
 
 const writePlaylistFile = async (path: string, playlist: PlaylistFile): Promise<void> => {
@@ -358,15 +397,11 @@ const openInBrowser = (url: string): void => {
       stdio: "ignore",
     });
     child.on("error", (error) => {
-      console.error(
-        `failed to open browser: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      console.error(`failed to open browser: ${getErrorMessage(error)}`);
     });
     child.unref();
   } catch (error) {
-    console.error(
-      `failed to open browser: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    console.error(`failed to open browser: ${getErrorMessage(error)}`);
   }
 };
 
@@ -374,7 +409,7 @@ const waitForAuthCode = async (expectedPath: string, state: string): Promise<str
   let settled = false;
 
   const codePromise = new Promise<string>((resolve, reject) => {
-    const finish = (result: { code?: string; error?: string }) => {
+    const finish = (result: { code?: string; error?: string }): void => {
       if (settled) {
         return;
       }
@@ -478,7 +513,9 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
     code = await waitForAuthCode(REDIRECT_PATH, state);
   } catch (error) {
     if (isErrnoException(error) && error.code === "EADDRINUSE") {
-      throw new Error(`port ${REDIRECT_PORT} is in use; free it or change REDIRECT_PORT`);
+      throw new Error(`port ${REDIRECT_PORT} is in use; free it or change REDIRECT_PORT`, {
+        cause: error,
+      });
     }
     throw error;
   }
@@ -491,17 +528,16 @@ const cmdAuth = async (parsed: ParsedArgs): Promise<void> => {
     code_verifier: verifier,
   });
 
-  const token = await fetchJson<{
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-    scope?: string;
-    token_type?: string;
-  }>("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const token = await fetchJsonWithSchema(
+    "https://accounts.spotify.com/api/token",
+    AuthTokenResponseSchema,
+    "Spotify authorization token response",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    },
+  );
 
   await writeConfig({
     client_id: clientId,
@@ -522,10 +558,7 @@ const cmdList = async (): Promise<void> => {
   let url = "/me/playlists?limit=50";
 
   while (url) {
-    const data = await spotifyRequest<{
-      items: { id: string; name: string }[];
-      next: string | null;
-    }>(url, token);
+    const data = await spotifyRequest(url, token, PlaylistsPageSchema, "Spotify playlists page");
     for (const item of data.items) {
       console.log(`${item.id}\t${item.name}`);
     }
@@ -547,10 +580,12 @@ const cmdExportLiked = async (parsed: ParsedArgs): Promise<void> => {
   const entries: TrackEntry[] = [];
 
   while (true) {
-    const page = await spotifyRequest<{
-      items: Array<{ track: Record<string, unknown> | null }>;
-      next: string | null;
-    }>(`/me/tracks?limit=50&offset=${offset}`, token);
+    const page = await spotifyRequest(
+      `/me/tracks?limit=50&offset=${offset}`,
+      token,
+      TracksPageSchema,
+      "Spotify liked tracks page",
+    );
 
     for (const item of page.items) {
       const entry = trackEntryFromSpotifyTrack(item.track);
@@ -588,24 +623,23 @@ const cmdExport = async (parsed: ParsedArgs): Promise<void> => {
   }
 
   const token = await getAccessToken();
-  const playlist = await spotifyRequest<{
-    name: string;
-    description: string | null;
-    public: boolean | null;
-    tracks: { total: number };
-  }>(`/playlists/${playlistId}`, token);
+  const playlist = await spotifyRequest(
+    `/playlists/${playlistId}`,
+    token,
+    PlaylistDetailsSchema,
+    "Spotify playlist details",
+  );
 
   const entries: TrackEntry[] = [];
   const total = playlist.tracks.total;
   let offset = 0;
 
   while (true) {
-    const page = await spotifyRequest<{
-      items: Array<{ track: Record<string, unknown> | null }>;
-      next: string | null;
-    }>(
+    const page = await spotifyRequest(
       `/playlists/${playlistId}/tracks?limit=100&offset=${offset}&additional_types=track,episode`,
       token,
+      TracksPageSchema,
+      "Spotify playlist tracks page",
     );
 
     for (const item of page.items) {
@@ -656,15 +690,21 @@ const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
   const token = await getAccessToken();
 
   if (shouldCreate) {
-    const profile = await spotifyRequest<{ id: string }>("/me", token);
-    const created = await spotifyRequest<{ id: string }>(`/users/${profile.id}/playlists`, token, {
-      method: "POST",
-      body: JSON.stringify({
-        name: file.name ?? "Imported Playlist",
-        description: file.description ?? "",
-        public: file.public ?? false,
-      }),
-    });
+    const profile = await spotifyRequest("/me", token, ProfileSchema, "Spotify profile");
+    const created = await spotifyRequest(
+      `/users/${profile.id}/playlists`,
+      token,
+      CreatedPlaylistSchema,
+      "Spotify created playlist",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name ?? "Imported Playlist",
+          description: file.description ?? "",
+          public: file.public ?? false,
+        }),
+      },
+    );
     playlistId = created.id;
     console.error(`created playlist ${playlistId}`);
   }
@@ -680,26 +720,38 @@ const cmdImport = async (parsed: ParsedArgs): Promise<void> => {
   console.error(`replacing playlist ${playlistId} with ${uris.length} items`);
 
   const firstBatch = uris.slice(0, 100);
-  await spotifyRequest(`/playlists/${playlistId}/tracks`, token, {
-    method: "PUT",
-    body: JSON.stringify({ uris: firstBatch }),
-  });
+  await spotifyRequest(
+    `/playlists/${playlistId}/tracks`,
+    token,
+    SnapshotResponseSchema,
+    "Spotify replace playlist tracks response",
+    {
+      method: "PUT",
+      body: JSON.stringify({ uris: firstBatch }),
+    },
+  );
 
   let uploaded = firstBatch.length;
   console.error(`uploaded ${uploaded}/${uris.length}`);
 
   for (let i = 100; i < uris.length; i += 100) {
     const batch = uris.slice(i, i + 100);
-    await spotifyRequest(`/playlists/${playlistId}/tracks`, token, {
-      method: "POST",
-      body: JSON.stringify({ uris: batch }),
-    });
+    await spotifyRequest(
+      `/playlists/${playlistId}/tracks`,
+      token,
+      SnapshotResponseSchema,
+      "Spotify append playlist tracks response",
+      {
+        method: "POST",
+        body: JSON.stringify({ uris: batch }),
+      },
+    );
     uploaded += batch.length;
     console.error(`uploaded ${uploaded}/${uris.length}`);
   }
 };
 
-const main = async () => {
+const main = async (): Promise<void> => {
   const parsed = parseCliArgs(process.argv.slice(2));
   if (!parsed.command || hasHelpFlag(parsed.flags)) {
     console.log(usage.trim());
@@ -731,7 +783,7 @@ if (import.meta.main) {
   try {
     await main();
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(getErrorMessage(error));
     console.error("\n" + usage.trim());
     process.exit(1);
   }

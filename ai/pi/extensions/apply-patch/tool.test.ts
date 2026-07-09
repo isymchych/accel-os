@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test, { type TestContext } from "node:test";
 
+import { getTextOutput, normalizeToolResult } from "../../shared/test-helpers.ts";
 import {
   applyPatchSchema,
   executeApplyPatchTool,
@@ -21,46 +22,48 @@ import {
   type ApplyPatchInput,
 } from "./tool.ts";
 
+interface ApplyPatchToolDetails extends Record<string, unknown> {
+  diff?: string;
+  firstChangedLine?: number;
+  preview?: {
+    files: Array<{
+      filePath: string;
+      moveTo?: string;
+      operation: string;
+      diff: string;
+      added: number;
+      removed: number;
+    }>;
+    added: number;
+    removed: number;
+  };
+  result?: {
+    summaries: string[];
+    appliedFiles: string[];
+    failures: Array<{
+      filePath: string;
+      operation: string;
+      message: string;
+      recoveryPaths?: string[];
+      wroteFiles?: string[];
+    }>;
+    hasPartialSuccess: boolean;
+    recoveryInstructions: {
+      mustReadFiles: string[];
+      mustNotReadFiles: string[];
+    };
+    details: {
+      fuzz: number;
+    };
+  };
+}
+
 interface ToolResult {
   content: Array<{
     type: string;
     text?: string;
   }>;
-  details?: {
-    diff?: string;
-    firstChangedLine?: number;
-    preview?: {
-      files: Array<{
-        filePath: string;
-        moveTo?: string;
-        operation: string;
-        diff: string;
-        added: number;
-        removed: number;
-      }>;
-      added: number;
-      removed: number;
-    };
-    result?: {
-      summaries: string[];
-      appliedFiles: string[];
-      failures: Array<{
-        filePath: string;
-        operation: string;
-        message: string;
-        recoveryPaths?: string[];
-        wroteFiles?: string[];
-      }>;
-      hasPartialSuccess: boolean;
-      recoveryInstructions: {
-        mustReadFiles: string[];
-        mustNotReadFiles: string[];
-      };
-      details: {
-        fuzz: number;
-      };
-    };
-  };
+  details?: ApplyPatchToolDetails;
   isError?: boolean;
   terminate?: boolean;
 }
@@ -96,48 +99,6 @@ async function fileExists(cwd: string, relativePath: string): Promise<boolean> {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function normalizeToolResult(result: unknown): ToolResult {
-  assert.ok(isRecord(result), "Expected tool result to be an object.");
-
-  const { content, details } = result;
-  assert.ok(Array.isArray(content), "Expected tool result content to be an array.");
-
-  const normalizedContent = content.map((block) => {
-    assert.ok(isRecord(block), "Expected each content block to be an object.");
-
-    const type = block["type"];
-    if (typeof type !== "string") {
-      throw new Error("Expected each content block to have a string type.");
-    }
-
-    const normalizedBlock: ToolResult["content"][number] = { type };
-    const text = block["text"];
-    if (typeof text === "string") {
-      normalizedBlock.text = text;
-    }
-    return normalizedBlock;
-  });
-
-  const normalizedResult: ToolResult = { content: normalizedContent };
-
-  if (details !== undefined) {
-    assert.ok(isRecord(details), "Expected tool result details to be an object.");
-    normalizedResult.details = details;
-  }
-  if (typeof result["isError"] === "boolean") {
-    normalizedResult.isError = result["isError"];
-  }
-  if (typeof result["terminate"] === "boolean") {
-    normalizedResult.terminate = result["terminate"];
-  }
-
-  return normalizedResult;
-}
-
 async function runApplyPatch(
   cwd: string,
   params: ApplyPatchInput,
@@ -170,15 +131,6 @@ async function runApplyPatch(
     executionOptions,
   );
   return { result: normalizeToolResult(result), updates };
-}
-
-function getTextOutput(result: ToolResult): string {
-  const block = result.content[0];
-  assert.ok(block, "Expected tool result to include a text content block.");
-  if (block.type !== "text" || typeof block.text !== "string") {
-    throw new Error("Expected tool result to include text content.");
-  }
-  return block.text;
 }
 
 test("tool schema remains a top-level object for Pi registration", () => {

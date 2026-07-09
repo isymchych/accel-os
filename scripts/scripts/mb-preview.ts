@@ -162,21 +162,11 @@ export async function prepareMarkdown(
   markdown: string,
   renderGraphviz: GraphvizRenderer = renderGraphvizToSvg,
 ): Promise<PreparedMarkdown> {
-  let hasMermaid = false;
   let hasGraphviz = false;
-  const graphvizSources: Array<{
-    readonly id: string;
-    readonly language: string;
-    readonly source: string;
-  }> = [];
-  const preparedMarkdown = replaceGraphvizFences(markdown, graphvizSources, (language) => {
-    if (language === "mermaid") {
-      hasMermaid = true;
-    }
-  });
+  const replaced = replaceGraphvizFences(markdown);
   const graphvizBlocks: BrowserGraphvizBlock[] = [];
 
-  for (const block of graphvizSources) {
+  for (const block of replaced.graphvizSources) {
     const rendered = await renderGraphviz(block.source);
     if (rendered.ok) {
       hasGraphviz = true;
@@ -185,12 +175,24 @@ export async function prepareMarkdown(
   }
 
   return {
-    markdown: preparedMarkdown,
-    hasMermaid,
+    markdown: replaced.markdown,
+    hasMermaid: replaced.hasMermaid,
     hasGraphviz,
-    hasDiagrams: hasMermaid || hasGraphviz,
+    hasDiagrams: replaced.hasMermaid || hasGraphviz,
     graphvizBlocks,
   };
+}
+
+interface GraphvizSource {
+  readonly id: string;
+  readonly language: string;
+  readonly source: string;
+}
+
+interface ReplacedGraphvizFences {
+  readonly markdown: string;
+  readonly graphvizSources: readonly GraphvizSource[];
+  readonly hasMermaid: boolean;
 }
 
 interface FenceOpening {
@@ -201,17 +203,11 @@ interface FenceOpening {
   readonly lineEnding: string;
 }
 
-function replaceGraphvizFences(
-  markdown: string,
-  graphvizSources: Array<{
-    readonly id: string;
-    readonly language: string;
-    readonly source: string;
-  }>,
-  observeLanguage: (language: string | null) => void,
-): string {
+function replaceGraphvizFences(markdown: string): ReplacedGraphvizFences {
   const lines = markdown.split(/(?<=\n)/u);
   const output: string[] = [];
+  const graphvizSources: GraphvizSource[] = [];
+  let hasMermaid = false;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -225,21 +221,23 @@ function replaceGraphvizFences(
       continue;
     }
 
-    observeLanguage(opening.language);
+    if (opening.language === "mermaid") {
+      hasMermaid = true;
+    }
     const contentLines: string[] = [];
     let closingLine: string | null = null;
 
     index += 1;
     for (; index < lines.length; index += 1) {
-      const line = lines[index];
-      if (line === undefined) {
+      const contentLine = lines[index];
+      if (contentLine === undefined) {
         break;
       }
-      if (isFenceClosing(line, opening.fence)) {
-        closingLine = line;
+      if (isFenceClosing(contentLine, opening.fence)) {
+        closingLine = contentLine;
         break;
       }
-      contentLines.push(line);
+      contentLines.push(contentLine);
     }
 
     if (opening.language === null || !graphvizLanguages.has(opening.language)) {
@@ -253,7 +251,11 @@ function replaceGraphvizFences(
     output.push(renderPreparedGraphvizFence(opening, id, contentLines, closingLine));
   }
 
-  return output.join("");
+  return {
+    markdown: output.join(""),
+    graphvizSources,
+    hasMermaid,
+  };
 }
 
 function parseFenceOpening(line: string): FenceOpening | null {

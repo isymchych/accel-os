@@ -5,12 +5,13 @@
   "packageManager": "npm@11.13.0",
   "workspaces": [
     "ai/pi",
+    "packages/shared",
     "scripts"
   ],
   "scripts": {
-    "fmt": "oxfmt ai/pi scripts",
-    "fmt:check": "oxfmt --check ai/pi scripts",
-    "lint": "oxlint ai/pi scripts",
+    "fmt": "oxfmt ai/pi packages/shared scripts",
+    "fmt:check": "oxfmt --check ai/pi packages/shared scripts",
+    "lint": "oxlint ai/pi packages/shared scripts",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

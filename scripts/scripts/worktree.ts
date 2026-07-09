@@ -3,6 +3,10 @@ import { mkdirSync, readSync, statSync, writeSync } from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
 
+import { assertNever, getErrorMessage, isPresent } from "@accel-os/shared/guards";
+import { parseJsonWithSchema } from "@accel-os/shared/json";
+import { Type } from "typebox";
+
 /**
  * Repo-local Git worktree helper.
  *
@@ -106,6 +110,34 @@ interface PullRequestMetadata {
   } | null;
 }
 
+const OptionalLoginObjectSchema = Type.Object(
+  {
+    login: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  },
+  { additionalProperties: false },
+);
+
+const PullRequestMetadataJsonSchema = Type.Object(
+  {
+    number: Type.Number(),
+    headRefName: Type.String(),
+    isCrossRepository: Type.Boolean(),
+    headRepository: Type.Union([
+      Type.Object(
+        {
+          name: Type.String(),
+          nameWithOwner: Type.String(),
+          owner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
+        },
+        { additionalProperties: false },
+      ),
+      Type.Null(),
+    ]),
+    headRepositoryOwner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
+  },
+  { additionalProperties: false },
+);
+
 type CreateCollisionDecision =
   | {
       readonly kind: "reuse-existing";
@@ -204,6 +236,7 @@ async function main(): Promise<void> {
   }
 }
 
+// oxlint-disable-next-line complexity -- CLI option parsing is clearer as one flat switch than split across tiny handlers.
 export function parseArgs(args: string[]): ParsedArgs {
   let deleteBranch = false;
   let dryRun = false;
@@ -652,17 +685,7 @@ function resolvePullRequestMetadata(
     },
   ).stdout;
 
-  const parsed = JSON.parse(json) as {
-    number: number;
-    headRefName: string;
-    isCrossRepository: boolean;
-    headRepository: {
-      name: string;
-      nameWithOwner: string;
-      owner?: { login?: string | null } | null;
-    } | null;
-    headRepositoryOwner?: { login?: string | null } | null;
-  };
+  const parsed = parseJsonWithSchema(json, PullRequestMetadataJsonSchema, "gh PR metadata");
 
   return {
     number: parsed.number,
@@ -689,7 +712,7 @@ export function isExplicitRemoteBranchRequest(
   requestedRef: string,
   remoteBranch: Pick<RemoteBranchResolution, "remoteRef"> | null,
 ): boolean {
-  return remoteBranch !== null && requestedRef === remoteBranch.remoteRef;
+  return requestedRef === remoteBranch?.remoteRef;
 }
 
 function resolveCheckoutTarget(
@@ -1530,26 +1553,9 @@ function runCommand(command: string, args: readonly string[], options: RunOption
   return { stdout, stderr, status };
 }
 
-function reportError(error: unknown): void {
-  if (error instanceof Error) {
-    console.error(error.message);
-    return;
-  }
-
-  console.error(`Unknown error: ${String(error)}`);
-}
-
-function isPresent<T>(value: T | null | undefined): value is T {
-  return value !== null && value !== undefined;
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled command: ${String(value)}`);
-}
-
 if (import.meta.main) {
-  void main().catch((error) => {
-    reportError(error);
+  void main().catch((error: unknown) => {
+    console.error(getErrorMessage(error));
     process.exit(1);
   });
 }
