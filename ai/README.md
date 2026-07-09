@@ -1,72 +1,75 @@
 # TODO
-* plan execution - stop and ask instead of making assumptions; plan should be unambiguous
-* switch thinking modes with alt-1-2-3-4-5
-* add grill-me prompt
 
-* review from DDD point of view
-* Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation 
+- plan execution - stop and ask instead of making assumptions; plan should be unambiguous
+- switch thinking modes with alt-1-2-3-4-5
+- add grill-me prompt
+
+- review from DDD point of view
+- Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation
   - https://github.com/nicobailon/pi-subagents
   - https://github.com/ruizrica/agent-pi
   - https://github.com/juicesharp/rpiv-mono
-* ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
-* setup terminal multiplexer - as a part of ai?
-* /side (codex) or /btw (pi, claude)
-* double-esc to stop streaming response
-* /preview should validate mermaid? or add an agent tool to validate mermaid
-* SOUL.md USER.md MEMORY.md AGENTS.md - like in https://github.com/deathbyknowledge/gsv
-  * SOUL.md like in https://hermes-agent.nousresearch.com/docs/user-guide/features/personality
-* EARS specifications
-* personal memory system https://ericmjl.github.io/blog/2026/6/16/my-coding-agent-learned-a-lesson/
+- ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
+- setup terminal multiplexer - as a part of ai?
+- /side (codex) or /btw (pi, claude)
+- double-esc to stop streaming response
+- /preview should validate mermaid? or add an agent tool to validate mermaid
+- SOUL.md USER.md MEMORY.md AGENTS.md - like in https://github.com/deathbyknowledge/gsv
+  - SOUL.md like in https://hermes-agent.nousresearch.com/docs/user-guide/features/personality
+- EARS specifications
+- personal memory system https://ericmjl.github.io/blog/2026/6/16/my-coding-agent-learned-a-lesson/
 
 add to sysprompt:
->  "use subagents to parallellize or manage context"
+
+> "use subagents to parallellize or manage context"
 
 > For all coding tasks use your judgement to decide an appropriate lower power model and run that in a subagent
 
 add oxfmt/tsconfig/oxlint shared root config
 
-* commit skill script should have an option to bypass hooks
-* local db skill should allow query on stdin
+- commit skill script should have an option to bypass hooks
+- local db skill should allow query on stdin
 
-* based on https://github.com/can1357/oh-my-pi
-* AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
-* LSP?
-* thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
-* "ai" to start llm with microvm isolation - gondolin?
-* security review prompt
+- based on https://github.com/can1357/oh-my-pi
+- AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
+- LSP?
+- thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
+- "ai" to start llm with microvm isolation - gondolin?
+- security review prompt
 
+- create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
+  - only up to latest user message? or more - with user confirmation?
+  - what about cache reuse?
+  - pi-boomerang
 
-* create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
-  * only up to latest user message? or more - with user confirmation?
-  * what about cache reuse?
-  * pi-boomerang
-  
-* I don't need exact locations since it triggers redundant file reads: 
-> I’m grabbing the final line references for the changed renderer so the report points to exact locations.  
+- I don't need exact locations since it triggers redundant file reads:
 
+> I’m grabbing the final line references for the changed renderer so the report points to exact locations.
 
 DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> PLAN -> EXECUTE
-* decisions must be documented - ADR
-* iterate on high-level plan first, before generating comprehensive plan file
 
-* codemods
-* common failure mode: “helpful overreach.”
+- decisions must be documented - ADR
+- iterate on high-level plan first, before generating comprehensive plan file
+
+- codemods
+- common failure mode: “helpful overreach.”
 
 automatically ask - do you have any questions?
 don't go to the next step without confirmation
 
 # AI
-* memento - extract valuable patterns
-* PLAN - divide into spec/plan; define template for saving complete plan with all context & details so that other coding agent can pick a task and work on it
-  * research
-  * Create a detailed implementation plan with file paths and code references
-* do a architecture critique/code cleanup pass - a SKILL? 
-  * remove redundant code, unnecessary abstractions, code that doesn't match style/design preferences
-  * tech debt, potential improvements for clarity or simplicity, maintenance 
-* ask for architecture diagrams (mermaid)
 
-    
+- memento - extract valuable patterns
+- PLAN - divide into spec/plan; define template for saving complete plan with all context & details so that other coding agent can pick a task and work on it
+  - research
+  - Create a detailed implementation plan with file paths and code references
+- do a architecture critique/code cleanup pass - a SKILL?
+  - remove redundant code, unnecessary abstractions, code that doesn't match style/design preferences
+  - tech debt, potential improvements for clarity or simplicity, maintenance
+- ask for architecture diagrams (mermaid)
+
 I would like to review the following points on the current PR (this branch vs main). Spawn one agent per point, wait for all of them, and summarize the result for each point.
+
 1. Security issue
 2. Code quality
 3. Bugs
@@ -74,144 +77,141 @@ I would like to review the following points on the current PR (this branch vs ma
 5. Test flakiness
 6. Maintainability of the code
 
-
 # Design
+
 Data flow
 State transitions
 Failure cases
 Boundaries
 
-
 # Debug Mode:
+
 Generates multiple hypotheses about what could be wrong
 Instruments your code with logging statements
 Asks you to reproduce the bug while collecting runtime data
 Analyzes actual behavior to pinpoint the root cause
 Makes targeted fixes based on evidence
 
-
 # mb-spotify
-* ai to manage my playlists
-* i may do manual tweaks to playlists - i.e. if i removed song from playlist-don't add it there again
- 
 
+- ai to manage my playlists
+- i may do manual tweaks to playlists - i.e. if i removed song from playlist-don't add it there again
 
 # PRINCIPLES
-* pragmatic
-* human-in-the-loop
-* digital exoskeleton - to amplify user capabilities
-* mutual amplification, not delegation
 
+- pragmatic
+- human-in-the-loop
+- digital exoskeleton - to amplify user capabilities
+- mutual amplification, not delegation
 
 # USEFUL PATTERNS / IDEAS
-* "distill"/"compress"/"high signal"
-* chain-of-thought reasoning
-* ~~human-in-the-loop~~ **better?** agent-in-the-loop
-* Critic(/Verifier) pass; argue against itself
-* **build pipelines** even if the end result is an AGENTS.md or SKILL.md - keep "source doc" -> ask agent to build a skill based on it -> improve/compress/"distill"
-* (self)-checklists; approval gates
-* scoring rubrics
-* error log
-* red/green TDD
-* require evidence
-* Spec-driven development
-* AI-first company - markdown spec graph; crypto contracts
-  * describe one's company clearly—including its goals, workflows, operations, decisions, teams, and spending—in a clear and consumable fashion.
-  * https://danielmiessler.com/blog/most-companies-arent-ready-for-ai
-* Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions. "progressive disclosure"
-* refactor: Pilot change + rollout
-* avoid negative framing
-* provide examples instead of complicated instructions
-* cognitive offloading vs cognitive surrender
-* Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness. 
-* Can we make requirements less stupid? what alternative approaches that unlocks?
-* Intent ledger - ADRs, document "why"/reason not "what" or "how"
-* intent engineering -> context engineering -> prompt engineering
 
-* Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
-* setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
-* Keep lots of small proof-of-concept repos (often “just enough code” to demonstrate a technique). With agents that can search and fetch code, you can point them at your own repos/examples (or even have them clone them) and say “build X using patterns from Y,” meaning you only need to figure out a trick once—then reuse it forever.
-* Put the rationale where the agent can read it, especially for decisions that would be expensive to get wrong.
+- "distill"/"compress"/"high signal"
+- chain-of-thought reasoning
+- ~~human-in-the-loop~~ **better?** agent-in-the-loop
+- Critic(/Verifier) pass; argue against itself
+- **build pipelines** even if the end result is an AGENTS.md or SKILL.md - keep "source doc" -> ask agent to build a skill based on it -> improve/compress/"distill"
+- (self)-checklists; approval gates
+- scoring rubrics
+- error log
+- red/green TDD
+- require evidence
+- Spec-driven development
+- AI-first company - markdown spec graph; crypto contracts
+  - describe one's company clearly—including its goals, workflows, operations, decisions, teams, and spending—in a clear and consumable fashion.
+  - https://danielmiessler.com/blog/most-companies-arent-ready-for-ai
+- Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions. "progressive disclosure"
+- refactor: Pilot change + rollout
+- avoid negative framing
+- provide examples instead of complicated instructions
+- cognitive offloading vs cognitive surrender
+- Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness.
+- Can we make requirements less stupid? what alternative approaches that unlocks?
+- Intent ledger - ADRs, document "why"/reason not "what" or "how"
+- intent engineering -> context engineering -> prompt engineering
 
+- Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
+- setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
+- Keep lots of small proof-of-concept repos (often “just enough code” to demonstrate a technique). With agents that can search and fetch code, you can point them at your own repos/examples (or even have them clone them) and say “build X using patterns from Y,” meaning you only need to figure out a trick once—then reuse it forever.
+- Put the rationale where the agent can read it, especially for decisions that would be expensive to get wrong.
 
 # USEFUL QUESTIONS
-* what are pain points of ...?
-* why? what are the tradeoffs?
-* approaches, best practices, conventions?
-* what is better question
-* Explain this change at 3 levels:
-    1) High-level intent
-    2) Data-flow level
-    3) Edge-case reasoning
-* Is this idiomatic?
-* Is the doc coherent?
-* check if we can improve boundaries
-* Discuss options for doing ...
+
+- what are pain points of ...?
+- why? what are the tradeoffs?
+- approaches, best practices, conventions?
+- what is better question
+- Explain this change at 3 levels:
+  1. High-level intent
+  2. Data-flow level
+  3. Edge-case reasoning
+- Is this idiomatic?
+- Is the doc coherent?
+- check if we can improve boundaries
+- Discuss options for doing ...
 
 # SUBAGENTS
-* subagent to run build/tests/lints/typechecks and analyze failures (RCA?) and provide summary back 
 
+- subagent to run build/tests/lints/typechecks and analyze failures (RCA?) and provide summary back
 
 # SUMMARIZATION / COMPACTION
-* >  the goal, changed files, unresolved errors, decisions, constraints, and open loops
-* > Команда /compact віддає це рішення людині: можна прямо вказати, що зберегти (поточний стан, активні вимоги, ухвалені рішення) і що викинути (ранні чернетки, відкинуті ідеї, контекст від попередніх задач). 
-* "recap" what was done
 
-
+- > the goal, changed files, unresolved errors, decisions, constraints, and open loops
+- > Команда /compact віддає це рішення людині: можна прямо вказати, що зберегти (поточний стан, активні вимоги, ухвалені рішення) і що викинути (ранні чернетки, відкинуті ідеї, контекст від попередніх задач).
+- "recap" what was done
 
 # RESEARCH AREAS
-* common failure mode: “helpful overreach.”
 
+- common failure mode: “helpful overreach.”
 
 # Getting started with AI coding agents
-* Bad metrics https://third-bit.com/2026/05/20/twelve-ways-to-be-wrong/
-* Focus on judgment, critique, and collaboration, not “generate code” first - ask questions
-* The key is providing detailed context
-* ЛЛМки ліняться, потрібно бути уважним - "збережи ВСЮ інформацію"
-* у ЛЛМом буває ще й "лінивий настрій"
-* деякі ЛЛМки "тупіють" із часом (місяці); всі ЛЛМки тупіють із заповненням контексту
-* ЛЛМки бувають "занадто" розумні - деколи краще брати low модельку для рефакторинга чи дрібних змін, high моделі краще роблять e2e фічі
-* ЛЛМка - дебагай падіння github actions
-* ad-hoc scripts, skills
-* можна задавати питання - How does logging work in this project?" Explain the code
-* Planner–Executor Pattern:
-  * also Critic: “Review the result and confirm if it meets the plan. If not, explain the discrepancy and propose a fix.”
-  * TDD - feedback loop
-* iterate, polish - both the plan and the code
-* semports - semantic ports
-* **Intent Debt** is the missing or decayed record of why a system is built the way it is: goals, constraints, tradeoffs, rejected alternatives, and rationale.
-* **Cognitive Debt** - before writing code was slow, now understanding code is slow -> document rationale, comprehension is first-class eng task
-  * https://addyosmani.com/blog/dont-outsource-learning/
-* https://addyosmani.com/blog/agentic-engineering/
-* https://cursor.com/blog/agent-best-practices
-*  > In a system where agent throughput far exceeds human attention, corrections are cheap, and waiting is expensive.
-* > Codex replicates patterns that already exist in the repository—even uneven or suboptimal ones -> regular "garbage collection" / code cleanup tasks by codex, based on "golden rules"
-* > Our most difficult challenges now center on **designing environments, feedback loops, and control systems** that help agents accomplish our goal: build and maintain complex, reliable software at scale.
 
-
-
+- Bad metrics https://third-bit.com/2026/05/20/twelve-ways-to-be-wrong/
+- Focus on judgment, critique, and collaboration, not “generate code” first - ask questions
+- The key is providing detailed context
+- ЛЛМки ліняться, потрібно бути уважним - "збережи ВСЮ інформацію"
+- у ЛЛМом буває ще й "лінивий настрій"
+- деякі ЛЛМки "тупіють" із часом (місяці); всі ЛЛМки тупіють із заповненням контексту
+- ЛЛМки бувають "занадто" розумні - деколи краще брати low модельку для рефакторинга чи дрібних змін, high моделі краще роблять e2e фічі
+- ЛЛМка - дебагай падіння github actions
+- ad-hoc scripts, skills
+- можна задавати питання - How does logging work in this project?" Explain the code
+- Planner–Executor Pattern:
+  - also Critic: “Review the result and confirm if it meets the plan. If not, explain the discrepancy and propose a fix.”
+  - TDD - feedback loop
+- iterate, polish - both the plan and the code
+- semports - semantic ports
+- **Intent Debt** is the missing or decayed record of why a system is built the way it is: goals, constraints, tradeoffs, rejected alternatives, and rationale.
+- **Cognitive Debt** - before writing code was slow, now understanding code is slow -> document rationale, comprehension is first-class eng task
+  - https://addyosmani.com/blog/dont-outsource-learning/
+- https://addyosmani.com/blog/agentic-engineering/
+- https://cursor.com/blog/agent-best-practices
+- > In a system where agent throughput far exceeds human attention, corrections are cheap, and waiting is expensive.
+- > Codex replicates patterns that already exist in the repository—even uneven or suboptimal ones -> regular "garbage collection" / code cleanup tasks by codex, based on "golden rules"
+- > Our most difficult challenges now center on **designing environments, feedback loops, and control systems** that help agents accomplish our goal: build and maintain complex, reliable software at scale.
 
 ## MCPs
-* [Chrome dev tools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)
-* [Serena MCP](https://github.com/oraios/serena) - use LSP servers
-* [Playwright MCP](https://github.com/microsoft/playwright-mcp) - browser control & automation
-* [Perplexity MCP](https://github.com/perplexityai/modelcontextprotocol) - search & research using Perplexity
+
+- [Chrome dev tools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)
+- [Serena MCP](https://github.com/oraios/serena) - use LSP servers
+- [Playwright MCP](https://github.com/microsoft/playwright-mcp) - browser control & automation
+- [Perplexity MCP](https://github.com/perplexityai/modelcontextprotocol) - search & research using Perplexity
 
 ## Docs
 
-* [Agent Memory Formulation](docs/agent_memory_formulation.md)
-* [Principles](docs/principles.md)
-* [Root Cause Analysis](docs/root_cause_analysis.md)
+- [Agent Memory Formulation](docs/agent_memory_formulation.md)
+- [Principles](docs/principles.md)
+- [Root Cause Analysis](docs/root_cause_analysis.md)
 
-* [Architecture Guidelines](docs/architecture_guidelines.md)
-* [Code Cleanup Guidelines](docs/code_cleanup_guidelines.md)
-* [Code Review Guidelines](docs/code_review_guidelines.md)
-* [Coding Style Guidelines](docs/coding_style_guidelines.md)
-* [Coding Workflow Principles](docs/coding_workflow_principles.md)
+- [Architecture Guidelines](docs/architecture_guidelines.md)
+- [Code Cleanup Guidelines](docs/code_cleanup_guidelines.md)
+- [Code Review Guidelines](docs/code_review_guidelines.md)
+- [Coding Style Guidelines](docs/coding_style_guidelines.md)
+- [Coding Workflow Principles](docs/coding_workflow_principles.md)
 
-* [Git SPR](docs/git-spr.md)
-* [OpenAI Prompt Guidelines](docs/openai_prompt_guidelines.md)
-* [Plan Mode Requirements](docs/plan_mode_requirements.md)
-* [Plan Mode Best Practices](docs/plan_mode_best_practices.md)
-* [Plan Mode Spec](docs/plan_mode_spec.md)
-* [Explore Mode Spec](docs/explore_mode_spec.md)
+- [Git SPR](docs/git-spr.md)
+- [OpenAI Prompt Guidelines](docs/openai_prompt_guidelines.md)
+- [Plan Mode Requirements](docs/plan_mode_requirements.md)
+- [Plan Mode Best Practices](docs/plan_mode_best_practices.md)
+- [Plan Mode Spec](docs/plan_mode_spec.md)
+- [Explore Mode Spec](docs/explore_mode_spec.md)

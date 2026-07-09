@@ -87,6 +87,7 @@ Evidence:
 ```
 
 Stop when one condition is met:
+
 - A root cause satisfies all Step 5 criteria with evidence.
 - Seven iterations are reached.
 - A next "Why?" adds no new evidence and no new controllable cause. In this case, stop and mark `UNCERTAIN` with a required verification method.
@@ -94,6 +95,7 @@ Stop when one condition is met:
 ### 5. State Root Cause
 
 Require all:
+
 - Explain the full causal chain.
 - Show that fixing it prevents recurrence.
 - Keep it specific and actionable.
@@ -117,6 +119,7 @@ Prevention:
 ```
 
 Use:
+
 - `Immediate fix` for symptom containment.
 - `Root fix` for causal removal.
 - `Prevention` for related-failure reduction (tests, invariants, assertions, stronger types, better contracts).
@@ -196,6 +199,7 @@ Verification:
 ## Reject Anti-Patterns
 
 Do not stop at:
+
 - "bug in code"
 - "wrong logic"
 - "unexpected input"
@@ -206,6 +210,7 @@ Treat these as symptoms that still require causal explanation.
 ## Prefer Common Systemic Causes
 
 Check for:
+
 - missing invariant enforcement
 - invalid state admission
 - incorrect abstraction boundary
@@ -222,6 +227,7 @@ Check for:
 Run this RCA before implementing non-emergency fixes. If emergency mitigation is required, still complete RCA before closure.
 
 Use confidence consistently:
+
 - High: reproduced and causal chain verified.
 - Medium: strong evidence, no full reproduction.
 - Low: plausible hypothesis with limited evidence.

@@ -18,22 +18,26 @@ Produce a short, execution-oriented plan inline. Prefer conversational planning 
 ## When to Use
 
 Use `quick-plan` when:
+
 - the user wants a lightweight or on-the-fly plan,
 - one approach is already likely and heavy option analysis would be overkill,
 - a short inline plan is enough to move work forward.
 
 Stay in exploration instead when:
+
 - the user is still problem-framing rather than planning,
 - more discovery is needed before even a lightweight plan is credible.
 
 ## Planning Standard
 
 Before giving the plan:
+
 - inspect the concrete code paths, interfaces, configs, tests, and adjacent integration points relevant to the requested work,
 - identify the most likely implementation path,
 - ask only the minimum questions needed to remove material ambiguity.
 
 Keep the plan in question-asking mode rather than final-plan mode when:
+
 - a step still depends on choosing among materially different approaches,
 - the expected touched area is still unclear after reasonable inspection,
 - verification strategy is materially unclear,
@@ -54,17 +58,20 @@ Use this lightweight structure:
 ## Step Quality Rules
 
 Each step should be:
+
 - concrete enough to execute without additional material design decisions,
 - scoped to a clear outcome,
 - tied to expected files/areas or interfaces when useful,
 - paired with a brief verification checkpoint when that affects sequencing.
 
 Allowed during execution:
+
 - local naming choices,
 - small mechanical refactors needed to support the planned change,
 - minor implementation details that stay within the approved approach.
 
 Keep the plan explicit about:
+
 - architecture choices that matter before coding starts,
 - API and data-shape decisions that affect implementation,
 - scope boundaries,

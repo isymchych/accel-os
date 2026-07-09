@@ -17,6 +17,7 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 - Migration risk for boundary changes
 
 ## Available scripts
+
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
 - Run bundled `.ts` helper scripts with `deno`, not `node`.
@@ -28,6 +29,7 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 ## Workflow
 
 ### 1) Verify Helper Path And Repository Context
+
 - Determine the target repository for the review.
 - Resolve helper script paths relative to `dirname(SKILL.md)`.
 - Verify the helper path and the `cwd` separately before execution.
@@ -35,31 +37,37 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 - If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory, stop and report the mismatch.
 
 ### 2) Map The Change Boundary
+
 - Identify changed modules and their public interfaces.
 - Note new dependencies, moved responsibilities, and altered ownership.
 - Ignore internal details unless they affect the boundary.
 
 ### 3) Trace Design Decisions
+
 - Find every place each design decision appears.
 - Flag repeated decisions across modules as leakage.
 - Prefer one authoritative module per decision.
 
 ### 4) Check Depth And Layering
+
 - Flag pass-through functions/classes that only mirror another API.
 - Check whether adjacent layers expose the same abstraction.
 - Prefer deeper modules with simpler caller APIs.
 
 ### 5) Assess Cognitive Load
+
 - Count concepts a caller must hold to use the change correctly.
 - Verify common paths stay obvious and low-configuration.
 - Flag interfaces that cannot be explained in 1-3 sentences.
 
 ### 6) Evaluate Change Amplification
+
 - If one behavior tweak requires edits in 3+ files, find the leaked decision.
 - Recommend centralizing at a stronger boundary.
 - Prefer reducing call-site complexity even if callee complexity increases.
 
 ### 7) Classify Migration Impact
+
 - Explicitly mark whether recommendations are backward-compatible.
 - For breaking changes, list required migration steps and blast radius.
 
@@ -67,7 +75,8 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 
 Return sections in this order:
 
-1) `Architecture Findings`
+1. `Architecture Findings`
+
 - Ordered by severity then blast radius.
 - Each finding includes:
   - `Severity`: `critical` | `high` | `medium` | `low`
@@ -79,7 +88,8 @@ Return sections in this order:
   - `Compatibility`: `compatible` | `breaking`
   - `Migration`: required only when `breaking`
 
-2) `Architecture Checklist`
+2. `Architecture Checklist`
+
 - Answer each with `Yes`, `No`, or `Partial` plus one evidence sentence:
   - Did this reduce dependencies or obscurity?
   - Did this introduce information leakage?
@@ -88,10 +98,12 @@ Return sections in this order:
   - Is each interface explainable in <=3 sentences?
   - Is ownership obvious to a new reader?
 
-3) `Assumptions`
+3. `Assumptions`
+
 - Include only if conventions or architecture intent are inferred.
 
-4) `Overall Architecture Verdict`
+4. `Overall Architecture Verdict`
+
 - Use exactly one:
   - `Architecture healthy`
   - `Architecture risk: targeted refactor advised`

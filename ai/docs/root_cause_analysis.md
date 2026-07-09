@@ -6,12 +6,12 @@ Identify the true underlying cause of a problem—not symptoms—using structure
 
 This skill is used when:
 
-* Bugs reappear after fixes
-* Failures lack clear explanation
-* Unexpected behavior occurs
-* Tests fail unexpectedly
-* Performance regressions occur
-* Incidents or production failures occur
+- Bugs reappear after fixes
+- Failures lack clear explanation
+- Unexpected behavior occurs
+- Tests fail unexpectedly
+- Performance regressions occur
+- Incidents or production failures occur
 
 This skill prioritizes **causal certainty over speed**.
 
@@ -23,14 +23,14 @@ This skill prioritizes **causal certainty over speed**.
 
 The root cause is the deepest cause that:
 
-* explains the failure
-* is controllable
-* can be fixed to prevent recurrence
+- explains the failure
+- is controllable
+- can be fixed to prevent recurrence
 
 Stop only when further questioning would reach:
 
-* external uncontrollable factors, or
-* fundamental constraints
+- external uncontrollable factors, or
+- fundamental constraints
 
 ---
 
@@ -38,12 +38,12 @@ Stop only when further questioning would reach:
 
 Every causal claim must be supported by at least one:
 
-* code reference
-* log
-* test result
-* reproduction
-* commit diff
-* execution trace
+- code reference
+- log
+- test result
+- reproduction
+- commit diff
+- execution trace
 
 Never guess.
 
@@ -91,17 +91,17 @@ Best root cause:
 
 Prefer:
 
-* invariant violations
-* missing validation
-* incorrect assumptions
-* broken abstractions
-* race conditions
-* contract violations
+- invariant violations
+- missing validation
+- incorrect assumptions
+- broken abstractions
+- race conditions
+- contract violations
 
 Over:
 
-* typos
-* one-off errors
+- typos
+- one-off errors
 
 ---
 
@@ -133,9 +133,9 @@ Never proceed with vague failure definitions.
 
 If possible:
 
-* run tests
-* run code
-* simulate inputs
+- run tests
+- run code
+- simulate inputs
 
 Record:
 
@@ -154,10 +154,10 @@ Find the direct technical reason.
 
 Examples:
 
-* null dereference
-* incorrect branch taken
-* wrong value computed
-* invariant violation
+- null dereference
+- incorrect branch taken
+- wrong value computed
+- invariant violation
 
 Document:
 
@@ -191,11 +191,11 @@ Why 3:
 
 Continue until reaching:
 
-* design flaw
-* missing invariant
-* broken assumption
-* architectural weakness
-* process failure
+- design flaw
+- missing invariant
+- broken assumption
+- architectural weakness
+- process failure
 
 Usually 3–7 iterations.
 
@@ -207,9 +207,9 @@ Stop when further "Why?" would not produce a controllable fix.
 
 Must satisfy:
 
-* explains entire causal chain
-* fixing it prevents recurrence
-* is specific and actionable
+- explains entire causal chain
+- fixing it prevents recurrence
+- is specific and actionable
 
 Format:
 
@@ -269,11 +269,11 @@ Prevention:
 
 Examples:
 
-* add invariant checks
-* add tests
-* add assertions
-* strengthen types
-* improve abstraction
+- add invariant checks
+- add tests
+- add assertions
+- strengthen types
+- improve abstraction
 
 ---
 
@@ -357,10 +357,10 @@ Verification:
 
 Do NOT stop at:
 
-* "bug in code"
-* "wrong logic"
-* "unexpected input"
-* "race condition occurred"
+- "bug in code"
+- "wrong logic"
+- "unexpected input"
+- "race condition occurred"
 
 These are symptoms, not root causes.
 
@@ -372,16 +372,16 @@ Must explain WHY they occurred.
 
 Common true root causes include:
 
-* Missing invariant enforcement
-* Invalid state allowed
-* Incorrect abstraction boundary
-* Contract violation between components
-* Missing validation
-* Incorrect assumptions about ordering or timing
-* Race condition due to shared mutable state
-* Type system insufficient to enforce constraints
-* Incorrect error handling strategy
-* Incomplete state machine
+- Missing invariant enforcement
+- Invalid state allowed
+- Incorrect abstraction boundary
+- Contract violation between components
+- Missing validation
+- Incorrect assumptions about ordering or timing
+- Race condition due to shared mutable state
+- Type system insufficient to enforce constraints
+- Incorrect error handling strategy
+- Incomplete state machine
 
 ---
 
@@ -389,11 +389,11 @@ Common true root causes include:
 
 Use automatically when:
 
-* bug fixes fail
-* failures recur
-* cause unclear
-* debugging complex behavior
-* investigating incidents
+- bug fixes fail
+- failures recur
+- cause unclear
+- debugging complex behavior
+- investigating incidents
 
 ---
 
@@ -409,17 +409,17 @@ Never implement fixes without identifying root cause first, unless emergency mit
 
 High confidence requires:
 
-* reproduction
-* code evidence
-* causal chain verified
+- reproduction
+- code evidence
+- causal chain verified
 
 Medium confidence:
 
-* strong evidence but not reproduced
+- strong evidence but not reproduced
 
 Low confidence:
 
-* hypothesis only
+- hypothesis only
 
 Must explicitly declare confidence.
 

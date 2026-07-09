@@ -6,6 +6,7 @@ A practical guide for writing prompts that produce reliable, compact, and verifi
 
 Use prompts as **contracts**, not just requests.
 A good prompt defines:
+
 - the task
 - the expected output shape
 - what evidence or tools may be used
@@ -15,9 +16,11 @@ A good prompt defines:
 ## Core Principles
 
 ### 1. Define the output contract
+
 State exactly what should be returned.
 
 Include:
+
 - required sections
 - required order
 - allowed format (`JSON`, `Markdown`, `SQL`, `XML`, plain text)
@@ -28,17 +31,20 @@ Example:
 
 ```md
 Return exactly these sections in order:
+
 1. Summary
 2. Risks
 3. Recommendation
-Output Markdown only.
-Do not include preamble or closing remarks.
+   Output Markdown only.
+   Do not include preamble or closing remarks.
 ```
 
 ### 2. Be explicit about completion
+
 Say what “done” means.
 
 Useful completion rules:
+
 - all requested items are covered
 - missing information is called out explicitly
 - tool results are checked before finalizing
@@ -53,9 +59,11 @@ If one item is ambiguous, mark it as ambiguous and explain why.
 ```
 
 ### 3. Keep structure tight
+
 Constrain format and verbosity.
 
 Prefer:
+
 - small, well-named sections
 - exact schemas for parse-sensitive outputs
 - concise answers with no filler
@@ -71,9 +79,11 @@ Schema:
 ```
 
 ### 4. Ground claims in evidence
+
 Require the model to use only the provided context or retrieved sources.
 
 Good rules:
+
 - do not invent facts or citations
 - cite claims that depend on external information
 - label unsupported conclusions as assumptions or inferences
@@ -88,9 +98,11 @@ If evidence is missing, say so directly.
 ```
 
 ### 5. Make tool use explicit
+
 If tools are available, define when to use them and when not to.
 
 Specify:
+
 - when a tool is required
 - when a tool is optional
 - whether retries are expected
@@ -106,23 +118,28 @@ Do not finalize until the result is verified against at least one authoritative 
 ```
 
 ### 6. Choose reasoning effort by task shape
+
 More reasoning is not always better.
 
 General guidance:
+
 - **low / none**: straightforward transformations, formatting, routine execution
 - **medium**: multi-step analysis, ambiguity resolution, non-trivial planning
 - **high**: research-heavy synthesis, strategy, safety-critical review, complex dependency analysis
 
 Before increasing reasoning effort, first improve:
+
 - output contract clarity
 - completeness checks
 - verification rules
 - tool-use rules
 
 ### 7. Add lightweight verification
+
 For important tasks, require a final check.
 
 Useful verification patterns:
+
 - validate schema before returning
 - compare result against source material
 - confirm all requested items were handled
@@ -133,15 +150,18 @@ Example:
 
 ```md
 Before finalizing:
+
 - verify the JSON is valid
 - verify every recommendation is supported by evidence
 - verify no requested section is missing
 ```
 
 ### 8. Keep long-running tasks persistent
+
 For agents and multi-step workflows, tell the model to continue until the task is actually complete.
 
 Helpful rules:
+
 - do not stop after partial progress
 - recover from empty or weak results
 - retry with a refined approach when useful
@@ -156,9 +176,11 @@ If a step fails, attempt one reasonable recovery path before giving up.
 ```
 
 ### 9. Use user updates sparingly
+
 For interactive agents, require short progress updates during long tasks.
 
 Good update rules:
+
 - keep updates brief
 - mention meaningful progress only
 - surface blockers early
@@ -172,9 +194,11 @@ Do not narrate every low-level action.
 ```
 
 ### 10. Start minimal, then iterate
+
 Do not overbuild prompts up front.
 
 Recommended process:
+
 1. start with the smallest prompt that passes evals
 2. measure failures
 3. add only the block that fixes the observed failure mode
@@ -184,6 +208,7 @@ Recommended process:
 ## Reusable Prompt Blocks
 
 ### Output contract
+
 ```xml
 <output_contract>
 - Return exactly the requested sections, in the requested order.
@@ -194,6 +219,7 @@ Recommended process:
 ```
 
 ### Completeness contract
+
 ```xml
 <completeness_contract>
 - Do not stop at the first plausible answer.
@@ -204,6 +230,7 @@ Recommended process:
 ```
 
 ### Verification loop
+
 ```xml
 <verification_loop>
 - Before finalizing, verify the output against the prompt requirements.
@@ -213,6 +240,7 @@ Recommended process:
 ```
 
 ### Citation rules
+
 ```xml
 <citation_rules>
 - Use only provided or retrieved sources.
@@ -223,6 +251,7 @@ Recommended process:
 ```
 
 ### Tool persistence rules
+
 ```xml
 <tool_persistence_rules>
 - Use tools when they materially improve correctness.
@@ -233,6 +262,7 @@ Recommended process:
 ```
 
 ### Dig deeper nudge
+
 ```xml
 <dig_deeper_nudge>
 - Don’t stop at the first plausible answer.
@@ -245,32 +275,39 @@ Recommended process:
 
 ```md
 # Role
+
 You are a careful assistant working on a constrained task.
 
 # Task
+
 [Describe the job clearly and specifically]
 
 # Output Contract
+
 - [required sections / schema / format]
 - [ordering rules]
 - [verbosity constraints]
 
 # Grounding Rules
+
 - [allowed sources]
 - [citation requirements]
 - [assumption rules]
 
 # Tool Rules
+
 - [when to use tools]
 - [when to retry]
 - [what must be verified before finalizing]
 
 # Completion Criteria
+
 - [definition of done]
 - [coverage requirements]
 - [failure-handling expectations]
 
 # Final Checks
+
 - [schema validation]
 - [completeness check]
 - [evidence check]
@@ -279,37 +316,49 @@ You are a careful assistant working on a constrained task.
 ## Common Failure Modes and Fixes
 
 ### Failure: Output drifts in format
+
 Fix:
+
 - require exact format
 - forbid extra commentary
 - provide a schema or section list
 
 ### Failure: Stops too early
+
 Fix:
+
 - add a completeness contract
 - define explicit done criteria
 - require unresolved-item tracking
 
 ### Failure: Hallucinates facts
+
 Fix:
+
 - tighten grounding rules
 - require citations
 - forbid unsupported claims
 
 ### Failure: Uses tools poorly
+
 Fix:
+
 - specify when tools are mandatory
 - define retry behavior
 - define verification before finalization
 
 ### Failure: Overly verbose
+
 Fix:
+
 - constrain section lengths
 - ask for direct answers only
 - separate hidden work from visible output
 
 ### Failure: Too literal or shallow
+
 Fix:
+
 - add a dig-deeper nudge
 - add verification expectations
 - only then consider raising reasoning effort
@@ -317,6 +366,7 @@ Fix:
 ## Practical Defaults
 
 For most production prompts:
+
 - define exact output shape
 - define what counts as done
 - require evidence for factual claims
@@ -327,6 +377,7 @@ For most production prompts:
 ## One-Page Checklist
 
 Before shipping a prompt, confirm:
+
 - Is the task specific?
 - Is the output format explicit?
 - Is “done” clearly defined?
@@ -339,10 +390,10 @@ Before shipping a prompt, confirm:
 ## Source Basis
 
 This document is based primarily on current OpenAI prompt guidance for GPT-5.4, especially its emphasis on:
+
 - explicit output contracts
 - completeness and verification
 - disciplined tool use
 - citation gating
 - reasoning-effort selection by task shape
 - gradual prompt migration and iteration
-

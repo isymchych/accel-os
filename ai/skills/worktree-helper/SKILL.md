@@ -12,11 +12,13 @@ Use this skill to manage repo-local git worktrees through the standalone helper 
 Run `mb-worktree <command> ...`.
 
 Default targeting:
+
 - `mb-worktree` targets the caller's current repository.
 - Use `--repo <path>` when the target repo is not the current directory.
 - Relative `--repo` paths resolve from the caller's original working directory.
 
 Start with:
+
 - `mb-worktree list`
 - `mb-worktree --help`
 
@@ -66,6 +68,7 @@ Start with:
 ## Output expectations
 
 Return a short report with:
+
 - the command run
 - the resolved worktree path
 - whether `setup-worktree.sh` ran, was skipped, or was absent

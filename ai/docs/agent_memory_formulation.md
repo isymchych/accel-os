@@ -4,11 +4,11 @@
 
 Ensure stored memory is:
 
-* **Atomic**
-* **Unambiguous**
-* **Low-interference**
-* **Retrieval-efficient**
-* **Composable**
+- **Atomic**
+- **Unambiguous**
+- **Low-interference**
+- **Retrieval-efficient**
+- **Composable**
 
 Memory quality > memory quantity.
 
@@ -22,18 +22,18 @@ Each memory entry must encode **one testable idea**.
 
 **Reject if:**
 
-* Contains conjunctions (“and”, “or”, “also”)
-* Encodes a list of heterogeneous items
-* Mixes cause + consequence
-* Bundles definition + example
+- Contains conjunctions (“and”, “or”, “also”)
+- Encodes a list of heterogeneous items
+- Mixes cause + consequence
+- Bundles definition + example
 
 **Allowed:**
 
-* One fact
-* One rule
-* One invariant
-* One decision rationale
-* One constraint
+- One fact
+- One rule
+- One invariant
+- One decision rationale
+- One constraint
 
 ---
 
@@ -43,15 +43,15 @@ Store the **smallest sufficient representation**.
 
 Prefer:
 
-* Short declarative rule
-* Explicit constraint
-* Structured field over prose
+- Short declarative rule
+- Explicit constraint
+- Structured field over prose
 
 Avoid:
 
-* Narrative paragraphs
-* Contextual fluff
-* Re-explaining obvious domain knowledge
+- Narrative paragraphs
+- Contextual fluff
+- Re-explaining obvious domain knowledge
 
 ---
 
@@ -63,10 +63,10 @@ Each memory must answer:
 
 Memory must include at least one:
 
-* Clear domain tag
-* Trigger condition
-* Decision boundary
-* Failure pattern
+- Clear domain tag
+- Trigger condition
+- Decision boundary
+- Failure pattern
 
 If retrieval condition is vague → rewrite.
 
@@ -76,8 +76,8 @@ If retrieval condition is vague → rewrite.
 
 If similar memories exist:
 
-* Add contrast field
-* Explicitly encode boundary condition
+- Add contrast field
+- Explicitly encode boundary condition
 
 Example:
 
@@ -128,14 +128,11 @@ type: rule | invariant | constraint | preference | failure_pattern | design_prin
 trigger:
   when: condition under which this applies
 
-statement:
-  atomic declarative rule
+statement: atomic declarative rule
 
-rationale:
-  short explanation (optional but preferred)
+rationale: short explanation (optional but preferred)
 
-boundary:
-  when this does NOT apply (optional but encouraged)
+boundary: when this does NOT apply (optional but encouraged)
 
 tags:
   - domain
@@ -185,17 +182,17 @@ If yes → add contrast or merge.
 
 If a memory:
 
-* Exceeds 3–4 lines
-* Contains multiple clauses
-* Requires explanation to apply
+- Exceeds 3–4 lines
+- Contains multiple clauses
+- Requires explanation to apply
 
 It is likely under-compressed.
 
 Refactor until it becomes:
 
-* Direct
-* Operational
-* Decidable
+- Direct
+- Operational
+- Decidable
 
 ---
 
@@ -203,11 +200,11 @@ Refactor until it becomes:
 
 Reject memory if it is:
 
-* A summary of a long article
-* A motivational statement
-* A vague best practice
-* A full checklist (must split)
-* Redundant with existing invariant
+- A summary of a long article
+- A motivational statement
+- A vague best practice
+- A full checklist (must split)
+- Redundant with existing invariant
 
 ---
 
@@ -229,14 +226,14 @@ Contrast reduces retrieval ambiguity.
 
 High-value memories:
 
-* Postmortem conclusions
-* Architectural boundary decisions
-* Performance regressions
-* Security invariants
+- Postmortem conclusions
+- Architectural boundary decisions
+- Performance regressions
+- Security invariants
 
 Avoid storing:
 
-* Easily derivable textbook facts
+- Easily derivable textbook facts
 
 ---
 
@@ -244,16 +241,16 @@ Avoid storing:
 
 Store only what:
 
-* Is costly to rediscover
-* Is project-specific
-* Encodes irreversible decisions
-* Prevents repeated mistakes
+- Is costly to rediscover
+- Is project-specific
+- Encodes irreversible decisions
+- Prevents repeated mistakes
 
 Do NOT store:
 
-* Obvious framework defaults
-* Generic language knowledge
-* Widely known principles
+- Obvious framework defaults
+- Generic language knowledge
+- Widely known principles
 
 ---
 
@@ -275,14 +272,14 @@ Memory refinement is iterative.
 
 Good agent memory behaves like:
 
-* Well-factored code
-* Small pure functions
-* Strong invariants
-* Clear interface contracts
+- Well-factored code
+- Small pure functions
+- Strong invariants
+- Clear interface contracts
 
 Poor memory behaves like:
 
-* God objects
-* Implicit coupling
-* Hidden state
-* Ambiguous APIs
+- God objects
+- Implicit coupling
+- Hidden state
+- Ambiguous APIs

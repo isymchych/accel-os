@@ -7,9 +7,11 @@ disable-model-invocation: true
 # Prune Stale Branches
 
 Use this skill to safely prune stale remote branches via:
+
 - `deno run -A ./scripts/prune-stale-branches.ts`
 
 ## Available scripts
+
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
 - Run bundled `.ts` helper scripts with `deno`, not `node`.
@@ -58,6 +60,7 @@ Use this skill to safely prune stale remote branches via:
 ## Output Contract
 
 Report:
+
 - command(s) run
 - main branch used
 - whether run mode was `dry-run` or `delete`

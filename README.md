@@ -10,6 +10,7 @@ just bootstrap
 ```
 
 ## CLI tools I rely on
+
 - `yazi` — file manager (remember to install its `unarchiver` plugin for previews)
 - `ripgrep` — fast project search
 - `fd` — ergonomic file finder
@@ -28,18 +29,22 @@ just bootstrap
 - `lazydocker` - TUI for Docker
 
 ## Optional CLI tools
+
 - `ast-grep` — structural code search/rewrite
 
 ## Zsh setup
+
 - Install `starship` for the prompt.
 - Install emoji-capable font (e.g., `noto-fonts-emoji`) so glyphs render.
 - Add `zsh-completions`, `zsh-autosuggestions`, and `zsh-syntax-highlighting`.
 - Tip: `Ctrl+X Ctrl+E` opens the current command in `$EDITOR`.
 
 ## Firefox
+
 - The `firefox/` directory stays outside chezmoi (`.chezmoiignore` excludes it) because profile IDs vary per host.
 - After installing Firefox, visit `about:profiles`, note the active profile ID, and symlink `firefox/user.js` into that profile (`~/.mozilla/firefox/<profile-id>/user.js`).
 - Restart Firefox to load the preferences.
 
 ## Emacs
+
 - Dependencies: `git`, `editorconfig`, `aspell`, `ripgrep`.

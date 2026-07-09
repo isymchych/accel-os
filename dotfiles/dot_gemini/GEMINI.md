@@ -1,10 +1,12 @@
 ## Privacy / ops
+
 - Treat everything as private; never log/cache externally; never store prompts/results outside this machine.
 - Public web browsing allowed for docs/clarifications; redact project-specific details.
 - Prefer primary, official sources; cite them when relevant.
 - Prohibited by default: cloud-only when local exists; telemetry/analytics; online pastebins; link shorteners.
 
 ## Operating mode
+
 - Expertise: Rust, TypeScript, JavaScript.
 - Style: telegraph; concise; precise; active voice; no basics unless asked.
 - Tone: direct; challenge assumptions; point out flaws.
@@ -13,9 +15,11 @@
 - Ambiguity: list options briefly; ask me to choose; do not pick silently.
 
 ## Priority
+
 - Conflict order: explicit user constraints > privacy/safety constraints > remaining AGENTS.md defaults.
 
 ## Execution rules
+
 - Prefer best boundary for data/logic over smallest change.
 - Allow proactive simplification beyond the request only when behavior stays unchanged and complexity drops.
 - Fix root cause; no band-aids.
@@ -31,16 +35,19 @@
 ## Design heuristics (Ousterhout-style)
 
 #### North star
+
 - Optimize for low complexity over time.
 - Complexity = dependencies + obscurity.
 - Track symptoms: change amplification, cognitive load, unknown unknowns.
 
 #### Always-run post-change checks
+
 - Change amplification: did a "small" change require edits in multiple places? If yes, centralize the decision (remove leakage).
 - Unknown unknowns: would a new reader know where else to look? If no, improve structure (module boundary) or add a guiding comment.
 - Cognitive load: how many concepts must be kept in working memory? Reduce via deeper modules, better names, or moving detail downward.
 
 #### Modules and interfaces (depth)
+
 - Prefer deep modules: small/simple interface, lots of complexity hidden behind it.
 - Pull complexity downward: make callers simpler even if the callee becomes harder.
 - No pass-through layers: forwarding wrappers with mirrored signatures are a smell; delete, merge, or change the abstraction.
@@ -49,27 +56,32 @@
 - Ensure one place per design decision: duplicated knowledge = information leakage.
 
 #### Decomposition (reduce obscurity)
+
 - Decompose by responsibility/knowledge, not by time/order (avoid temporal decomposition like "read -> parse -> handle" scatter).
 - Watch for conjoined methods: if A requires reading B to understand, restructure (merge, inline, rename, or introduce a deeper module).
 - Avoid classitis: many tiny shallow classes usually increase cognitive load.
 
 #### API ergonomics
+
 - The common case is trivial: one obvious call, minimal config.
 - Make misuse hard: encode invariants in types/constructors/module boundaries; minimize "caller must remember X".
 - An interface must be explainable in 1-3 sentences. If not, redesign.
 
 #### Error handling
+
 - Prefer to define errors out of existence when reasonable (validate/normalize/default internally).
 - Mask recoverable low-level errors inside the module (retries, fallback, internal repair).
 - Aggregate at boundaries: expose a small stable error surface; do not leak internal failure modes unless the caller can act on them.
 
 #### Naming and comments
+
 - Names must create a clear image. Avoid: data, info, result, handler, manager, util.
 - Comments are for why/intent/rationale, invariants/units/boundaries, and non-obvious tradeoffs.
 - Write interface comments first for new modules/APIs; if hard to write, redesign before coding.
 - Avoid comments that merely restate the code.
 
 #### Refactor triggers (stop-and-fix)
+
 - A "small" change touched 3+ files.
 - You introduced a new flag/option that callers must thread through.
 - You duplicated logic "just this once".
@@ -77,6 +89,7 @@
 - You cannot name something without vague words.
 
 ### Additional local heuristics
+
 - Prefer explicit data flow (args/returns) over implicit (globals, singletons, shared mutable state).
 - Keep definitions near use; avoid cross-file jumping.
 - Treat globals/singletons/shared mutable state as locality hazards; keep state scope narrow.
@@ -90,6 +103,7 @@
 - Follow "parse, don't validate": parse into concrete structures, then validate.
 
 ## Workflow
+
 - Treat explicit user decisions as hard constraints for all subsequent steps.
 - Do not re-propose previously rejected options unless a concrete blocker is identified and stated.
 - Treat plan+execute as separate phases unless the user explicitly combines them.
@@ -111,6 +125,7 @@
 - When finishing changes, run a self-check: “Did I optimize the thing the instructions prioritized?”
 
 ## Tooling
+
 - Android: prefer Java (not Kotlin).
 - Frontend: component-first; reusable, composable UI pieces.
 - Repo AGENTS.md: never reference untracked files.

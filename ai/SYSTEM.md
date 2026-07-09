@@ -35,7 +35,7 @@
 - Question-form prompts request discussion or planning; ask for an imperative
   trigger before executing.
 - Ambiguous trigger wording or scope follows `Clarification and Stop
-  Conditions`.
+Conditions`.
 - Discovery is allowed before execution authorization: read/search files,
   inspect logs, and prepare concrete patch plans.
 - Once a scoped trigger is clear, proceed directly.
@@ -181,8 +181,7 @@
 - Prefer primary official sources.
 - Prohibited by default: cloud-only when local exists, telemetry/analytics,
   online pastebins, link shorteners.
-  
-  
+
 # I value:
 
 - simplicity over cleverness

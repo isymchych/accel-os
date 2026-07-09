@@ -34,7 +34,8 @@ Review for impact, not coverage. Prioritize maintainability, consistency, guidel
 
 Return sections in this order:
 
-1) Findings
+1. Findings
+
 - Order by severity, then user impact.
 - Deduplicate by root cause. Combine related symptoms into one finding with all affected locations.
 - Split into separate findings only when fixes, ownership, or blast radius differ materially.
@@ -48,21 +49,26 @@ Return sections in this order:
   - Risk: failure mode and likely impact/regression
   - Recommendation: specific fix
 
-2) Assumptions
+2. Assumptions
+
 - Required when conventions are inferred, missing, or conflicting.
 - List each assumption as one bullet with the source signal (or lack of signal).
 
-3) Clarifications Needed
+3. Clarifications Needed
+
 - Include only when missing context blocks a confident review.
 
-4) Minor Notes
+4. Minor Notes
+
 - Optional, for non-blocking improvements.
 
-5) Overall Verdict
+5. Overall Verdict
+
 - If no major findings, state exactly: `No major issues found`.
 - If minor-only concerns exist, still list them under Minor Notes.
 
-6) Out of Scope
+6. Out of Scope
+
 - State exactly: `No bug/logic/edge-case analysis performed unless explicitly requested.`
 
 ## Blocked Mode

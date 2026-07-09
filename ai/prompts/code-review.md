@@ -3,6 +3,7 @@ description: Review code for high-impact risks and actionable fixes
 ---
 
 Guidelines:
+
 - Understand what problem is being solved
 - Ask clarification questions only when missing information would change severity, risk, or the recommended fix.
 - Do not attempt to review every line; prioritize impact.
@@ -14,7 +15,8 @@ Guidelines:
 - For deep architecture assessment (module boundaries, information leakage, pass-through layers), use `$architecture-review`.
 
 Output format (required, in this order):
-1) Findings
+
+1. Findings
    - Ordered by severity then user impact.
    - Deduplicate by root cause: combine related symptoms into one finding with all affected locations.
    - Split into separate findings when fixes, ownership, or blast radius differ materially.
@@ -25,34 +27,38 @@ Output format (required, in this order):
      - Evidence: concrete code behavior
      - Risk: failure mode and likely impact/regression
      - Recommendation: specific fix
-2) Assumptions
+2. Assumptions
    - Required when conventions are inferred, missing, or conflicting.
    - List each assumption as one bullet, including the source signal (or lack of signal).
-3) Clarifications Needed
+3. Clarifications Needed
    - Only include if missing context blocks confident review.
-4) Minor Notes
+4. Minor Notes
    - Optional, for non-blocking improvements.
-5) Overall Verdict
+5. Overall Verdict
    - If no major findings, state exactly: `No major issues found`.
    - If minor-only concerns exist, still list them under Minor Notes.
 
 Blocked mode (when critical context is missing):
+
 - Output only sections 2) Assumptions, 3) Clarifications Needed, and 5) Overall Verdict.
 - In 5) Overall Verdict, state exactly: `Review blocked: missing critical context`.
 - Do not output 1) Findings or 4) Minor Notes in blocked mode.
 
 Severity criteria:
+
 - `critical`: likely production failure, data loss, or hard correctness break.
 - `high`: serious bug/risk with strong chance of user-visible failure.
 - `medium`: meaningful maintainability/performance/correctness risk, not immediately catastrophic.
 - `low`: polish, readability, or low-probability edge risk.
 
 Confidence criteria:
+
 - `high`: directly supported by concrete code paths, reproducible behavior, or explicit contract violations.
 - `medium`: strong inference from code structure/flow, but not fully demonstrated end-to-end.
 - `low`: plausible risk signal with limited direct evidence; needs confirmation.
 
 Evaluate the code across:
+
 - Code quality and adherence to inferred repo conventions (functions/methods focused, no unnecessary complexity, descriptive names)
 - Code duplication and repeated logic (identify duplicated behavior/decisions and recommend consolidation at the right boundary, even when consolidation requires refactoring callers/clients; note migration impact)
 - Potential bugs, logic errors, and unhandled edge cases

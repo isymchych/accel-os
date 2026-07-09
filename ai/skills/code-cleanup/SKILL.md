@@ -80,5 +80,6 @@ Use this exact section order:
    - Assumptions, residual risk, and any verification gaps
 
 Rules:
+
 - Report concrete changes, not intentions.
 - Do not claim checks were run when they were not.

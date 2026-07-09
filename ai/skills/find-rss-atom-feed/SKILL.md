@@ -21,6 +21,7 @@ deno run -A ./scripts/find_feed.ts <url>
 ```
 
 Output fields:
+
 - `recommended.url`
 - `recommended.format`
 - `recommended.source`
@@ -29,6 +30,7 @@ Output fields:
 ## Fallback
 
 Use only when the script fails:
+
 - Check page HTML for `<link rel="alternate" type="application/rss+xml|application/atom+xml">`.
 - Probe common endpoints such as `/feed.xml`, `/rss.xml`, `/atom.xml`, `/index.xml`, `/blog.xml`.
 - Validate content has feed markers (`<rss` or `<feed` / Atom namespace), not generic HTML.
@@ -39,6 +41,7 @@ Use only when the script fails:
 - Preserve user privacy: do not share project-specific URLs outside the local environment.
 
 ## Available scripts
+
 - Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
 - Run bundled `.ts` helper scripts with `deno`, not `node`.
 - `scripts/find_feed.ts` — Discovers and validates RSS/Atom feeds from a website or page URL.

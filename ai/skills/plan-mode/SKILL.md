@@ -13,6 +13,7 @@ Create a complete, auditable plan before implementation. This skill is standalon
 Plan Mode is a guardrailed collaboration mode that turns vague intent into a decision-complete plan before implementation. It prioritizes correctness, auditability, and human control.
 
 Plan Mode is done only when all are true:
+
 - A final plan file exists at `plans/<slug>.md` with no pending decisions.
 - Requirements, constraints, and success criteria are explicit.
 - 2-3 options were considered and one was selected, or a documented trivial-request fast path was used and explicitly approved.
@@ -46,6 +47,7 @@ Plan Mode is done only when all are true:
 ### Relevant implementation areas
 
 Inspect the concrete parts of the repo needed to make a step execution-ready. This usually includes, when applicable:
+
 - entry points and call sites for the affected behavior,
 - touched modules/files and their nearby collaborators,
 - interfaces, types, schemas, and API boundaries the change depends on,
@@ -112,6 +114,7 @@ If a command commonly considered safe is mutating in this environment (for examp
 ## Run the Explore-First Loop
 
 Repeat until decision-complete:
+
 1. Explore repo and environment (read-only), including the concrete code paths, interfaces, configs, tests, and docs relevant to each major planned step.
 2. Summarize findings and implications.
 3. Ask at most 1-2 high-impact questions per turn, only when inspection cannot resolve a material ambiguity.
@@ -119,12 +122,14 @@ Repeat until decision-complete:
 5. Recommend one option and wait for user selection/approval.
 
 If blocked:
+
 - Explore further before asking.
 - Emit bounded pending decisions with why each matters.
 - Pause until user input or explicit authorization for assumption-based continuation.
 - Record assumptions and risks if user authorizes continuation.
 
 Clarifying question rules:
+
 - Questions are unlimited across the full session.
 - Ask at most 1-2 high-impact questions per turn unless user requests batching.
 - Read enough relevant code and configuration before asking so questions are specific, evidence-backed, and decision-relevant.
@@ -134,6 +139,7 @@ Clarifying question rules:
 ## Use Per-Turn Response Template
 
 For each planning turn, respond in this order:
+
 1. `Findings`: concise evidence and implications from exploration.
 2. `Options`: 2-3 structurally different options (or one valid fast-path option).
 3. `Recommendation`: one option with rationale and assumptions.
@@ -145,6 +151,7 @@ Do not request implementation-mode approval until pre-exit gate checks pass.
 ## Use Trivial Fast Path Only When Valid
 
 Use a single-option fast path only when all are true:
+
 - scope is trivial, unambiguous, low risk,
 - only one reasonable structural approach exists,
 - no migration/compatibility decision is needed,
@@ -152,6 +159,7 @@ Use a single-option fast path only when all are true:
 - no unbounded or external side effects are introduced.
 
 When using fast path:
+
 - include a `Fast-path justification` in the plan,
 - require explicit approval for recommendation acceptance,
 - still require explicit approval before mode exit.
@@ -215,16 +223,19 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 # <Title>
 
 ## 0. Dev Log
+
 - timestamp: YYYY-MM-DD HH:MM (local) | step: N/A | type: Decision | summary: Initial draft created. | evidence: N/A | action/resolution: N/A | status: resolved
 - timestamp: YYYY-MM-DD HH:MM (local) | step: <id> | type: Error | summary: <material error> | evidence: <E# or N/A> | action/resolution: <fix or next action> | status: <open|resolved|superseded>
 - timestamp: YYYY-MM-DD HH:MM (local) | step: <id> | type: Finding/Learning | summary: <material finding> | evidence: <E# or N/A> | action/resolution: <plan/verification/implementation adjustment> | status: <open|resolved|superseded>
 
 ## 1. Context
+
 - What the user wants (1-3 sentences).
 - Constraints given by the user.
 - Non-goals / out-of-scope items.
 
 ## 2. Repository Findings
+
 - Files/areas inspected:
   - <path> - why it matters
 - Inspection coverage by planned step:
@@ -236,12 +247,15 @@ Keep heading numbers stable. Include required sections for lifecycle state.
     - Evidence: ...
 
 ## 3. Clarifications Resolved
+
 - Q/A list (only decisions that matter):
   - Q: ...
   - A: ...
 
 ## 4. Options Considered
+
 ### Option A - <name>
+
 - Summary
 - Pros
 - Cons
@@ -249,6 +263,7 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 - When to choose this
 
 ### Option B - <name>
+
 - Summary
 - Pros
 - Cons
@@ -256,6 +271,7 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 - When to choose this
 
 ### Option C - <name> (optional)
+
 - Summary
 - Pros
 - Cons
@@ -263,6 +279,7 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 - When to choose this
 
 ## 5. Recommendation
+
 - Chosen option and rationale.
 - Explicit assumptions (if any).
 - Inspection summary: what relevant implementation areas were inspected, and any bounded gaps that remain.
@@ -270,11 +287,13 @@ Keep heading numbers stable. Include required sections for lifecycle state.
 - Open questions (must be empty if decision-complete).
 
 ## 6. Execution Plan (Step-by-step)
+
 - [ ] Step 1 ...
 - [ ] Step 2 ...
 - [ ] Step 3 ...
 
 For each major step include:
+
 - intended outcome,
 - impacted areas/files (expected, not edited in Plan Mode),
 - key design details (interfaces, data flow, edge cases),
@@ -282,12 +301,14 @@ For each major step include:
 - evidence reference(s) (for example E1, E2) when applicable.
 
 Execution-step rules:
+
 - Steps must be specific enough that an executor can perform them without making further material design or scope decisions.
 - Do not leave "decide during implementation", "pick approach later", or equivalent placeholders in a final plan.
 - Allowed execution-time judgment is limited to local, non-material details that stay within the approved plan.
 - If a material decision remains, keep the plan in `Draft` or `Blocked` state and surface it in `Pending Decisions` instead of hiding it in Step 6.
 
 ## 7. Verification Plan
+
 - Acceptance criteria (checklist)
 - Tests to add/update:
   - unit:
@@ -303,29 +324,35 @@ Execution-step rules:
 - Manual validation steps (if any)
 
 ## 7.1 Pending Decisions (Blocked state only)
+
 Include this section only when lifecycle state is `Blocked`.
 If planning is blocked awaiting user input, list bounded decisions and pause.
 If the user explicitly authorizes assumption-based continuation, document assumptions/risks and continue planning.
 
 ## 8. Risks & Mitigations
+
 - Risk:
   - Impact:
   - Mitigation:
   - Rollback/backout:
 
 ## 9. Rollout / Migration (if applicable)
+
 - Feature flags / incremental rollout
 - Backward compatibility
 - Data migration plan
 
 ## 10. Exit Criteria
+
 Plan Mode can end when:
+
 - user selects an option (or confirms recommendation),
 - user approves transition to Execute Mode,
 - verification plan is agreed.
 ```
 
 Lifecycle constraints:
+
 - Draft: unresolved decisions allowed.
 - Blocked: include `7.1 Pending Decisions`.
 - Final: omit `7.1`; set `5` open questions to `None provided.`; ensure relevant code paths were inspected and Step 6 contains no execution-time material decisions.
@@ -333,6 +360,7 @@ Lifecycle constraints:
 ## Enforce Pre-Exit Gate
 
 Before requesting exit to Execute Mode, confirm and report:
+
 - plan is final (no pending decisions),
 - selected option (or approved recommendation),
 - assumptions (if any),

@@ -6,6 +6,7 @@ Task:
 Map this repository and create/update `AGENTS.md` at the repo root so another coding agent can run, test, and modify it with minimal exploration.
 
 Requirements:
+
 - Include a short codebase map that helps an agent find files quickly.
 - Focus on entry points, directory roles, naming conventions, configuration wiring, and test locations.
 - Add a section called `Local norms` with repo-specific rules inferred from code and tooling.
@@ -14,6 +15,7 @@ Requirements:
   - If the user gives a correction about how work should be done in this repo, add it to `Local norms` (or another clearly labeled section) so future sessions inherit it.
 
 Non-negotiable rules:
+
 - Source-backed only: document facts traceable to files in this repo.
 - No invention: never fabricate commands, architecture, conventions, env vars, or workflows.
 - Prefer exactness: use concrete paths, filenames, command strings, and tool names.
@@ -21,6 +23,7 @@ Non-negotiable rules:
 - Unknowns explicit: when evidence is missing, write `unknown` and name what is missing.
 
 Process:
+
 1. Use search and targeted file reads. Do not read every file.
 2. Prefer `rg` to find entry points, manifests, config wiring, and tests.
 3. Start with high-signal files/paths:
@@ -34,6 +37,7 @@ Process:
 4. Drill deeper only as needed to verify: entry points, commands, conventions, config/env loading, tests, CI/release, integrations, and high-risk areas.
 
 AGENTS.md output contract:
+
 - Update existing `AGENTS.md` in place when present; otherwise create it.
 - Preserve correct existing sections; remove stale/incorrect content.
 - Keep it concise, navigation-first, and actionable for automated agents.
@@ -53,6 +57,7 @@ AGENTS.md output contract:
 - Write the final `AGENTS.md` contents in Markdown.
 
 Final validation before completion:
+
 - Every command appears verbatim in repo files (scripts/config/CI), or is marked `unknown`.
 - Every referenced directory/file exists.
 - Every claimed entry point is traceable to a concrete file.
