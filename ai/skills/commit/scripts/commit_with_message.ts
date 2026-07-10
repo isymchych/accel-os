@@ -11,6 +11,13 @@ import {
 
 const BODY_LINE_MAX = 99;
 
+type CommitOptions = {
+  messageFile?: string;
+  noVerify: boolean;
+};
+
+class UsageError extends Error {}
+
 export function normalizeMessage(message: string): string {
   const lines = message.split(/\r?\n/);
   if (lines.length === 0) throw new Error("empty commit message");
@@ -88,12 +95,34 @@ function splitLongToken(token: string, width: number): string[] {
   return chunks;
 }
 
-async function readInput(args: string[]): Promise<string> {
-  const fileFlagIndex = args.indexOf("--message-file");
-  if (fileFlagIndex >= 0) {
-    const filePath = args[fileFlagIndex + 1];
-    if (!filePath) throw new Error("missing value for --message-file");
-    return await readFile(filePath, "utf8");
+export function parseCommitOptions(args: string[]): CommitOptions {
+  const options: CommitOptions = { noVerify: false };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--no-verify") {
+      options.noVerify = true;
+      continue;
+    }
+
+    if (arg === "--message-file") {
+      const filePath = args[index + 1];
+      if (!filePath) throw new UsageError("missing value for --message-file");
+      options.messageFile = filePath;
+      index += 1;
+      continue;
+    }
+
+    throw new UsageError(`unknown argument: ${arg ?? ""}`);
+  }
+
+  return options;
+}
+
+async function readInput(options: CommitOptions): Promise<string> {
+  if (options.messageFile) {
+    return await readFile(options.messageFile, "utf8");
   }
 
   process.stdin.setEncoding("utf8");
@@ -102,13 +131,20 @@ async function readInput(args: string[]): Promise<string> {
   return chunks.join("");
 }
 
-async function commitMessage(message: string): Promise<GitCommandResult> {
+export function buildCommitArgs(message: string, options: CommitOptions): string[] {
   const lines = message.split("\n");
   const subject = lines[0] ?? "";
   const body = lines.slice(2).join("\n").trimEnd();
 
-  const args = ["commit", "-m", subject];
+  const args = ["commit"];
+  if (options.noVerify) args.push("--no-verify");
+  args.push("-m", subject);
   if (body) args.push("-m", body);
+  return args;
+}
+
+async function commitMessage(message: string, options: CommitOptions): Promise<GitCommandResult> {
+  const args = buildCommitArgs(message, options);
   return await runGit(args);
 }
 
@@ -122,9 +158,10 @@ async function readHeadSha(): Promise<string> {
 
 if (import.meta.main) {
   try {
-    const rawMessage = await readInput(process.argv.slice(2));
+    const options = parseCommitOptions(process.argv.slice(2));
+    const rawMessage = await readInput(options);
     const normalized = normalizeMessage(rawMessage);
-    const result = await commitMessage(normalized);
+    const result = await commitMessage(normalized, options);
 
     if (result.code === 0) {
       const sha = await readHeadSha();
@@ -137,10 +174,12 @@ if (import.meta.main) {
   } catch (error) {
     const message = getErrorMessage(error);
     const code =
-      message.startsWith("empty commit") || message.startsWith("missing value for --message-file")
-        ? "ERR_MESSAGE_INVALID"
-        : "ERR_INTERNAL";
+      error instanceof UsageError
+        ? "ERR_USAGE"
+        : message.startsWith("empty commit")
+          ? "ERR_MESSAGE_INVALID"
+          : "ERR_INTERNAL";
     printStructuredGitError(formatGitError(code, message, ""));
-    process.exit(code === "ERR_MESSAGE_INVALID" ? 2 : 4);
+    process.exit(code === "ERR_USAGE" || code === "ERR_MESSAGE_INVALID" ? 2 : 4);
   }
 }
