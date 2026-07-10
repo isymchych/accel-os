@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 import { getErrorMessage } from "@accel-os/shared/guards";
 
 import { runGit, type GitCommandResult } from "../../lib/git_command.ts";
@@ -12,7 +10,6 @@ import {
 const BODY_LINE_MAX = 99;
 
 type CommitOptions = {
-  messageFile?: string;
   noVerify: boolean;
 };
 
@@ -106,25 +103,13 @@ export function parseCommitOptions(args: string[]): CommitOptions {
       continue;
     }
 
-    if (arg === "--message-file") {
-      const filePath = args[index + 1];
-      if (!filePath) throw new UsageError("missing value for --message-file");
-      options.messageFile = filePath;
-      index += 1;
-      continue;
-    }
-
     throw new UsageError(`unknown argument: ${arg ?? ""}`);
   }
 
   return options;
 }
 
-async function readInput(options: CommitOptions): Promise<string> {
-  if (options.messageFile) {
-    return await readFile(options.messageFile, "utf8");
-  }
-
+async function readInput(): Promise<string> {
   process.stdin.setEncoding("utf8");
   const chunks: string[] = [];
   for await (const chunk of process.stdin) chunks.push(String(chunk));
@@ -159,7 +144,7 @@ async function readHeadSha(): Promise<string> {
 if (import.meta.main) {
   try {
     const options = parseCommitOptions(process.argv.slice(2));
-    const rawMessage = await readInput(options);
+    const rawMessage = await readInput();
     const normalized = normalizeMessage(rawMessage);
     const result = await commitMessage(normalized, options);
 
