@@ -52,6 +52,17 @@ export function readPersistedVerbosityState(value: unknown): VerbosityLevel | nu
   return isVerbosityLevel(level) ? level : undefined;
 }
 
+export function describePersistedVerbosityState(value: unknown): string | undefined {
+  const level = readPersistedVerbosityState(value);
+  if (level === undefined) {
+    return undefined;
+  }
+  if (level === null) {
+    return "OpenAI Codex verbosity reset to model default";
+  }
+  return `OpenAI Codex verbosity set to ${level}`;
+}
+
 export function resolveOpenAICodexVerbosity(
   modelId: string,
   sessionOverride: VerbosityLevel | undefined,

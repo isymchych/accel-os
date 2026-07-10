@@ -27,7 +27,7 @@ description: Generate a Conventional Commit message from the helper-provided dif
 - For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
 - Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
 - `scripts/show_staged_diff.ts` — Reads the staged diff used to draft the commit message.
-- `scripts/commit_with_message.ts` — Creates the commit using the generated full commit message from stdin and emits compact structured `OK ...` or `ERR_*` output.
+- `scripts/commit_with_message.ts` — Creates the commit using the generated full commit message from stdin and emits compact structured `OK ...` or `ERR_*` output. Run with a timeout long enough for repository pre-commit hooks (prefer at least 180 seconds over short defaults such as 30 seconds).
 
 ## Workflow
 

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DEFAULT_VERBOSITY_BY_MODEL,
   applyVerbosityToOpenAIResponsesPayload,
+  describePersistedVerbosityState,
   getVerbositySelections,
   readPersistedVerbosityState,
   resolveOpenAICodexVerbosity,
@@ -57,4 +58,16 @@ test("readPersistedVerbosityState and getVerbositySelections handle supported va
   assert.equal(readPersistedVerbosityState({ level: null }), null);
   assert.equal(readPersistedVerbosityState({ level: "loud" }), undefined);
   assert.deepEqual(getVerbositySelections(), ["low", "medium", "high", "default"]);
+});
+
+test("describePersistedVerbosityState formats display-only transcript entries", () => {
+  assert.equal(
+    describePersistedVerbosityState({ level: "high" }),
+    "OpenAI Codex verbosity set to high",
+  );
+  assert.equal(
+    describePersistedVerbosityState({ level: null }),
+    "OpenAI Codex verbosity reset to model default",
+  );
+  assert.equal(describePersistedVerbosityState({ level: "loud" }), undefined);
 });

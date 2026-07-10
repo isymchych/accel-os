@@ -2,7 +2,7 @@
 
 - plan execution - stop and ask instead of making assumptions; plan should be unambiguous
 - switch thinking modes with alt-1-2-3-4-5
-- add grill-me prompt
+- add grill-me prompt; grill-with-docs
 
 - review from DDD point of view
 - Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation
@@ -25,8 +25,6 @@ add to sysprompt:
 
 > For all coding tasks use your judgement to decide an appropriate lower power model and run that in a subagent
 
-add oxfmt/tsconfig/oxlint shared root config
-
 - commit skill script should have an option to bypass hooks
 - local db skill should allow query on stdin
 
@@ -41,6 +39,7 @@ add oxfmt/tsconfig/oxlint shared root config
   - only up to latest user message? or more - with user confirmation?
   - what about cache reuse?
   - pi-boomerang
+  - oh-my-pi checkpoint/rewind tools
 
 - I don't need exact locations since it triggers redundant file reads:
 

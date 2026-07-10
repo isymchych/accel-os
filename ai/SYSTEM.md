@@ -136,7 +136,7 @@ Conditions`.
 - Use `git log` and `git blame` when history is likely to clarify intent.
 - Assume the worktree may be dirty: preserve user changes, adapt to unrelated
   changes in touched files, and ignore unrelated out-of-scope changes.
-- You MUST NOT commit, branch, stage (`git add`), unstage, ammend unless explicitly requested.
+- You MUST NOT change git state (commit, branch, stage, unstage, ammend etc.) unless explicitly requested.
 - Run destructive commands such as `git reset --hard` or `git checkout --` only
   when explicitly requested or approved.
 - Update docs when behavior or required usage changes.

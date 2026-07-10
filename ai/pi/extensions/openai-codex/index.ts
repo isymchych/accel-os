@@ -6,7 +6,7 @@
  * and the existing usage status overlay command.
  */
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
-import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, Text, visibleWidth } from "@earendil-works/pi-tui";
 
 import { parseOpenAICodexCredential, resolveOpenAICodexRuntimeAccountProfile } from "./auth.ts";
 import { type StatusSnapshot, renderStatusLines } from "./status.ts";
@@ -15,6 +15,7 @@ import {
   type PersistedVerbosityState,
   type VerbosityLevel,
   applyVerbosityToOpenAIResponsesPayload,
+  describePersistedVerbosityState,
   getVerbositySelections,
   isVerbositySelection,
   OPENAI_CODEX_VERBOSITY_ENTRY_TYPE,
@@ -171,6 +172,14 @@ export default function openAICodexExtension(pi: ExtensionAPI): void {
 
   pi.on("session_tree", async (_event, ctx) => {
     syncFromBranch(ctx);
+  });
+
+  pi.registerEntryRenderer(OPENAI_CODEX_VERBOSITY_ENTRY_TYPE, (entry, _options, theme) => {
+    const description = describePersistedVerbosityState(entry.data);
+    if (description === undefined) {
+      return undefined;
+    }
+    return new Text(theme.fg("dim", `- ${description}`), 0, 0);
   });
 
   pi.registerCommand("status", {

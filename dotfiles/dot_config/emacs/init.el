@@ -20,6 +20,12 @@
 (defcustom mb-use-company t "Use company-mode for autocomplete." :type 'boolean :group 'mb-customizations)
 (defcustom mb-use-corfu nil "Use corfu for autocomplete." :type 'boolean :group 'mb-customizations)
 
+(defcustom mb-use-local-tsgo nil
+  "Use the nearest project-local node_modules/.bin/tsc for lsp-mode's tsgo client."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'mb-customizations)
+
 
 ;; see https://platform.openai.com/api-keys
 (defcustom mb-openai-api-key nil "An OpenAI API key to be used by packages." :type 'string :group 'mb-customizations)
@@ -1943,6 +1949,36 @@ targets."
   (setq lsp-volar-hybrid-mode t)
   :config
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.worktrees\\'")
+
+  ;; lsp-mode 20260702 serializes this empty capability as JSON null, but
+  ;; TypeScript's native Go LSP expects an object for textDocument.inlineCompletion.
+  (defun mb/lsp-fix-inline-completion-capability (capabilities)
+    "Encode inline completion client capability as an empty JSON object."
+    (when-let* ((text-document-capabilities (alist-get 'textDocument capabilities))
+                (inline-completion-entry (assq 'inlineCompletion text-document-capabilities)))
+      (setcdr inline-completion-entry (make-hash-table :test 'equal)))
+    capabilities)
+
+  (advice-add 'lsp--client-capabilities
+              :filter-return #'mb/lsp-fix-inline-completion-capability)
+
+  (defun mb/project-local-tsgo-command ()
+    "Return the project-local TypeScript native LSP command."
+    (unless mb-use-local-tsgo
+      (user-error "Set mb-use-local-tsgo in .dir-locals.el to use project-local tsgo"))
+    (let* ((tsc-relative-path "node_modules/.bin/tsc")
+           (root (locate-dominating-file default-directory tsc-relative-path)))
+      (unless root
+        (user-error "Could not find %s from %s" tsc-relative-path default-directory))
+      `(,(expand-file-name tsc-relative-path root) ,@lsp-clients-tsgo-args)))
+
+  (defun mb/lsp-package-path (orig-fn dependency)
+    "Use project-local TypeScript for lsp-mode's tsgo client when enabled."
+    (if (and mb-use-local-tsgo (eq dependency 'tsgo))
+        (car (mb/project-local-tsgo-command))
+      (funcall orig-fn dependency)))
+
+  (advice-add 'lsp-package-path :around #'mb/lsp-package-path)
 
   (when mb-use-company
     (defun mb/lsp-mode-setup-completion ()
