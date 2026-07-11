@@ -110,12 +110,9 @@ interface PullRequestMetadata {
   } | null;
 }
 
-const OptionalLoginObjectSchema = Type.Object(
-  {
-    login: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-  },
-  { additionalProperties: false },
-);
+const OptionalLoginObjectSchema = Type.Object({
+  login: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+});
 
 const PullRequestMetadataJsonSchema = Type.Object(
   {
@@ -123,14 +120,11 @@ const PullRequestMetadataJsonSchema = Type.Object(
     headRefName: Type.String(),
     isCrossRepository: Type.Boolean(),
     headRepository: Type.Union([
-      Type.Object(
-        {
-          name: Type.String(),
-          nameWithOwner: Type.String(),
-          owner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
-        },
-        { additionalProperties: false },
-      ),
+      Type.Object({
+        name: Type.String(),
+        nameWithOwner: Type.String(),
+        owner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
+      }),
       Type.Null(),
     ]),
     headRepositoryOwner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
@@ -685,6 +679,13 @@ function resolvePullRequestMetadata(
     },
   ).stdout;
 
+  return parsePullRequestMetadataJson(json, context.repoIdentity.owner);
+}
+
+export function parsePullRequestMetadataJson(
+  json: string,
+  fallbackOwnerLogin: string,
+): PullRequestMetadata {
   const parsed = parseJsonWithSchema(json, PullRequestMetadataJsonSchema, "gh PR metadata");
 
   return {
@@ -698,7 +699,7 @@ function resolvePullRequestMetadata(
           ownerLogin:
             parsed.headRepository.owner?.login ??
             parsed.headRepositoryOwner?.login ??
-            context.repoIdentity.owner,
+            fallbackOwnerLogin,
         }
       : null,
   };

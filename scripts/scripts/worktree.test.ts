@@ -14,6 +14,7 @@ import {
   isExplicitRemoteBranchRequest,
   isReusableExistingWorktree,
   parseArgs,
+  parsePullRequestMetadataJson,
   resolveCreateWorktreePath,
   resolvePrHeadSource,
   resolveRemoteBranchFromRefs,
@@ -171,6 +172,42 @@ test("PR and detached helpers preserve source semantics", () => {
   assert.deepEqual(
     getComparisonRef({ path: "/parent/repo-release-fix", detached: false }, null),
     "origin/main",
+  );
+});
+
+test("PR metadata parsing tolerates extra GitHub object fields", () => {
+  assert.deepEqual(
+    parsePullRequestMetadataJson(
+      JSON.stringify({
+        number: 42,
+        headRefName: "feature/pr-head",
+        isCrossRepository: false,
+        headRepository: {
+          id: "R_123",
+          name: "repo",
+          nameWithOwner: "owner/repo",
+          owner: {
+            id: "U_123",
+            login: "owner",
+          },
+        },
+        headRepositoryOwner: {
+          id: "U_123",
+          login: "owner",
+        },
+      }),
+      "fallback-owner",
+    ),
+    {
+      number: 42,
+      headRefName: "feature/pr-head",
+      isCrossRepository: false,
+      headRepository: {
+        name: "repo",
+        nameWithOwner: "owner/repo",
+        ownerLogin: "owner",
+      },
+    },
   );
 });
 
