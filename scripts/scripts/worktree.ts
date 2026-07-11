@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readSync, statSync, writeSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
+import { createInterface } from "node:readline/promises";
 
 import { assertNever, getErrorMessage, isPresent } from "@accel-os/shared/guards";
 import { parseJsonWithSchema } from "@accel-os/shared/json";
@@ -223,7 +224,7 @@ async function main(): Promise<void> {
       runNewFromPr(context, parsed.positional, parsed.runSetup, parsed.pathOverride, parsed.dryRun);
       return;
     case "remove":
-      runRemove(context, parsed.positional, parsed.deleteBranch, parsed.force, parsed.dryRun);
+      await runRemove(context, parsed.positional, parsed.deleteBranch, parsed.force, parsed.dryRun);
       return;
     default:
       assertNever(parsed.command);
@@ -1121,13 +1122,13 @@ export function sanitizePathToken(value: string): string {
   return normalized.length > 0 ? normalized : "ref";
 }
 
-function runRemove(
+async function runRemove(
   context: CommandContext,
   args: readonly string[],
   deleteBranch: boolean,
   force: boolean,
   dryRun: boolean,
-): void {
+): Promise<void> {
   const targetArg = args[0];
   if (!targetArg || args.length !== 1) {
     throw new Error('Command "remove" requires exactly one branch name or path.');
@@ -1149,7 +1150,7 @@ function runRemove(
     : dryRun
       ? hasChanges(target)
       : hasChanges(target)
-        ? confirmDirtyRemoval(context.repoRoot, target)
+        ? await confirmDirtyRemoval(context.repoRoot, target)
         : false;
   if (!dryRun && hasChanges(target) && !dirtyRemovalConfirmed) {
     return;
@@ -1190,7 +1191,7 @@ export function getBranchDeletionFlag(status: WorktreeStatus, force: boolean): "
   return force || status.localCommits > 0 ? "-D" : "-d";
 }
 
-function confirmDirtyRemoval(repoRoot: string, status: WorktreeStatus): boolean {
+async function confirmDirtyRemoval(repoRoot: string, status: WorktreeStatus): Promise<boolean> {
   if (!hasChanges(status)) {
     return false;
   }
@@ -1202,7 +1203,7 @@ function confirmDirtyRemoval(repoRoot: string, status: WorktreeStatus): boolean 
     status.localCommits > 0 ? `${status.localCommits} local commit(s)` : null,
   ].filter(isPresent);
 
-  const confirmed = confirmDestructiveAction(
+  const confirmed = await confirmDestructiveAction(
     `Worktree ${formatDisplayPath(repoRoot, status.worktree.path)} has ${details.join(
       ", ",
     )}. Remove it? [y/N] `,
@@ -1455,37 +1456,29 @@ function printDryRunPlan(repoRoot: string, target: CreationTarget, runSetup: boo
   );
 }
 
-function confirmDestructiveAction(question: string): boolean {
+async function confirmDestructiveAction(question: string): Promise<boolean> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error("Confirmation is required, but no interactive terminal is available.");
   }
 
-  const answer = readLineSync(question);
-  const normalized = answer.trim().toLowerCase();
-  return normalized === "y" || normalized === "yes";
+  return isConfirmedAnswer(await readLine(question));
 }
 
-function readLineSync(question: string): string {
-  writeSync(process.stdout.fd, question);
-
-  const chunks: string[] = [];
-  const buffer = Buffer.alloc(1024);
-  while (true) {
-    const bytesRead = readSync(process.stdin.fd, buffer, 0, buffer.length, null);
-    if (bytesRead === 0) {
-      break;
-    }
-
-    const chunk = buffer.subarray(0, bytesRead).toString("utf8");
-    const newlineIndex = chunk.search(/\r?\n/);
-    if (newlineIndex >= 0) {
-      chunks.push(chunk.slice(0, newlineIndex));
-      break;
-    }
-    chunks.push(chunk);
+async function readLine(question: string): Promise<string> {
+  const readline = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  try {
+    return await readline.question(question);
+  } finally {
+    readline.close();
   }
+}
 
-  return chunks.join("");
+export function isConfirmedAnswer(answer: string): boolean {
+  const normalized = answer.trim().toLowerCase();
+  return normalized === "y" || normalized === "yes";
 }
 
 export function formatDisplayPath(repoRoot: string, worktreePath: string): string {

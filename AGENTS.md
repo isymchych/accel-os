@@ -71,6 +71,7 @@
 
 - When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria because internal jargon and negative unsupported-argument framing make model tool selection less reliable.
 - When parsing JSON at Node script boundaries, define a TypeBox schema near the external shape and parse through `@accel-os/shared/json` so validation stays canonical and trusted code receives typed data.
+- When parsing external CLI/API JSON, keep boundary schemas permissive for extra fields on provider-owned nested objects and normalize into strict internal domain types because providers can add or return undocumented metadata.
 - Prefer named domain/result types over nested utility types such as `Promise<Awaited<ReturnType<typeof fn>>>`; explicit types keep public helper contracts readable.
 
 ## Intent Ledger

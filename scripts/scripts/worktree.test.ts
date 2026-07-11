@@ -11,6 +11,7 @@ import {
   getInvocationDirectory,
   getWorktreePathKind,
   hasChanges,
+  isConfirmedAnswer,
   isExplicitRemoteBranchRequest,
   isReusableExistingWorktree,
   parseArgs,
@@ -261,6 +262,13 @@ test("removal helpers resolve targets and changed-state rules", () => {
   assert.deepEqual(getBranchDeletionFlag({ ...branchStatus, localCommits: 0 }, false), "-d");
   assert.deepEqual(getBranchDeletionFlag({ ...branchStatus, localCommits: 2 }, false), "-D");
   assert.deepEqual(getBranchDeletionFlag({ ...branchStatus, localCommits: 0 }, true), "-D");
+});
+
+test("confirmation answers require explicit yes", () => {
+  assert.deepEqual(isConfirmedAnswer("y"), true);
+  assert.deepEqual(isConfirmedAnswer("YES\n"), true);
+  assert.deepEqual(isConfirmedAnswer(""), false);
+  assert.deepEqual(isConfirmedAnswer("n"), false);
 });
 
 test("reusable worktree detection works for branch and detached targets", () => {

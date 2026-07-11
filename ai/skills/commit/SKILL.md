@@ -65,6 +65,7 @@ Before invoking a helper, verify that the resolved helper path exists and that `
 - Then a blank line.
 - Then 1–6 concise bullets, each starting with `- `, ordered by user impact/risk. Focus on consequences and meaningful behavior, not file-by-file narration.
 - Prefer concrete verbs such as `fixed`, `removed`, `prevented`, `aligned`, and `restored`; avoid vague wording such as `helps`, `improves`, `addresses`, `some`, or `various` unless made concrete.
+- For Ukrainian summaries, prefer completed-result phrasing (for example `оновлено ...`) over infinitive imperative phrasing (for example `оновити ...`).
 
 ## Type and scope selection
 
