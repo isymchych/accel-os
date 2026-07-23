@@ -8,7 +8,7 @@
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, Text, visibleWidth } from "@earendil-works/pi-tui";
 
-import { parseOpenAICodexCredential, resolveOpenAICodexRuntimeAccountProfile } from "./auth.ts";
+import { resolveOpenAICodexRuntimeAccountProfile } from "./auth.ts";
 import { type StatusSnapshot, renderStatusLines } from "./status.ts";
 import { fetchUsageSnapshotForCredential } from "./usage.ts";
 import {
@@ -80,11 +80,7 @@ async function getCodexCredential(
     return null;
   }
 
-  const authStorage = modelRegistry.authStorage;
-  authStorage.reload();
-  const refreshedCredential = parseOpenAICodexCredential(authStorage.get(PROVIDER_ID));
-
-  const profile = resolveOpenAICodexRuntimeAccountProfile(refreshedCredential, accessToken);
+  const profile = resolveOpenAICodexRuntimeAccountProfile(null, accessToken);
   const accountId = profile.accountId;
   if (accountId === undefined || accountId.length === 0) {
     throw new Error("OpenAI Codex credential is missing ChatGPT account id.");

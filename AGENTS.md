@@ -73,6 +73,7 @@
 - When parsing JSON at Node script boundaries, define a TypeBox schema near the external shape and parse through `@accel-os/shared/json` so validation stays canonical and trusted code receives typed data.
 - When parsing external CLI/API JSON, keep boundary schemas permissive for extra fields on provider-owned nested objects and normalize into strict internal domain types because providers can add or return undocumented metadata.
 - Prefer named domain/result types over nested utility types such as `Promise<Awaited<ReturnType<typeof fn>>>`; explicit types keep public helper contracts readable.
+- When inspecting installed Pi package APIs in this repo, start from root-level `node_modules/@earendil-works/*/dist/*.d.ts` and exclude `*.map` from code searches because workspace dependencies are hoisted and sourcemaps make compiled output noisy.
 
 ## Intent Ledger
 

@@ -1,6 +1,6 @@
 {
   "theme": "light/dark",
-  "lastChangelogVersion": "0.80.6",
+  "lastChangelogVersion": "0.81.1",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
   "defaultProvider": "openai-codex",
