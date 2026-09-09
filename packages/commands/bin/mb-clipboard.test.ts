@@ -94,7 +94,9 @@ test("extensionForMime uses canonical mappings and binary fallback", () => {
 test("templates are read directly from the repository", async () => {
   const fixture = await createFixture();
   try {
-    const templatesDir = fileURLToPath(new URL("../assets/mb-clipboard/templates/", import.meta.url));
+    const templatesDir = fileURLToPath(
+      new URL("../assets/mb-clipboard/templates/", import.meta.url),
+    );
     const templateNames = (await readdir(templatesDir, { withFileTypes: true }))
       .filter((entry) => entry.isFile() && !entry.name.startsWith("."))
       .map((entry) => entry.name)

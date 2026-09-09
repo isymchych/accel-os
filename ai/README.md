@@ -189,6 +189,8 @@ Makes targeted fixes based on evidence
 - > The further away a topic is from your expertise, the smarter an AI will sound
 - > agents optimize code for surface plausibility, not semantic correctness
 
+- > The problem is that your private AI-assisted research might indirectly improve future models that can then compete with you, even if nobody ever directly reads or copies your work.
+
 ## MCPs
 
 - [Chrome dev tools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)

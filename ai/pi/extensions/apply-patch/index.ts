@@ -550,6 +550,17 @@ function appendDiffSection(lines: string[], diff: string, theme: Theme): void {
   lines.push(...renderDiffLines(diff, theme));
 }
 
+function hasApplyPatchFailures(details: unknown): boolean {
+  if (typeof details !== "object" || details === null || !("result" in details)) {
+    return false;
+  }
+  const result = details.result;
+  if (typeof result !== "object" || result === null || !("failures" in result)) {
+    return false;
+  }
+  return Array.isArray(result.failures) && result.failures.length > 0;
+}
+
 export default function applyPatchExtension(pi: ExtensionAPI): void {
   const tool = defineTool<typeof applyPatchSchema, ApplyPatchToolDetails>({
     name: "apply_patch",
@@ -598,4 +609,13 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
   });
 
   pi.registerTool(tool);
+  pi.on("tool_result", (event): { isError: true } | undefined => {
+    if (event.toolName !== "apply_patch") {
+      return undefined;
+    }
+    if (hasApplyPatchFailures(event.details)) {
+      return { isError: true };
+    }
+    return undefined;
+  });
 }

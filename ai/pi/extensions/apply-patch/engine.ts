@@ -101,8 +101,6 @@ function buildPreflightFailureResult(
   return {
     content: [{ type: "text", text: formatFailureMessage(result) }],
     details: buildDetails("", undefined, result),
-    isError: true,
-    terminate: true,
   };
 }
 
@@ -195,8 +193,6 @@ export async function executeApplyPatchTool(
       return {
         content: [{ type: "text", text: formatFailureMessage(result) }],
         details,
-        isError: true,
-        terminate: true,
       };
     }
 

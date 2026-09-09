@@ -82,6 +82,4 @@ export interface ApplyPatchToolDetails {
 export interface ApplyPatchToolResult {
   content: [{ type: "text"; text: string }];
   details: ApplyPatchToolDetails;
-  isError?: boolean;
-  terminate?: boolean;
 }
