@@ -60,6 +60,8 @@ I'm trying to keep the system prompt lean.
 - Prefer ranked, short lists over exhaustive unranked option dumps.
 - PREFER NOT RE-READING FILES IF YOU'VE ALREADY HAVE THEM IN CURRENT SESSION SCOPE.
 
+* Start with the highest-level mature library that cleanly fits the requirement; if satisfying the requirement requires repeated overrides, workarounds, or fighting the library’s assumptions, drop down to stable primitives and implement the smallest custom layer necessary. Prefer libraries for complex solved domains like accessibility, security, parsing, and protocols; prefer custom code when the behavior is product-specific, the implementation is small and understandable, and the agent can maintain it confidently.
+
 # Other Sources
 
 - <https://github.com/DietrichGebert/ponytail>

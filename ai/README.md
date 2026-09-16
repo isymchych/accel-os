@@ -39,17 +39,12 @@ add to sysprompt:
 - "ai" to start llm with microvm isolation - gondolin?
 - pi tool for executing code - like context-mode has
 - security review prompt
-- apply_patch often fails on multi-file patches, maybe limit to 3 files max?
 
 - create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
   - only up to latest user message? or more - with user confirmation?
   - what about cache reuse?
   - pi-boomerang
   - oh-my-pi checkpoint/rewind tools
-
-- I don't need exact locations since it triggers redundant file reads:
-
-> I’m grabbing the final line references for the changed renderer so the report points to exact locations.
 
 DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> ARCHITECTURE -> PROGRAM DESIGN -> PLAN -> EXECUTE
 
@@ -68,6 +63,7 @@ don't go to the next step without confirmation
   - remove redundant code, unnecessary abstractions, code that doesn't match style/design preferences
   - tech debt, potential improvements for clarity or simplicity, maintenance
 - ask for architecture diagrams (mermaid)
+- one of the most valuable abstractions in future codebases may not be a package installed from npm, but a small internal layer built specifically for the product on top of stable primitives
 
 I would like to review the following points on the current PR (this branch vs main). Spawn one agent per point, wait for all of them, and summarize the result for each point.
 
