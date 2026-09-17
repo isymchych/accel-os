@@ -11,6 +11,7 @@
   ],
   "allowScripts": {
     "koffi@2.16.2": true,
+    "srcwalk@1.8.1": true,
     "tilth@0.10.1": true
   },
   "scripts": {

@@ -22,8 +22,16 @@ Evaluate structural quality, not line-level bugs. Focus on decisions that change
 - Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
 - For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
 - Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
+- Invoke TypeScript helpers directly with `node`.
 - `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the workspace, staged changes, or a base-ref diff.
 - `scripts/find-pass-through.ts` — Scans changed TS/JS/Rust files for likely pass-through wrappers that mirror another API.
+
+Both helpers accept no arguments for workspace changes, `--staged`, or `--base <ref>`:
+
+```bash
+node <resolved-path>/scripts/collect-boundary-diff.ts [--staged | --base <ref>]
+node <resolved-path>/scripts/find-pass-through.ts [--staged | --base <ref>]
+```
 
 ## Workflow
 

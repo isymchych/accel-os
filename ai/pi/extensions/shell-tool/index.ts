@@ -31,7 +31,7 @@ export const shellToolSchema = Type.Object(
     cwd: Type.Optional(
       Type.String({
         description:
-          "Working directory for this command. Relative paths resolve from the session working directory.",
+          "Working directory for this command. Defaults to the session working directory; relative values resolve from it.",
       }),
     ),
   },
@@ -152,8 +152,10 @@ export default function shellToolExtension(pi: ExtensionAPI): void {
       "Execute a bash command. Returns stdout and stderr. Output is truncated to the last 2000 lines or 50KB. Optionally provide timeout in seconds and cwd for the command working directory.",
     promptSnippet: "Execute bash commands with optional per-command cwd",
     promptGuidelines: [
-      "Use bash cwd when a command should run from a specific directory instead of prefixing the command with `cd ... &&`.",
+      "Each bash call starts in the session working directory unless `cwd` is provided; shell directory changes do not persist across calls.",
       "Relative bash cwd values resolve from the session working directory.",
+      "Do not infer the working directory from the files or subproject currently being discussed.",
+      "For commands that belong to a nested project, set `cwd` explicitly instead of prefixing the command with `cd ... &&`.",
     ],
     parameters: shellToolSchema,
     execute: executeShellTool,

@@ -7,10 +7,11 @@ import { resolveAccountProfile } from "./runtime/accounts.ts";
 import { parseLauncherArgs } from "./runtime/launcher-args.ts";
 import { launchPi } from "./runtime/pi-launcher.ts";
 
-const usage = `ai [account] [mcp] [-- <pi args...>]
+const usage = `ai [account] [mcp] [tilth|srcwalk] [-- <pi args...>]
 
 Examples:
   ai
+  ai srcwalk
   ai account
   ai mcp
   ai -- --help
@@ -18,7 +19,7 @@ Examples:
 Notes:
   - By default, ai appends ai/SYSTEM.md.
   - ai loads its extensions explicitly; Pi extension auto-discovery is disabled.
-  - ai loads Pi-native, one-shot Tilth CLI tools by default.
+  - ai loads Pi-native, one-shot Tilth CLI tools by default; \`srcwalk\` selects srcwalk instead.
   - \`mcp\` enables the MCP proxy tool for this run.
   - ai excludes built-in tools superseded by this configuration: write, grep, find, and ls.
   - \`account\` selects an isolated OpenAI Codex credential profile and then opens Pi.
@@ -34,7 +35,7 @@ function requireAccelOs(): string {
 }
 
 async function main(): Promise<void> {
-  const { passthrough, showHelp, useAccountSwitcher, useMcp } = parseLauncherArgs(
+  const { codeNavigation, passthrough, showHelp, useAccountSwitcher, useMcp } = parseLauncherArgs(
     process.argv.slice(2),
   );
   if (showHelp) {
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
   const profile = useAccountSwitcher
     ? await selectAccountProfile(configDir)
     : await resolveAccountProfile(configDir);
-  await launchPi(accelOs, profile, passthrough, useMcp);
+  await launchPi(accelOs, profile, passthrough, codeNavigation, useMcp);
 }
 
 try {

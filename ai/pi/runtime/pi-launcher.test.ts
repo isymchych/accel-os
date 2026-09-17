@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { configurePiEnvironment } from "./pi-launcher.ts";
+import { configurePiEnvironment, resolveExtensionNames } from "./pi-launcher.ts";
+
+test("resolveExtensionNames loads exactly one code navigation backend", () => {
+  const shared = resolveExtensionNames("tilth").filter(
+    (name) => name !== "tilth-cli" && name !== "srcwalk-cli",
+  );
+
+  assert.deepEqual(resolveExtensionNames("tilth"), [...shared, "tilth-cli"]);
+  assert.deepEqual(resolveExtensionNames("srcwalk"), [...shared, "srcwalk-cli"]);
+});
 
 test("configurePiEnvironment selects the agent Git config for every Pi child", () => {
   const previousCodingAgentDir = process.env["PI_CODING_AGENT_DIR"];

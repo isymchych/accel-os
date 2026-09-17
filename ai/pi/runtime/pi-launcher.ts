@@ -4,9 +4,10 @@ import path from "node:path";
 import process from "node:process";
 
 import type { AccountProfile } from "./account-profiles.ts";
+import type { CodeNavigationBackend } from "./launcher-args.ts";
 
 const excludedToolNames = ["write", "grep", "find", "ls"];
-const defaultExtensionNames = [
+const sharedExtensionNames = [
   "apply-patch",
   "read-tool",
   "compact-tool-output",
@@ -23,8 +24,15 @@ const defaultExtensionNames = [
   "handoff-summary",
   "write-file",
   "snip",
-  "tilth-cli",
 ];
+const codeNavigationExtensionNames: Record<CodeNavigationBackend, string> = {
+  srcwalk: "srcwalk-cli",
+  tilth: "tilth-cli",
+};
+
+export function resolveExtensionNames(codeNavigation: CodeNavigationBackend): string[] {
+  return [...sharedExtensionNames, codeNavigationExtensionNames[codeNavigation]];
+}
 
 async function isExecutable(filePath: string): Promise<boolean> {
   try {
@@ -35,11 +43,15 @@ async function isExecutable(filePath: string): Promise<boolean> {
   }
 }
 
-async function buildPiArgs(accelOs: string, useMcp: boolean): Promise<string[]> {
+async function buildPiArgs(
+  accelOs: string,
+  codeNavigation: CodeNavigationBackend,
+  useMcp: boolean,
+): Promise<string[]> {
   const configDir = path.join(accelOs, "ai", "pi");
   const args = ["--no-extensions", "--append-system-prompt", path.join(accelOs, "ai", "SYSTEM.md")];
 
-  for (const name of defaultExtensionNames) {
+  for (const name of resolveExtensionNames(codeNavigation)) {
     if (name === "snip") {
       const homeDirectory = process.env["HOME"];
       if (
@@ -71,13 +83,14 @@ export async function launchPi(
   accelOs: string,
   profile: AccountProfile,
   passthrough: readonly string[],
+  codeNavigation: CodeNavigationBackend,
   useMcp: boolean,
 ): Promise<void> {
   const configDir = path.join(accelOs, "ai", "pi");
   process.chdir(process.env["AI_CWD"] ?? process.cwd());
   configurePiEnvironment(configDir, profile.directory);
 
-  const args = await buildPiArgs(accelOs, useMcp);
+  const args = await buildPiArgs(accelOs, codeNavigation, useMcp);
   const { main } = await import("@earendil-works/pi-coding-agent");
   await main([...args, ...passthrough]);
 }
