@@ -90,6 +90,11 @@ setopt autocd                   # cd to a folder just by typing it's name
 # use emacs-style keybindings
 bindkey -e
 
+# Enable fzf key bindings and completion.
+if (( $+commands[fzf] )); then
+  eval "$(fzf --zsh)"
+fi
+
 # Enable Ctrl-x-e to edit command line
 autoload -U edit-command-line
 zle -N edit-command-line
