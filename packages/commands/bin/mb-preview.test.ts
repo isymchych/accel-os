@@ -94,6 +94,14 @@ test("prepareMarkdown detects mermaid fences without invoking graphviz", async (
   assert.deepEqual(prepared.graphvizBlocks, []);
 });
 
+test("renderDocument embeds Mermaid Tiny for mermaid fences", async () => {
+  const prepared = await prepareMarkdown("```mermaid\ngraph TD; A-->B\n```");
+  const html = await renderDocument(prepared, "Mermaid preview", null);
+
+  assert.match(html, /__esbuild_esm_mermaid_nm/u);
+  assert.match(html, /globalThis\.mermaid\.run/u);
+});
+
 test("prepareMarkdown preserves normal code fence info strings", async () => {
   const markdown = "```ts title=example.ts\nconst x = 1;\n```";
   const prepared = await prepareMarkdown(markdown, {

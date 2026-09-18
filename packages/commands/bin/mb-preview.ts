@@ -1360,7 +1360,10 @@ async function previewInitializerScript(hasMermaid: boolean): Promise<string> {
     "utf8",
   );
   const mermaidJs = hasMermaid
-    ? await readFile(fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min.js")), "utf8")
+    ? await readFile(
+        fileURLToPath(import.meta.resolve("@mermaid-js/tiny/dist/mermaid.tiny.js")),
+        "utf8",
+      )
     : "";
 
   return `<script>
