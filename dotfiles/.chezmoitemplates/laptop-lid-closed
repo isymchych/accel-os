@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+shopt -s nullglob
+state_files=(/proc/acpi/button/lid/*/state)
+
+if (( ${#state_files[@]} == 0 )); then
+  exit 1
+fi
+
+for state_file in "${state_files[@]}"; do
+  if [[ ! -r "$state_file" ]] ||
+    ! grep -Eq '^state:[[:space:]]+closed[[:space:]]*$' "$state_file"; then
+    exit 1
+  fi
+done

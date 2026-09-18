@@ -1,0 +1,22 @@
+{{- $osID := "" -}}
+{{- with .chezmoi.osRelease }}
+  {{- $osID = or .id "" -}}
+{{- end -}}
+{{- if and (eq .chezmoi.os "linux") (eq $osID "arch") -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+{{ template "load-resolved-host-state.sh" . }}
+
+if has_feature fingerprint; then
+helper=$(mktemp)
+trap 'rm -f "$helper"' EXIT
+
+cat >"$helper" <<'EOF'
+{{ template "laptop-lid-closed" . }}EOF
+
+sudo install -Dm0755 \
+  "$helper" \
+  /usr/local/libexec/accel-os/laptop-lid-closed
+fi
+{{ end }}

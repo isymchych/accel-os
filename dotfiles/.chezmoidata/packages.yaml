@@ -193,6 +193,10 @@ packages:
             power:
               - tlp-pd # TLP-backed PowerProfiles API for Waybar; do not pair with power-profiles-daemon
 
+          fingerprint:
+            authentication:
+              - fprintd # D-Bus daemon and PAM module for fingerprint authentication
+
           bluetooth:
             packages:
               - bluez # Daemons for the bluetooth protocol stack

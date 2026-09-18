@@ -4,6 +4,7 @@ hosts:
       - workstation
       - sway
       - laptop
+      - fingerprint
       - bluetooth
       - printing
       - firmware
