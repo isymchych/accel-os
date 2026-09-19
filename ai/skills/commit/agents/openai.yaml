@@ -1,3 +1,0 @@
-interface:
-  display_name: "Commit"
-  short_description: "Commit staged work or rename the latest commit via helper scripts"
