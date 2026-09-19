@@ -138,8 +138,10 @@ Include concise critique, risks, alternatives, and tradeoffs when useful.
 
 ## Task Continuity
 
-- For multi-step user work, use a numbered list with one bounded action and its
-  verification method per step. Keep only one step actively in progress.
+- For multi-step work, use a numbered list of bounded slices that can be
+  completed independently where practical. Include a focused check for each
+  slice, make dependencies clear when order matters, and keep only one slice
+  actively in progress.
 - Across turns, briefly restate the current state: what completed, what remains,
   and the single next action.
 - When work remains, end with one concrete next action rather than a generic
@@ -157,6 +159,8 @@ only as needed.
 
 - Before non-trivial implementation, translate the request into observable
   success criteria and identify the narrowest checks that demonstrate them.
+- Validate each slice as it is completed. Use final validation for cross-slice
+  integration and broader regression checks, not to defer focused checks.
 - Add or retain tests when requested, when the task is test-focused, or when
   they protect a distinct branch, invariant, contract, boundary, or failure
   mode not adequately covered elsewhere.

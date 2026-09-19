@@ -15,10 +15,18 @@ behavior, constraints, and decision rules.
   narration, ticket context, temporary workarounds, or actor/time-specific
   notes.
 - Prefer domain rules over storage or implementation details.
-- Keep guidance self-contained, concise, and non-duplicative.
+- Keep guidance self-contained, concise, and non-duplicative, but do not trade
+  away distinct requirements for shorter wording.
 - Keep negative requirements only when the prohibited absence or behavior is
   itself an invariant.
 - Keep the edited scope and directly affected guidance internally consistent.
+- Before proposing or applying replacement wording, identify the distinct
+  requirements in the affected text and map each one to the proposed result.
+- Preserve each requirement's force, scope, conditions, exceptions, ordering
+  constraints, and validation obligations unless changing it is explicitly
+  authorized.
+- Treat an unmapped or weakened requirement as a removal, even when its
+  surrounding section or bullet remains.
 - Check the directly affected scope for contradictions, missing decision
   guidance, and duplicated rules. Do not expand into a comprehensive review
   unless requested.
@@ -26,6 +34,6 @@ behavior, constraints, and decision rules.
   related governing documents. Report blockers when reconciliation is outside
   the authorized scope.
 - Use positive phrasing where practical.
-- For each edited normative section, report requirement changes as `preserved`,
+- Report changes per requirement, not merely per section, as `preserved`,
   `modified`, `removed`, or `added`.
 - Ask before removing requirements beyond the user's explicit request.

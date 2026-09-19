@@ -20,6 +20,7 @@
 - subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
 - pi-extensible-workflows
 - web workspace for agents
+- bookmark some sessions; preview sessions
 
 ? how codex @visualize skill works?
 
