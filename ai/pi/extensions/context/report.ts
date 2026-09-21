@@ -5,82 +5,13 @@
  * while tests cover the bucket math and text layout.
  */
 
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import type {
   BuildSystemPromptOptions,
   ContextUsage,
   ToolInfo,
 } from "@earendil-works/pi-coding-agent";
-
-export interface TextBlock {
-  type: "text";
-  text: string;
-}
-
-export interface ImageBlock {
-  type: "image";
-}
-
-export interface ThinkingBlock {
-  type: "thinking";
-  thinking: string;
-}
-
-export interface ToolCallBlock {
-  type: "toolCall";
-  name: string;
-  arguments: unknown;
-}
-
-type UserContentBlock = TextBlock | ImageBlock;
-type AssistantContentBlock = TextBlock | ThinkingBlock | ToolCallBlock;
-type ToolResultContentBlock = TextBlock | ImageBlock;
-
-export interface UserContextMessage {
-  role: "user";
-  content: string | readonly UserContentBlock[];
-}
-
-export interface AssistantContextMessage {
-  role: "assistant";
-  content: readonly AssistantContentBlock[];
-}
-
-export interface ToolResultContextMessage {
-  role: "toolResult";
-  toolName: string;
-  content: string | readonly ToolResultContentBlock[];
-}
-
-export interface BashExecutionContextMessage {
-  role: "bashExecution";
-  command: string;
-  output: string;
-}
-
-export interface CustomContextMessage {
-  role: "custom";
-  customType: string;
-  content: string | readonly ToolResultContentBlock[];
-}
-
-export interface BranchSummaryContextMessage {
-  role: "branchSummary";
-  summary: string;
-}
-
-export interface CompactionSummaryContextMessage {
-  role: "compactionSummary";
-  summary: string;
-}
-
-export type ContextMessage =
-  | UserContextMessage
-  | AssistantContextMessage
-  | ToolResultContextMessage
-  | BashExecutionContextMessage
-  | CustomContextMessage
-  | BranchSummaryContextMessage
-  | CompactionSummaryContextMessage;
 
 export interface CacheTurnInput {
   sequence: number;
@@ -105,7 +36,7 @@ export interface ContextReportInput {
   systemPrompt: string;
   promptSource: "last-turn" | "current";
   contextUsage: ContextUsage | undefined;
-  messages: readonly ContextMessage[];
+  messages: readonly AgentMessage[];
   cacheTurns: readonly CacheTurnInput[];
   allTools: readonly ToolInfo[];
   activeToolNames: readonly string[];
@@ -162,6 +93,8 @@ export interface CacheSummarySnapshot {
 export interface ContextReport {
   usedTokens: number;
   usedTokensExact: boolean;
+  estimatedTokens: number;
+  estimationDelta: number | undefined;
   contextWindow: number | undefined;
   availableTokens: number | undefined;
   usagePercent: number | undefined;
@@ -193,6 +126,7 @@ interface RawMessageBreakdown {
   customTokens: number;
   branchSummaryTokens: number;
   compactionSummaryTokens: number;
+  otherTokens: number;
 }
 
 interface RawTokenItem {
@@ -208,7 +142,9 @@ function estimatePlainTextTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-function estimateTextAndImageBlocks(content: string | readonly ToolResultContentBlock[]): number {
+function estimateTextAndImageBlocks(
+  content: string | readonly (TextContent | ImageContent)[],
+): number {
   if (typeof content === "string") {
     return estimatePlainTextTokens(content);
   }
@@ -225,7 +161,7 @@ function estimateTextAndImageBlocks(content: string | readonly ToolResultContent
   return Math.ceil(chars / 4);
 }
 
-function estimateUserTokens(content: string | readonly UserContentBlock[]): number {
+function estimateUserTokens(content: string | readonly (TextContent | ImageContent)[]): number {
   if (typeof content === "string") {
     return estimatePlainTextTokens(content);
   }
@@ -240,7 +176,7 @@ function estimateUserTokens(content: string | readonly UserContentBlock[]): numb
   return Math.ceil(chars / 4);
 }
 
-function estimateMessageBreakdown(messages: readonly ContextMessage[]): RawMessageBreakdown {
+function estimateMessageBreakdown(messages: readonly AgentMessage[]): RawMessageBreakdown {
   const breakdown: RawMessageBreakdown = {
     userTokens: 0,
     assistantTextTokens: 0,
@@ -253,6 +189,7 @@ function estimateMessageBreakdown(messages: readonly ContextMessage[]): RawMessa
     customTokens: 0,
     branchSummaryTokens: 0,
     compactionSummaryTokens: 0,
+    otherTokens: 0,
   };
 
   for (const message of messages) {
@@ -298,7 +235,10 @@ function estimateMessageBreakdown(messages: readonly ContextMessage[]): RawMessa
       case "compactionSummary":
         breakdown.compactionSummaryTokens += estimatePlainTextTokens(message.summary);
         break;
+      case "system":
+        break;
       default:
+        breakdown.otherTokens += estimatePlainTextTokens(JSON.stringify(message));
         break;
     }
   }
@@ -316,46 +256,6 @@ function estimateToolDefinitionTokens(tool: ToolInfo): number {
   );
 }
 
-function normalizeBuckets(buckets: readonly RawBucket[], targetTotal: number): BucketSnapshot[] {
-  const rawTotal = buckets.reduce((sum, bucket) => sum + bucket.tokens, 0);
-  if (rawTotal <= 0) {
-    return buckets.map((bucket) => ({ ...bucket, tokens: 0, percentOfWindow: undefined }));
-  }
-
-  const scaled = buckets.map((bucket, index) => {
-    const exactTokens = (bucket.tokens / rawTotal) * targetTotal;
-    const whole = Math.floor(exactTokens);
-    return {
-      index,
-      whole,
-      fraction: exactTokens - whole,
-    };
-  });
-
-  let remaining = targetTotal - scaled.reduce((sum, bucket) => sum + bucket.whole, 0);
-  const byRemainder = [...scaled].sort((left, right) => {
-    if (right.fraction !== left.fraction) {
-      return right.fraction - left.fraction;
-    }
-    return left.index - right.index;
-  });
-
-  for (const bucket of byRemainder) {
-    if (remaining <= 0) {
-      break;
-    }
-    bucket.whole += 1;
-    remaining -= 1;
-  }
-
-  return buckets.map((bucket, index) => ({
-    label: bucket.label,
-    depth: bucket.depth,
-    tokens: scaled[index]?.whole ?? 0,
-    percentOfWindow: undefined,
-  }));
-}
-
 function compareResourceItems(left: ResourceItem, right: ResourceItem): number {
   if (right.tokens !== left.tokens) {
     return right.tokens - left.tokens;
@@ -366,58 +266,14 @@ function compareResourceItems(left: ResourceItem, right: ResourceItem): number {
   return leftLabel.localeCompare(rightLabel);
 }
 
-function normalizeTokenItems(
+function buildResourceItems(
   items: readonly RawTokenItem[],
-  targetTotal: number,
   contextWindow: number | undefined,
 ): ResourceItem[] {
-  const rawTotal = items.reduce((sum, item) => sum + item.tokens, 0);
-  if (rawTotal <= 0) {
-    return [...items]
-      .map((item) => ({
-        ...item,
-        tokens: 0,
-        percentOfWindow: undefined,
-      }))
-      .sort(compareResourceItems);
-  }
-
-  const scaled = items.map((item, index) => {
-    const exactTokens = (item.tokens / rawTotal) * targetTotal;
-    const whole = Math.floor(exactTokens);
-    return {
-      index,
-      whole,
-      fraction: exactTokens - whole,
-    };
-  });
-
-  let remaining = targetTotal - scaled.reduce((sum, item) => sum + item.whole, 0);
-  const byRemainder = [...scaled].sort((left, right) => {
-    if (right.fraction !== left.fraction) {
-      return right.fraction - left.fraction;
-    }
-    return left.index - right.index;
-  });
-
-  for (const item of byRemainder) {
-    if (remaining <= 0) {
-      break;
-    }
-    item.whole += 1;
-    remaining -= 1;
-  }
-
   return items
-    .map((item, index) => ({
-      name: item.name,
-      path: item.path,
-      description: item.description,
-      tokens: scaled[index]?.whole ?? 0,
-      percentOfWindow:
-        contextWindow === undefined || contextWindow === 0
-          ? undefined
-          : ((scaled[index]?.whole ?? 0) / contextWindow) * 100,
+    .map((item) => ({
+      ...item,
+      percentOfWindow: computePercentOfWindow(item.tokens, contextWindow),
     }))
     .sort(compareResourceItems);
 }
@@ -470,7 +326,8 @@ function buildConversationTokensRaw(messageBreakdown: RawMessageBreakdown): numb
     messageBreakdown.bashTokens +
     messageBreakdown.customTokens +
     messageBreakdown.branchSummaryTokens +
-    messageBreakdown.compactionSummaryTokens
+    messageBreakdown.compactionSummaryTokens +
+    messageBreakdown.otherTokens
   );
 }
 
@@ -495,32 +352,27 @@ function buildMajorBucketsRaw(input: {
   ];
 }
 
-function buildNormalizedConversationBuckets(
-  messageBreakdown: RawMessageBreakdown,
-  conversationTotal: number,
-): BucketSnapshot[] {
-  return normalizeBuckets(
-    [
-      { label: "User", tokens: messageBreakdown.userTokens, depth: 1 },
-      { label: "Assistant text", tokens: messageBreakdown.assistantTextTokens, depth: 1 },
-      { label: "Assistant thinking", tokens: messageBreakdown.assistantThinkingTokens, depth: 1 },
-      { label: "Bash history", tokens: messageBreakdown.bashTokens, depth: 1 },
-      {
-        label: "Custom + summaries",
-        tokens:
-          messageBreakdown.customTokens +
-          messageBreakdown.branchSummaryTokens +
-          messageBreakdown.compactionSummaryTokens,
-        depth: 1,
-      },
-    ],
-    conversationTotal,
-  );
+function buildConversationBuckets(messageBreakdown: RawMessageBreakdown): RawBucket[] {
+  return [
+    { label: "User", tokens: messageBreakdown.userTokens, depth: 1 },
+    { label: "Assistant text", tokens: messageBreakdown.assistantTextTokens, depth: 1 },
+    { label: "Assistant thinking", tokens: messageBreakdown.assistantThinkingTokens, depth: 1 },
+    { label: "Bash history", tokens: messageBreakdown.bashTokens, depth: 1 },
+    {
+      label: "Custom + summaries",
+      tokens:
+        messageBreakdown.customTokens +
+        messageBreakdown.branchSummaryTokens +
+        messageBreakdown.compactionSummaryTokens,
+      depth: 1,
+    },
+    { label: "Other messages", tokens: messageBreakdown.otherTokens, depth: 1 },
+  ];
 }
 
 function buildBucketsWithPercents(
-  majorBuckets: readonly BucketSnapshot[],
-  conversationBuckets: readonly BucketSnapshot[],
+  majorBuckets: readonly RawBucket[],
+  conversationBuckets: readonly RawBucket[],
   contextWindow: number | undefined,
 ): BucketSnapshot[] {
   const buckets: BucketSnapshot[] = [];
@@ -629,20 +481,23 @@ function buildCacheSummary(cacheTurns: readonly CacheTurnInput[]): CacheSummaryS
   };
 }
 
-function buildNotes(promptSource: "last-turn" | "current", usedTokensExact: boolean): string[] {
+function formatEstimationDelta(estimationDelta: number): string {
+  if (estimationDelta === 0) {
+    return "match the exact total";
+  }
+
+  return `${formatInt(Math.abs(estimationDelta))} tokens ${
+    estimationDelta > 0 ? "above" : "below"
+  } it`;
+}
+
+function buildNotes(usedTokensExact: boolean, estimationDelta: number | undefined): string[] {
   const notes = [
     usedTokensExact
-      ? "Total usage is exact; the breakdown uses Pi's chars/4 estimates normalized to the current total."
+      ? `Total usage is exact; bucket estimates ${formatEstimationDelta(estimationDelta ?? 0)}.`
       : "Usage and breakdown are estimated because Pi has no exact post-compaction token count yet.",
     "Cache hit rate = cacheRead / (input + cacheRead).",
   ];
-
-  if (promptSource === "current") {
-    notes.push(
-      "Prompt details come from current resources; per-turn extension prompt changes appear after the next agent run.",
-    );
-  }
-
   return notes;
 }
 
@@ -672,7 +527,7 @@ function formatUsageHeadline(report: ContextReport): string {
 
 function formatSnapshotLine(report: ContextReport): string {
   const parts = [
-    `Snapshot: ${report.promptSource === "last-turn" ? "last turn" : "current resources"}`,
+    `Snapshot: ${report.promptSource} resources`,
     `${formatInt(report.session.messageCount)} messages`,
     `${formatInt(report.session.branchEntryCount)} entries`,
   ];
@@ -797,40 +652,26 @@ export function buildContextReport(input: ContextReportInput): ContextReport {
     conversationTokensRaw,
   });
 
-  const rawUsedTokens = sumTokens(majorBucketsRaw);
+  const estimatedTokens = sumTokens(majorBucketsRaw);
   const exactUsedTokens = input.contextUsage?.tokens ?? null;
-  const usedTokens = exactUsedTokens ?? rawUsedTokens;
+  const usedTokens = exactUsedTokens ?? estimatedTokens;
   const contextWindow = input.contextUsage?.contextWindow;
   const usagePercent = computePercentOfWindow(usedTokens, contextWindow);
 
-  const normalizedMajorBuckets = normalizeBuckets(majorBucketsRaw, usedTokens);
-  const normalizedConversationBuckets = buildNormalizedConversationBuckets(
-    messageBreakdown,
-    normalizedMajorBuckets.find((bucket) => bucket.label === "Conversation")?.tokens ?? 0,
-  );
-  const buckets = buildBucketsWithPercents(
-    normalizedMajorBuckets,
-    normalizedConversationBuckets,
-    contextWindow,
-  );
+  const conversationBuckets = buildConversationBuckets(messageBreakdown);
+  const buckets = buildBucketsWithPercents(majorBucketsRaw, conversationBuckets, contextWindow);
 
   const availableTokens =
     contextWindow === undefined ? undefined : Math.max(0, contextWindow - usedTokens);
 
-  const contextFiles = normalizeTokenItems(
-    contextFileItemsRaw,
-    normalizedMajorBuckets.find((bucket) => bucket.label === "Context files")?.tokens ?? 0,
-    contextWindow,
-  );
-  const activeToolItems = normalizeTokenItems(
-    activeToolItemsRaw,
-    normalizedMajorBuckets.find((bucket) => bucket.label === "Tool definitions")?.tokens ?? 0,
-    contextWindow,
-  );
+  const contextFiles = buildResourceItems(contextFileItemsRaw, contextWindow);
+  const activeToolItems = buildResourceItems(activeToolItemsRaw, contextWindow);
 
   return {
     usedTokens,
     usedTokensExact: exactUsedTokens !== null,
+    estimatedTokens,
+    estimationDelta: exactUsedTokens === null ? undefined : estimatedTokens - exactUsedTokens,
     contextWindow,
     availableTokens,
     usagePercent,
@@ -841,7 +682,7 @@ export function buildContextReport(input: ContextReportInput): ContextReport {
     activeTools: activeToolItems,
     cache: buildCacheSummary(input.cacheTurns),
     session: input.session,
-    notes: buildNotes(input.promptSource, exactUsedTokens !== null),
+    notes: buildNotes(exactUsedTokens !== null, estimatedTokens - usedTokens),
   };
 }
 
@@ -852,7 +693,7 @@ export function renderContextReport(report: ContextReport): string {
     "Context",
     formatUsageHeadline(report),
     formatSnapshotLine(report),
-    `Note: ${report.usedTokensExact ? "total exact, breakdown estimated" : "usage and breakdown estimated"}`,
+    `Note: ${report.usedTokensExact ? "total exact; bucket values are independent estimates" : "usage and bucket values estimated"}`,
     "",
     ...renderBucketSection("Current context breakdown", majorBuckets),
   ];

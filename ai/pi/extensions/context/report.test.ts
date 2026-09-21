@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+
 import { buildContextReport, renderContextReport } from "./report.ts";
 
-test("buildContextReport normalizes bucket totals to Pi's exact usage", () => {
+function testMessages(...messages: unknown[]): AgentMessage[] {
+  return messages as AgentMessage[];
+}
+
+test("buildContextReport keeps raw estimates separate from Pi's exact usage", () => {
   const report = buildContextReport({
     systemPrompt: "System prompt text",
     promptSource: "last-turn",
@@ -12,7 +18,8 @@ test("buildContextReport normalizes bucket totals to Pi's exact usage", () => {
       contextWindow: 2_000,
       percent: 50,
     },
-    messages: [
+    messages: testMessages(
+      { role: "system", content: "x".repeat(4_000), timestamp: 0 },
       { role: "user", content: "hello world" },
       {
         role: "assistant",
@@ -26,7 +33,8 @@ test("buildContextReport normalizes bucket totals to Pi's exact usage", () => {
         toolName: "read",
         content: [{ type: "text", text: "file contents" }],
       },
-    ],
+      { role: "future", payload: "extension data" },
+    ),
     cacheTurns: [
       {
         sequence: 1,
@@ -66,18 +74,15 @@ test("buildContextReport normalizes bucket totals to Pi's exact usage", () => {
   assert.equal(report.usedTokens, 1_000);
   assert.equal(report.availableTokens, 1_000);
   assert.equal(report.usedTokensExact, true);
-  assert.equal(
-    report.buckets
-      .filter((bucket) => bucket.depth === 0)
-      .reduce((sum, bucket) => sum + bucket.tokens, 0),
-    1_000,
-  );
+  assert.ok(report.estimatedTokens < report.usedTokens);
+  assert.equal(report.estimationDelta, report.estimatedTokens - report.usedTokens);
   assert.ok(report.buckets.some((bucket) => bucket.label === "System prompt base"));
   assert.ok(report.buckets.some((bucket) => bucket.label === "Context files"));
   assert.ok(report.buckets.some((bucket) => bucket.label === "Tool definitions"));
   assert.ok(report.buckets.some((bucket) => bucket.label === "Assistant tool calls"));
   assert.ok(report.buckets.some((bucket) => bucket.label === "Tool results"));
   assert.ok(report.buckets.some((bucket) => bucket.label === "Conversation"));
+  assert.ok((report.buckets.find((bucket) => bucket.label === "Other messages")?.tokens ?? 0) > 0);
   assert.equal(report.cache.wholeTree.assistantMessages, 1);
   assert.equal(report.cache.wholeTree.cacheHitPercent, 90);
   assert.equal(report.cache.turns[0]?.cacheHitPercent, 90);
@@ -88,11 +93,14 @@ test("renderContextReport produces the expected sections", () => {
     systemPrompt: "Prompt text",
     promptSource: "current",
     contextUsage: undefined,
-    messages: [
+    messages: testMessages(
       { role: "user", content: "hello" },
       { role: "assistant", content: [{ type: "thinking", thinking: "plan" }] },
       { role: "bashExecution", command: "pwd", output: "/tmp\n" },
-    ],
+      { role: "custom", customType: "test", content: "custom context" },
+      { role: "branchSummary", summary: "branch context" },
+      { role: "compactionSummary", summary: "compacted context" },
+    ),
     cacheTurns: [
       {
         sequence: 1,
@@ -124,7 +132,7 @@ test("renderContextReport produces the expected sections", () => {
     contextFiles: [],
     session: {
       branchEntryCount: 3,
-      messageCount: 3,
+      messageCount: 6,
       latestCompactionTokensBefore: undefined,
     },
   });
@@ -147,15 +155,15 @@ test("renderContextReport produces the expected sections", () => {
     /Whole tree: 2 turns · sent 101 · received 200 · cache hit 4,000 · hit rate 97.5%/,
   );
   assert.match(text, /Latest 0.0% · Min 0.0% · Max 100.0%/);
-  assert.match(text, /per-turn extension prompt changes appear after the next agent run/);
-  assert.match(text, /Snapshot: current resources · 3 messages · 3 entries/);
+  assert.match(text, /Snapshot: current resources · 6 messages · 3 entries/);
+  assert.match(text, /usage and bucket values estimated/);
   assert.match(text, /anthropic\/claude-sonnet-4.6/);
 });
 
 test("renderContextReport shows only the last 6 per-turn cache rows", () => {
   const report = buildContextReport({
     systemPrompt: "Prompt text",
-    promptSource: "last-turn",
+    promptSource: "current",
     contextUsage: undefined,
     messages: [],
     cacheTurns: Array.from({ length: 8 }, (_value, index) => ({

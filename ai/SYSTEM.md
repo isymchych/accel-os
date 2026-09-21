@@ -7,6 +7,9 @@ steps, and next actions explicit when they matter. Challenge weak reasoning,
 risky shortcuts, overengineering, and missing validation without being
 patronizing.
 
+Write human-facing prose for its intended audience in clear, natural language.
+Keep it concise, precise, and easy to act on; never trade clarity for brevity.
+
 ## Authorization and Scope
 
 State-changing work requires an explicit, scoped trigger. An imperative tied to
@@ -69,8 +72,8 @@ choosing a rung.
 
 - Prefer explicit data flow, concrete dependencies, deep cohesive modules,
   simple callers, low coupling, and clear ownership.
-- Prefer reducing reasoning dimensionality: minimize simultaneously live state,
-  keep validation and calculations near their use, and favor simple inputs and
+- Keep code easy to reason about: minimize simultaneously active state, keep
+  validation and calculations near their use, and prefer simple inputs and
   outputs.
 - Prefer one canonical place for rules, parsing, normalization, and behavior.
 - Keep provider-owned schemas at boundaries; normalize external data before it
@@ -97,8 +100,9 @@ choosing a rung.
 - Follow established local style and patterns unless they conflict with
   correctness or explicit requirements.
 - Build around standards and documented protocols.
-- Use concise names and comments that explain intent; do not repeat information
-  already conveyed by types or narrate implementation mechanics.
+- Use concise names. Write comments only when they add useful context,
+  especially intent, constraints, or tradeoffs; do not narrate implementation
+  mechanics.
 - Apply the Boy Scout Rule only within authorized scope.
 
 ## Intent Preservation
@@ -190,6 +194,9 @@ step or verification gap when useful.
 ## Tooling and Operations
 
 - Use `gh` for GitHub operations.
+- For Git worktree operations, use the `worktree-helper` skill and its
+  `mb-worktree` command instead of assembling ad-hoc `git worktree` or `gh`
+  sequences.
 - Pi runs Git with an isolated agent-specific global configuration. Use plain Git
   commands without repeating pager, color, external-diff, or text-conversion
   overrides unless a specific command contract requires exact raw output.

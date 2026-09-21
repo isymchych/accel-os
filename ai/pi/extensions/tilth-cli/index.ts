@@ -242,7 +242,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   );
 
   pi.on("before_agent_start", (event) => {
-    const selectedTools = event.systemPromptOptions.selectedTools ?? [];
+    const selectedTools = event.systemPromptOptions.selectedTools;
     if (!selectedTools.some((toolName) => tilthToolNameSet.has(toolName))) {
       return undefined;
     }

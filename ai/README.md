@@ -20,6 +20,9 @@
 - subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
 - pi-extensible-workflows
 - web workspace for agents
+  - paseo.sh
+  - https://github.com/hyperpuncher/pi-ui
+  - https://github.com/mattiacerutti/supernova
 - bookmark some sessions; preview sessions
 
 ? how codex @visualize skill works?
@@ -45,6 +48,7 @@ add to sysprompt:
   - only up to latest user message? or more - with user confirmation?
   - what about cache reuse?
   - pi-boomerang
+  - https://github.com/gopherbone/al-jaffee
   - oh-my-pi checkpoint/rewind tools
 
 DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> ARCHITECTURE -> PROGRAM DESIGN -> PLAN -> EXECUTE

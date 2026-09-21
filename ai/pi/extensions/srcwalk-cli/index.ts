@@ -296,7 +296,7 @@ export default function srcwalkCliExtension(pi: ExtensionAPI): void {
   );
 
   pi.on("before_agent_start", (event) => {
-    const selectedTools = event.systemPromptOptions.selectedTools ?? [];
+    const selectedTools = event.systemPromptOptions.selectedTools;
     if (!selectedTools.some((toolName) => srcwalkToolNameSet.has(toolName))) {
       return undefined;
     }
