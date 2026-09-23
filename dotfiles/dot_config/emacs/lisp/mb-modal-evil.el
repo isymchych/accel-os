@@ -227,6 +227,21 @@
   (define-key evil-inner-text-objects-map "a" 'evil-inner-arg)
   (define-key evil-outer-text-objects-map "a" 'evil-outer-arg))
 
+;; Function, class, and entry text objects in tree-sitter buffers.
+(use-package evil-textobj-tree-sitter
+  :after evil
+  :config
+  (define-key evil-inner-text-objects-map "f"
+              (evil-textobj-tree-sitter-get-textobj "function.inner"))
+  (define-key evil-outer-text-objects-map "f"
+              (evil-textobj-tree-sitter-get-textobj "function.outer"))
+  (define-key evil-inner-text-objects-map "c"
+              (evil-textobj-tree-sitter-get-textobj "class.inner"))
+  (define-key evil-outer-text-objects-map "c"
+              (evil-textobj-tree-sitter-get-textobj "class.outer"))
+  (define-key evil-outer-text-objects-map "e"
+              (evil-textobj-tree-sitter-get-textobj "entry.outer")))
+
 ;; text exchange operator (select, gx, select other word, gx)
 (use-package evil-exchange
   :after evil
@@ -366,11 +381,6 @@
                 (add-hook 'evil-insert-state-exit-hook #'diff-hl-flydiff-update)))))
 
 
-;; Treemacs integration with evil
-(use-package treemacs-evil
-  :after (treemacs evil))
-
-
 ;; lsp-mode
 (with-eval-after-load 'lsp-mode
   (add-hook 'lsp-mode-hook (lambda ()
@@ -405,11 +415,6 @@
 		   (kbd "M-e l") 'flymake-show-project-diagnostics
 		   (kbd "M-e M-k") 'flymake-goto-prev-error
 		   (kbd "M-e b") 'flymake-start))
-
-
-;; gptel
-(with-eval-after-load 'gptel
-  (add-hook 'gptel-pre-response-hook 'evil-normal-state))
 
 
 ;; justl

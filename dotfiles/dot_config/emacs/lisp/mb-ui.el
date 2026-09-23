@@ -139,6 +139,7 @@
          ("C-h W"            . 'which-key-show-top-level))
   :init
   (setq
+   which-key-allow-evil-operators t
    which-key-compute-remaps t
    which-key-allow-multiple-replacements t
    which-key-sort-order 'which-key-key-order-alpha)

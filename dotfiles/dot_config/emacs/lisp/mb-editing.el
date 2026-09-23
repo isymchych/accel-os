@@ -51,10 +51,23 @@
   :init
   (when (executable-find "aspell")
     (setq ispell-program-name "aspell") ; use aspell instead of ispell
+    (setq ispell-dictionary "en_GB")
     (setq ispell-personal-dictionary (expand-file-name "aspell.en.pws" no-littering-var-directory))
     (setq-default ispell-extra-args '("--sug-mode=ultra"
-                                      "--lang=en_GB"
-                                      "--camel-case")))
+                                      "--camel-case"))
+
+    (defun mb/flyspell-select-personal-dictionary ()
+      "Use a personal word list matching the buffer's Aspell dictionary."
+      (let ((dictionary (or ispell-local-dictionary ispell-dictionary)))
+        (setq-local ispell-local-pdict
+                    (if (equal dictionary "en_GB")
+                        ispell-personal-dictionary
+                      (expand-file-name (format "aspell.%s.pws" dictionary)
+                                        no-littering-var-directory)))
+        (ispell-internal-change-dictionary)))
+
+    (add-hook 'ispell-change-dictionary-hook #'mb/flyspell-select-personal-dictionary)
+    (add-hook 'flyspell-mode-hook #'mb/flyspell-select-personal-dictionary))
 
   (add-hook 'text-mode-hook 'flyspell-mode)
   (add-hook 'prog-mode-hook (lambda ()
@@ -254,19 +267,21 @@
 (use-package highlight-thing
   :defer t
   :diminish highlight-thing-mode
-  :config
+  :init
   (defun mb-highlight-thing-enable-unless-lsp ()
     (unless (bound-and-true-p lsp-mode)
+      (require 'highlight-thing)
       (highlight-thing-mode 1)))
   (defun mb-highlight-thing-disable-for-lsp ()
-    (when highlight-thing-mode
+    (when (bound-and-true-p highlight-thing-mode)
       (highlight-thing-mode -1)))
   (add-hook 'prog-mode-hook #'mb-highlight-thing-enable-unless-lsp)
   (with-eval-after-load 'lsp-mode
     (add-hook 'lsp-mode-hook #'mb-highlight-thing-disable-for-lsp))
 
-  (setq highlight-thing-exclude-thing-under-point t)
-  (setq highlight-thing-delay-seconds 1.5))
+  :custom
+  (highlight-thing-exclude-thing-under-point t)
+  (highlight-thing-delay-seconds 1.5))
 
 
 

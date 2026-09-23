@@ -117,12 +117,6 @@
   "v" 'mb/toggle-visual-fill-mode
   "w" 'whitespace-mode)
 
-(defvar-keymap mb/ai-map
-  :doc "mb prefix map for AI things"
-  "e"  'gptel-send
-  "k"  'gptel-abort
-  "g"  'gptel)
-
 (defvar-keymap mb/dir-actions-map
   :doc "mb prefix map for Directory actions"
   "f"  'mb/consult-fd-in-current-dir
@@ -141,7 +135,6 @@
 
 ;; define global bindings on C-c
 (which-key-add-keymap-based-replacements mode-specific-map
-  "a" `("AI"                   . ,mb/ai-map)
   "B" `("Buffer"               . ,mb/buffer-map)
   "D" `("Dir actions"          . ,mb/dir-actions-map)
   "g" `("Git"                  . ,mb/git-map)

@@ -32,8 +32,7 @@
   :no-require
   :init
   (setq compilation-always-kill t       ; kill compilation process before starting another
-	compilation-ask-about-save nil  ; save all buffers on `compile'
-	compilation-save-buffers-predicate (lambda () nil)
+	compilation-ask-about-save nil  ; save all buffers on `compile' without prompting
 	compilation-scroll-output 'first-error)
 
   (add-hook 'compilation-filter-hook #'ansi-color-compilation-filter)
@@ -212,8 +211,9 @@
   :config
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.worktrees\\'")
 
-  ;; lsp-mode 20260702 serializes this empty capability as JSON null, but
-  ;; TypeScript's native Go LSP expects an object for textDocument.inlineCompletion.
+  ;; lsp-mode supplies (inlineCompletion . ()); its JSON serializer emits null,
+  ;; which tsgo rejects because textDocument.inlineCompletion must be an object.
+  ;; Keep this until lsp-mode sends an object (or omits the capability).
   (defun mb/lsp-fix-inline-completion-capability (capabilities)
     "Encode inline completion client capability as an empty JSON object."
     (when-let* ((text-document-capabilities (alist-get 'textDocument capabilities))
@@ -224,6 +224,9 @@
   (advice-add 'lsp--client-capabilities
 	      :filter-return #'mb/lsp-fix-inline-completion-capability)
 
+  ;; lsp-mode's tsgo client resolves a system "tsgo" or its own downloaded
+  ;; package.  An opted-in project instead uses its node_modules/.bin/tsc;
+  ;; resolve that path per project without changing the default client.
   (defun mb/project-local-tsgo-command ()
     "Return the project-local TypeScript native LSP command."
     (unless mb-use-local-tsgo
@@ -245,7 +248,7 @@
   (defun mb/lsp-mode-setup-completion ()
     (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
 	  '(orderless)))
-  (add-hook 'lsp-completion-mode 'mb/lsp-mode-setup-completion)
+  (add-hook 'lsp-completion-mode-hook #'mb/lsp-mode-setup-completion)
 
   (which-key-add-key-based-replacements "SPC l" "LSP")
   (add-hook 'lsp-mode-hook 'lsp-enable-which-key-integration)
@@ -268,7 +271,9 @@
                              (local-set-key (kbd "C-c l t") 'lsp-goto-type-definition)
                              (local-set-key (kbd "C-c l r") 'lsp-rename))))
 
-;; Fix escaped UTF-8 bytes in consult-xref previews for non-visited files.
+;; lsp-mode reads unvisited xref targets with insert-file-contents-literally,
+;; leaving UTF-8 bytes undecoded in xref summaries and consult-xref previews.
+;; Scope decoded reads to this conversion until lsp-mode handles them itself.
 (with-eval-after-load 'lsp-mode
   (defun mb/lsp-xref-read-files-decoded (orig-fn locations)
     "Force decoded reads in lsp xref temp buffers."
