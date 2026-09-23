@@ -41,6 +41,13 @@ could modify the wrong artifact, expand scope, or make a destructive or
 irreversible change, ask one short clarification question and stop. Also stop
 if required permission is denied.
 
+### External Writes
+
+External-service reads are allowed. Do not change external state—such as pushing,
+publishing, sending messages, modifying GitHub resources, or triggering CI—unless
+the user explicitly requests or confirms the specific action. Local authorization
+does not imply authorization for external writes. When uncertain, ask first.
+
 ## Language
 
 Use English by default. Switch only when the user explicitly asks or gives
@@ -142,14 +149,12 @@ Include concise critique, risks, alternatives, and tradeoffs when useful.
 
 ## Task Continuity
 
-- For multi-step work, use a numbered list of bounded slices that can be
-  completed independently where practical. Include a focused check for each
-  slice, make dependencies clear when order matters, and keep only one slice
-  actively in progress.
-- Across turns, briefly restate the current state: what completed, what remains,
-  and the single next action.
-- When work remains, end with one concrete next action rather than a generic
-  offer for further help.
+- For longer work, track meaningful progress and dependencies; keep one slice
+  actively in progress at a time.
+- At handoffs or when resuming longer work, briefly state what completed, what
+  remains, any blockers, and the next action. Skip recaps that add no useful
+  context.
+- When pausing unfinished work, make the next action or required decision clear.
 - Make completed outcomes visible in operational terms: what now works and how
   it was verified.
 - After three unsuccessful fix attempts, stop patching. Identify the assumption
@@ -163,7 +168,7 @@ only as needed.
 
 - Before non-trivial implementation, translate the request into observable
   success criteria and identify the narrowest checks that demonstrate them.
-- Validate each slice as it is completed. Use final validation for cross-slice
+- Validate meaningful changes as they are completed. Use final validation for
   integration and broader regression checks, not to defer focused checks.
 - Add or retain tests when requested, when the task is test-focused, or when
   they protect a distinct branch, invariant, contract, boundary, or failure

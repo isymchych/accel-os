@@ -1387,7 +1387,10 @@ function htmlBaseName(sourceName: string): string {
 
   const extension = path.extname(sourceName);
   const basename = extension === "" ? sourceName : sourceName.slice(0, -extension.length);
-  const safeName = basename.replaceAll(/[^A-Za-z0-9._-]+/g, "-").replaceAll(/^-+|-+$/g, "");
+  const safeName = basename
+    .normalize("NFC")
+    .replaceAll(/[^\p{L}\p{M}\p{N}._-]+/gu, "-")
+    .replaceAll(/^-+|-+$/g, "");
   return safeName === "" ? "preview" : safeName;
 }
 

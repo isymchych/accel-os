@@ -144,6 +144,40 @@ test("parseCliArgs enables local image embedding", () => {
   assert.equal(args.inputPath, "notes.md");
 });
 
+test("default output filenames preserve normalized Unicode letters", async (context) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "mb-preview-test-"));
+  const outputDirectories = new Set<string>();
+  context.after(async () => {
+    await rm(directory, { recursive: true, force: true });
+    await Promise.all(
+      [...outputDirectories].map(async (outputDirectory) => {
+        await rm(outputDirectory, { recursive: true, force: true });
+      }),
+    );
+  });
+
+  const cases: ReadonlyArray<readonly [inputName: string, expectedOutputName: string]> = [
+    ["Документ.md", "Документ.html"],
+    ["Cafe\u0301 notes.md", "Café-notes.html"],
+    ["!!!.md", "preview.html"],
+  ];
+
+  for (const [inputName, expectedOutputName] of cases) {
+    const inputPath = path.join(directory, inputName);
+    await writeFile(inputPath, "# Section\n");
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      path.join(import.meta.dirname, "mb-preview.ts"),
+      inputPath,
+    ]);
+    const outputPath = stdout.trim();
+    outputDirectories.add(path.dirname(outputPath));
+
+    assert.equal(path.basename(outputPath), expectedOutputName);
+    await assert.doesNotReject(readFile(outputPath, "utf8"));
+  }
+});
+
 test("only an explicit base directory sets the document base URL", async (context) => {
   const directory = await mkdtemp(path.join(tmpdir(), "mb-preview-test-"));
   context.after(async () => {

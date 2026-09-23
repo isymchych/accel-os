@@ -20,6 +20,9 @@
 - subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
 - pi-extensible-workflows
 - web workspace for agents
+  - agent types
+  - orchestrator - picks teams of agents for tasks (or builds them)
+  - https://blog.mempko.com/the-planning-dilemma-in-ai-coding-superpowers-vs-abject/
   - paseo.sh
   - https://github.com/hyperpuncher/pi-ui
   - https://github.com/mattiacerutti/supernova
@@ -207,7 +210,8 @@ Makes targeted fixes based on evidence
 
 ## Skills
 
-- TODO <https://github.com/mattpocock/skills>
+- <https://github.com/mattpocock/skills>
+- <https://github.com/obra/superpowers>
 - TODO <https://github.com/addyosmani/agent-skills>
 - TODO <https://github.com/pbakaus/impeccable>
 

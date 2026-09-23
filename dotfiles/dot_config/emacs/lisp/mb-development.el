@@ -301,9 +301,6 @@
     (progn
       (setq flycheck-indication-mode 'right-margin)))
 
-  (global-set-key [remap previous-error] 'flycheck-previous-error)
-  (global-set-key [remap next-error]     'flycheck-next-error)
-
   (defun mb/flycheck-javascript-oxlint-working-directory (_checker)
     "Run oxlint from the nearest directory that owns `.oxlintrc.json`."
     (or (and buffer-file-name
