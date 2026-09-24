@@ -23,6 +23,18 @@ Reference durable artifacts such as specs, plans, ADRs, issues, commits, or diff
 by path or URL instead of copying their details. Briefly restate load-bearing
 conclusions, constraints, and rationale so the next agent understands the task
 before following those references.
+
+Preserve the whole currently applicable plan when it exists only in the
+conversation, including all still-relevant steps, substeps, implementation
+details, dependencies, decisions, and validation criteria. Incorporate subsequent
+revisions and exclude superseded material. Mark completed work and distinguish
+approved work from proposals and unresolved choices. Do not reduce the plan to a
+summary or just the next action; brevity must not discard applicable plan content.
+When a durable artifact contains the plan, reference it and preserve any
+applicable changes or details that exist only in the conversation.
+For a referenced plan, record current progress against its steps and any
+deviations so the next agent can identify where to resume.
+
 Redact sensitive information such as API keys, tokens, passwords, secrets, and
 personally identifiable information.
 Prioritize current state over chronology: preserve active requirements, accepted
@@ -62,6 +74,8 @@ Prefer concise, durable, actionable notes.
 
 Before finishing, read the handoff as if the original conversation were
 unavailable: can the next agent identify the goal, current state, authorization
-boundary, and next step without reconstructing the conversation? Resolve gaps
-from known context or mark them unknown.
+boundary, and next step without reconstructing the conversation? Is the whole
+currently applicable plan preserved in the handoff or its referenced artifacts,
+including any conversation-only revisions? Resolve gaps from known context or
+mark them unknown.
 Return the saved file path to the user.

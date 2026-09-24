@@ -74,6 +74,7 @@ const HANDOFF_RULES = `Include:
 - Current understanding, assumptions, and uncertainties
 - Changed files, their current status, and important symbols
 - Active requirements, constraints, and user preferences
+- Authorization and scope: what the user approved, whether work is discussion/investigation only, and what still requires a decision or permission. Recommended next steps are not authorization to execute them.
 - User-stated rejected approaches when they remain active constraints
 - Unresolved errors, blockers, and open loops
 - Critical commands, examples, references, or risks needed to continue
@@ -88,6 +89,7 @@ Preserve:
 - Current file status
 - Active requirements, constraints, and user preferences
 - Accepted decisions and their rationale
+- Accepted decisions clearly separated from agent recommendations, tentative options, assumptions, and uncertainties
 - Unresolved work and next actions
 - Unresolved errors, blockers, and open loops
 
@@ -99,14 +101,27 @@ Discard:
 
 Be concise, structured, and focused on helping another LLM continue without duplicating work.
 Do not duplicate content already captured in specs, plans, ADRs, issues, commits, or diffs; reference those artifacts instead.
+Briefly restate load-bearing conclusions, constraints, and rationale so the next agent understands the task before following references.
+Preserve the whole currently applicable plan when it exists only in the conversation, including all still-relevant steps, substeps, implementation details, dependencies, decisions, and validation criteria. Incorporate subsequent revisions and exclude superseded material. Mark completed work and distinguish approved work from proposals and unresolved choices. Do not reduce the plan to a summary or just the next action; brevity must not discard applicable plan content.
+When a durable artifact contains the plan, reference it and preserve any applicable changes or details that exist only in the conversation. Record current progress against its steps and any deviations so the next agent can identify where to resume.
+For investigations, preserve hypotheses, supporting and contradicting evidence, what was ruled out and why, and the next check that would distinguish remaining explanations.
+For discussion/design, preserve open options, tradeoffs, decision criteria, unresolved disagreements, and the next question to settle.
 Redact sensitive information such as API keys, tokens, passwords, secrets, and personally identifiable information.
-Preserve exact file paths, function names, commands, and error messages. Mark unknowns explicitly.
-Separate observed facts, inferences, and assumptions when ambiguity matters.`;
+Preserve exact file paths, function names, commands, and error messages. Do not invent missing context; mark unknowns explicitly.
+Separate observed facts, inferences, and assumptions when ambiguity matters.
+Tie consequential claims to their source or check and state its limitations; distinguish verified results from expectations and unperformed validation.
+Before finishing, check that another agent can identify the goal, current state, authorization boundary, and next step without reconstructing the conversation, and that the whole currently applicable plan is preserved in the summary or its referenced artifacts, including conversation-only revisions.`;
 
 const BRANCH_SUMMARY_STRUCTURE = `Use this structure. Keep the headings, but omit bullets that do not apply. Use "(none)" only when the absence is important.
 
 ## Goal
 [What was the user trying to accomplish on the abandoned branch?]
+
+## Authorization and Scope
+- [Approvals and execution boundaries on this branch; pending permissions or decisions]
+
+## Applicable Plan
+[The whole plan applicable on this branch, or its durable reference with step progress, deviations, and conversation-only additions; distinguish approved work from proposals and unresolved choices]
 
 ## Branch Recap
 ### Done
@@ -141,6 +156,12 @@ const COMPACTION_SUMMARY_STRUCTURE = `Use this structure. Keep the headings, but
 
 ## Goal
 [What is the user trying to accomplish?]
+
+## Authorization and Scope
+- [What the user approved, discussion/investigation-only boundaries, and pending permissions or decisions]
+
+## Applicable Plan
+[The whole currently applicable plan, or its durable reference with step progress, deviations, and conversation-only additions; distinguish approved work from proposals and unresolved choices]
 
 ## Current State / Recap
 ### Done
@@ -271,6 +292,7 @@ export function buildBranchPrompt(
     : `You are creating a handoff summary for another LLM that may resume work from an abandoned conversation branch.
 
 Use <shared-context> only to understand the branch. Summarize <abandoned-branch> as the primary subject. Recap what was done on the abandoned branch. Discard shared context that is not needed to understand this branch.
+Preserve the plan, decisions, and approvals as applicable on the abandoned branch; do not imply they automatically govern the destination branch. Identify any known conflicts that require reconciliation rather than treating branch proposals or approvals as authorization to execute on the destination branch.
 
 ${HANDOFF_RULES}
 
@@ -278,7 +300,7 @@ ${BRANCH_SUMMARY_STRUCTURE}
 
 ${customInstructionsBlock}`;
 
-  return `<shared-context>\n${sharedContext}\n</shared-context>\n\n<abandoned-branch>\n${abandonedBranch}\n</abandoned-branch>\n\n${summaryInstructions}\n\nKeep each section concise.`;
+  return `<shared-context>\n${sharedContext}\n</shared-context>\n\n<abandoned-branch>\n${abandonedBranch}\n</abandoned-branch>\n\n${summaryInstructions}`;
 }
 
 export function buildCompactionPrompt(
@@ -291,7 +313,7 @@ export function buildCompactionPrompt(
   const hasCustomInstructions = customInstructions !== undefined && customInstructions.length > 0;
   const hasSplitTurnPrefix = splitTurnPrefix !== undefined && splitTurnPrefix.length > 0;
   const updateInstructions = hasPreviousSummary
-    ? `The messages above are NEW conversation messages to incorporate into the existing summary in <previous-summary>. Update the existing summary: preserve still-relevant current state, add new progress and decisions, move completed work to Done, remove obsolete details, and refresh next steps.`
+    ? `The messages above are NEW conversation messages to incorporate into the existing summary in <previous-summary>. Update the existing summary: preserve still-relevant current state, add new progress and decisions, move completed work to Done, remove obsolete details, and refresh next steps. Preserve applicable plan content from the previous summary unless new conversation explicitly revises, completes, or supersedes it. Absence from new messages does not make a step obsolete. Record completed steps without discarding their still-applicable details or dependencies.`
     : "Create a context checkpoint handoff summary that another LLM will use to continue the current work.";
   const previousSummaryBlock = hasPreviousSummary
     ? `\n\n<previous-summary>\n${previousSummary}\n</previous-summary>`
@@ -306,7 +328,7 @@ export function buildCompactionPrompt(
     ? "\n\nThe <split-turn-prefix> content is the early part of the current oversized turn. It will be discarded by compaction while the later part of the turn is kept, so preserve the user's current request, early work, decisions, errors, and open loops from it."
     : "";
 
-  return `<conversation>\n${conversation}\n</conversation>${splitTurnPrefixBlock}${previousSummaryBlock}\n\n${updateInstructions}${splitTurnInstructions}\n\nRecap what was done in the current session state.\n\n${HANDOFF_RULES}\n\n${COMPACTION_SUMMARY_STRUCTURE}${customInstructionsBlock}\n\nKeep each section concise.`;
+  return `<conversation>\n${conversation}\n</conversation>${splitTurnPrefixBlock}${previousSummaryBlock}\n\n${updateInstructions}${splitTurnInstructions}\n\nRecap what was done in the current session state.\n\n${HANDOFF_RULES}\n\n${COMPACTION_SUMMARY_STRUCTURE}${customInstructionsBlock}`;
 }
 
 function escapeRegExp(value: string): string {

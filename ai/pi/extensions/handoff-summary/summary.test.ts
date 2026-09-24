@@ -4,6 +4,7 @@ import test from "node:test";
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
 import {
+  buildBranchPrompt,
   buildCompactionPrompt,
   buildSharedContextEntries,
   calculateSummaryTokenBudgets,
@@ -110,4 +111,13 @@ test("buildCompactionPrompt explains previous summary and split-turn merge behav
   assert.match(prompt, /<split-turn-prefix>\nearly oversized turn\n<\/split-turn-prefix>/u);
   assert.match(prompt, /NEW conversation messages to incorporate/u);
   assert.match(prompt, /Additional focus:\nfocus on blockers/u);
+});
+
+test("branch instruction replacement still bypasses the default handoff policy", () => {
+  const prompt = buildBranchPrompt("shared context", "branch messages", "Custom format", true);
+
+  assert.match(prompt, /Custom format$/u);
+  assert.doesNotMatch(prompt, /## Applicable Plan/u);
+  assert.doesNotMatch(prompt, /Preserve the whole currently applicable plan/u);
+  assert.match(buildBranchPrompt("", "branch messages", "", true), /## Applicable Plan/u);
 });
