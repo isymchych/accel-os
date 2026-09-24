@@ -1,3 +1,8 @@
+---
+description: Summarize last week's git activity with evidence and deduplicated totals
+argument-hint: "[author, date range, or per-branch breakdown overrides]"
+---
+
 Analyze my git activity for last week across all branches in the current repo.
 
 Requirements:
@@ -32,3 +37,6 @@ Optional overrides:
 - Author override: <name/email/regex>
 - Date range override: <YYYY-MM-DD .. YYYY-MM-DD>
 - Include per-branch table: yes/no
+
+User-provided overrides (if any):
+$ARGUMENTS

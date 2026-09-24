@@ -1,6 +1,13 @@
 ---
 description: Review code for high-impact risks and actionable fixes
+argument-hint: "<diff, file, or project area> [review focus]"
 ---
+
+Review this target and optional focus:
+$ARGUMENTS
+
+If no target is supplied, review the current task's changes. If the scope is
+unclear, ask before proceeding.
 
 Guidelines:
 

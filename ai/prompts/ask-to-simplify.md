@@ -1,5 +1,6 @@
 ---
 description: See if there are opportunities to simplify code
+argument-hint: "[code target; defaults to current task's changes]"
 ---
 
 I'd like to know if we can simplify & clean up code: **$ARGUMENTS**.

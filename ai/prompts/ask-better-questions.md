@@ -1,5 +1,6 @@
 ---
 description: Reverse-engineer the request, strengthen it, offer alternatives, then answer
+argument-hint: "<question to strengthen and answer>"
 ---
 
 Before answering any question, do this:

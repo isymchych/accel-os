@@ -1,6 +1,6 @@
 ---
 description: Explain a diff, commit, file, folder, project area, or pasted code for a maintainer
-argument-hint: "[diff|commit|file|folder|snippet]"
+argument-hint: "<diff, commit/range, file, folder, project area, or pasted code>"
 ---
 
 Explain this code target for a maintainer: **$ARGUMENTS**.

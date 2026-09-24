@@ -1,5 +1,6 @@
 ---
 description: Critique the normative document
+argument-hint: "<document path or text>"
 ---
 
 Critique **$ARGUMENTS** as a normative document.

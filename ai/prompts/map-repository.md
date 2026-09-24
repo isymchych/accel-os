@@ -1,9 +1,13 @@
 ---
 description: Map a repository and produce a concise, source-backed AGENTS.md
+argument-hint: "[mapping emphasis or constraints]"
 ---
 
 Task:
 Map this repository and create/update `AGENTS.md` at the repo root so another coding agent can run, test, and modify it with minimal exploration.
+
+User-provided emphasis or constraints (if any):
+$ARGUMENTS
 
 Requirements:
 
