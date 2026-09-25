@@ -10,6 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { formatGitError } from "../../lib/git_error.ts";
+
 const applyScript = new URL("./apply_commit.ts", import.meta.url);
 
 function git(cwd: string, ...args: string[]): string {
@@ -168,7 +170,21 @@ test("apply_commit honors hooks unless --no-verify is requested", () => {
     writeFile(join(cwd, "hooked.txt"), "hooked\n");
     git(cwd, "add", "hooked.txt");
     const hook = join(cwd, ".git", "hooks", "pre-commit");
-    writeFile(hook, "#!/bin/sh\necho pre-commit >&2\nexit 1\n");
+    writeFile(
+      hook,
+      [
+        "#!/bin/sh",
+        "echo 'pre-commit hook failed' >&2",
+        "echo 'backend typecheck failed: error TS2322' >&2",
+        "i=1",
+        'while [ "$i" -le 12 ]; do',
+        '  echo "hook output $i" >&2',
+        "  i=$((i + 1))",
+        "done",
+        "exit 1",
+        "",
+      ].join("\n"),
+    );
     chmod(hook, 0o755);
 
     const blocked = run(
@@ -179,6 +195,8 @@ test("apply_commit honors hooks unless --no-verify is requested", () => {
     );
     assert.equal(blocked.status, 3);
     assert.match(blocked.stderr, /^ERR_GIT_HOOK_PRE_COMMIT\n/);
+    assert.match(blocked.stderr, /stderr:[\s\S]*backend typecheck failed: error TS2322/);
+    assert.match(blocked.stderr, /hook output 12/);
 
     const allowed = run(
       applyScript,
@@ -190,6 +208,25 @@ test("apply_commit honors hooks unless --no-verify is requested", () => {
   } finally {
     removeDir(cwd, { recursive: true, force: true });
   }
+});
+
+test("formatGitError preserves stderr and stdout without truncation", () => {
+  const error = formatGitError(
+    "ERR_GIT_COMMIT",
+    "git commit failed",
+    ["first diagnostic", ...Array.from({ length: 12 }, (_, index) => `stderr ${index + 1}`)].join(
+      "\n",
+    ),
+    "stdout diagnostic",
+  );
+
+  assert.deepEqual(error.details, [
+    "stderr:",
+    "first diagnostic",
+    ...Array.from({ length: 12 }, (_, index) => `stderr ${index + 1}`),
+    "stdout:",
+    "stdout diagnostic",
+  ]);
 });
 
 test("apply_commit rejects subject-only messages unless explicitly allowed", () => {

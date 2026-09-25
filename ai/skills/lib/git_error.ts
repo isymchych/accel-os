@@ -1,6 +1,3 @@
-const DETAIL_LINE_MAX = 10;
-const DETAIL_CHAR_MAX = 1500;
-
 export type ClassifiedGitError = {
   code: string;
   summary: string;
@@ -67,35 +64,23 @@ export function formatGitError(
   return {
     code,
     summary,
-    details: sanitizeGitErrorDetails(stderr || stdout),
+    details: sanitizeGitErrorDetails(stderr, stdout),
   };
 }
 
-export function sanitizeGitErrorDetails(text: string): string[] {
-  if (!text.trim()) return [];
+export function sanitizeGitErrorDetails(stderr: string, stdout = ""): string[] {
+  const output = [
+    stderr.trim() === "" ? "" : `stderr:\n${stderr}`,
+    stdout.trim() === "" ? "" : `stdout:\n${stdout}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  if (output === "") return [];
 
-  const lines = text
+  return output
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
     .filter(Boolean);
-
-  const limitedLines = lines.slice(-DETAIL_LINE_MAX);
-  const details: string[] = [];
-  let charsUsed = 0;
-
-  for (const line of limitedLines) {
-    if (charsUsed >= DETAIL_CHAR_MAX) break;
-    const remaining = DETAIL_CHAR_MAX - charsUsed;
-    if (line.length <= remaining) {
-      details.push(line);
-      charsUsed += line.length + 1;
-      continue;
-    }
-    details.push(`${line.slice(0, Math.max(0, remaining - 1))}…`);
-    break;
-  }
-
-  return details;
 }
 
 export function printStructuredGitError(error: ClassifiedGitError): void {

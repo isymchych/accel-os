@@ -16,7 +16,7 @@ test("context prompt uses the final prompt from the last completed turn", async 
   const pi = {
     on(event: string, handler: (event: never, ctx: never) => void) {
       handlers.set(event, handler);
-      return () => {};
+      return (): void => {};
     },
     registerCommand(
       _name: string,
@@ -38,7 +38,7 @@ test("context prompt uses the final prompt from the last completed turn", async 
     { systemPromptOptions: promptOptions } as never,
     undefined as never,
   );
-  promptOptions.contextFiles?.push({ path: "/repo/LOCAL.md", content: "turn rules" });
+  promptOptions.contextFiles.push({ path: "/repo/LOCAL.md", content: "turn rules" });
   handlers.get("agent_start")?.(
     undefined as never,
     { getSystemPrompt: () => "effective prompt" } as never,
