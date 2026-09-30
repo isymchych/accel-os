@@ -15,7 +15,7 @@
 
 [[mgr.prepend_keymap]]
   on = [ "T" ]
-  run = "plugin hide-preview"
+  run = "plugin toggle-pane min-preview"
   desc = "Toggle preview pane"
 
 [[mgr.prepend_keymap]]
@@ -28,8 +28,3 @@ on   = "!"
 for  = "unix"
 run  = 'shell "$SHELL" --block'
 desc = "Open $SHELL here"
-
-# use dragon-drop to create drag-n-drop are with selected files
-[[mgr.prepend_keymap]]
-on  = "<C-n>"
-run = 'shell -- dragon -x -i -T "$0"'

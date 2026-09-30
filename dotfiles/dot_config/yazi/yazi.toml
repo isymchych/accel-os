@@ -3,6 +3,16 @@ sort_by = "natural"
 sort_dir_first = true
 ratio = [2, 4, 2]
 
+[[plugin.prepend_fetchers]]
+url = "*"
+run = "git"
+group = "git"
+
+[[plugin.prepend_fetchers]]
+url = "*/"
+run = "git"
+group = "git"
+
 [opener]
 imv = [
   { run = "imv-dir %s", desc = "Open image in imv-dir", orphan = true, for = "linux" },
@@ -24,7 +34,7 @@ emacs = [
 prepend_rules = [
   { url = "*.md", use = ["nvim", "md-preview", "emacs"] },
   { url = "*.markdown", use = ["nvim", "md-preview", "emacs"] },
-  { mime = "image/*", use = ["imv", "image"] },
-  { mime = "video/*", use = "mpv" },
+  { mime = "image/*", use = ["imv", "open"] },
+  { mime = "video/*", use = ["mpv", "play"] },
   { mime = "text/*", use = ["nvim", "emacs"] },
 ]
