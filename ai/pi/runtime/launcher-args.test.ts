@@ -4,12 +4,11 @@ import test from "node:test";
 import { parseLauncherArgs } from "./launcher-args.ts";
 
 test("parses leading launcher modifiers", () => {
-  assert.deepEqual(parseLauncherArgs(["account", "srcwalk", "mcp", "help", "--model", "gpt-5"]), {
+  assert.deepEqual(parseLauncherArgs(["account", "srcwalk", "help", "--model", "gpt-5"]), {
     codeNavigation: "srcwalk",
     passthrough: ["--model", "gpt-5"],
     showHelp: true,
     useAccountSwitcher: true,
-    useMcp: true,
   });
 });
 
@@ -19,7 +18,6 @@ test("preserves unrecognized launcher modifiers as Pi arguments", () => {
     passthrough: ["other", "mcp"],
     showHelp: false,
     useAccountSwitcher: false,
-    useMcp: false,
   });
 });
 
@@ -29,7 +27,6 @@ test("preserves modifier-like values after Pi arguments", () => {
     passthrough: ["--name", "account", "help"],
     showHelp: false,
     useAccountSwitcher: false,
-    useMcp: false,
   });
 });
 
@@ -39,7 +36,6 @@ test("preserves arguments after the Pi delimiter", () => {
     passthrough: ["--", "account"],
     showHelp: false,
     useAccountSwitcher: false,
-    useMcp: false,
   });
 });
 

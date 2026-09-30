@@ -5,7 +5,6 @@ export interface LauncherArgs {
   passthrough: string[];
   showHelp: boolean;
   useAccountSwitcher: boolean;
-  useMcp: boolean;
 }
 
 export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
@@ -13,7 +12,6 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
   let codeNavigationWasSelected = false;
   let showHelp = false;
   let useAccountSwitcher = false;
-  let useMcp = false;
   let modifierCount = 0;
 
   for (const arg of args) {
@@ -27,8 +25,6 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
       showHelp = true;
     } else if (arg === "account") {
       useAccountSwitcher = true;
-    } else if (arg === "mcp") {
-      useMcp = true;
     } else {
       break;
     }
@@ -40,6 +36,5 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
     passthrough: args.slice(modifierCount),
     showHelp,
     useAccountSwitcher,
-    useMcp,
   };
 }

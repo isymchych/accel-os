@@ -15,7 +15,7 @@ import {
   type AgentToolUpdateCallback,
   type BashToolDetails,
   type ExtensionAPI,
-  type ExtensionContext,
+  type ExtensionToolContext,
   type Theme,
   type ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
@@ -123,7 +123,7 @@ export async function executeShellTool(
   params: ShellToolParams,
   signal: AbortSignal | undefined,
   onUpdate: AgentToolUpdateCallback<BashToolDetails | undefined> | undefined,
-  ctx: ExtensionContext,
+  ctx: ExtensionToolContext,
 ): Promise<AgentToolResult<BashToolDetails | undefined>> {
   const commandCwd = resolveShellToolCwd(ctx.cwd, params.cwd);
   await assertDirectory(commandCwd);

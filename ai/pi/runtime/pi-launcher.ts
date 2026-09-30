@@ -7,6 +7,7 @@ import type { AccountProfile } from "./account-profiles.ts";
 import type { CodeNavigationBackend } from "./launcher-args.ts";
 
 const excludedToolNames = ["write", "grep", "find", "ls"];
+const builtinExtensionPaths = ["builtin:mcp", "builtin:codemode", "builtin:tool-search"];
 const sharedExtensionNames = [
   "apply-patch",
   "read-tool",
@@ -43,13 +44,16 @@ async function isExecutable(filePath: string): Promise<boolean> {
   }
 }
 
-async function buildPiArgs(
+export async function buildPiArgs(
   accelOs: string,
   codeNavigation: CodeNavigationBackend,
-  useMcp: boolean,
 ): Promise<string[]> {
   const configDir = path.join(accelOs, "ai", "pi");
   const args = ["--no-extensions", "--append-system-prompt", path.join(accelOs, "ai", "SYSTEM.md")];
+
+  for (const extensionPath of builtinExtensionPaths) {
+    args.push("--extension", extensionPath);
+  }
 
   for (const name of resolveExtensionNames(codeNavigation)) {
     if (name === "snip") {
@@ -64,9 +68,6 @@ async function buildPiArgs(
     args.push("--extension", path.join(configDir, "extensions", name, "index.ts"));
   }
 
-  if (useMcp) {
-    args.push("--extension", path.join(accelOs, "node_modules", "pi-mcp-adapter"));
-  }
   args.push("--exclude-tools", excludedToolNames.join(","));
   return args;
 }
@@ -84,13 +85,12 @@ export async function launchPi(
   profile: AccountProfile,
   passthrough: readonly string[],
   codeNavigation: CodeNavigationBackend,
-  useMcp: boolean,
 ): Promise<void> {
   const configDir = path.join(accelOs, "ai", "pi");
   process.chdir(process.env["AI_CWD"] ?? process.cwd());
   configurePiEnvironment(configDir, profile.directory);
 
-  const args = await buildPiArgs(accelOs, codeNavigation, useMcp);
+  const args = await buildPiArgs(accelOs, codeNavigation);
   const { main } = await import("@earendil-works/pi-coding-agent");
   await main([...args, ...passthrough]);
 }

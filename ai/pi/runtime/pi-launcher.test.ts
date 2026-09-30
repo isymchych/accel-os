@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { configurePiEnvironment, resolveExtensionNames } from "./pi-launcher.ts";
+import { buildPiArgs, configurePiEnvironment, resolveExtensionNames } from "./pi-launcher.ts";
 
 test("resolveExtensionNames loads exactly one code navigation backend", () => {
   const shared = resolveExtensionNames("tilth").filter(
@@ -10,6 +10,16 @@ test("resolveExtensionNames loads exactly one code navigation backend", () => {
 
   assert.deepEqual(resolveExtensionNames("tilth"), [...shared, "tilth-cli"]);
   assert.deepEqual(resolveExtensionNames("srcwalk"), [...shared, "srcwalk-cli"]);
+});
+
+test("buildPiArgs explicitly loads native MCP and codemode extensions", async () => {
+  const args = await buildPiArgs("/repo", "tilth");
+
+  assert.deepEqual(
+    args.filter((value) => value.startsWith("builtin:")),
+    ["builtin:mcp", "builtin:codemode", "builtin:tool-search"],
+  );
+  assert.ok(!args.some((value) => value.includes("pi-mcp-adapter")));
 });
 
 test("configurePiEnvironment selects the agent Git config for every Pi child", () => {

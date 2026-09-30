@@ -1,7 +1,4 @@
 {
-  "settings": {
-    "scriptMode": false
-  },
   "mcpServers": {
     "chrome-devtools": {
       "command": "chrome-devtools-mcp",
@@ -17,7 +14,8 @@
       "env": {
         "PATH": "${ACCEL_OS}/node_modules/.bin:${PATH}"
       },
-      "directTools": false
+      "enabled": false,
+      "exposure": "codemode"
     }
   }
 }
