@@ -1,5 +1,6 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 
 import { getErrorMessage } from "@accel-os/shared/guards";
 
@@ -27,24 +28,18 @@ Options:
 `;
 
 export function parseAudioArgs(args: readonly string[]): AudioArgs {
-  let notify = false;
-  const positional: string[] = [];
+  const parsed = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      help: { type: "boolean", short: "h" },
+      notify: { type: "boolean", short: "n" },
+    },
+  });
 
-  for (const arg of args) {
-    if (arg === "-h" || arg === "--help") {
-      return { help: true };
-    }
-    if (arg === "-n" || arg === "--notify") {
-      notify = true;
-      continue;
-    }
-    if (arg.startsWith("-")) {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-    positional.push(arg);
-  }
+  if (parsed.values.help === true) return { help: true };
 
-  const [device, action, extra] = positional;
+  const [device, action, extra] = parsed.positionals;
   if (extra !== undefined || (device !== "speakers" && device !== "mic")) {
     throw new Error("Expected an audio device and action");
   }
@@ -52,7 +47,7 @@ export function parseAudioArgs(args: readonly string[]): AudioArgs {
     throw new Error(`Invalid ${device} action: ${action ?? ""}`);
   }
 
-  return { help: false, notify, device, action };
+  return { help: false, notify: parsed.values.notify === true, device, action };
 }
 
 export function parseMuteStatus(output: string): boolean {

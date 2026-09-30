@@ -23,9 +23,11 @@
   - agent types
   - orchestrator - picks teams of agents for tasks (or builds them)
   - https://blog.mempko.com/the-planning-dilemma-in-ai-coding-superpowers-vs-abject/
-  - paseo.sh
+  - https://paseo.sh
   - https://github.com/hyperpuncher/pi-ui
   - https://github.com/mattiacerutti/supernova
+  - sandbox/vm/microvm/isolation
+  - memory system
 - bookmark some sessions; preview sessions
 
 ? how codex @visualize skill works?

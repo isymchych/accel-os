@@ -1,5 +1,6 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 
 import { getErrorMessage } from "@accel-os/shared/guards";
 import { parseJsonWithSchema } from "@accel-os/shared/json";
@@ -43,29 +44,23 @@ Options:
 `;
 
 export function parseTouchpadArgs(args: readonly string[]): TouchpadArgs {
-  let notify = false;
-  const positional: string[] = [];
+  const parsed = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      help: { type: "boolean", short: "h" },
+      notify: { type: "boolean", short: "n" },
+    },
+  });
 
-  for (const arg of args) {
-    if (arg === "-h" || arg === "--help") {
-      return { help: true };
-    }
-    if (arg === "-n" || arg === "--notify") {
-      notify = true;
-      continue;
-    }
-    if (arg.startsWith("-")) {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-    positional.push(arg);
-  }
+  if (parsed.values.help === true) return { help: true };
 
-  const [action, extra] = positional;
+  const [action, extra] = parsed.positionals;
   if (extra !== undefined || !isTouchpadAction(action)) {
     throw new Error(`Invalid touchpad action: ${action ?? ""}`);
   }
 
-  return { help: false, notify, action };
+  return { help: false, notify: parsed.values.notify === true, action };
 }
 
 export function parseTouchpadEnabled(output: string): boolean {

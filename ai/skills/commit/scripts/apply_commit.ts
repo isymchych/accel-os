@@ -1,3 +1,5 @@
+import { parseArgs as parseNodeArgs } from "node:util";
+
 import { getErrorMessage } from "@accel-os/shared/guards";
 
 import { runGit, type GitCommandResult } from "../../lib/git_command.ts";
@@ -24,50 +26,50 @@ class UsageError extends Error {}
 class MessageError extends Error {}
 
 function parseOptions(args: string[]): ApplyOptions {
-  const [mode, ...rest] = args;
+  const parsed = parseCliArgs(args);
+  const [mode, ...positionals] = parsed.positionals;
   if (mode !== "create" && mode !== "amend") throw new UsageError("expected `create` or `amend`");
-
-  const options: ApplyOptions = {
-    mode,
-    noVerify: false,
-    allowSubjectOnly: false,
-    verbatim: false,
-    expectedHead: null,
-    allowPublished: false,
-  };
-
-  for (let index = 0; index < rest.length; index += 1) {
-    const arg = rest[index];
-    if (arg === "--no-verify") {
-      options.noVerify = true;
-      continue;
-    }
-    if (arg === "--allow-subject-only") {
-      options.allowSubjectOnly = true;
-      continue;
-    }
-    if (arg === "--verbatim") {
-      options.verbatim = true;
-      continue;
-    }
-    if (arg === "--allow-published" && mode === "amend") {
-      options.allowPublished = true;
-      continue;
-    }
-    if (arg === "--expected-head" && mode === "amend") {
-      const sha = rest[index + 1];
-      if (!sha) throw new UsageError("--expected-head requires a commit SHA");
-      options.expectedHead = sha;
-      index += 1;
-      continue;
-    }
-    throw new UsageError(`unknown argument: ${arg ?? ""}`);
+  if (positionals.length > 0) throw new UsageError(`unknown argument: ${positionals[0] ?? ""}`);
+  if (mode === "create" && parsed.values["allow-published"] === true) {
+    throw new UsageError("unknown argument: --allow-published");
   }
-
-  if (mode === "amend" && !options.expectedHead) {
+  if (mode === "create" && parsed.values["expected-head"] !== undefined) {
+    throw new UsageError("unknown argument: --expected-head");
+  }
+  if (mode === "amend" && parsed.values["expected-head"] === "") {
+    throw new UsageError("--expected-head requires a commit SHA");
+  }
+  if (mode === "amend" && !parsed.values["expected-head"]) {
     throw new UsageError("amend requires --expected-head <sha>");
   }
-  return options;
+
+  return {
+    mode,
+    noVerify: parsed.values["no-verify"] === true,
+    allowSubjectOnly: parsed.values["allow-subject-only"] === true,
+    verbatim: parsed.values.verbatim === true,
+    expectedHead: parsed.values["expected-head"] ?? null,
+    allowPublished: mode === "amend" && parsed.values["allow-published"] === true,
+  };
+}
+
+// oxlint-disable-next-line typescript/explicit-function-return-type -- Preserve Node's option-specific inferred return type.
+function parseCliArgs(args: string[]) {
+  try {
+    return parseNodeArgs({
+      args,
+      allowPositionals: true,
+      options: {
+        "allow-published": { type: "boolean" },
+        "allow-subject-only": { type: "boolean" },
+        "expected-head": { type: "string" },
+        "no-verify": { type: "boolean" },
+        verbatim: { type: "boolean" },
+      },
+    });
+  } catch (error) {
+    throw new UsageError(getErrorMessage(error));
+  }
 }
 
 async function readMessage(): Promise<string> {

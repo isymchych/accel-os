@@ -21,6 +21,15 @@ test("parseAudioArgs accepts the notify flag after subcommands", () => {
   });
 });
 
+test("parseAudioArgs accepts positionals after the standard option separator", () => {
+  assert.deepEqual(parseAudioArgs(["--notify", "--", "speakers", "up"]), {
+    help: false,
+    notify: true,
+    device: "speakers",
+    action: "up",
+  });
+});
+
 test("parseAudioArgs rejects speaker-only microphone actions", () => {
   assert.throws(() => parseAudioArgs(["mic", "up"]), /Invalid mic action/u);
 });

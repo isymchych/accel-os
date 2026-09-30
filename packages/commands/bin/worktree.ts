@@ -3,6 +3,7 @@ import { mkdirSync, statSync } from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 import { assertNever, getErrorMessage, isPresent } from "@accel-os/shared/guards";
 import { parseJsonWithSchema } from "@accel-os/shared/json";
@@ -231,122 +232,54 @@ async function main(): Promise<void> {
   }
 }
 
-// oxlint-disable-next-line complexity -- CLI option parsing is clearer as one flat switch than split across tiny handlers.
 export function parseArgs(args: string[]): ParsedArgs {
-  let deleteBranch = false;
-  let dryRun = false;
-  let force = false;
-  let runSetup = true;
-  let fromRef: string | null = null;
-  let help = false;
-  let json = false;
-  let pathOverride: string | null = null;
-  let repoOverride: string | null = null;
-  const positional: string[] = [];
+  const parsed = parseNodeArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      "delete-branch": { type: "boolean" },
+      "dry-run": { type: "boolean" },
+      force: { type: "boolean" },
+      "no-setup": { type: "boolean" },
+      from: { type: "string" },
+      help: { type: "boolean", short: "h" },
+      json: { type: "boolean" },
+      path: { type: "string" },
+      repo: { type: "string" },
+    },
+  });
 
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === undefined) {
-      continue;
-    }
+  const fromRef = requireOptionValue(parsed.values.from, "from", "ref");
+  const pathOverride = requireOptionValue(parsed.values.path, "path", "directory");
+  const repoOverride = requireOptionValue(parsed.values.repo, "repo", "directory");
 
-    switch (arg) {
-      case "--delete-branch":
-        deleteBranch = true;
-        break;
-      case "--dry-run":
-        dryRun = true;
-        break;
-      case "--force":
-        force = true;
-        break;
-      case "--no-setup":
-        runSetup = false;
-        break;
-      case "--from": {
-        const value = args[index + 1];
-        if (!value || value.startsWith("-")) {
-          throw new Error('Option "--from" requires a ref value.');
-        }
-        fromRef = value;
-        index += 1;
-        break;
-      }
-      case "--path": {
-        const value = args[index + 1];
-        if (!value || value.startsWith("-")) {
-          throw new Error('Option "--path" requires a directory value.');
-        }
-        pathOverride = value;
-        index += 1;
-        break;
-      }
-      case "--repo": {
-        const value = args[index + 1];
-        if (!value || value.startsWith("-")) {
-          throw new Error('Option "--repo" requires a directory value.');
-        }
-        repoOverride = value;
-        index += 1;
-        break;
-      }
-      case "--json":
-        json = true;
-        break;
-      case "--help":
-      case "-h":
-        help = true;
-        break;
-      default:
-        if (arg.startsWith("--from=")) {
-          fromRef = arg.slice("--from=".length);
-          if (fromRef.length === 0) {
-            throw new Error('Option "--from" requires a ref value.');
-          }
-          break;
-        }
-
-        if (arg.startsWith("--path=")) {
-          pathOverride = arg.slice("--path=".length);
-          if (pathOverride.length === 0) {
-            throw new Error('Option "--path" requires a directory value.');
-          }
-          break;
-        }
-
-        if (arg.startsWith("--repo=")) {
-          repoOverride = arg.slice("--repo=".length);
-          if (repoOverride.length === 0) {
-            throw new Error('Option "--repo" requires a directory value.');
-          }
-          break;
-        }
-
-        if (arg.startsWith("-")) {
-          throw new Error(`Unknown option: ${arg}`);
-        }
-
-        positional.push(arg);
-        break;
-    }
-  }
-
-  const commandCandidate = positional[0] ?? null;
+  const commandCandidate = parsed.positionals[0] ?? null;
   const command = isCommandName(commandCandidate) ? commandCandidate : null;
 
   return {
     command,
-    positional: command === null ? positional : positional.slice(1),
-    deleteBranch,
-    dryRun,
-    force,
-    runSetup,
+    positional: command === null ? parsed.positionals : parsed.positionals.slice(1),
+    deleteBranch: parsed.values["delete-branch"] === true,
+    dryRun: parsed.values["dry-run"] === true,
+    force: parsed.values.force === true,
+    runSetup: parsed.values["no-setup"] !== true,
     fromRef,
-    help,
-    json,
+    help: parsed.values.help === true,
+    json: parsed.values.json === true,
     pathOverride,
     repoOverride,
   };
+}
+
+function requireOptionValue(
+  value: string | undefined,
+  optionName: string,
+  valueDescription: string,
+): string | null {
+  if (value === undefined) return null;
+  if (value === "")
+    throw new Error(`Option "--${optionName}" requires a ${valueDescription} value.`);
+  return value;
 }
 
 function isCommandName(value: string | null): value is CommandName {

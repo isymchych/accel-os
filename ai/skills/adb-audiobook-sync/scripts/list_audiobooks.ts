@@ -1,3 +1,5 @@
+import { parseArgs as parseNodeArgs } from "node:util";
+
 import { discoverAudiobookFolders } from "./sync_audiobooks.ts";
 
 type Args = {
@@ -11,21 +13,27 @@ function usage(): never {
 }
 
 function parseArgs(argv: string[]): Args {
-  let json = false;
-  const positional: string[] = [];
+  const parsed = parseCliArgs(argv);
+  if (parsed.values.help === true) usage();
 
-  for (const arg of argv) {
-    if (arg === "--json") {
-      json = true;
-      continue;
-    }
-    if (arg === "-h" || arg === "--help") usage();
-    if (arg.startsWith("--")) usage();
-    positional.push(arg);
+  if (parsed.positionals.length > 1) usage();
+  return { dir: parsed.positionals[0] ?? process.cwd(), json: parsed.values.json === true };
+}
+
+// oxlint-disable-next-line typescript/explicit-function-return-type -- Preserve Node's option-specific inferred return type.
+function parseCliArgs(args: string[]) {
+  try {
+    return parseNodeArgs({
+      args,
+      allowPositionals: true,
+      options: {
+        help: { type: "boolean", short: "h" },
+        json: { type: "boolean" },
+      },
+    });
+  } catch {
+    return usage();
   }
-
-  if (positional.length > 1) usage();
-  return { dir: positional[0] ?? process.cwd(), json };
 }
 
 const args = parseArgs(process.argv.slice(2));

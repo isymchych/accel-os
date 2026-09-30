@@ -1,8 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import { runGit } from "../../lib/git_command.ts";
-
-type Mode = { kind: "workspace" } | { kind: "staged" } | { kind: "base"; baseRef: string };
+import { parseReviewMode, type ReviewMode } from "./review_mode.ts";
 
 type Finding = {
   file: string;
@@ -11,7 +10,7 @@ type Finding = {
   delegateCall: string;
 };
 
-const selectedMode = parseMode(process.argv.slice(2));
+const selectedMode = parseReviewMode(process.argv.slice(2));
 const files = await getChangedFiles(selectedMode);
 
 if (files.length === 0) {
@@ -44,22 +43,7 @@ for (const finding of detectedFindings) {
   console.log(`${finding.file}:${finding.line} ${finding.wrapperName} -> ${finding.delegateCall}`);
 }
 
-function parseMode(args: string[]): Mode {
-  if (args.length === 0) return { kind: "workspace" };
-  if (args.length === 1 && args[0] === "--staged") return { kind: "staged" };
-  const baseRef = args[1];
-  if (args.length === 2 && args[0] === "--base" && baseRef !== undefined && baseRef !== "") {
-    return { kind: "base", baseRef };
-  }
-  return usage();
-}
-
-function usage(): never {
-  console.error("ERR_USAGE: expected no args, --staged, or --base <ref>");
-  process.exit(64);
-}
-
-async function getChangedFiles(requestedMode: Mode): Promise<string[]> {
+async function getChangedFiles(requestedMode: ReviewMode): Promise<string[]> {
   const shared = ["diff", "--name-only", "--no-color", "--no-ext-diff", "--diff-filter=ACMR"];
   const diffArgs =
     requestedMode.kind === "workspace"

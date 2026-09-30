@@ -58,7 +58,7 @@ test("apply_commit preserves exact input in verbatim mode", () => {
     git(cwd, "add", "new.txt");
     const message = `feat: preserve message\n\n  indented detail\n${"x".repeat(110)}\n`;
 
-    const result = run(applyScript, cwd, ["create", "--verbatim"], message);
+    const result = run(applyScript, cwd, ["--verbatim", "create"], message);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /^OK [0-9a-f]{40}\n$/);
     assert.equal(commitBody(cwd), message);

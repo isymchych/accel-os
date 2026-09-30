@@ -75,6 +75,12 @@ test("parseArgs parses list json mode", () => {
   assert.deepEqual(parsed.json, true);
 });
 
+test("parseArgs preserves arguments after the standard option separator", () => {
+  const parsed = parseArgs(["checkout", "--", "--not-an-option"]);
+  assert.deepEqual(parsed.command, "checkout");
+  assert.deepEqual(parsed.positional, ["--not-an-option"]);
+});
+
 test("repo targeting uses AI_CWD by default and resolves relative --repo from it", () => {
   assert.deepEqual(getInvocationDirectory("/accel-os/scripts", "/work/project"), "/work/project");
   assert.deepEqual(getInvocationDirectory("/work/project", null), "/work/project");

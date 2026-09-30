@@ -1,5 +1,6 @@
 import { readdir, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 import { runCommand } from "@accel-os/shared/process";
 
@@ -71,46 +72,47 @@ function usage(): never {
 }
 
 export function parseArgs(argv: string[]): Args {
-  let destination = DEFAULT_DESTINATION;
-  let allAudiobooks = false;
-  let replaceExisting = false;
-  const positional: string[] = [];
+  const parsed = parseCliArgs(argv);
+  if (parsed.values.help === true) usage();
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (arg === "--destination") {
-      const value = argv[index + 1];
-      if (!value) usage();
-      destination = value;
-      index += 1;
-      continue;
-    }
-    if (arg === "--all-audiobooks") {
-      allAudiobooks = true;
-      continue;
-    }
-    if (arg === "--replace-existing") {
-      replaceExisting = true;
-      continue;
-    }
-    if (arg === "-h" || arg === "--help") usage();
-    if (arg?.startsWith("--")) usage();
-    if (arg) positional.push(arg);
-  }
-
-  if (positional.length === 0) usage();
-  const [sourceDir, ...folders] = positional;
+  if (parsed.positionals.length === 0) usage();
+  const [sourceDir, ...folders] = parsed.positionals;
   if (!sourceDir) usage();
-  if (allAudiobooks && folders.length > 0) {
+  if (parsed.values.destination === "") usage();
+  if (parsed.values["all-audiobooks"] === true && folders.length > 0) {
     console.error("ERR_USAGE: --all-audiobooks cannot be mixed with explicit folder names");
     process.exit(64);
   }
-  if (!allAudiobooks && folders.length === 0) {
+  if (parsed.values["all-audiobooks"] !== true && folders.length === 0) {
     console.error("ERR_USAGE: expected folder names or --all-audiobooks");
     process.exit(64);
   }
 
-  return { sourceDir, folders, allAudiobooks, destination, replaceExisting };
+  return {
+    sourceDir,
+    folders,
+    allAudiobooks: parsed.values["all-audiobooks"] === true,
+    destination: parsed.values.destination ?? DEFAULT_DESTINATION,
+    replaceExisting: parsed.values["replace-existing"] === true,
+  };
+}
+
+// oxlint-disable-next-line typescript/explicit-function-return-type -- Preserve Node's option-specific inferred return type.
+function parseCliArgs(args: string[]) {
+  try {
+    return parseNodeArgs({
+      args,
+      allowPositionals: true,
+      options: {
+        "all-audiobooks": { type: "boolean" },
+        destination: { type: "string" },
+        help: { type: "boolean", short: "h" },
+        "replace-existing": { type: "boolean" },
+      },
+    });
+  } catch {
+    return usage();
+  }
 }
 
 export function posixQuote(value: string): string {

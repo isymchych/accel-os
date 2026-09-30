@@ -1,3 +1,5 @@
+import { parseArgs as parseNodeArgs } from "node:util";
+
 import { parseJsonWithSchema } from "@accel-os/shared/json";
 import { runCommand } from "@accel-os/shared/process";
 import { Type, type Static } from "typebox";
@@ -156,46 +158,38 @@ function usage(): never {
 }
 
 function parseArgs(argv: string[]): Args {
-  let mainBranch = "main";
-  let dryRun = false;
-  let confirmDelete = "";
+  const parsed = parseCliArgs(argv);
+  if (parsed.values.help === true) usage();
+  if (parsed.values.main === "") fail("Missing value for --main");
+  if (parsed.values["confirm-delete"] === "") fail("Missing value for --confirm-delete");
 
-  let i = 0;
-  while (i < argv.length) {
-    const arg = argv[i];
-    switch (arg) {
-      case "--main":
-        const mainBranchValue = argv[i + 1];
-        if (!mainBranchValue) {
-          console.error("Missing value for --main");
-          process.exit(1);
-        }
-        mainBranch = mainBranchValue;
-        i += 2;
-        break;
-      case "--dry-run":
-        dryRun = true;
-        i += 1;
-        break;
-      case "--confirm-delete":
-        const confirmDeleteValue = argv[i + 1];
-        if (!confirmDeleteValue) {
-          console.error("Missing value for --confirm-delete");
-          process.exit(1);
-        }
-        confirmDelete = confirmDeleteValue;
-        i += 2;
-        break;
-      case "-h":
-      case "--help":
-        usage();
-      default:
-        console.error(`Unknown argument: ${arg}`);
-        process.exit(1);
-    }
+  return {
+    mainBranch: parsed.values.main ?? "main",
+    dryRun: parsed.values["dry-run"] === true,
+    confirmDelete: parsed.values["confirm-delete"] ?? "",
+  };
+}
+
+// oxlint-disable-next-line typescript/explicit-function-return-type -- Preserve Node's option-specific inferred return type.
+function parseCliArgs(args: string[]) {
+  try {
+    return parseNodeArgs({
+      args,
+      options: {
+        "confirm-delete": { type: "string" },
+        "dry-run": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+        main: { type: "string" },
+      },
+    });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error));
   }
+}
 
-  return { mainBranch, dryRun, confirmDelete };
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
 }
 
 async function run(

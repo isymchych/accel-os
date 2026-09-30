@@ -1,6 +1,5 @@
 import { runGit } from "../../lib/git_command.ts";
-
-type Mode = { kind: "workspace" } | { kind: "staged" } | { kind: "base"; baseRef: string };
+import { parseReviewMode, type ReviewMode } from "./review_mode.ts";
 
 type BoundaryFinding = {
   file: string;
@@ -9,7 +8,7 @@ type BoundaryFinding = {
   line: string;
 };
 
-const selectedMode = parseMode(process.argv.slice(2));
+const selectedMode = parseReviewMode(process.argv.slice(2));
 const diffArgs = getDiffArgs(selectedMode);
 const result = await runGit(diffArgs);
 
@@ -50,22 +49,7 @@ for (const [file, entries] of grouped.entries()) {
   }
 }
 
-function parseMode(args: string[]): Mode {
-  if (args.length === 0) return { kind: "workspace" };
-  if (args.length === 1 && args[0] === "--staged") return { kind: "staged" };
-  const baseRef = args[1];
-  if (args.length === 2 && args[0] === "--base" && baseRef !== undefined && baseRef !== "") {
-    return { kind: "base", baseRef };
-  }
-  return usage();
-}
-
-function usage(): never {
-  console.error("ERR_USAGE: expected no args, --staged, or --base <ref>");
-  process.exit(64);
-}
-
-function getDiffArgs(requestedMode: Mode): string[] {
+function getDiffArgs(requestedMode: ReviewMode): string[] {
   const shared = ["diff", "--no-color", "--no-ext-diff", "--unified=0"];
   if (requestedMode.kind === "workspace") return [...shared, "HEAD"];
   if (requestedMode.kind === "staged") return [...shared, "--staged"];

@@ -35,6 +35,16 @@ test("parseArgs accepts --all-audiobooks and custom destination", () => {
   });
 });
 
+test("parseArgs accepts the standard --option=value form", () => {
+  assert.deepEqual(parseArgs(["--destination=/sdcard/Books", "--all-audiobooks", "/books"]), {
+    sourceDir: "/books",
+    folders: [],
+    allAudiobooks: true,
+    destination: "/sdcard/Books",
+    replaceExisting: false,
+  });
+});
+
 test("parseArgs accepts --replace-existing", () => {
   assert.deepEqual(parseArgs(["--replace-existing", "/books", "Book"]), {
     sourceDir: "/books",
