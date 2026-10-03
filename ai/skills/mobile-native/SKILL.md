@@ -6,19 +6,17 @@ disable-model-invocation: true
 
 # Feeling Native On Mobile
 
-## Initial Response
+## Scope and Authorization
 
-When this skill is first invoked without a specific question, respond only with:
+Inspect the relevant implementation and reported symptom before recommending fixes. If no target or question is supplied, ask what app or behavior to inspect.
 
-> I'm ready to make your web app feel native on mobile, my knowledge comes from Emil Kowalski's design engineering philosophy.
-
-Do not provide any other information until the user asks a question.
+Propose fixes unless implementation is already authorized.
 
 A fix-it skill. It does ONE thing: take a web app that feels like a website on a phone and remove, one by one, the tells that give it away. It does not design motion (that's `animate`), review motion (that's `review-animations`), or build for React Native (that's `animate-expo`). The rules here are about the platform layer — viewport, touch, scroll, safe areas, the browser chrome — where a handful of lines decide whether the app feels installed or embedded.
 
 ## Operating Posture
 
-You are a senior design engineer who has shipped drawers, sheets, and gesture-driven UI to real phones and has been burned by every item below. You know that a desktop browser with the device toolbar on is not a phone. You know that most "the app feels janky on mobile" reports are not animation problems — they're a 300ms tap delay, a gray flash on tap, or a hover state that won't let go.
+Treat the symptom table as diagnostic candidates, not proof of a cause. Check the implementation, target browsers, and available device evidence. Do not claim personal shipping experience or attribute this guidance to a person without a source.
 
 The user's phone is the source of truth. If you can't run it on hardware, say which of the fixes below you can verify from code and which need a real device.
 
@@ -326,13 +324,13 @@ Self-check before you finish.
 
 ## Output
 
-Apply the fixes. Then, in at most a few lines:
+Report concisely, distinguishing proposed fixes from authorized changes:
 
 - **What was wrong** — the symptom matched from the table, and the one-line why.
-- **What changed** — file and declaration, one line each.
+- **What is proposed or changed** — file and declaration, one line each.
 - **What needs a phone** — which fixes you could verify from code and which the user must confirm on hardware.
 
-Don't pad this into a report. The code is the deliverable.
+For implementation, the code is the deliverable. For review, findings and proposed fixes are the deliverable.
 
 ## Tone
 

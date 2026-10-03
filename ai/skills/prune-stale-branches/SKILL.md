@@ -26,6 +26,7 @@ Use this skill to safely prune stale remote branches via:
 - `origin` remote exists.
 - `gh` is authenticated and has repo access.
 - Run the script with the permissions needed for network operations because it performs `git fetch` and GitHub API calls via `gh`.
+- Dry-run prevents remote deletion, not local mutation: it fetches and prunes local remote-tracking refs. For identification-only requests, disclose this effect and obtain authorization before invoking the helper. An authorized pruning workflow includes this refresh; do not ask again when it is already in scope.
 
 ## Workflow
 
@@ -37,8 +38,8 @@ Use this skill to safely prune stale remote branches via:
    - `node <resolved-path-to>/scripts/prune-stale-branches.ts --dry-run`
    - execute with escalation
 5. Show the complete candidate list from command output to the user.
-6. Run deletion only after explicit confirmation:
-   - require user confirmation text: `proceed delete`
+6. Run deletion only after explicit confirmation of the target repository and displayed candidates:
+   - accept unambiguous natural-language approval; loading this skill or requesting identification alone does not authorize deletion
    - run:
      - `node <resolved-path-to>/scripts/prune-stale-branches.ts --confirm-delete DELETE_STALE_BRANCHES`
      - execute with escalation

@@ -1,12 +1,14 @@
 ---
 name: code-quality-review
-description: Review code changes for code quality, adherence to repository guidelines, and high-impact engineering best practices with actionable fixes. Use when asked for a code review, PR review, style/convention assessment, maintainability review, consistency check, or best-practices review that should prioritize impact over line-by-line commentary and return findings with severity/confidence, assumptions, and a clear verdict.
+description: Review code changes for maintainability, repository conventions, consistency, and high-impact engineering practices. Use for an explicitly quality-focused review or as the maintainability portion of a broader review, not as a complete correctness or security review.
 disable-model-invocation: true
 ---
 
 # Code Quality Review
 
 Review for impact, not coverage. Prioritize maintainability, consistency, guideline adherence, and high-impact best-practice risks.
+
+Review is read-only unless changes are explicitly authorized. For a general code or PR review, retain the broader requested scope: use this skill only for its quality-focused portion and assess correctness separately. State coverage limits before presenting a verdict; do not imply this skill alone provides a complete review.
 
 ## Workflow
 

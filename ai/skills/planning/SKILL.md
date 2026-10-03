@@ -14,10 +14,17 @@ consequential decisions requiring user input.
 
 ## Approach
 
+- When a still-applicable plan exists, update its affected steps rather than
+  generating a replacement plan.
 - Inspect the affected flow, relevant code, tests, and guidance before proposing
   steps. Ground the plan in existing mechanisms and constraints.
 - State the intended outcome and recommend one approach. Explain consequential
   choices; discuss alternatives only when they materially change the decision.
+- Before splitting work, identify ownership of rules, state, and side effects,
+  boundary contracts, and invariant enforcement. Keep cohesive behavior together
+  and shared rules under one owner. Reuse suitable boundaries; change them only
+  for evidenced coupling, policy duplication, implementation leaks, or distinct
+  trust or lifecycle needs, not speculative reuse.
 - Include design detail where it affects execution: ownership, contracts, data
   flow, invariants, or migration. Name relevant files, interfaces, and test seams
   when they clarify the work; leave routine implementation details to execution.
@@ -47,6 +54,8 @@ consequential decisions requiring user input.
 - Before presenting the plan, check that it covers the requested outcome and
   constraints, that dependencies agree, and that material risks and failure modes
   have a check or mitigation.
+- Check that steps follow the chosen ownership boundaries rather than spreading
+  the same rule across callers.
 
 ## Presentation
 

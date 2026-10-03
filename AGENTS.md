@@ -79,6 +79,7 @@
 
 ## AI / Codex Skills
 
+- When creating or editing coding-agent prompts or skills, read and follow `$ACCEL_OS/ai/SKILLS_AND_PROMPTS_INTENT.md`.
 - Skill helper scripts should be Node TypeScript run directly with `node`, not Deno or Python.
 - When a skill references cross-folder policy docs, use `$ACCEL_OS` absolute paths because relative paths drift by working directory.
 

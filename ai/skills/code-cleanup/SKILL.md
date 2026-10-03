@@ -28,8 +28,8 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
    - Skip it if no such follow-up is clearly justified.
 7. Use the required cleanup checks during critique to select the highest-value in-scope cleanup, and use them during cleanup only as needed to complete the chosen refactor cleanly:
    - Fix coding-guideline violations (personal and project).
-   - Remove useless defensive coding when invariants, types, control flow, or surrounding architecture already make the guarded case impossible or non-actionable.
-   - Convert methods to module-level functions when they do not use `this`.
+   - Before removing a guard, inspect its intent and affected callers. Remove it only when evidence shows that supported inputs and boundary contracts make it redundant; unknown intent is not proof of redundancy.
+   - Consider converting methods that do not use `this` to module-level functions only after checking interface contracts, overrides, callbacks, and callers; lack of instance-state access alone does not make a method unnecessary.
    - Replace hard-to-read type-level indirection (index types, utility extraction) with explicit readable types.
    - Introduce branded types where they improve correctness and readability.
    - Prefer pure collection helpers that return values over mutating caller-provided accumulators; allow mutable sinks only when required by API constraints, streaming behavior, or measured performance/allocation needs.
@@ -45,6 +45,7 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
 
 - Resolve conflicting instructions in this order: explicit user constraints, `AGENTS.md` execution rules, repository guidelines, then this skill.
 - Prefer the simplest design that reduces cognitive load in the touched area.
+- Treat cleanup checks as candidates, not quotas. Require a concrete benefit and preserved contracts for each change; no change warranted is a valid outcome.
 - Reject speculative abstractions, extra configuration, and preemptive generalization.
 - Prefer explicit invariants and direct control flow over redundant guards, fallback branches, or defensive checks that do not protect a real supported case.
 - Preserve API behavior unless the user explicitly approves a break/migration.
@@ -60,24 +61,9 @@ Use this as a strict cleanup workflow, not a rewrite workflow. Keep behavior unc
 
 ## Output Expectations
 
-Use this exact section order:
+Report the scope, concrete changes and their benefit, and behavior impact (`none` unless explicitly requested). Include exact verification commands and outcomes (`pass`, `fail`, `not_run`), material assumptions, and remaining risks.
 
-1. `Summary`
-   - Cleanup scope (files/areas touched)
-   - Behavior impact statement (`none` unless explicitly requested)
-2. `Changes Made`
-   - Per-file concrete edits and why each reduced complexity
-3. `Pass Results`
-   - Critique pass: scope scanned, prioritized issues identified, and cleanup selection
-   - Cleanup pass: files changed, checks run, and stop/continue decision
-   - Closure check: whether a follow-up was justified and why
-   - Optional tiny follow-up pass (if used): why it was justified, files changed, and stop decision
-4. `Deferred Recommendations`
-   - Out-of-scope cleanup opportunities discovered but not edited
-5. `Checks Run`
-   - Exact commands executed and outcomes (`pass`, `fail`, `not_run`)
-6. `Assumptions and Risks`
-   - Assumptions, residual risk, and any verification gaps
+Explain an optional follow-up pass or a blocking check when one affected execution. Mention deferred recommendations only when useful. A no-change outcome needs only the evidence supporting it and any verification limits, not a report for each workflow phase.
 
 Rules:
 

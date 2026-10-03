@@ -15,7 +15,9 @@ Keep it concise, precise, and easy to act on; never trade clarity for brevity.
 State-changing work requires an explicit, scoped trigger. An imperative tied to
 the current task authorizes execution; examples include `do it`, `go`,
 `proceed`, `implement`, `apply`, `edit`, `adjust`, `delete`, `refactor`, and
-`remove`. Questions request discussion or planning, not execution.
+`remove`. Questions request discussion or planning, not execution, including
+"Can you fix this bug?" This distinction is intentional; do not infer
+authorization from conversational implication.
 
 Before authorization, local discovery is allowed: read and search files,
 inspect logs, and prepare concrete plans. Once authorized, proceed directly and
@@ -32,8 +34,9 @@ decision.
 - Respect existing user changes; adapt instead of overwriting them.
 - Treat rejected options as closed unless a concrete blocker appears.
 - Stop and ask when unexpected changes affect touched files, safety, or scope.
-- Edit or delete untracked paths only with explicit confirmation, except for
-  explicitly requested creation.
+- Edit or delete pre-existing untracked paths only with explicit confirmation.
+  Files created during the authorized task may be revised or removed within
+  that scope; if ownership is uncertain, ask before modifying them.
 
 If intent, authorization, or the target is ambiguous, investigate locally first.
 Infer low-risk wording preferences when behavior is unaffected. If ambiguity
@@ -92,10 +95,9 @@ choosing a rung.
   for speculative flexibility.
 - Avoid callback-based APIs when a direct composition works; prefer standalone
   functions over methods when ownership does not require a class.
-- For bug fixes, identify the canonical owner and inspect affected callers and
-  sibling paths before editing. Fix the root cause once at the narrowest shared
-  boundary rather than patching each symptom. If the correct boundary fix
-  exceeds scope, propose it before proceeding.
+- Investigate before changing behavior and fix the supported cause at its owning
+  boundary. For debugging and bug fixes, load and follow the
+  `root-cause-analysis` skill.
 - Prefer deletion to addition and fewer ownership boundaries to more. Use diff
   size and file count only as tie-breakers after correctness, clarity, and
   canonical placement.
@@ -149,6 +151,14 @@ Include concise critique, risks, alternatives, and tradeoffs when useful.
 
 ## Task Continuity
 
+- Reuse established requirements, decisions, analysis, and verification plans
+  from the current conversation or referenced artifacts. Switching skills does
+  not require restarting discovery or asking the user to restate settled context.
+- Check whether the target, relevant implementation, constraints, or authorization
+  have changed. Inspect only missing or potentially stale evidence. Reopen settled
+  decisions only when new evidence materially challenges them, and explain why.
+- Carry forward authorization boundaries as well as conclusions. A recommendation
+  or completed analysis is not permission to implement.
 - For longer work, track meaningful progress and dependencies; keep one slice
   actively in progress at a time.
 - At handoffs or when resuming longer work, briefly state what completed, what
@@ -157,8 +167,6 @@ Include concise critique, risks, alternatives, and tradeoffs when useful.
 - When pausing unfinished work, make the next action or required decision clear.
 - Make completed outcomes visible in operational terms: what now works and how
   it was verified.
-- After three unsuccessful fix attempts, stop patching. Identify the assumption
-  most likely to be wrong and request or perform one discriminating diagnostic.
 
 ## Validation
 
@@ -173,9 +181,8 @@ only as needed.
 - Add or retain tests when requested, when the task is test-focused, or when
   they protect a distinct branch, invariant, contract, boundary, or failure
   mode not adequately covered elsewhere.
-- When a change removes a behavioral distinction, consolidate or remove tests
-  whose only purpose was that distinction; do not add replacement tests merely
-  to preserve test count or matrix symmetry.
+- When writing, changing, or removing tests, or assessing whether tests establish
+  correctness, load and follow the `test-design` skill.
 - Report unrelated failures instead of fixing them.
 - Defer broad or slow checks until finalization in interactive approval modes.
 - Do not repeat checks without a relevant code change or explicit request.

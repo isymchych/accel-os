@@ -50,6 +50,9 @@ Omit purely cosmetic issues.
 
 Review standard:
 
+- Apply the requirement-preservation principles in `$ACCEL_OS/ai/skills/normative-documents/SKILL.md` within this read-only critique; keep the output format above.
+- Label weakened or removed requirements as proposed behavior changes, not equivalent wording.
+- Preserve load-bearing rationale and constraints even when they are historical, negative, or implementation-specific.
 - prefer domain rules over storage/code details
 - prefer self-contained wording
 - remove “legacy / no longer / flat / historical / old model” style framing unless truly required

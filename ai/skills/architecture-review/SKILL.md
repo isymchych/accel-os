@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Evaluate structural quality, not line-level bugs. Focus on decisions that change dependency direction, abstraction depth, and where complexity lives.
 
+Review is read-only unless changes are explicitly authorized. Treat structural heuristics and helper output as investigation signals, not findings. Report only evidenced risks; no change warranted is a valid conclusion.
+
 ## Review Scope
 
 - Module boundaries and contracts
@@ -57,7 +59,7 @@ node <resolved-path>/scripts/find-pass-through.ts [--staged | --base <ref>]
 
 ### 4) Check Depth And Layering
 
-- Flag pass-through functions/classes that only mirror another API.
+- Inspect pass-through functions/classes that mirror another API; flag them only when they add avoidable coupling or indirection without a useful policy, contract, or lifecycle boundary.
 - Check whether adjacent layers expose the same abstraction.
 - Prefer deeper modules with simpler caller APIs.
 
@@ -65,12 +67,12 @@ node <resolved-path>/scripts/find-pass-through.ts [--staged | --base <ref>]
 
 - Count concepts a caller must hold to use the change correctly.
 - Verify common paths stay obvious and low-configuration.
-- Flag interfaces that cannot be explained in 1-3 sentences.
+- Use difficulty explaining an interface briefly as a reason to investigate; identify the concrete caller burden before reporting a finding.
 
 ### 6) Evaluate Change Amplification
 
-- If one behavior tweak requires edits in 3+ files, find the leaked decision.
-- Recommend centralizing at a stronger boundary.
+- When one behavior tweak requires coordinated edits, check whether a rule is duplicated or responsibilities are legitimately distinct, such as implementation, tests, and documentation.
+- Recommend centralizing only when evidence shows a leaked decision or unnecessary coupling.
 - Prefer reducing call-site complexity even if callee complexity increases.
 
 ### 7) Classify Migration Impact

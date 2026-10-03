@@ -73,12 +73,15 @@ export default function askUserQuestionExtension(pi: ExtensionAPI): void {
     name: TOOL_NAME,
     label: "Ask User Question",
     description:
-      "Ask the user structured questions with choices and a free-text alternative when a consequential missing decision blocks progress. Group related questions into one call.",
-    promptSnippet: "Ask for consequential missing decisions using choices or free text.",
+      "Present user questions as concise choices with a free-text alternative when structured options make answering easier.",
+    promptSnippet: "Make needed user input easier with concise choices or free text.",
     promptGuidelines: [
-      "Use ask_user_question only when a user decision blocks progress, not for details you can reasonably resolve. Group related questions.",
+      "Follow system, planning, and user instructions to decide when to ask for input; this tool does not create additional clarification or approval checkpoints.",
+      "When input is needed, prefer ask_user_question if concrete choices make answering easier. Use plain chat for open-ended discussion or when choices would feel forced; do not invent options just to use the tool.",
+      "Ask one focused question by default; group only closely related decisions. Keep choices concise and explain meaningful trade-offs where needed.",
       "Provide 1-4 questions with 2-6 distinct choices each. Free text is offered automatically; do not add an Other choice.",
       "Questionnaire answers express preferences or decisions; they do not implicitly authorize unrelated work. Cancellation submits no answers.",
+      "Do not repeat a cancelled questionnaire unless the user requests it.",
     ],
     parameters: Parameters,
     exposure: "model-only",

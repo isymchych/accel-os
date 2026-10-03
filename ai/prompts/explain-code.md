@@ -5,6 +5,9 @@ argument-hint: "<diff, commit/range, file, folder, project area, or pasted code>
 
 Explain this code target for a maintainer: **$ARGUMENTS**.
 
+Explanation only: keep files, git state, and external systems unchanged.
+Ask before diagnostics with unclear or persistent side effects.
+
 The target may be a git diff, commit/range, file path, folder path, project area, or pasted code.
 
 First classify the target:

@@ -65,13 +65,16 @@ revisit the most doubtful assumption, and choose one discriminating diagnostic.
 
 Once authorized, fix the supported cause at its owning boundary. Separate
 containment from correction when both are needed. Add prevention measures only
-when they address an evidenced risk within the approved scope.
+when they address an evidenced risk within the approved scope. If the correct
+boundary fix exceeds scope, propose the expansion before proceeding.
 
 Where feasible, demonstrate the failure before the correction and its absence
-afterward. Retain or add a regression check for the distinct failure mechanism,
-and check affected behavior. A passing suite alone does not establish that the
-reported failure is resolved. State what was verified and what remains untested;
-do not claim broader recurrence prevention than the evidence supports.
+afterward. Load and follow `$ACCEL_OS/ai/skills/test-design/SKILL.md` for
+independent expectations and meaningful failures. Retain or add a regression check for
+the distinct failure mechanism, and check affected behavior. A passing suite
+alone does not establish that the reported failure is resolved. State what was
+verified and what remains untested; do not claim broader recurrence prevention
+than the evidence supports.
 
 ## Report Proportionally
 

@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Actively build and sharpen the project's domain model as work happens. This skill is for changing or documenting the model, not merely reading vocabulary.
 
+Resolving a domain question does not itself authorize a document edit.
+
 Prefer project-local domain documents such as `docs/domain-model.md` as the canonical domain context.
 
 ## Source Of Truth
@@ -53,7 +55,7 @@ For multi-domain repositories, prefer the narrowest matching domain doc near the
 
 ### 5) Update The Domain Document
 
-- Update docs when a term, rule, relationship, boundary, or transition is resolved.
+- When documentation changes are authorized, update docs when a term, rule, relationship, boundary, or transition is resolved. Otherwise present the proposed update.
 - Do not batch resolved domain facts unnecessarily; capture them while the context is fresh.
 - Do not document guesses as facts.
 - If available evidence is insufficient, ask targeted questions before writing unsupported claims.
