@@ -10,6 +10,7 @@ const excludedToolNames = ["write", "grep", "find", "ls"];
 const builtinExtensionPaths = ["builtin:mcp", "builtin:codemode", "builtin:tool-search"];
 const sharedExtensionNames = [
   "apply-patch",
+  "ask-user-question",
   "read-tool",
   "compact-tool-output",
   "context",

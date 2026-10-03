@@ -22,6 +22,15 @@ test("buildPiArgs explicitly loads native MCP and codemode extensions", async ()
   assert.ok(!args.some((value) => value.includes("pi-mcp-adapter")));
 });
 
+test("buildPiArgs loads ask-user-question for both navigation backends", async () => {
+  for (const backend of ["tilth", "srcwalk"] as const) {
+    const args = await buildPiArgs("/repo", backend);
+    const index = args.indexOf("/repo/ai/pi/extensions/ask-user-question/index.ts");
+    assert.ok(index > 0);
+    assert.equal(args[index - 1], "--extension");
+  }
+});
+
 test("configurePiEnvironment selects the agent Git config for every Pi child", () => {
   const previousCodingAgentDir = process.env["PI_CODING_AGENT_DIR"];
   const previousSessionDir = process.env["PI_CODING_AGENT_SESSION_DIR"];
