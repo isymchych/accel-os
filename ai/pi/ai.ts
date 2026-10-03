@@ -11,14 +11,14 @@ const usage = `ai [account] [tilth|srcwalk] [-- <pi args...>]
 
 Examples:
   ai
-  ai srcwalk
+  ai tilth
   ai account
   ai -- --help
 
 Notes:
   - By default, ai appends ai/SYSTEM.md.
   - ai loads its extensions explicitly; Pi extension auto-discovery is disabled.
-  - ai loads Pi-native, one-shot Tilth CLI tools by default; \`srcwalk\` selects srcwalk instead.
+  - ai loads srcwalk tools by default; \`tilth\` selects Pi-native, one-shot Tilth CLI tools instead.
   - Tool search is available for deferred tools. Enable configured MCP servers through \`/mcp\`.
   - ai excludes built-in tools superseded by this configuration: write, grep, find, and ls.
   - \`account\` selects an isolated OpenAI Codex credential profile and then opens Pi.

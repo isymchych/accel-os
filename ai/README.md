@@ -4,7 +4,7 @@
 - Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation
   - https://github.com/nicobailon/pi-subagents
   - https://github.com/ruizrica/agent-pi
-  - https://github.com/juicesharp/rpiv-mono
+  - https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-workflow
 - ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
 - setup terminal multiplexer - as a part of ai?
 - /side (codex) or /btw (pi, claude)
@@ -20,6 +20,7 @@
 - subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
 - pi-extensible-workflows
 - web workspace for agents
+  - based on pi-durable?
   - agent types
   - orchestrator - picks teams of agents for tasks (or builds them)
   - https://blog.mempko.com/the-planning-dilemma-in-ai-coding-superpowers-vs-abject/
@@ -221,7 +222,7 @@ Makes targeted fixes based on evidence
 
 - <https://github.com/jahala/tilth>
 - <https://github.com/ind-igo/cx>
-- TODO <https://github.com/sting8k/srcwalk>
+- <https://github.com/sting8k/srcwalk>
 
 ## CLI output compressors
 

@@ -8,7 +8,7 @@ export interface LauncherArgs {
 }
 
 export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
-  let codeNavigation: CodeNavigationBackend = "tilth";
+  let codeNavigation: CodeNavigationBackend = "srcwalk";
   let codeNavigationWasSelected = false;
   let showHelp = false;
   let useAccountSwitcher = false;

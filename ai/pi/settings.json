@@ -1,6 +1,6 @@
 {
   "theme": "system",
-  "lastChangelogVersion": "0.99.1",
+  "lastChangelogVersion": "1.0.0",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
   "defaultProvider": "openai-codex",
