@@ -5,6 +5,8 @@
  * submission. Cancellation never submits partial decisions. The tool is
  * model-only so user interaction cannot be hidden inside a codemode script.
  */
+import { basename } from "node:path";
+
 import type {
   ExtensionAPI,
   ExtensionToolContext,
@@ -12,6 +14,11 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 
+import {
+  createNotificationId,
+  sendUnfocusedKittyNotification,
+  type KittyNotification,
+} from "../shared/notify.ts";
 import { QuestionnaireDialog } from "./dialog.ts";
 import {
   formatResult,
@@ -24,10 +31,19 @@ import {
 
 export const TOOL_NAME = "ask_user_question";
 
+function createQuestionnaireNotification(cwd: string): KittyNotification {
+  return {
+    id: createNotificationId("questionnaire"),
+    title: "Pi needs your input",
+    body: `${basename(cwd)} is waiting`,
+  };
+}
+
 export async function showQuestionnaire(
-  ctx: Pick<ExtensionToolContext, "ui">,
+  ctx: Pick<ExtensionToolContext, "cwd" | "ui">,
   questions: readonly Question[],
   signal?: AbortSignal,
+  notify: (notification: KittyNotification) => void = sendUnfocusedKittyNotification,
 ): Promise<Result> {
   if (signal?.aborted) return { status: "aborted", answers: [] };
   let removeAbortListener = (): void => {};
@@ -47,7 +63,11 @@ export async function showQuestionnaire(
       removeAbortListener = (): void => signal?.removeEventListener("abort", abort);
       signal?.addEventListener("abort", abort, { once: true });
       // The signal can change between the initial guard and factory invocation.
-      if (signal?.aborted) abort();
+      if (signal?.aborted) {
+        abort();
+        return dialog;
+      }
+      notify(createQuestionnaireNotification(ctx.cwd));
       return dialog;
     });
   } finally {

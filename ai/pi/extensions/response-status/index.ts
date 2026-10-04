@@ -11,7 +11,7 @@ import type {
   WorkingIndicatorOptions,
 } from "@earendil-works/pi-coding-agent";
 
-import { notifyForLongResponse } from "./notify.ts";
+import { notifyForLongResponse, notifyForSummary } from "./notify.ts";
 import {
   createCompletedTimerSummary,
   createWorkingTimerMessage,
@@ -141,7 +141,14 @@ function lastAssistantMessageWasError(messages: readonly MessageLike[]): boolean
   return false;
 }
 
-export default function responseStatusExtension(pi: ExtensionAPI): void {
+type ResponseStatusOptions = {
+  notifySummary?: typeof notifyForSummary;
+};
+
+export default function responseStatusExtension(
+  pi: ExtensionAPI,
+  { notifySummary = notifyForSummary }: ResponseStatusOptions = {},
+): void {
   let startedAt: number | undefined;
   let interval: ReturnType<typeof setInterval> | undefined;
   let baseTitle = TITLE_PREFIX;
@@ -332,11 +339,13 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
         getCompletedPromptCacheUsage(),
       );
       ctx.ui.notify(`${theme.fg("success", "✓")} ${theme.fg("accent", summary)}`, "info");
-      notifyForLongResponse({
-        elapsedMs,
-        messages: event.messages,
-        summary,
-      });
+      if (ctx.mode === "tui") {
+        notifyForLongResponse({
+          elapsedMs,
+          messages: event.messages,
+          summary,
+        });
+      }
     }
 
     resetRunState();
@@ -345,6 +354,18 @@ export default function responseStatusExtension(pi: ExtensionAPI): void {
     setIdleTitle(ctx);
     applyWorkingIndicator(ctx);
     clearWorkingTimer(ctx);
+  });
+
+  pi.on("session_compact", (event, ctx) => {
+    if (ctx.mode === "tui" && event.reason === "manual") {
+      notifySummary("compaction", ctx.cwd);
+    }
+  });
+
+  pi.on("session_tree", (event, ctx) => {
+    if (ctx.mode === "tui" && event.summaryEntry !== undefined) {
+      notifySummary("branch", ctx.cwd);
+    }
   });
 
   pi.on("session_shutdown", (_event, ctx) => {

@@ -17,6 +17,10 @@
     "ls",
     "codemode"
   ],
+  "codemode": {
+    "mode": "only",
+    "inlineBudget": 3000
+  },
   "autocompleteMaxVisible": 16,
   "skills": [
     "./skills"
@@ -41,5 +45,6 @@
   "terminal": {
     "showTerminalProgress": false
   },
-  "enableInstallTelemetry": false
+  "enableInstallTelemetry": false,
+  "tuiMode": "regular"
 }

@@ -39,9 +39,11 @@ Tools unavailable from the official repositories or AUR live in the
 `external_tools` section of `dotfiles/.chezmoidata/packages.yaml`. Pin each
 GitHub release artifact by its HTTPS URL, archive SHA-256, installed binary
 name, and binary SHA-256. Chezmoi validates unique binary targets, then
-downloads, verifies, and atomically installs missing or drifted binaries in
-`~/.local/bin` after package installation; `just doctor` verifies the installed
-checksum.
+downloads, verifies, and atomically installs binaries in `~/.local/bin` after
+package installation when the rendered installer changes. Update the release
+URL and both checksums, then run `chezmoi apply` to upgrade; releases are not
+updated automatically. `just doctor` verifies the installed checksum; unchanged
+pins do not trigger automatic repair of missing or modified binaries.
 
 ## Install Arch
 

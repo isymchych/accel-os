@@ -1,10 +1,16 @@
-import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename } from "node:path";
+
+import {
+  createNotificationId,
+  NOTIFICATION_BODY_LIMIT,
+  NOTIFICATION_TITLE_LIMIT,
+  sanitizeNotificationText,
+  sendUnfocusedKittyNotification,
+  truncateNotificationText,
+  type KittyNotification,
+} from "../shared/notify.ts";
 
 const NOTIFY_THRESHOLD_MS = 3_000;
-const TITLE_LIMIT = 80;
-const BODY_LIMIT = 160;
 
 type TextPart = {
   text: string;
@@ -15,75 +21,12 @@ type MessageLike = {
   content?: unknown;
 };
 
+export type SummaryNotificationKind = "compaction" | "branch";
+
 function isTextPart(value: unknown): value is TextPart {
   return (
     typeof value === "object" && value !== null && "text" in value && typeof value.text === "string"
   );
-}
-
-function notifyOSC777(title: string, body: string): void {
-  process.stdout.write(`\x1b]777;notify;${title};${body}\x07`);
-}
-
-function notifyOSC99(title: string, body: string): void {
-  process.stdout.write(`\x1b]99;i=1:o=unfocused:d=0;${title}\x1b\\`);
-  process.stdout.write(`\x1b]99;i=1:p=body;${body}\x1b\\`);
-}
-
-function notify(title: string, body: string): void {
-  if (!process.stdout.isTTY) {
-    return;
-  }
-
-  if ((process.env["KITTY_WINDOW_ID"] ?? "").length > 0) {
-    notifyOSC99(title, body);
-    return;
-  }
-
-  notifyOSC777(title, body);
-}
-
-function playNotificationSound(): void {
-  if (!process.stdout.isTTY) {
-    return;
-  }
-
-  const accelOs = process.env["ACCEL_OS"];
-  if (accelOs === undefined || accelOs.length === 0) {
-    return;
-  }
-
-  const soundPath = join(accelOs, "ai", "mixkit-correct-answer-tone-2870.wav");
-  if (!existsSync(soundPath)) {
-    return;
-  }
-
-  if (process.platform === "linux") {
-    execFile("paplay", [soundPath], (error) => {
-      if (!error) {
-        return;
-      }
-
-      execFile("pw-play", [soundPath], () => undefined);
-    });
-  }
-}
-
-function sanitizePreview(text: string): string {
-  return text
-    .replace(/\s+/g, " ")
-    .replaceAll(";", " ")
-    .replaceAll("\u0007", " ")
-    .replaceAll("\u001b", " ")
-    .trim();
-}
-
-function truncate(text: string, limit: number): string {
-  if (text.length <= limit) {
-    return text;
-  }
-
-  return `${text.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
 }
 
 function extractTextParts(content: unknown): string[] {
@@ -116,7 +59,7 @@ function findLastTextByRole(messages: readonly MessageLike[], role: string): str
       continue;
     }
 
-    const text = sanitizePreview(extractTextParts(message.content).join(" "));
+    const text = sanitizeNotificationText(extractTextParts(message.content).join(" "));
     if (text.length > 0) {
       return text;
     }
@@ -137,19 +80,19 @@ export function createLongResponseNotification(
 
   const title =
     userPreview !== undefined && userPreview.length > 0
-      ? truncate(userPreview, TITLE_LIMIT)
+      ? truncateNotificationText(userPreview, NOTIFICATION_TITLE_LIMIT)
       : "Pi reply ready";
 
   if (assistantPreview !== undefined && assistantPreview.length > 0) {
     return {
       title,
-      body: truncate(`${assistantPreview} · ${summary}`, BODY_LIMIT),
+      body: truncateNotificationText(`${assistantPreview} · ${summary}`, NOTIFICATION_BODY_LIMIT),
     };
   }
 
   return {
     title,
-    body: truncate(`Ready for input · ${summary}`, BODY_LIMIT),
+    body: truncateNotificationText(`Ready for input · ${summary}`, NOTIFICATION_BODY_LIMIT),
   };
 }
 
@@ -157,16 +100,33 @@ export function notifyForLongResponse({
   elapsedMs,
   messages,
   summary,
+  notify = sendUnfocusedKittyNotification,
 }: {
   elapsedMs: number;
   messages: readonly MessageLike[];
   summary: string;
+  notify?: (notification: KittyNotification) => void;
 }): void {
   if (elapsedMs < NOTIFY_THRESHOLD_MS) {
     return;
   }
 
   const notification = createLongResponseNotification(messages, summary);
-  notify(notification.title, notification.body);
-  playNotificationSound();
+  notify({
+    id: createNotificationId("response"),
+    ...notification,
+  });
+}
+
+/** Sends an unfocused-only notification after a user-requested summarization succeeds. */
+export function notifyForSummary(
+  kind: SummaryNotificationKind,
+  cwd: string,
+  notify: (notification: KittyNotification) => void = sendUnfocusedKittyNotification,
+): void {
+  notify({
+    id: createNotificationId("summary"),
+    title: "Pi summarization complete",
+    body: `${basename(cwd)} · ${kind === "compaction" ? "Context compacted" : "Branch summary ready"}`,
+  });
 }

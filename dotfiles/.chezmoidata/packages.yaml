@@ -239,8 +239,8 @@ external_tools:
         base:
           ai:
             - name: snip
-              url: https://github.com/edouard-claude/snip/releases/download/v0.25.0/snip_0.25.0_linux_amd64.tar.gz
-              archive_sha256: 3fc735016e99622dedffd3650a54bbe5f326bdf962ca73be24a4086456f1d646
+              url: https://github.com/edouard-claude/snip/releases/download/v0.25.2/snip_0.25.2_linux_amd64.tar.gz
+              archive_sha256: f75272d9e55ff6e9bedf5f18a13450907f62f747a8b43d03ca703b82357418e8
               binary: snip
-              binary_sha256: c5d58a58839d1b5e86692d8a8d0ded6a8084372b1358b0cea8f289e3d3b6ce1b
+              binary_sha256: 942ee716b90b97ee391786dadb4d53c9894def9561fe4eb4cae90431d1f5c76d
         features: {}

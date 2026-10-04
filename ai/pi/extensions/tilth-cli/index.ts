@@ -15,6 +15,9 @@
  *
  * The tradeoff is repeated parsing and maintenance of this thin adapter, which
  * is accepted in favor of branch-local, explicit, deterministic tool behavior.
+ * Read/search/list stay inline; specialized analysis is discovered through codemode.
+ * Codemode sessions load workflow instructions from the namespace on demand;
+ * direct-tool sessions keep the full inline workflow.
  */
 import {
   defineTool,
@@ -66,6 +69,7 @@ const tilthToolNameSet = new Set<string>(tilthToolNames);
 const TILTH_GUIDANCE = `## Tilth CLI workflow
 
 - Search first with \`tilth_search\`; it returns definitions, usages, and expanded top matches.
+- For specialized tools not listed in codemode, use \`searchTools()\` with namespace \`tilth\`, then \`describeTool()\` before calling them.
 - Do not re-read source already present in expanded search results.
 - Use \`tilth_read\` for a known file or focused section; use the host \`read\` tool only when exact raw formatting or instruction loading matters.
 - Use \`tilth_list\` only when no useful symbol or text query is available.
@@ -75,14 +79,34 @@ const TILTH_GUIDANCE = `## Tilth CLI workflow
     - Tilth search/read/list/deps/grok tools can inspect another repository or checkout: pass its absolute path as \`scope\`. For \`tilth_diff\`, pass it as \`repository\`; \`scope\` is a repository-relative changed file or \`file:function\` filter, not a directory.
 - For authorized inspection of temporary or untrusted clones, prefer Tilth search/read/list over \`git grep\`, \`git ls-files\`, \`find\`, or broad file reads. Tilth inspects files; it does not execute repository code.`;
 
+const tilthNamespace = {
+  name: "tilth",
+  description:
+    "Source navigation with read/search/list; search this namespace for dependencies, end-to-end symbol maps, and structural change review.",
+  instructions: TILTH_GUIDANCE,
+};
+
+const TILTH_BOOTSTRAP = `## Tilth CLI workflow
+
+- Prefer Tilth for source navigation. Before using it, retrieve \`describeNamespace("tilth")\` if its workflow is absent from current context, and read the returned instructions before making Tilth calls.
+- Preserve evidence qualifiers; structural results are not proof of runtime behavior.`;
+
 export default function tilthCliExtension(pi: ExtensionAPI): void {
   const execTilth: TilthExec = async (command, args, options) => pi.exec(command, args, options);
-  const getActiveTilthTools = (): ReadonlySet<string> => new Set(pi.getActiveTools());
+  const getCallableTilthTools = (): ReadonlySet<string> =>
+    new Set([
+      ...pi.getActiveTools(),
+      ...pi
+        .getAllTools()
+        .filter((tool) => tool.exposure === "codemode" || tool.exposure === "deferred")
+        .map((tool) => tool.name),
+    ]);
   const tilthArgumentWarnings = new Map<string, string[]>();
 
   pi.registerTool(
     defineTool<typeof tilthReadSchema, TilthToolDetails>({
       name: "tilth_read",
+      namespace: tilthNamespace,
       label: "tilth_read",
       description:
         "Read a known file in the current repository or another checkout selected by absolute scope, with bounded output or a focused line range or heading.",
@@ -112,6 +136,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthSearchSchema, TilthToolDetails>({
       name: "tilth_search",
+      namespace: tilthNamespace,
       label: "tilth_search",
       description:
         "Primary code-discovery tool for the current repository or another checkout selected by absolute scope. Find structural definitions first, then usages, exact text, regex matches, or callers; top matches include source.",
@@ -142,6 +167,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthListSchema, TilthToolDetails>({
       name: "tilth_list",
+      namespace: tilthNamespace,
       label: "tilth_list",
       description:
         "List files in the current repository or another checkout selected by absolute scope when no useful symbol or text query is available.",
@@ -167,6 +193,8 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthDepsSchema, TilthToolDetails>({
       name: "tilth_deps",
+      exposure: "deferred",
+      namespace: tilthNamespace,
       label: "tilth_deps",
       description:
         "Blast-radius check before a breaking change. Shows a file's imports and dependents. Use only for API, behavior, export, or location changes that callers may rely on—not ordinary reads, new code, or internal-only edits.",
@@ -192,6 +220,8 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthGrokSchema, TilthToolDetails>({
       name: "tilth_grok",
+      exposure: "deferred",
+      namespace: tilthNamespace,
       label: "tilth_grok",
       description:
         "Get an end-to-end structural map of one symbol or target: definition, signature, documentation, callers, callees, siblings, and tests. Not for concept search or ordinary file reading.",
@@ -217,6 +247,8 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthDiffSchema, TilthToolDetails>({
       name: "tilth_diff",
+      exposure: "deferred",
+      namespace: tilthNamespace,
       label: "tilth_diff",
       description:
         "Show a structural diff with function-level change summaries for uncommitted, staged, ref, file-pair, patch, or log sources in the current repository or an explicit checkout.",
@@ -247,9 +279,8 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
       return undefined;
     }
 
-    return {
-      systemPrompt: `${event.systemPrompt}\n\n${TILTH_GUIDANCE}`,
-    };
+    const guidance = selectedTools.includes("codemode") ? TILTH_BOOTSTRAP : TILTH_GUIDANCE;
+    return { systemPrompt: `${event.systemPrompt}\n\n${guidance}` };
   });
 
   pi.on("tool_call", (event) => {
@@ -314,7 +345,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
     }
 
     const command = typeof event.input["command"] === "string" ? event.input["command"] : "";
-    const hint = createTilthShellHint(command, getActiveTilthTools());
+    const hint = createTilthShellHint(command, getCallableTilthTools());
     if (hint === undefined) {
       return undefined;
     }

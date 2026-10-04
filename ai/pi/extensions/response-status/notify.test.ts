@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createLongResponseNotification } from "./notify.ts";
+import {
+  createLongResponseNotification,
+  notifyForLongResponse,
+  notifyForSummary,
+} from "./notify.ts";
 
 test("createLongResponseNotification uses last user and assistant previews", () => {
   const notification = createLongResponseNotification(
@@ -45,4 +49,72 @@ test("createLongResponseNotification truncates long previews", () => {
   assert.match(notification.title, /…$/u);
   assert.equal(notification.body.length, 160);
   assert.match(notification.body, /…$/u);
+});
+
+test("notifyForLongResponse queues an unfocused notification after the threshold", () => {
+  const notifications = [] as Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
+
+  notifyForLongResponse({
+    elapsedMs: 3_000,
+    messages: [{ role: "user", content: "update dotfiles" }],
+    summary: "⏱ 3.0s",
+    notify: (notification) => {
+      notifications.push(notification);
+    },
+  });
+  notifyForLongResponse({
+    elapsedMs: 2_999,
+    messages: [{ role: "user", content: "skip" }],
+    summary: "⏱ 2.9s",
+    notify: (notification) => {
+      notifications.push(notification);
+    },
+  });
+
+  assert.equal(notifications.length, 1);
+  const notification = notifications[0];
+  assert.ok(notification);
+  assert.match(notification.id, /^pi-response-/u);
+  assert.equal(notification.title, "update dotfiles");
+  assert.equal(notification.body, "Ready for input · ⏱ 3.0s");
+});
+
+test("notifyForSummary does not expose the summary", () => {
+  const notifications = [] as Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
+  const notify = (notification: (typeof notifications)[number]): void => {
+    notifications.push(notification);
+  };
+
+  notifyForSummary("compaction", "/home/me/accel-os", notify);
+  notifyForSummary("branch", "/home/me/accel-os", notify);
+
+  assert.deepEqual(
+    notifications.map(({ id, ...notification }) => ({
+      ...notification,
+      id: id.replace(/.+/u, "id"),
+    })),
+    [
+      {
+        id: "id",
+        title: "Pi summarization complete",
+        body: "accel-os · Context compacted",
+      },
+      {
+        id: "id",
+        title: "Pi summarization complete",
+        body: "accel-os · Branch summary ready",
+      },
+    ],
+  );
+  for (const notification of notifications) {
+    assert.match(notification.id, /^pi-summary-/u);
+  }
 });

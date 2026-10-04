@@ -11,7 +11,7 @@ import type {
 import { KeybindingsManager, TUI_KEYBINDINGS, type TUI } from "@earendil-works/pi-tui";
 
 import type { QuestionnaireDialog } from "./dialog.ts";
-import extension, { showQuestionnaire, TOOL_NAME } from "./index.ts";
+import { default as extension, showQuestionnaire, TOOL_NAME } from "./index.ts";
 import { normalizeQuestions, Parameters, type Result } from "./questionnaire.ts";
 
 const params = {
@@ -48,6 +48,7 @@ function uiFixture(beforeFactory?: () => void): UiFixture {
   let disposed = 0;
   const ctx = {
     mode: "tui",
+    cwd: "/work/accel-os",
     ui: {
       async custom(factory: Factory) {
         calls += 1;
@@ -179,12 +180,16 @@ test("invalid semantic input fails before the dialog opens", async () => {
 test("abort before opening does not create UI", async () => {
   const fixture = uiFixture();
   const controller = new AbortController();
+  let notifications = 0;
   controller.abort();
-  assert.deepEqual(await showQuestionnaire(fixture.ctx, questions, controller.signal), {
-    status: "aborted",
-    answers: [],
-  });
+  assert.deepEqual(
+    await showQuestionnaire(fixture.ctx, questions, controller.signal, () => {
+      notifications += 1;
+    }),
+    { status: "aborted", answers: [] },
+  );
   assert.equal(fixture.calls(), 0);
+  assert.equal(notifications, 0);
 });
 
 test("abort between the initial guard and factory invocation closes the interaction", async () => {
@@ -247,4 +252,25 @@ test("late completion cannot overwrite an already submitted result", async () =>
   fixture.dialog().handleInput("\x1b");
   assert.equal((await pending).status, "submitted");
   assert.equal(fixture.disposed(), 1);
+});
+
+test("a questionnaire notifies once after opening without exposing its prompts", async () => {
+  const fixture = uiFixture();
+  const notifications = [] as Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
+  const pending = showQuestionnaire(fixture.ctx, questions, undefined, (notification) => {
+    notifications.push(notification);
+  });
+  fixture.dialog().handleInput("\r");
+  await pending;
+
+  assert.equal(notifications.length, 1);
+  const notification = notifications[0];
+  assert.ok(notification);
+  assert.match(notification.id, /^pi-questionnaire-/u);
+  assert.equal(notification.title, "Pi needs your input");
+  assert.equal(notification.body, "accel-os is waiting");
 });
