@@ -216,7 +216,6 @@ Makes targeted fixes based on evidence
 - <https://github.com/mattpocock/skills>
 - <https://github.com/obra/superpowers>
 - TODO <https://github.com/addyosmani/agent-skills>
-- TODO <https://github.com/pbakaus/impeccable>
 
 ## Semantic code navigation
 
@@ -239,3 +238,10 @@ Makes targeted fixes based on evidence
 ## AI Sandboxes
 
 - <https://github.com/everruns/bashkit/tree/main>
+
+## Design skills
+
+- <https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md>
+- <https://github.com/addyosmani/agent-skills/blob/main/skills/frontend-ui-engineering/SKILL.md>
+- <https://github.com/pbakaus/impeccable>
+- <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>
