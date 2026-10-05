@@ -55,4 +55,5 @@ package installation and managed services are derived from host features in
 - [Arch Linux setup](docs/linux/README.md)
 - [macOS setup](docs/mac/README.md)
 - [Firefox preferences](firefox/README.md)
+- [AI workspace development](ai/workspace/README.md)
 - [Retargeting a Git SPR stack](docs/git-spr-retargeting.md)

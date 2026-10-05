@@ -6,6 +6,7 @@
   "workspaces": [
     "ai/pi",
     "ai/skills",
+    "ai/workspace",
     "packages/commands",
     "packages/shared"
   ],
@@ -15,9 +16,9 @@
     "tilth@0.10.1": true
   },
   "scripts": {
-    "fmt": "oxfmt ai/pi ai/skills packages scripts",
-    "fmt:check": "oxfmt --check ai/pi ai/skills packages scripts",
-    "lint": "oxlint ai/pi ai/skills packages scripts",
+    "fmt": "oxfmt ai/pi ai/skills ai/workspace packages scripts",
+    "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages scripts",
+    "lint": "oxlint ai/pi ai/skills ai/workspace packages scripts",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

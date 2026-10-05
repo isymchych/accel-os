@@ -60,7 +60,7 @@
 
 - Pair every app-specific theme toggle with matching scripts in `dotfiles/dot_local/share/dark-mode.d/` and `dotfiles/dot_local/share/light-mode.d/`, named `executable_<app>-theme.sh`.
 - Keep scripts minimal: shebang, blank line, then a single command that swaps the light and dark tokens (typically a `sed -i --follow-symlinks` substitution mirroring the rest of the repo).
-- Keep the literal theme tokens in sync with their tracked dotfiles (e.g. `dotfiles/dot_gemini/settings.json`) so the sed substitutions match what chezmoi installs.
+- Keep the literal theme tokens in sync with their tracked dotfiles (e.g. `dotfiles/dot_config/alacritty/alacritty.toml`) so the sed substitutions match what chezmoi installs.
 
 ## Testing Guidelines
 
@@ -116,7 +116,7 @@
 - Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.
 - When adding a new Pi tool that should be agent-callable by default, also add it to the default `--tools` allowlist in `ai/pi/ai.ts`; loading an extension alone does not enable the tool when `ai.ts` passes an explicit allowlist.
 - Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
-- On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshrc_tools` exports `PI_CODING_AGENT_DIR` to that path.
+- On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshenv_tools` defaults `PI_CODING_AGENT_DIR` to that path.
 - For local MCP servers in `ai/pi/mcp.json`, prefer repo-local package binaries over `npx`; use the package's public bin name, set `cwd` to `${ACCEL_OS}/ai/pi`, and extend `PATH` with `${ACCEL_OS}/ai/pi/node_modules/.bin` so the config stays reproducible without wrapper scripts or internal package paths.
 
 * When adding new Pi extension - don't forget to add high-level tsdoc to it

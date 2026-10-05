@@ -8,6 +8,7 @@
     "suspicious": "error"
   },
   "plugins": ["typescript"],
+  "ignorePatterns": ["ai/workspace/dist/**"],
   "env": {
     "node": true
   },
@@ -48,6 +49,71 @@
     ]
   },
   "overrides": [
+    {
+      "files": ["ai/workspace/client/**/*.ts", "ai/workspace/client/**/*.tsx"],
+      "env": {
+        "browser": true,
+        "node": false
+      },
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*"],
+                "message": "client code must not import Node modules"
+              },
+              {
+                "regex": "^(?:\\.\\./)+server/",
+                "allowTypeImports": true,
+                "message": "client code must not import server code"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["ai/workspace/contracts/**/*.ts"],
+      "env": {
+        "browser": false,
+        "node": false
+      },
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*"],
+                "message": "contracts must not import Node modules"
+              },
+              {
+                "regex": "^(?:\\.\\./)+(?:client|server)/",
+                "message": "contracts must not import application code"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["ai/workspace/server/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^(?:\\.\\./)+client/",
+                "message": "server code must not import client code"
+              }
+            ]
+          }
+        ]
+      }
+    },
     {
       "files": ["**/*.test.ts"],
       "rules": {
