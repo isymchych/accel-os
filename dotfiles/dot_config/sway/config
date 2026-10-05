@@ -222,6 +222,7 @@ assign [class="TelegramDesktop"] 7
 assign [app_id="telegramdesktop"] 7
 assign [app_id="org.telegram.desktop"] 7
 assign [app_id="signal"] 7
+assign [app_id="discord"] 7
 assign [class="Signal"] 7
 assign [class="Slack"] 7
 assign [class="discord"] 7
@@ -310,6 +311,7 @@ for_window [class="^File-roller"]      floating enable border pixel $border
 for_window [app_id="org.telegram.desktop"] border pixel $border
 for_window [app_id="signal"] border pixel $border
 for_window [class="Signal"] border pixel $border
+for_window [app_id="discord"] border pixel $border
 
 for_window [class="^Chrome" title="^Developer Tools.*"] floating disable, move to workspace 5
 for_window [window_role="^bubble$"] floating enable

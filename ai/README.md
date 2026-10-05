@@ -216,6 +216,7 @@ Makes targeted fixes based on evidence
 - <https://github.com/mattpocock/skills>
 - <https://github.com/obra/superpowers>
 - TODO <https://github.com/addyosmani/agent-skills>
+- <https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md>
 
 ## Semantic code navigation
 

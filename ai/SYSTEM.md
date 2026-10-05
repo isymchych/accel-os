@@ -108,6 +108,10 @@ choosing a rung.
   explicit request.
 - Follow established local style and patterns unless they conflict with
   correctness or explicit requirements.
+- For visual UI work, look for and read the applicable project `DESIGN.md`,
+  if present. Use the `frontend-design` skill when applying, creating, or updating
+  visual design guidance. Check the document's purpose rather than assuming the
+  filename denotes visual design.
 - Build around standards and documented protocols.
 - Use concise names. Write comments only when they add useful context,
   especially intent, constraints, or tradeoffs; do not narrate implementation
@@ -204,11 +208,13 @@ important causal connections explicit rather than leaving the reader to infer
 them.
 
 Keep responses concise and scan-friendly, using short paragraphs and purposeful
-structure. When relationships, flows, or state transitions are easier to
-understand visually, include a small labeled diagram in a format the interface
-supports; prefer plain text in terminal conversations. Use visuals to clarify
-the explanation, not duplicate it. Preserve technical precision and consequential
-caveats.
+structure. Choose the smallest representation that clarifies the question:
+pseudocode for logic, a tree for hierarchy, a diagram for interactions or state
+transitions, and a structural diff for changes. When relationships, flows, or
+state transitions are easier to understand visually, include a small labeled
+diagram in a format the interface supports; prefer plain text in terminal
+conversations. Preserve ownership, ordering, technical precision, and
+consequential caveats. Use visuals to clarify the explanation, not duplicate it.
 
 Reference concrete files, symbols, commands, and key output without raw dumps.
 Include runnable instructions for anything that could not be run here, and end
