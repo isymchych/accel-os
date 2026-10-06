@@ -19,6 +19,8 @@ Notes:
   - By default, ai appends ai/SYSTEM.md.
   - ai loads its extensions explicitly; Pi extension auto-discovery is disabled.
   - ai loads srcwalk tools by default; \`tilth\` selects Pi-native, one-shot Tilth CLI tools instead.
+  - Direct tools: codemode, ask_user_question, read, bash, and apply_patch.
+  - Whole-file writes and source navigation are available through codemode.
   - Tool search is available for deferred tools. Enable configured MCP servers through \`/mcp\`.
   - ai excludes built-in tools superseded by this configuration: write, grep, find, and ls.
   - \`account\` selects an isolated OpenAI Codex credential profile and then opens Pi.

@@ -27,7 +27,7 @@ import type { CodeNavigationBackend } from "./launcher-args.ts";
 const loadoutCases = [
   {
     backend: "srcwalk",
-    inlineNames: ["read", "bash", "apply_patch", "write_file", "srcwalk_discover", "srcwalk_read"],
+    inlineNames: ["write_file", "srcwalk_discover", "srcwalk_read"],
     deferredNames: [
       "srcwalk_context",
       "srcwalk_callers",
@@ -43,15 +43,7 @@ const loadoutCases = [
   },
   {
     backend: "tilth",
-    inlineNames: [
-      "read",
-      "bash",
-      "apply_patch",
-      "write_file",
-      "tilth_read",
-      "tilth_search",
-      "tilth_list",
-    ],
+    inlineNames: ["write_file", "tilth_read", "tilth_search", "tilth_list"],
     deferredNames: ["tilth_deps", "tilth_grok", "tilth_diff"],
     descriptionPattern: /dependencies.*symbol maps.*review/i,
     reviewHintPattern: /tilth_diff for structural change review/,
@@ -66,7 +58,7 @@ const loadoutCases = [
 
 const settingsSchema = Type.Object({
   codemode: Type.Object({
-    mode: Type.Literal("only"),
+    mode: Type.Literal("on"),
     inlineBudget: Type.Number(),
   }),
 });
@@ -136,6 +128,7 @@ function createLoadoutFixture(codeNavigation: CodeNavigationBackend = "srcwalk")
     callable: registered.filter((tool) => getExposure(tool.name) !== "model-only"),
     getExposure,
     getNamespace: (name) => definitions.get(name)?.namespace,
+    getPromptGuidelines: (name) => definitions.get(name)?.promptGuidelines ?? [],
   };
   const prepareLoadout = definitions.get("codemode")?.prepareLoadout;
   assert.ok(prepareLoadout);
@@ -159,9 +152,23 @@ for (const loadoutCase of loadoutCases) {
     const changes = prepare();
     const description = changes?.descriptions?.["codemode"];
     assert.ok(description);
+    assert.deepEqual(loadout.declared.map((tool) => tool.name).sort(), [
+      "apply_patch",
+      "ask_user_question",
+      "bash",
+      "codemode",
+      "read",
+    ]);
+    assert.deepEqual(changes.hiddenDeclarations ?? [], []);
+    for (const name of ["read", "bash", "apply_patch"]) {
+      assert.ok(loadout.callable.some((tool) => tool.name === name));
+      assert.ok(!description.includes(`### \`${name}\``));
+      assert.ok(changes.descriptions?.[name]?.includes("Codemode:"));
+    }
     for (const name of loadoutCase.inlineNames) {
       assert.ok(description.includes(`### \`${name}\``), `${name} must be described upfront`);
-      assert.ok(changes.hiddenDeclarations?.includes(name));
+      assert.equal(definitions.get(name)?.exposure, "codemode");
+      assert.ok(loadout.callable.some((tool) => tool.name === name));
     }
     for (const name of loadoutCase.deferredNames) {
       assert.ok(!description.includes(`### \`${name}\``), `${name} must not be described upfront`);
@@ -169,6 +176,7 @@ for (const loadoutCase of loadoutCases) {
     assert.match(description, new RegExp(`## ${loadoutCase.backend}`, "i"));
     assert.match(description, loadoutCase.descriptionPattern);
     assert.equal(definitions.get("ask_user_question")?.exposure, "model-only");
+    assert.ok(!loadout.callable.some((tool) => tool.name === "ask_user_question"));
     assert.ok(!changes.hiddenDeclarations?.includes("ask_user_question"));
   });
 
@@ -223,7 +231,10 @@ for (const backend of ["srcwalk", "tilth"] as const) {
     const instructions = namespace.instructions;
     assert.ok(instructions);
     assert.ok(instructions.includes(detailedRule));
-    const prompt = workflowPrompt(fixture, ["codemode", `${backend}_read`]);
+    const prompt = workflowPrompt(
+      fixture,
+      fixture.loadout.declared.map((tool) => tool.name),
+    );
     assert.ok(prompt);
     assert.ok(prompt.startsWith("base prompt\n\n"));
     assert.ok(prompt.includes(`describeNamespace("${backend}")`));
@@ -243,10 +254,7 @@ for (const backend of ["srcwalk", "tilth"] as const) {
     assert.equal(workflowPrompt(fixture, [`${backend}_read`]), `base prompt\n\n${instructions}`);
   });
 
-  test(`${backend} does not inject workflow when its tools are not selected`, () => {
-    assert.equal(
-      workflowPrompt(createLoadoutFixture(backend), ["codemode", "read", "bash"]),
-      undefined,
-    );
+  test(`${backend} does not inject workflow without codemode or selected navigation tools`, () => {
+    assert.equal(workflowPrompt(createLoadoutFixture(backend), ["read", "bash"]), undefined);
   });
 }

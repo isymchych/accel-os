@@ -95,6 +95,7 @@ function renderCall(
 export default function writeFileExtension(pi: ExtensionAPI): void {
   const tool = defineTool<typeof writeFileSchema, WriteFileToolDetails>({
     name: "write_file",
+    exposure: "codemode",
     label: "write_file",
     description:
       "Write a full file in create or replace mode. Missing parent directories are created automatically.",

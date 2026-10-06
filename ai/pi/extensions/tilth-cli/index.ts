@@ -106,6 +106,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthReadSchema, TilthToolDetails>({
       name: "tilth_read",
+      exposure: "codemode",
       namespace: tilthNamespace,
       label: "tilth_read",
       description:
@@ -136,6 +137,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthSearchSchema, TilthToolDetails>({
       name: "tilth_search",
+      exposure: "codemode",
       namespace: tilthNamespace,
       label: "tilth_search",
       description:
@@ -167,6 +169,7 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof tilthListSchema, TilthToolDetails>({
       name: "tilth_list",
+      exposure: "codemode",
       namespace: tilthNamespace,
       label: "tilth_list",
       description:
@@ -275,7 +278,10 @@ export default function tilthCliExtension(pi: ExtensionAPI): void {
 
   pi.on("before_agent_start", (event) => {
     const selectedTools = event.systemPromptOptions.selectedTools;
-    if (!selectedTools.some((toolName) => tilthToolNameSet.has(toolName))) {
+    if (
+      !selectedTools.includes("codemode") &&
+      !selectedTools.some((toolName) => tilthToolNameSet.has(toolName))
+    ) {
       return undefined;
     }
 

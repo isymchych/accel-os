@@ -84,6 +84,7 @@ export default function srcwalkCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof srcwalkReadSchema, SrcwalkToolDetails>({
       name: "srcwalk_read",
+      exposure: "codemode",
       namespace: srcwalkNamespace,
       label: "srcwalk_read",
       description:
@@ -110,6 +111,7 @@ export default function srcwalkCliExtension(pi: ExtensionAPI): void {
   pi.registerTool(
     defineTool<typeof srcwalkDiscoverSchema, SrcwalkToolDetails>({
       name: "srcwalk_discover",
+      exposure: "codemode",
       namespace: srcwalkNamespace,
       label: "srcwalk_discover",
       description:
@@ -331,7 +333,10 @@ export default function srcwalkCliExtension(pi: ExtensionAPI): void {
 
   pi.on("before_agent_start", (event) => {
     const selectedTools = event.systemPromptOptions.selectedTools;
-    if (!selectedTools.some((toolName) => srcwalkToolNameSet.has(toolName))) {
+    if (
+      !selectedTools.includes("codemode") &&
+      !selectedTools.some((toolName) => srcwalkToolNameSet.has(toolName))
+    ) {
       return undefined;
     }
     const guidance = selectedTools.includes("codemode") ? SRCWALK_BOOTSTRAP : SRCWALK_GUIDANCE;
