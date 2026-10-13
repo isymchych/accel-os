@@ -30,6 +30,7 @@
   - sandbox/vm/microvm/isolation
   - memory system
 - bookmark some sessions; preview sessions
+- prevent system sleep while agent working
 
 ? how codex @visualize skill works?
 

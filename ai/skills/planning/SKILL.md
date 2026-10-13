@@ -1,12 +1,15 @@
 ---
 name: planning
-description: Use when the user requests a plan, or when consequential design choices, dependencies, or uncertainty need to be resolved before implementation. Not for straightforward changes with an obvious approach.
+description: Use when the user requests an implementation plan, or when authorized work needs sequencing and dependency coordination. Not for design, critique, brainstorming, or straightforward implementation alone.
 ---
 
 # Planning
 
 Turn intent into a clear path to implementation. Use only the detail needed to
 make the next work safe and understandable.
+
+Design decisions may inform a plan, but discussing or resolving them does not
+itself trigger this skill.
 
 Loading this skill does not require a separate planning phase or approval
 checkpoint. Continue within existing authorization; pause only for blockers or

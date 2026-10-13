@@ -1,241 +1,159 @@
-# Tilth MCP Cache and Pi Session Trees
+# Tilth MCP Cache, Pi Session Trees, and Codemode
 
-## Status
+## Status and scope
 
-Proposed implementation guidance. This document records the preferred way to keep Tilth on `pi-mcp-adapter` while preventing Tilth's process-local output deduplication from leaking across Pi conversation branches.
+Draft migration guidance, not an approved runtime migration. This document replaces the adapter-specific reconnect proposal with a native Pi MCP assessment. It separates transport integration from output-cache correctness.
 
-The current staged work replaces Tilth MCP with one-shot Tilth CLI tools under `ai/pi/extensions/tilth-cli/`. Do not implement this proposal by layering MCP Tilth underneath those tools. First choose one canonical Tilth transport and remove or revert the conflicting staged transport changes.
+The repository currently uses `ai/pi/extensions/tilth-cli/` for `ai tilth`: every tool call launches a one-shot Tilth process with an explicit working directory. The launcher defaults to Srcwalk and explicitly loads Pi's built-in MCP, codemode, and tool-search extensions. `ai/pi/mcp.json` does not configure Tilth.
 
-## Problem
+Evidence baseline: installed Pi 1.0.4 and Tilth 0.10.1. Recheck provider contracts when changing versions. Editing this guidance does not authorize changes to the launcher, extensions, or MCP configuration.
 
-Pi sessions are trees. `/tree` can move the active leaf to a point whose model context does not contain tool output produced on the abandoned branch. Compaction can similarly remove old tool output from the active model context.
+## State ownership problem
 
-Tilth MCP keeps a process-local `Session.expanded` map. Search and grok use it to replace a previously expanded definition with `[shown earlier]`. The map is keyed by source path and line, with file mtime used to invalidate entries after normal file changes.
+Tilth MCP owns a process-local `Session.expanded` map. Entries identify a source path and line and record the file mtime. Search and grok can suppress previously expanded definitions with `[shown earlier]`. Mtime invalidation addresses source changes, not whether output remains available to the model.
 
-This is correct for a linear conversation but not for Pi tree navigation:
-
-1. branch A expands a definition;
-2. Tilth records that expansion in its MCP process;
-3. `/tree` moves Pi to a leaf before, or outside, branch A;
-4. branch A's tool result is absent from the active model context;
-5. another Tilth search can return `[shown earlier]` because the MCP process still remembers branch A.
-
-The failure is a state-ownership mismatch: "the model has seen this output" is branch-local context state, but Tilth stores it as process-lifetime server state.
-
-## Decision
-
-When Tilth is hosted by `pi-mcp-adapter`, reconnect only the `tilth` MCP server after a successful Pi tree transition. Reconnection replaces the Tilth stdio process and therefore clears its process-local expansion history.
-
-Use the adapter's documented command:
+Two different assumptions can fail:
 
 ```text
-/mcp reconnect tilth
+Server remembers an expansion != active model context contains it
+Server returned an expansion  != model received it
 ```
 
-Do not kill processes, inspect PIDs, poll Git, restart all MCP servers, or patch private adapter modules. The reconnect command is the adapter-owned public lifecycle boundary.
+### Conversation trees and compaction
 
-Compaction handling may use the same mechanism when Pi is idle. Automatic and overflow-recovery compaction require special care because they can occur inside an active agent run; see [Compaction limitations](#compaction-limitations).
+1. Branch A expands a definition and Tilth records it.
+2. `/tree` moves to a leaf whose model context does not include that result.
+3. The persistent server still remembers the expansion.
+4. A later search can suppress the body as already shown.
 
-## Why this approach
+Compaction can similarly remove an earlier result. A summary mentioning a symbol is not equivalent to retaining its source. Returning to a branch may safely show the body again; exact branch-local deduplication is not required.
 
-- It uses public Pi and `pi-mcp-adapter` surfaces.
-- It resets the exact server whose process owns the stale state.
-- It avoids changes to Tilth or `pi-mcp-adapter`.
-- It preserves MCP tool registration and adapter configuration.
-- It is deterministic for `/tree`, unlike idle timeouts.
-- Tilth startup is small enough that an occasional branch-transition restart is an acceptable cost.
+### Codemode filtering
 
-The cost is coarse invalidation: reconnecting also discards useful process-local caches, not only the expanded-definition map. A future first-class reset call would be more efficient, but the additional integration is not currently justified.
+Pi codemode receives complete MCP results and only sends the script's output to the model. A script can discard an expanded definition while the server records that expansion. A subsequent call can then suppress source that the model never received, even in a linear conversation.
 
-## Relevant public contracts
+This is an inferred failure mode from the two implementations, not a completed live reproduction. Parallel calls and host-side result truncation also belong in verification: expansion ownership must not depend on output reaching the model intact.
 
-### Pi
+Pi's codemode `store()` is persisted along each session branch. That does not make an external server's memory branch-aware or acknowledge which source reached the model. Do not move expansion tracking into the store without a defined visibility and compaction contract.
 
-Pi emits:
+## Recommended direction
 
-- `session_tree` after successful `/tree` navigation, with `oldLeafId` and `newLeafId`;
-- `session_compact` after successful compaction;
-- no success event when tree navigation is cancelled or compaction fails.
+Retain the one-shot CLI transport until a persistent MCP integration meets the correctness checks below. The existing tools already support namespaced codemode discovery; native MCP is a transport and maintenance simplification, not a prerequisite for codemode.
 
-`pi.sendUserMessage()` can dispatch extension commands when called with `expandPromptTemplates: true`. Pi does not expose a general API for one extension to invoke another extension's registered command directly.
-
-### pi-mcp-adapter
-
-`pi-mcp-adapter` documents:
-
-- `/mcp reconnect <server>`: connect or reconnect one server;
-- `mcp({ connect: "tilth" })`: model-facing connect/reconnect behavior;
-- lifecycle modes and idle disconnection, which are not synchronized with Pi tree navigation.
-
-For a connected stdio server, reconnecting closes and replaces the connection/process. This is what clears Tilth's process-local `Session`.
-
-### Tilth
-
-Tilth has an internal `tilth_session` reset action, but it is not advertised in the MCP `tools/list` response. A separate Tilth process cannot reset the state of the process owned by the adapter. Do not launch another MCP process merely to call reset.
-
-Tilth's mtime checks already handle ordinary working-tree edits and Git checkouts. Git HEAD or index changes alone do not mean that source previously shown to the model became stale. Do not add Git watchers as part of this fix.
-
-## Proposed extension design
-
-Keep the integration small and lifecycle-only. A suitable location is:
+The preferred future design is native Pi MCP with persistent parsing/index caches but no cross-call output deduplication:
 
 ```text
-ai/pi/extensions/tilth-mcp-lifecycle/index.ts
+ai tilth -> native Pi MCP -> persistent Tilth server
+                              |-- reusable source caches
+                              `-- no assumption that prior output is visible
 ```
 
-Add high-level TSDoc explaining that the extension reconciles Tilth's linear MCP session cache with Pi's conversation-tree lifecycle.
+A Tilth mode that disables cross-call expansion suppression is a proposed upstream capability, not a verified available option. Fix this assumption at its owning boundary rather than introducing branch snapshots or lifecycle resets merely to preserve the optimization.
 
-The tree hook should:
+One-shot execution trades repeated parsing for deterministic per-call expansion state, explicit `ctx.cwd`, bounded output, and process-scoped timeout cleanup. Revisit it when measured parsing/startup cost or adapter maintenance becomes material, or when Tilth provides a supported mode that passes the migration checks. Native MCP availability alone is not sufficient evidence to switch.
 
-1. listen to `session_tree`, not `session_before_tree`;
-2. ignore events where `oldLeafId === newLeafId`;
-3. defer command dispatch until tree navigation has returned, avoiding nested command execution inside the event emitter;
-4. coalesce duplicate reconnect requests;
-5. dispatch `/mcp reconnect tilth` with command expansion enabled;
-6. avoid adding a normal user/agent turn.
+## Native Pi MCP contracts
 
-Starting point:
+Pi 1.0.4 provides the following public surfaces:
 
-```ts
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+- `mcp.json` configures stdio servers with `command`, `args`, `cwd`, and `env`; relative `cwd` resolves against the session directory.
+- `exposure: "codemode"` is the default. Scripts discover tools through `searchTools()`, `describeTool()`, and `describeNamespace("mcp__tilth")`; namespace descriptions include server instructions. `direct`, `deferred`, and per-tool exposure overrides are also supported.
+- Tools are named `mcp__<server>__<tool>`, not the CLI extension's `tilth_*` names. MCP instructions are not automatically part of individual tool descriptions.
+- MCP calls from codemode pass through Pi's tool pipeline and resolve to complete `CallToolResult` objects, including `content`, `structuredContent`, and `isError`. Scripts must preserve relevant errors when reducing results.
+- `/mcp reconnect tilth` is a public connection-management command.
+- `pi.registerMcpServer()` and `pi.unregisterMcpServer()` manage extension-owned registrations. Re-registering replaces the registration; a file-configured server of the same name takes precedence.
+- Registering `/mcp` in an extension, as `pi-mcp-adapter` does, replaces native session MCP support. Use one MCP owner, not both.
 
-/**
- * Reconnect Tilth MCP after Pi leaves a conversation-tree leaf so Tilth cannot
- * suppress source whose original expansion exists only on an abandoned branch.
- */
-export default function tilthMcpLifecycle(pi: ExtensionAPI): void {
-  let reconnectScheduled = false;
+The inspected public extension API does not offer a dedicated awaitable reconnect operation. Registration replacement triggers asynchronous connection changes; it is not a verified reset barrier before the next tool call. Codemode discovery surviving `/tree` does not imply that server-owned caches reset.
 
-  function scheduleReconnect(): void {
-    if (reconnectScheduled) return;
-    reconnectScheduled = true;
+Native MCP should own transport, connection cleanup, discovery, and tool registration. Any retained Tilth-specific extension should own only behavior that configuration and server instructions cannot supply. Avoid copying schemas or wrapping every MCP tool solely to retain the existing CLI names.
 
-    setTimeout(() => {
-      reconnectScheduled = false;
-      pi.sendUserMessage("/mcp reconnect tilth", {
-        expandPromptTemplates: true,
-      });
-    }, 0);
-  }
+## Other migration constraints
 
-  pi.on("session_tree", (event) => {
-    if (event.oldLeafId !== event.newLeafId) {
-      scheduleReconnect();
-    }
-  });
-}
-```
+### Repository targeting
 
-This is a design sketch, not verified production code. Confirm the command-dispatch and transcript behavior against the installed Pi and adapter versions before adopting it.
+Tilth 0.10.1 search/list/grok scope resolution defaults to the server working directory when `scope` is omitted, even if `root` is supplied. An explicit relative scope requires an absolute root; an absolute scope selects the directory directly. Native MCP does not change these server rules.
 
-## Compaction limitations
+A migration must preserve correct targeting for the active repository, subdirectories, and other checkouts. Use explicit absolute directory scopes where appropriate; verify read/deps/diff against their own schemas instead of treating every `scope` as a directory. The CLI adapter's diff scope is a repository-relative changed file or `file:function` filter.
 
-Resetting after successful compaction is semantically desirable because a compacted-away Tilth result may no longer be in model context. However, `session_compact` can fire during threshold or overflow recovery while an agent run is active.
+### Timeouts and cancellation
 
-`pi.sendUserMessage()` requires an explicit delivery mode while streaming. Queuing `/mcp reconnect tilth` as `steer` or `followUp` may execute too late to protect the immediate post-compaction retry, and it may perturb the active run. Therefore:
+Tilth's MCP implementation tracks workers that can continue after a tool timeout. Native client cancellation is not proof that a server worker stopped. Verify subsequent calls and shared-state behavior after both cancellation and timeout before claiming equivalence with one-shot process cleanup.
 
-- the initial implementation should solve `/tree` first;
-- it may reconnect after manual/idle compaction when `ctx.isIdle()` is true;
-- it must not claim automatic-compaction correctness unless a test proves the reconnect runs before the retry's next Tilth call;
-- if immediate automatic-compaction reset becomes required, prefer a first-class adapter event-bus reconnect API over command injection.
+### Configuration and rollout
 
-A conservative follow-up can record a pending reconnect on `session_compact` and perform it at `agent_settled`. That prevents stale state in later user turns but does not protect tool calls made during the automatic retry itself.
+If a native MCP migration is separately approved:
 
-## Session replacement behavior
+1. Select one canonical Tilth transport. Remove the CLI extension from `ai tilth` when native MCP becomes its transport; do not expose two competing Tilth workflows by default.
+2. Keep the server name `tilth`. Prefer the repo-local public `tilth` binary and reproducible PATH/cwd settings; avoid `npx` and internal package executable paths.
+3. Scope enablement to the selected backend so default Srcwalk sessions do not unintentionally start Tilth. Extension-owned registration is an option for this selection; account for file-configured overrides.
+4. Use native exposure settings instead of adapter-only `directTools`, `toolPrefix`, lifecycle, or resource settings. Ensure codemode or tool search can reach the selected tools and preserve the intended read-only tool surface.
+5. Keep the namespace workflow discoverable. Update launcher help, routing guidance, and tests for actual MCP tool names and behavior; retire CLI-only hints, wrappers, and tests made obsolete by the migration.
+6. Verify shutdown and reload cleanup before adding startup resets. Restore the CLI selection and remove the native registration/configuration if rollout fails.
 
-`/new`, `/resume`, `/fork`, and `/clone` replace the Pi session runtime. Pi emits `session_shutdown`, reloads/rebinds extensions, and starts a fresh session runtime. The adapter should close session-scoped MCP connections during shutdown.
+Do not keep two registrations of the same tool names or rely on registration order to select behavior.
 
-Do not add an unconditional `session_start` reconnect unless verification shows the adapter preserves the Tilth process across session replacement. Unnecessary startup reconnects add latency and may race lazy server initialization.
+## Reconnection as a limited mitigation
 
-`/reload` also replaces the extension runtime. Treat adapter shutdown/reload as the owner of connection cleanup.
+The earlier proposal used `pi-mcp-adapter` and command-dispatched reconnection after tree navigation. Native Pi also supports `/mcp reconnect tilth`, but reconnect-on-tree remains a partial mitigation: it discards useful source caches, does not address codemode filtering, and may run too late for automatic compaction recovery.
 
-## Configuration implications
+If lifecycle reconnection is separately selected as an interim design, preserve these requirements:
 
-If this design is selected instead of the staged one-shot CLI design:
+- Listen to successful `session_tree`, not `session_before_tree`; cancelled navigation and equal old/new leaf IDs require no reconnect.
+- Defer command dispatch until navigation returns, coalesce repeated requests, and cancel scheduled callbacks on shutdown/reload.
+- Use the public `/mcp reconnect tilth` boundary. Verify `pi.sendUserMessage()` with command expansion enabled executes it without leaving a normal user message or starting an unintended model turn. Do not assume the old sketch is production-ready for native MCP.
+- Reset only Tilth, leave other servers connected, and verify the reset completes before the next affected Tilth call.
+- Successful manual/idle compaction may use the same mechanism only when proven safe. Failed compaction requires no reset.
+- Threshold and overflow-recovery compaction can occur during an active agent run. Queued `steer`/`followUp` commands or a reset at `agent_settled` do not establish correctness for the immediate retry. Claim that coverage only after verifying ordering before its next Tilth call.
+- Let the MCP owner clean up connections on session replacement and `/reload`. Verify `/new`, `/resume`, `/fork`, and `/clone`; add startup resets only if a stale process actually survives replacement.
+- Add high-level TSDoc to any lifecycle extension explaining the state-ownership mismatch and its explicitly limited coverage.
 
-1. restore the `tilth` server in `ai/pi/mcp.json`;
-2. keep its server name exactly `tilth`, because the lifecycle command depends on that stable identifier;
-3. retain the intended `directTools`, `toolPrefix`, lifecycle, PATH, and resource settings;
-4. ensure `pi-mcp-adapter` is loaded for runs where Tilth MCP tools are expected;
-5. add `tilth-mcp-lifecycle` to `defaultExtensionNames` in `ai/pi/runtime/pi-launcher.ts`;
-6. remove the one-shot `tilth-cli` extension from the default list and tool allowlist unless an explicit fallback mode is intentionally designed;
-7. update launcher help and tests so they describe the selected transport accurately.
+Prefer a supported awaitable lifecycle API if synchronous reset becomes necessary. Command injection is acceptable only while its ordering and transcript behavior are proven and its uncovered cases are explicit.
 
-Do not keep two implementations registering the same `tilth_*` tool names. Registration order would determine behavior and make debugging ambiguous.
+## Alternatives not selected
 
-## Alternatives rejected
+- **Idle timeouts or manual reconnect:** eventual or user-dependent; neither enforces context visibility.
+- **PID discovery, process killing, or restarting all servers:** bypasses the MCP owner's lifecycle and can affect unrelated servers.
+- **A separate reset process:** cannot reset the adapter/native connection's process-local state. Tilth 0.10.1 dispatches `tilth_session` internally but does not advertise it in `tools/list`; Pi discovery cannot be assumed to expose it.
+- **Git watchers:** source invalidation is already based on mtime. HEAD/index changes do not establish that model context lost an expansion.
+- **Per-leaf snapshot/restore:** Tilth has no verified public expansion-state export/import contract. It also does not solve codemode filtering or compaction by itself. Reconsider only if preserving deduplication has measurable value and visibility ownership is defined.
+- **Private adapter/native-module patches:** use public lifecycle boundaries. Prefer a narrow upstream output-dedup control over a new transport wrapper.
 
-### Tiny adapter idle timeout
+## Verification before migration
 
-Idle shutdown is eventual and checked on a timer. It is not tied to `/tree`, so the next Tilth call may occur before disconnection.
+These checks are acceptance criteria, not reported test results. Run a live check through the chosen native integration, including codemode, rather than testing only mocked lifecycle events.
 
-### Manual reconnect
+| Scenario                      | Required observation                                                                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tree navigation               | Expand a large definition, navigate before/outside its result, and request it again: its body is available. Returning to the original branch may show it again. |
+| Cancelled/no-op navigation    | No unnecessary reset or connection disruption.                                                                                                                  |
+| Codemode filtering            | Discard an expanded body from a script's output, then request it in a later script: the body remains available.                                                 |
+| Parallel calls and truncation | Overlapping queries and bounded host/script output do not make later source retrieval depend on unseen output.                                                  |
+| Compaction                    | Test manual, threshold, and overflow recovery separately; needed source is available on the first post-compaction call, including automatic retry.              |
+| Repository selection          | Give two checkouts distinguishable source; search/list/grok/read/deps/diff inspect the requested checkout and honor each tool's scope semantics.                |
+| Timeout/cancellation          | Interrupt an expensive call; later calls return correct results without stale-worker cache contamination or accumulating abandoned work.                        |
+| Replacement/reload            | `/new`, `/resume`, `/fork`, `/clone`, and `/reload` do not inherit inaccessible expansion history or leave duplicate server processes.                          |
+| Exposure and errors           | Namespace instructions and tool schemas are discoverable; MCP errors remain visible through codemode; only intended read-only tools are reachable.              |
+| Isolation                     | Other MCP servers remain connected; default Srcwalk sessions retain their selected workflow.                                                                    |
 
-`/mcp reconnect tilth` is a useful diagnostic and fallback, but relying on the user to remember it does not enforce correctness.
+For a lifecycle mitigation, additionally test different/equal leaf IDs, coalescing, callback cancellation, exact reconnect command and expansion option, command invisibility, and completion before the next Tilth call. Measure reconnect cost rather than assuming startup is negligible.
 
-### Process killing
+## Evidence and open questions
 
-PID discovery and `pkill` couple the extension to process details, can target the wrong process, and bypass adapter cleanup and status synchronization.
+Local implementation evidence:
 
-### Separate reset process
+- `ai/pi/extensions/tilth-cli/index.ts` and `tool.ts`: CLI ownership, routing, budgets, cwd, timeout, and diff contracts.
+- `ai/pi/runtime/pi-launcher.ts`, `ai/pi/ai.ts`, and `ai/pi/mcp.json`: backend selection and native extension loading.
+- Installed Pi `docs/mcp.md`, `docs/codemode.md`, and `dist/core/extensions/types.d.ts`: public MCP/codemode contracts and extension API.
+- Installed Pi `dist/extensions/mcp/index.js`: registration replacement and session shutdown handling; implementation evidence, not an API to import.
 
-Tilth state is process-local. Starting another Tilth server and resetting it has no effect on the adapter-owned server.
+Version-pinned upstream evidence:
 
-### Git-state watchers
+- [Pi 1.0.4 MCP documentation](https://github.com/earendil-works/pi/blob/v1.0.4/packages/coding-agent/docs/mcp.md)
+- [Pi 1.0.4 codemode documentation](https://github.com/earendil-works/pi/blob/v1.0.4/packages/coding-agent/docs/codemode.md)
+- [Tilth 0.10.1 session state](https://github.com/jahala/tilth/blob/v0.10.1/src/session.rs)
+- [Tilth 0.10.1 MCP dispatch and worker lifecycle](https://github.com/jahala/tilth/blob/v0.10.1/src/mcp/mod.rs)
+- [Tilth 0.10.1 scope resolution](https://github.com/jahala/tilth/blob/v0.10.1/src/mcp/tools/mod.rs)
+- [Tilth 0.10.1 advertised tool definitions](https://github.com/jahala/tilth/blob/v0.10.1/src/mcp/tools/definitions.rs)
 
-The bug is conversation-context invalidation, not primarily source invalidation. Tilth already checks file mtime. Git polling adds races and unrelated resets without addressing `/tree` directly.
-
-### Branch-state snapshot and restore
-
-Perfect branch-local deduplication would snapshot Tilth's expanded set per Pi leaf and restore it when navigating. Tilth exposes neither export nor import of that state, and Pi's adapter exposes no same-connection arbitrary-call API for extensions. The protocol and persistence complexity is not warranted unless reconnect cost becomes material.
-
-### Patch Tilth or pi-mcp-adapter immediately
-
-A Tilth dedup epoch/context ID or an adapter event-bus reconnect request would be cleaner long-term interfaces. The documented reconnect command is sufficient for the primary `/tree` failure, so upstream patches should be considered only if command dispatch proves unreliable or automatic-compaction correctness becomes required.
-
-## Verification plan
-
-Implement with targeted tests and one live integration check.
-
-### Extension tests
-
-- `session_tree` with different leaf IDs schedules exactly one reconnect.
-- identical old/new leaf IDs schedule nothing.
-- repeated events before the deferred callback are coalesced.
-- dispatched text is exactly `/mcp reconnect tilth`.
-- `expandPromptTemplates` is `true`.
-- shutdown or reload does not leave a callback using stale extension state; add cancellation if the test exposes this race.
-
-### Live Pi check
-
-1. Start Pi with `pi-mcp-adapter`, Tilth MCP, and the lifecycle extension.
-2. Search for a sufficiently large definition and confirm its body is expanded.
-3. Use `/tree` to navigate to a point before that tool result.
-4. Confirm the adapter reconnects only the `tilth` server.
-5. Search for the same definition and confirm the full body is shown rather than `[shown earlier]`.
-6. Confirm the reconnect command does not remain as a normal user message or trigger an unintended model turn.
-7. Cancel `/tree` and confirm no reconnect occurs.
-8. Confirm Chrome DevTools and other MCP servers remain connected.
-9. Repeat after returning to the original branch; showing the body again is acceptable conservative behavior.
-
-### Compaction check before enabling its hook
-
-Test manual, threshold, and overflow compaction separately. Record whether the reconnect executes before any automatic retry and whether it alters queued messages. Enable a `session_compact` hook only for the modes proven safe.
-
-## Decision boundary for future changes
-
-Keep the reconnect-command approach while all of the following hold:
-
-- `/tree` reconnect dispatch is reliable and invisible to conversation context;
-- Tilth restart latency remains negligible in normal use;
-- coarse cache invalidation does not create material performance problems;
-- automatic-compaction gaps are acceptable or absent in observed workflows.
-
-Request or implement a first-class adapter reconnect event when command injection becomes unreliable or automatic retries require synchronous reset. Request a Tilth dedup epoch or branch-aware state API only when preserving cache state across branch returns has measurable value.
-
-## Evidence locations
-
-- Pi extension lifecycle and command dispatch: installed `@earendil-works/pi-coding-agent/docs/extensions.md`.
-- Adapter reconnect command and lifecycle behavior: installed `pi-mcp-adapter/README.md`, `proxy-modes.ts`, and `lifecycle.ts`.
-- Tilth expansion state: upstream `src/session.rs`, search formatting, and MCP dispatch for `tilth_session`.
-- Current transport selection and extension loading: `ai/pi/mcp.json`, `ai/pi/ai.ts`, and `ai/pi/runtime/pi-launcher.ts`.
+Open questions are whether a supported Tilth no-dedup mode becomes available, whether repeated CLI parsing has material cost, and whether native MCP passes the targeting, worker-cleanup, and context-visibility checks. Until those are resolved, native MCP is the preferred prospective transport, not a completed or approved replacement.

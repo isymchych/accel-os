@@ -2,7 +2,10 @@
 
 Apply the sections relevant to the affected surface and flow. This reference
 supports design and implementation decisions; the skill's workflow determines
-the checks needed for a particular change.
+the checks needed for a particular change. Keep implementation requirements
+regardless of verification level. Apply the checking guidance below within the
+focused or extended scope chosen by the workflow; it does not independently
+require a broader audit.
 
 ## Composition
 
@@ -66,12 +69,15 @@ the checks needed for a particular change.
   necessary, make the full value available to keyboard, pointer, and touch users.
   Hidden collections need an operable disclosure, not a static overflow count.
 - For affected themes, check secondary text, separators, interaction states, and
-  overlays against their actual backgrounds. Check each supported theme
+  overlays against their actual backgrounds within the chosen verification scope.
+  Check each theme included in that scope
   independently rather than inferring one theme's quality from another.
 - Check relevant loading-related layout jumps and interaction responsiveness.
   Investigate observed problems rather than adding speculative virtualization,
   loading infrastructure, or bundle refactors.
 - Check focus order and visibility, contrast, and reduced-motion behavior with
-  suitable inspection tools. Inspect screen-reader structure and announcements
-  where relevant, using an actual screen reader when available. Use existing
-  accessibility tooling and examine relevant console or runtime failures.
+  suitable inspection tools relevant to the change and verification scope. For
+  extended accessibility verification, inspect screen-reader structure and
+  announcements where relevant, using an actual screen reader when available.
+  Use existing accessibility tooling and examine relevant console or runtime
+  failures within that scope.

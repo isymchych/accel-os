@@ -60,13 +60,13 @@ Clear a pending action after successful execution or when a changed `HEAD` makes
 
 1. Inspect the staged diff. If it is empty, explain that there are no staged changes.
 2. If the outcome is unclear, ask one concise clarification question.
-3. Generate a message from the diff.
+3. Generate a message from the diff and relevant established task context. Inspect nearby documentation or tests when needed to understand the reason for the change.
 4. For a proposal, save and present the pending action. For execution, run `apply_commit.ts create`.
 
 ### Amend
 
 1. Resolve `HEAD`; inspect its message, first-parent diff, and publication refs.
-2. Use an explicit replacement unchanged. Otherwise generate a replacement from the current message and diff; if the diff is empty, explain that there is not enough change context.
+2. Use an explicit replacement unchanged. Otherwise generate a replacement from the current message, diff, and relevant established task context. Inspect nearby documentation or tests when needed to understand the reason for the change; if the diff is empty, explain that there is not enough change context.
 3. Save the resolved SHA as the expected `HEAD`.
 4. For a proposal, save and present the pending action, warning if the commit is published.
 5. For execution of a published commit, save the action and request confirmation.
@@ -87,13 +87,17 @@ For missing context, stale proposals, empty diffs, and other early stops, explai
 
 ## Generated message format
 
+- Write the subject and body so they can stand alone as a PR title and description. Help a reviewer understand the problem, the chosen change, and its consequential effects without reconstructing the diff.
 - Use `type(scope): summary`; scope is optional, the summary is imperative, and the subject is at most 72 characters.
+- Use lowercase summaries.
 - Allowed types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `perf`, `build`, `ci`, `revert`.
-- Follow the subject with a blank line and an outcome-first body paragraph that explains what changed and its impact.
-- Add a second observable-effect sentence only when behavior changed.
-- Follow the body paragraphs with a blank line and 1–6 concise bullets, each starting with `- ` and ordered by user impact or risk.
+- Make the summary name the meaningful change rather than the editing activity.
+- Follow the subject with a blank line and a body that explains why the change is needed and what changes as a result. Include implementation details when they clarify the approach or a consequential tradeoff.
+- Use short paragraphs to explain the problem and approach. Add bullets when they make distinct effects, tradeoffs, or reviewer considerations easier to scan. Separate bullets from preceding prose with a blank line, start each with `- `, and order them by user impact or risk. Avoid bullets that repeat the prose or merely list changed files.
+- Scale detail to complexity and risk; a small change may need only two sentences. Mention compatibility changes, operational limits, and verification gaps when they matter, without requiring fixed headings.
+- Ground explanations in inspected evidence and established task context. Never invent motivation, verification, or guarantees.
 - Use `type(scope)!: summary` and a `BREAKING CHANGE: ...` body entry for breaking changes.
-- Prefer concrete verbs and consequences over file-by-file narration or vague claims.
+- Prefer concrete verbs and consequences over file-by-file narration, generic praise, filler, or unsupported claims such as "more robust" or "improves maintainability".
 - Prefer the narrowest stable scope. For mixed changes, prioritize user-visible behavior over implementation category; default to `chore` when ambiguous.
 - For Ukrainian summaries, prefer completed-result phrasing over infinitive phrasing.
 

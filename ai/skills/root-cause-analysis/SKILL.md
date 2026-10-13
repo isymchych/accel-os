@@ -69,12 +69,14 @@ when they address an evidenced risk within the approved scope. If the correct
 boundary fix exceeds scope, propose the expansion before proceeding.
 
 Where feasible, demonstrate the failure before the correction and its absence
-afterward. Load and follow `$ACCEL_OS/ai/skills/test-design/SKILL.md` for
-independent expectations and meaningful failures. Retain or add a regression check for
-the distinct failure mechanism, and check affected behavior. A passing suite
-alone does not establish that the reported failure is resolved. State what was
-verified and what remains untested; do not claim broader recurrence prevention
-than the evidence supports.
+afterward, and check affected behavior. Apply the test-selection policy in
+`$ACCEL_OS/ai/SYSTEM.md` when deciding whether to add regression coverage; a bug
+fix does not automatically require a new test. Load and follow
+`$ACCEL_OS/ai/skills/test-design/SKILL.md` when designing or assessing tests for
+independent expectations and meaningful failures. A passing suite alone does not
+establish that the reported failure is resolved. State what was verified and
+what remains untested; do not claim broader recurrence prevention than the
+evidence supports.
 
 ## Report Proportionally
 

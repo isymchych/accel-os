@@ -1,5 +1,8 @@
+- personal playground
 - voice input
 - UI theme - retrofuturism, cyberpunk, minimal
 - easy context forking
 - sandboxing? microvm? devcontainer? code-first? only allow codemode?
 - diffs, file browser
+- tasks/projects/kanban board?
+- memory system / compound engineering

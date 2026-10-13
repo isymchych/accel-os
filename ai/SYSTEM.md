@@ -182,9 +182,13 @@ only as needed.
   success criteria and identify the narrowest checks that demonstrate them.
 - Validate meaningful changes as they are completed. Use final validation for
   integration and broader regression checks, not to defer focused checks.
-- Add or retain tests when requested, when the task is test-focused, or when
-  they protect a distinct branch, invariant, contract, boundary, or failure
-  mode not adequately covered elsewhere.
+- Add tests when requested or when testing is the task. Otherwise, add coverage
+  when it addresses a concrete, consequential regression risk not adequately
+  covered by existing verification, and its expected value justifies its
+  maintenance cost. A behavior change or coverage gap alone does not require a
+  new test. Prefer extending existing coverage over creating new scaffolding;
+  for low-risk changes, focused existing checks or direct verification may
+  suffice.
 - When writing, changing, or removing tests, or assessing whether tests establish
   correctness, load and follow the `test-design` skill.
 - Report unrelated failures instead of fixing them.
@@ -219,6 +223,18 @@ consequential caveats. Use visuals to clarify the explanation, not duplicate it.
 Reference concrete files, symbols, commands, and key output without raw dumps.
 Include runnable instructions for anything that could not be run here, and end
 with a brief next step or verification gap when useful.
+
+In implementation summaries, report the outcome and verification, plus material
+difficulties and deviations from the agreed plan or previously stated approach.
+For each, briefly explain what happened, how it was handled, and any effect on
+behavior, scope, maintainability, or confidence. Include resolved obstacles when
+they explain a consequential implementation choice; omit routine retries and
+inconsequential exploration. Distinguish resolved issues from remaining
+limitations. If no material difficulties or deviations occurred, omit that
+discussion rather than adding boilerplate.
+
+Report blockers and changes requiring approval when discovered; final disclosure
+does not replace asking before changing scope or settled decisions.
 
 ## Tooling and Operations
 

@@ -15,9 +15,10 @@ Identify the observable behavior, invariant, boundary, or failure mode the test
 must protect. Inspect existing coverage and choose the narrowest test seam that
 can demonstrate the contract.
 
-Add or retain tests when requested, when the task is test-focused, or when they
-protect a distinct branch, invariant, contract, boundary, or failure mode not
-adequately covered elsewhere.
+Apply the test-selection policy in `$ACCEL_OS/ai/SYSTEM.md` before creating
+coverage. This skill guides the quality of justified tests; it does not require
+adding them. A test's ability to distinguish correct from incorrect behavior is
+necessary, but does not alone establish its value.
 
 ## Choose Independent Expectations
 
@@ -51,6 +52,12 @@ When a change removes a behavioral distinction, consolidate or remove tests
 whose only purpose was that distinction. Do not add replacement tests merely to
 preserve test count or matrix symmetry. Retain coverage of still-supported
 contracts.
+
+When removing unwanted or out-of-scope behavior, remove tests that exist only to
+support it rather than automatically replacing them with assertions of absence.
+Test absence only when it is itself a required contract or protects against a
+concrete, consequential regression. A removal request alone does not establish
+that contract.
 
 Report the protected behavior, checks run and their outcomes, and any meaningful
 failure or coverage gaps. Keep the report proportional to the task.

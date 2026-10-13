@@ -1,6 +1,7 @@
 ---
 name: frontend-design
 description: Design and refine web interfaces with deliberate visual hierarchy, typography, layout, color, and interaction. Use when building or reshaping a page, component, or application UI, assessing its visual quality and usability, or reading, creating, or updating a visual DESIGN.md from project evidence or supplied references.
+disable-model-invocation: true
 ---
 
 # Frontend Design
@@ -85,27 +86,43 @@ Use it to carry a coherent visual direction across screens and design sessions.
 
 ### 4) Verify the Contract
 
+- Default to focused verification proportional to the change. Perform extended
+  verification only when the user requests it or project requirements mandate it.
+  If broader checks appear necessary, explain the concrete risk and ask before
+  expanding verification; do not ask about verification level on every task.
+- Run focused project checks for changed code and check the behavior or visual
+  property directly affected. Reuse an available preview when useful; browser
+  availability alone does not require a rendered audit, and focused verification
+  does not require setting up extensive browser tooling.
 - Choose checks based on the change and the question being answered:
   - Token/component consistency: inspect source and computed styles.
   - Task completion and state transitions: exercise browser interactions.
   - Semantics and accessibility: inspect the DOM/accessibility tree, use keyboard
-    checks and existing tooling, and use a screen reader where relevant and available.
+    checks and existing tooling.
   - Composition: inspect representative rendered views.
-  - Established appearance regressions: use existing visual-regression checks.
-- Inspect the actual rendered interface for visual changes when browser access is
-  available. Use the cheapest evidence that answers the question. Capture
-  screenshots for composition judgments, visual comparisons, or defects difficult
-  to assess otherwise; reuse captures while they remain relevant.
-- Match coverage to the change: a color-token change needs targeted theme and
-  contrast checks, a layout change needs representative narrow/wide composition
-  checks, and an interaction change primarily needs interaction and keyboard
-  checks. Cover affected themes and states using the interface guidance.
+  - Established appearance regressions: use existing visual-regression checks
+    only if they do not capture screenshots, unless the user explicitly requests
+    screenshot capture.
+- Match focused coverage to the change: target theme and contrast checks for a
+  color-token change, the affected composition for a layout change, and interaction
+  and keyboard behavior for an interaction change. Extended verification adds
+  broader viewport, theme, and state coverage, multi-step interaction walkthroughs,
+  accessibility audits and relevant screen-reader checks when available, and
+  repeated rendered refinement across representative screens.
+- Capture screenshots only when the user explicitly requests them; requesting
+  extended verification does not grant screenshot permission. Otherwise, use
+  browser interactions, DOM/accessibility inspection, and computed styles.
+  Supplied screenshots remain valid references; reuse captures while relevant.
 - Batch relevant checks and fixes. Recheck affected areas after material changes
-  or unresolved findings. Stop when the agreed requirements are met and observed
-  regressions are resolved; further aesthetic exploration is a separate decision.
-- Run focused project checks for changed code. Report inspected behavior, remaining
-  defects, and verification gaps. If browser or device access is unavailable, use
-  relevant existing visual fixtures after checking their target, theme, and
-  freshness; distinguish those from current rendered checks. Source-only checks
-  do not establish rendered quality, and screenshots or audits alone do not
-  establish accessibility. Report blockers rather than polishing indefinitely.
+  or unresolved findings within the chosen verification scope. Stop when the
+  agreed requirements are met and observed regressions are resolved; further
+  aesthetic exploration is a separate decision. Optional audits do not make
+  implementation requirements in the interface guidance optional.
+- Report inspected behavior, remaining defects, and verification gaps. Gaps in
+  optional checks do not by themselves block completion; concrete correctness
+  issues or unmet required checks do. When current rendered checks are unavailable,
+  use relevant existing visual fixtures if available after checking their target,
+  theme, and freshness; distinguish those from current rendered checks.
+  Source-only checks do not establish rendered quality, and screenshots or audits
+  alone do not establish accessibility. Report blockers rather than polishing
+  indefinitely.
