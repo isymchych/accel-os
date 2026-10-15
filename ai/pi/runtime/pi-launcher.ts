@@ -21,7 +21,7 @@ const sharedExtensionNames = [
   "personal-context",
   "preview",
   "response-status",
-  "waybar-agent-status",
+  "agent-activity",
   "shell-tool",
   "handoff-summary",
   "write-file",

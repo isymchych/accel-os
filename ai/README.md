@@ -199,6 +199,14 @@ Makes targeted fixes based on evidence
 
 - > The problem is that your private AI-assisted research might indirectly improve future models that can then compete with you, even if nobody ever directly reads or copies your work.
 
+## Software Engineering changes
+
+- Engineers increasingly focus on architecture and constraints, while agents implement the code.
+- Agents need architectural supervision. They sometimes introduce inefficient algorithms or unnecessary defensive complexity.
+- Reviews shift from individual lines toward intent and invariants.
+- More extensive testing becomes practical, including hermetic simulations and fuzzing.
+- AI-assisted operations: Dedicated monitoring agents continuously examine telemetry and logs for anomalies.
+
 ## MCPs
 
 - [Chrome dev tools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)

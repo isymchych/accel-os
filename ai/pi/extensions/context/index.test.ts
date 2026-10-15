@@ -36,7 +36,7 @@ test("context prompt uses the final prompt from the last completed turn", async 
           scope: "temporary",
           origin: "top-level",
         },
-        reachesTools: () => "all",
+        reachesTools: (): "all" => "all",
       },
     ],
     getActiveTools: () => ["codemode"],

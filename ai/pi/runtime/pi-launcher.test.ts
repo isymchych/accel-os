@@ -31,6 +31,16 @@ test("buildPiArgs loads ask-user-question for both navigation backends", async (
   }
 });
 
+test("buildPiArgs loads agent-activity exactly once for both navigation backends", async () => {
+  for (const backend of ["tilth", "srcwalk"] as const) {
+    const args = await buildPiArgs("/repo", backend);
+    const extension = "/repo/ai/pi/extensions/agent-activity/index.ts";
+    assert.equal(args.filter((value) => value === extension).length, 1);
+    assert.equal(args[args.indexOf(extension) - 1], "--extension");
+    assert.ok(!args.some((value) => value.includes("waybar-agent-status")));
+  }
+});
+
 test("configurePiEnvironment selects the agent Git config for every Pi child", () => {
   const previousCodingAgentDir = process.env["PI_CODING_AGENT_DIR"];
   const previousSessionDir = process.env["PI_CODING_AGENT_SESSION_DIR"];
