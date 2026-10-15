@@ -34,12 +34,6 @@
   :type 'integer
   :group 'mb-customizations)
 
-(defcustom mb-use-local-tsgo nil
-  "Use the nearest project-local node_modules/.bin/tsc for lsp-mode's tsgo client."
-  :type 'boolean
-  :safe #'booleanp
-  :group 'mb-customizations)
-
 (defun mb/editor-from-environment ()
   "Return the modal editor selected by MB_EMACS_EDITOR."
   (let ((value (downcase (or (getenv "MB_EMACS_EDITOR") "evil"))))

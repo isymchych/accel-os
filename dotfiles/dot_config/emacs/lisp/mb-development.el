@@ -227,20 +227,15 @@
   ;; lsp-mode's tsgo client resolves a system "tsgo" or its own downloaded
   ;; package.  An opted-in project instead uses its node_modules/.bin/tsc;
   ;; resolve that path per project without changing the default client.
-  (defun mb/project-local-tsgo-command ()
-    "Return the project-local TypeScript native LSP command."
-    (unless mb-use-local-tsgo
-      (user-error "Set mb-use-local-tsgo in .dir-locals.el to use project-local tsgo"))
-    (let* ((tsc-relative-path "node_modules/.bin/tsc")
-           (root (locate-dominating-file default-directory tsc-relative-path)))
-      (unless root
-        (user-error "Could not find %s from %s" tsc-relative-path default-directory))
-      `(,(expand-file-name tsc-relative-path root) ,@lsp-clients-tsgo-args)))
-
   (defun mb/lsp-package-path (orig-fn dependency)
-    "Use project-local TypeScript for lsp-mode's tsgo client when enabled."
-    (if (and mb-use-local-tsgo (eq dependency 'tsgo))
-	(car (mb/project-local-tsgo-command))
+    "Use project-local TypeScript when the tsgo client is explicitly enabled.
+Otherwise resolve DEPENDENCY through ORIG-FN."
+    (if (and (eq dependency 'tsgo) (memq 'tsgo lsp-enabled-clients))
+        (let* ((tsc-relative-path "node_modules/.bin/tsc")
+               (root (locate-dominating-file default-directory tsc-relative-path)))
+          (unless root
+            (user-error "Could not find %s from %s" tsc-relative-path default-directory))
+          (expand-file-name tsc-relative-path root))
       (funcall orig-fn dependency)))
 
   (advice-add 'lsp-package-path :around #'mb/lsp-package-path)
@@ -316,6 +311,25 @@
        'flycheck-working-directory
        #'mb/flycheck-javascript-oxlint-working-directory)
 
+  (defun mb/flycheck-javascript-oxlint-enabled-p ()
+    "Enable Oxlint only with a project config and local executable."
+    (when-let* ((config-root
+                 (locate-dominating-file default-directory ".oxlintrc.json"))
+		(binary-root
+                 (locate-dominating-file config-root "node_modules/.bin/oxlint"))
+		(executable
+                 (expand-file-name "node_modules/.bin/oxlint" binary-root))
+		(_ (file-executable-p executable)))
+      (setq-local flycheck-javascript-oxlint-executable executable)
+      t))
+
+  (setf (flycheck-checker-get 'javascript-oxlint 'enabled)
+        #'mb/flycheck-javascript-oxlint-enabled-p)
+
+  (with-eval-after-load 'lsp-diagnostics
+    (lsp-diagnostics-lsp-checker-if-needed)
+    (flycheck-add-next-checker 'lsp 'javascript-oxlint))
+
   ;; from Spacemacs
   (defun mb/toggle-flycheck-errors-list ()
     "Toggle flycheck's error list window."
@@ -354,6 +368,26 @@
   :init
   (apheleia-global-mode +1)
   :config
+  (defun mb/apheleia-prefer-local-oxfmt ()
+    "Prefer local Oxfmt for supported formats without overriding explicit choices."
+    (when-let* ((root
+                 (locate-dominating-file default-directory "node_modules/.bin/oxfmt"))
+		(_ (file-executable-p
+                    (expand-file-name "node_modules/.bin/oxfmt" root))))
+      (setq-local
+       apheleia-mode-alist
+       (mapcar
+        (lambda (entry)
+          (cons (car entry)
+                (if (memq (cdr entry)
+                          '(prettier-javascript prettier-typescript prettier-json
+						prettier-html prettier-css prettier-yaml))
+                    'oxfmt
+                  (cdr entry))))
+        apheleia-mode-alist))
+      (setf (alist-get 'markdown-mode apheleia-mode-alist) 'oxfmt)))
+  (add-hook 'hack-local-variables-hook #'mb/apheleia-prefer-local-oxfmt)
+
   (defun mb-apheleia-disallowed-buffer-p ()
     (and buffer-file-name
 	 (or (string-match-p "\\.component\\.html\\'" buffer-file-name)

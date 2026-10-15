@@ -1,5 +1,1 @@
-((nil . ((mb-use-local-tsgo . t)))
- (typescript-ts-mode . ((lsp-disabled-clients . (eslint deno-ls ts-ls))
-                        (apheleia-formatter . oxfmt)))
- (json-mode . ((apheleia-formatter . oxfmt)))
- (markdown-mode . ((apheleia-formatter . oxfmt))))
+((typescript-ts-base-mode . ((lsp-enabled-clients . (tsgo)))))
