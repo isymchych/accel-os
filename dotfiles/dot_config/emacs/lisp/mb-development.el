@@ -168,6 +168,7 @@
   (treesit-auto-install-grammar 'ask)
   (treesit-font-lock-level 4)
   :config
+  (add-to-list 'auto-mode-alist '("\\.html\\'" . html-ts-mode))
   (add-to-list 'auto-mode-alist '("\\.mts\\'" . typescript-ts-mode)))
 
 
@@ -323,8 +324,9 @@ Otherwise resolve DEPENDENCY through ORIG-FN."
       (setq-local flycheck-javascript-oxlint-executable executable)
       t))
 
-  (setf (flycheck-checker-get 'javascript-oxlint 'enabled)
-        #'mb/flycheck-javascript-oxlint-enabled-p)
+  ;; Для setf тут зарано: use-package розгортається до завантаження Flycheck.
+  (put 'javascript-oxlint 'flycheck-enabled
+       #'mb/flycheck-javascript-oxlint-enabled-p)
 
   (with-eval-after-load 'lsp-diagnostics
     (lsp-diagnostics-lsp-checker-if-needed)
