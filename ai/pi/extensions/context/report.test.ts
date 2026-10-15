@@ -54,13 +54,6 @@ test("buildContextReport keeps raw estimates separate from Pi's exact usage", ()
         name: "read",
         description: "Read a file",
         parameters: { type: "object", properties: { path: { type: "string" } } },
-        exposure: "direct",
-        sourceInfo: {
-          path: "<builtin:read>",
-          source: "builtin",
-          scope: "temporary",
-          origin: "top-level",
-        },
       },
     ],
     activeToolNames: ["read"],

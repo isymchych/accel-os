@@ -97,8 +97,8 @@ export default function askUserQuestionExtension(pi: ExtensionAPI): void {
     promptSnippet: "Make needed user input easier with concise choices or free text.",
     promptGuidelines: [
       "Follow system, planning, and user instructions to decide when to ask for input; this tool does not create additional clarification or approval checkpoints.",
-      "If ambiguity remains after checking available context, and different interpretations would materially change the result, ask a focused clarification question rather than guessing. Prefer ask_user_question when concrete choices help the user decide; use plain chat otherwise.",
-      "When input is needed, prefer ask_user_question if concrete choices make answering easier. Use plain chat for open-ended discussion or when choices would feel forced; do not invent options just to use the tool.",
+      "If ambiguity remains after checking available context, and different interpretations would materially change the result, ask a focused clarification question rather than guessing.",
+      "When you need user input to continue, default to ask_user_question rather than ending your response with a plaintext question. Use it for clarifications, approvals, and decisions when you can offer meaningful choices. Reserve plain chat for genuinely open-ended questions that cannot reasonably offer choices; do not invent options just to use the tool.",
       "Ask one focused question by default; group only closely related decisions. Keep choices concise and explain meaningful trade-offs where needed.",
       "Provide 1-4 questions with 2-6 distinct choices each. Free text is offered automatically; do not add an Other choice.",
       "Questionnaire answers express preferences or decisions; they do not implicitly authorize unrelated work. Cancellation submits no answers.",

@@ -12,12 +12,16 @@ import type {
   ExtensionCommandContext,
   SessionEntry,
   SessionMessageEntry,
-  ToolInfo,
 } from "@earendil-works/pi-coding-agent";
 import { buildSessionContext, DynamicBorder } from "@earendil-works/pi-coding-agent";
 import { Container, matchesKey, Text } from "@earendil-works/pi-tui";
 
-import { buildContextReport, type CacheTurnInput, renderContextReport } from "./report.ts";
+import {
+  buildContextReport,
+  type CacheTurnInput,
+  renderContextReport,
+  type ToolSnapshot,
+} from "./report.ts";
 
 type ContextMode = "summary" | "prompt";
 
@@ -25,7 +29,7 @@ type TurnContextSnapshot = {
   assistantEntryId: string;
   systemPrompt: string;
   systemPromptOptions: BuildSystemPromptOptions;
-  allTools: ToolInfo[];
+  allTools: ToolSnapshot[];
   activeToolNames: string[];
 };
 
@@ -144,7 +148,14 @@ export default function contextExtension(pi: ExtensionAPI): void {
     pendingSnapshot = {
       systemPrompt: ctx.getSystemPrompt(),
       systemPromptOptions: structuredClone(pendingPromptOptions),
-      allTools: structuredClone(pi.getAllTools()),
+      // Tool metadata can include runtime callbacks; snapshot only report data.
+      allTools: structuredClone(
+        pi.getAllTools().map(({ name, description, parameters }) => ({
+          name,
+          description,
+          parameters,
+        })),
+      ),
       activeToolNames: [...pi.getActiveTools()],
     };
     pendingPromptOptions = undefined;

@@ -6,3 +6,5 @@
 - diffs, file browser
 - tasks/projects/kanban board?
 - memory system / compound engineering
+- live system introspection / repl - like lisp machine / emacs / - find out best ideas/practices
+- timeline for branches

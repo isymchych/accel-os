@@ -109,8 +109,7 @@ choosing a rung.
 - Follow established local style and patterns unless they conflict with
   correctness or explicit requirements.
 - For visual UI work, look for and read the applicable project `DESIGN.md`,
-  if present. Use the `frontend-design` skill when applying, creating, or updating
-  visual design guidance. Check the document's purpose rather than assuming the
+  if present. Check the document's purpose rather than assuming the
   filename denotes visual design.
 - Build around standards and documented protocols.
 - Use concise names. Write comments only when they add useful context,

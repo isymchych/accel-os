@@ -13,6 +13,8 @@ import type {
   ToolInfo,
 } from "@earendil-works/pi-coding-agent";
 
+export type ToolSnapshot = Pick<ToolInfo, "name" | "description" | "parameters">;
+
 export interface CacheTurnInput {
   sequence: number;
   isOnActiveBranch: boolean;
@@ -38,7 +40,7 @@ export interface ContextReportInput {
   contextUsage: ContextUsage | undefined;
   messages: readonly AgentMessage[];
   cacheTurns: readonly CacheTurnInput[];
-  allTools: readonly ToolInfo[];
+  allTools: readonly ToolSnapshot[];
   activeToolNames: readonly string[];
   contextFiles: NonNullable<BuildSystemPromptOptions["contextFiles"]>;
   session: SessionInfoSnapshot;
@@ -246,7 +248,7 @@ function estimateMessageBreakdown(messages: readonly AgentMessage[]): RawMessage
   return breakdown;
 }
 
-function estimateToolDefinitionTokens(tool: ToolInfo): number {
+function estimateToolDefinitionTokens(tool: ToolSnapshot): number {
   return estimatePlainTextTokens(
     JSON.stringify({
       name: tool.name,
@@ -301,7 +303,7 @@ function estimateContextFileItemsRaw(
 }
 
 function estimateActiveToolItemsRaw(
-  allTools: readonly ToolInfo[],
+  allTools: readonly ToolSnapshot[],
   activeToolNames: readonly string[],
 ): RawTokenItem[] {
   return allTools

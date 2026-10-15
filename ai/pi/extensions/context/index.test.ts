@@ -24,8 +24,22 @@ test("context prompt uses the final prompt from the last completed turn", async 
     ) {
       commandHandler = command.handler;
     },
-    getAllTools: () => [],
-    getActiveTools: () => [],
+    getAllTools: () => [
+      {
+        name: "codemode",
+        description: "Run a script",
+        parameters: { type: "object", properties: { code: { type: "string" } } },
+        exposure: "model-only",
+        sourceInfo: {
+          path: "<builtin:codemode>",
+          source: "builtin",
+          scope: "temporary",
+          origin: "top-level",
+        },
+        reachesTools: () => "all",
+      },
+    ],
+    getActiveTools: () => ["codemode"],
   } as unknown as ExtensionAPI;
 
   contextExtension(pi);

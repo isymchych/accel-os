@@ -136,7 +136,8 @@ export async function executeShellTool(
       : { command: params.command, timeout: params.timeout },
     signal,
     onUpdate,
-    ctx,
+    // Pi prioritizes the execution context's cwd over the factory's fallback.
+    { ...ctx, cwd: commandCwd },
   );
 }
 

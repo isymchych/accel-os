@@ -81,7 +81,7 @@ Clear a pending action after successful execution or when a changed `HEAD` makes
 
 ## Responses
 
-Keep responses concise and conversational while preserving the complete proposed or applied message. Clearly state whether the action is proposed, committed, amended, blocked, or failed. For published amends, include the force-push warning before requesting confirmation.
+Keep responses concise and conversational. Show the complete message when presenting a proposal. After successful execution, report only whether the commit was created or amended and its short SHA. Do not repeat the message unless requested. Clearly state whether the action is proposed, committed, amended, blocked, or failed. For published amends, include the force-push warning before requesting confirmation.
 
 For missing context, stale proposals, empty diffs, and other early stops, explain what is missing or changed and give the shortest useful next action. Accept unambiguous natural language rather than requiring exact command phrases.
 

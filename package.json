@@ -13,7 +13,9 @@
   "allowScripts": {
     "koffi@2.16.2": true,
     "srcwalk@1.8.1": true,
-    "tilth@0.10.1": true
+    "tilth@0.10.1": true,
+    "@google/genai": false,
+    "protobufjs": false
   },
   "scripts": {
     "fmt": "oxfmt ai/pi ai/skills ai/workspace packages scripts",
@@ -29,7 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
-    "oxfmt": "^0.72.0",
+    "oxfmt": ">=0.72.0 <1.0.0",
     "oxlint": "^1.76.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^7.0.2"
