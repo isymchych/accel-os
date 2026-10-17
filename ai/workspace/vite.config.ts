@@ -1,12 +1,12 @@
+import solid from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const backendPort = readPort(process.env.WORKSPACE_PORT, 8787, "WORKSPACE_PORT");
 const clientPort = readPort(process.env.WORKSPACE_VITE_PORT, 5173, "WORKSPACE_VITE_PORT");
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [solid(), tailwindcss()],
   server: {
     host: "127.0.0.1",
     port: clientPort,

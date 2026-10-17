@@ -1,6 +1,12 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "sortImports": true,
+  "overrides": [
+    {
+      "files": ["**/*.md"],
+      "options": { "proseWrap": "always" }
+    }
+  ],
   "ignorePatterns": [
     "*.json",
     "ai/workspace/dist/**",

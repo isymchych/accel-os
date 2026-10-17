@@ -1,4 +1,3 @@
-- use Solid.js + router
 - personal playground
 - voice input
 - UI theme - retrofuturism, cyberpunk, minimal

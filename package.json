@@ -18,8 +18,8 @@
     "protobufjs": false
   },
   "scripts": {
-    "fmt": "oxfmt ai/pi ai/skills ai/workspace packages scripts",
-    "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages scripts",
+    "fmt": "oxfmt ai/pi ai/skills ai/workspace packages scripts '**/*.md'",
+    "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages scripts '**/*.md'",
     "lint": "oxlint ai/pi ai/skills ai/workspace packages scripts",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"

@@ -1,8 +1,6 @@
-import { RouterProvider } from "@tanstack/react-router";
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { render } from "@solidjs/web";
 
-import { router } from "./routes.tsx";
+import { FoundationScreen } from "./foundation-screen.tsx";
 
 import "../styles/theme.css";
 
@@ -11,8 +9,4 @@ if (rootElement === null) {
   throw new Error("Missing application root element.");
 }
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
+render(() => <FoundationScreen />, rootElement);
