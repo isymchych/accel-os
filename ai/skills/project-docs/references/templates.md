@@ -1,8 +1,10 @@
-# Document Templates
+# Document Starting Points
 
-Use only the relevant template. Bracketed text is an authoring prompt, not content
-to retain. Follow established project formatting and status conventions. Omit
-sections with no useful content rather than filling them with boilerplate.
+Use only the relevant starting point and follow established project conventions.
+These are not required section lists. Bracketed text is an authoring prompt;
+replace it with useful content, not boilerplate. Extend an existing document
+before creating another.
+For unresolved questions, name the evidence or decision needed to resolve them.
 
 ## Behavioral Spec
 
@@ -11,46 +13,18 @@ Suggested path: `docs/specs/<capability>.md`.
 ```markdown
 # [Capability]
 
-Status: [draft or agreed; record actual approval evidence when needed]
+Status: [draft or agreed]
 
-[Brief purpose and intended consumers.]
+[Required behavior for the intended consumer.]
 
-## Scope
-
-[Included behavior and explicit non-goals.]
-
-## Required Behavior
-
-[Rules and invariants in domain language. Include meaningful examples,
-states/transitions, and alternate or failure cases.]
-
-## Boundary Contracts
-
-[Inputs, outputs, ownership, side effects, authorization, and error behavior
-where relevant. Link canonical schemas instead of copying them.]
-
-## Quality Constraints
-
-[Relevant security, performance, reliability, compatibility, or operational
-requirements with agreed conditions and measurable outcomes.]
-
-## Acceptance and Verification
-
-| Required outcome                            | Verification                                      |
-| ------------------------------------------- | ------------------------------------------------- |
-| [Observable result under stated conditions] | [Test/check/manual procedure and expected result] |
-
-[Link existing checks. Distinguish proposed checks from completed verification.]
-
-## Open Questions and Implementation Gaps
-
-[Unresolved requirements, assumptions, and known target-versus-current gaps.
-Name the evidence or decision needed; do not present guesses as requirements.]
-
-## Related Documents
-
-[Links to relevant domain rules, proposals, decisions, and interfaces.]
+[Observable acceptance outcome and link to its check, or proposed verification.]
 ```
+
+Include boundaries, failure cases, and quality constraints when needed to define
+the contract. Express quality constraints with agreed conditions and measurable
+outcomes; do not invent targets. Link canonical schemas rather than copying them.
+Identify unresolved requirements or implementation gaps when present;
+distinguish proposed checks from completed verification.
 
 ## Change Proposal
 
@@ -61,42 +35,17 @@ Suggested path: `docs/proposals/<change>.md`.
 
 Status: draft
 
-[Brief purpose.]
+[Problem and evidence.]
 
-## Problem and Evidence
+[Proposed behavioral change, affected contract links, and the deciding tradeoff.]
 
-[Who is affected, what is wrong, supporting evidence, and desired outcome.]
-
-## Scope and Behavioral Delta
-
-[What changes and what stays unchanged. Link existing specs and identify
-proposed contract changes. Include non-goals.]
-
-## Proposed Design
-
-[Responsibilities, data ownership, dependencies, interfaces, and representative
-flows. Include failure behavior and a diagram where useful.]
-
-## Alternatives and Tradeoffs
-
-[Credible alternatives, including doing nothing. Explain the recommended
-choice, costs, risks, and the evidence that would change the recommendation.]
-
-## Delivery and Validation
-
-[Compatibility, migration, rollout/rollback when relevant, and checks that
-establish success. Link a separate execution plan only if one is useful.]
-
-## Open Questions
-
-[Unresolved assumptions and decisions that materially affect the direction.]
-
-## Resolution
-
-[Fill when resolved: actual decision and approval evidence, agreed changes
-or exclusions, and links to updated living docs and verification.
-Accepted is not implemented.]
+[How to establish that the change solves the problem.]
 ```
+
+Include credible alternatives for consequential choices. Add scope exclusions,
+rollout, recovery, or open questions only when they affect the decision.
+When resolved, record the actual decision and supporting approval evidence;
+accepted does not mean implemented.
 
 ## Architecture Decision Record
 
@@ -107,30 +56,14 @@ Suggested path: `docs/adr/0001-<decision>.md`.
 
 Status: proposed
 
-[Date of actual decision and evidence of acceptance when known.]
+[Constraint or problem requiring a decision.]
 
-## Context
-
-[Forces, constraints, evidence, and the tradeoff requiring a decision.]
-
-## Decision
-
-[One clear choice, its scope, and why it was chosen.]
-
-## Alternatives
-
-[Credible options and why they were not chosen; link the proposal for detail.]
-
-## Consequences
-
-[Benefits, costs, operational limits, and follow-up obligations.
-State what would justify revisiting the decision.]
-
-## Related Records
-
-[Related proposal/spec/architecture links. When superseding a decision,
-link its ADR and update the old record to point here.]
+[Chosen approach, why it wins over credible alternatives, and its consequences.]
 ```
+
+Record the actual decision date and acceptance evidence when known. Link a
+proposal's detailed comparisons instead of repeating them. When superseding a
+decision, link both records.
 
 ## Current Architecture
 
@@ -139,43 +72,32 @@ Suggested path: `docs/architecture.md`.
 ```markdown
 # Architecture
 
-[Purpose, scope, and evidence of the supported current system.]
+[System responsibilities and how its main parts interact.]
 
-## Context and Constraints
-
-[Users, external systems, significant boundaries, and constraints.
-Link authoritative quality requirements and domain rules.]
-
-## Responsibilities and Dependencies
-
-[Major building blocks, what each owns, and dependency direction.
-Use a context/container/component view only at useful zoom levels.]
-
-## Data and Trust Boundaries
-
-[State ownership, external inputs, validation, persistence, and lifecycle.]
-
-## Runtime and Failure Paths
-
-[Representative interactions and important failures.
-Add deployment/recovery detail only where needed to understand operation.]
-
-## Risks and Known Gaps
-
-[Evidence-backed limitations; label planned changes separately from reality.
-Link proposals rather than presenting their designs as implemented.]
-
-## Decisions and Further Reading
-
-[Links to significant ADRs, specs, domain docs, guides, and runbooks.]
+[Constraints needed to understand or safely change those interactions.]
 ```
+
+Add data ownership, trust boundaries, runtime or failure paths, and diagrams
+where they answer a concrete reader question. Describe supported reality;
+label planned changes and known gaps rather than presenting them as implemented.
 
 ## Guides and Runbooks
 
-For a guide, describe the task, audience, prerequisites, steps, and expected
-result. Include troubleshooting for consequential failures.
+A guide needs actionable steps and an expected result. State prerequisites the
+reader cannot safely assume. Add troubleshooting for consequential failures,
+not every conceivable error.
 
-For a runbook, also state when to use it, required access, safety checks before
-irreversible actions, operational verification, and recovery/escalation when
-applicable. Label unverified commands; documentation permission is not permission
-to execute operational actions.
+A runbook also needs its trigger, required access, safety checks for irreversible
+actions, verification, and applicable recovery or escalation. Label unverified
+commands; documentation permission does not authorize operational execution.
+
+## Examples of Proportional Updates
+
+- **Usage change:** replace an obsolete command and its changed prerequisite in
+  the existing guide. No proposal or alternatives section is needed.
+- **Policy clarification:** clarify the ambiguous condition in place, preserving
+  its force and exceptions. Report the material clarification, not every
+  unchanged requirement.
+- **Consequential design decision:** record the constraint, choice, deciding
+  tradeoff, and consequences. Link detailed contracts and verification instead
+  of reproducing them.

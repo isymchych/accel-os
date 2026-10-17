@@ -19,6 +19,9 @@ reorganization. Loading this skill adds no approval gates to an authorized task.
 Scale documentation to ambiguity, risk, and durability rather than elapsed time,
 file count, or a mandatory development workflow. Clear, self-contained changes
 may need only acceptance criteria in the conversation or existing issue.
+Include what the reader needs to act, decide, understand, or verify; a topic's
+relevance alone does not justify a new section. For a small usage change, update
+the affected instructions rather than adding a design discussion.
 
 ## Discover Before Organizing
 
@@ -129,29 +132,27 @@ translated words always name the same concept.
 ## Write for Decisions and Verification
 
 Read [templates](references/templates.md) only for the artifact being authored.
-Adapt or omit sections that do not serve the task; remove empty placeholders.
-Use a title and brief purpose. Record status for proposals, ADRs, and draft specs
-in prose or the project's existing frontmatter convention. Do not require a new
-metadata schema, knowledge protocol, or document toolchain.
+Start with the answer the reader needs, not a list of possible sections.
+Use a title; add a purpose statement only if the purpose is not already clear.
+Record status for proposals, ADRs, and draft specs using the project's convention.
+Do not require a new metadata schema, knowledge protocol, or document toolchain.
 
-- State scope and non-goals. Separate verified facts, assumptions, proposed
-  choices, and unresolved questions.
-- Make requirements observable: include relevant invariants, boundary contracts,
-  failure cases, and acceptance criteria. Express quality goals as concrete
-  scenarios with agreed conditions and measurable outcomes; do not invent targets.
-- Keep domain rules separate from implementation choices. Link provider-owned
-  schemas or API definitions instead of maintaining a second copy.
-- Explain architecture through responsibility and data ownership, dependency
-  direction, trust boundaries, and representative runtime paths. Include failure,
-  migration, deployment, or recovery details where they affect the decision.
-- Compare credible alternatives, including no change. Explain tradeoffs,
-  operational ceilings, and what evidence would justify revisiting the choice.
-  Avoid imposing layers, services, or abstractions without an evidenced need.
-- Use a small diagram or flow when it resolves ambiguity. Choose useful C4 zoom
-  levels and arc42 topics selectively, not as required sets of diagrams/sections.
-- Link significant requirements to verification and decisions to their rationale.
-  Use requirement IDs or traceability tables only when ordinary links stop being
-  sufficient. Never claim checks ran or a person approved a document without evidence.
+- Make required behavior observable and distinguish it from proposals,
+  assumptions, and implementation details. Link canonical schemas and checks;
+  do not duplicate them or invent quality targets.
+- State boundaries, non-goals, failure behavior, or open questions when omitting
+  them would cause a concrete misunderstanding or unsafe action.
+- Explain architecture through the responsibilities and flows needed to
+  understand the system. Add operational detail or a diagram only when it
+  resolves a reader's question.
+- For a consequential decision, explain the deciding tradeoff and credible
+  alternatives, including no change when viable. Record operational ceilings or
+  revisit conditions when they constrain the choice, not as routine sections.
+- Keep verification and approval claims evidence-backed. Use requirement IDs or
+  traceability tables only when ordinary links are insufficient.
+
+Stop when the reader can use the artifact correctly. Do not add hypothetical
+concerns, investigation chronology, or sections merely to complete a template.
 
 ## Maintain Contracts and History Separately
 
@@ -191,8 +192,9 @@ Before finishing:
   Keep unresolved discrepancies and assumptions visible.
 - Use the project's existing formatter and documentation checks. Do not introduce
   tooling merely to validate this layout.
-- Summarize what changed, each artifact's role, checks performed, and remaining
-  gaps. For normative changes, follow `normative-documents` reporting.
+- Summarize material changes, checks performed, and remaining gaps without
+  repeating the document. For normative changes, follow `normative-documents`
+  reporting.
 
 See [sources and adaptation](references/sources.md) for the influences and
 deliberately excluded ceremony. They are background, not additional instructions.

@@ -8,7 +8,12 @@ risky shortcuts, overengineering, and missing validation without being
 patronizing.
 
 Write human-facing prose for its intended audience in clear, natural language.
-Keep it concise, precise, and easy to act on; never trade clarity for brevity.
+Include what the reader needs to act, decide, understand, or verify the task.
+Thorough investigation does not require exhaustive output.
+State desired behavior directly, using positive phrasing where it preserves
+meaning. In durable guidance, prefer current rules and usage over implementation
+mechanics or change history. Include those details only when readers need them
+to act correctly. Keep explicit prohibitions for permissions and safety boundaries.
 
 ## Authorization and Scope
 
@@ -86,6 +91,11 @@ choosing a rung.
   validation and calculations near their use, and prefer simple inputs and
   outputs.
 - Prefer one canonical place for rules, parsing, normalization, and behavior.
+- Keep modules, skills, and documents focused on a cohesive purpose. Before
+  adding a dependency or cross-reference, check that the target owns information
+  the caller needs. Prefer a small local statement over coupling an independently
+  useful component to broad orchestration or policy. Centralize shared rules
+  when they need coordinated maintenance, not merely because wording overlaps.
 - Keep provider-owned schemas at boundaries; normalize external data before it
   enters trusted core code.
 - Encode invariants in types and module boundaries rather than scattering
@@ -125,8 +135,10 @@ permissions, or compatibility behavior, look for intent in code, docs, tests,
 issues, commits, or the nearest project guidance such as `AGENTS.md`.
 
 If intent cannot be found, state the uncertainty instead of inventing rationale.
-When work creates or discovers load-bearing intent, update the narrowest durable
-artifact: a code comment, intent ledger entry, ADR, spec, or skill.
+Record rationale when losing it would create a concrete risk of reversing a
+necessary constraint or repeating a consequential mistake. Use the narrowest
+existing artifact that serves the reader; create one only when needed.
+Preserve decisions and constraints, not every explanation or investigation detail.
 
 When creating or editing normative documents, load and follow the
 `normative-documents` skill.
@@ -145,7 +157,8 @@ When creating or editing normative documents, load and follow the
   explicitly requested.
 - Run destructive commands such as `git reset --hard` or `git checkout --` only
   when explicitly requested or approved.
-- Update documentation when behavior or required usage changes.
+- Update affected documentation when behavior or required usage changes. Match
+  the update to that change; do not expand it into a broader design discussion.
 - Default to ASCII unless non-ASCII is justified or already present.
 - Avoid re-reading files already available in the current session scope.
 

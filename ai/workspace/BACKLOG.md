@@ -1,3 +1,4 @@
+- use Solid.js + router
 - personal playground
 - voice input
 - UI theme - retrofuturism, cyberpunk, minimal
@@ -8,3 +9,19 @@
 - memory system / compound engineering
 - live system introspection / repl - like lisp machine / emacs / - find out best ideas/practices
 - timeline for branches
+- Split thoughts/tools usage/responses in separate views
+
+- web workspace for agents
+  - based on pi-durable?
+  - agent types
+  - orchestrator - picks teams of agents for tasks (or builds them)
+  - https://blog.mempko.com/the-planning-dilemma-in-ai-coding-superpowers-vs-abject/
+  - https://paseo.sh
+  - https://github.com/hyperpuncher/pi-ui
+  - https://github.com/mattiacerutti/supernova
+  - https://t3.codes/
+  - https://github.com/backnotprop/plannotator
+  - sandbox/vm/microvm/isolation
+  - memory system
+- bookmark some sessions; preview sessions
+- dynamic system prompts (pi can't do that)

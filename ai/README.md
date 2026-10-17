@@ -6,7 +6,6 @@
   - https://github.com/ruizrica/agent-pi
   - https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-workflow
 - ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
-- setup terminal multiplexer - as a part of ai?
 - /side (codex) or /btw (pi, claude)
 - double-esc to stop streaming response
 - /preview should validate mermaid? or add an agent tool to validate mermaid
@@ -15,22 +14,9 @@
 - EARS specifications
 - personal memory system https://ericmjl.github.io/blog/2026/6/16/my-coding-agent-learned-a-lesson/
 - observational memory - extract atomic observations, later offload/consolidate them into markdown docs
-- plugin to ask user a question
 - prompt snippets - to insert snippets into prompts
 - subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
 - pi-extensible-workflows
-- web workspace for agents
-  - based on pi-durable?
-  - agent types
-  - orchestrator - picks teams of agents for tasks (or builds them)
-  - https://blog.mempko.com/the-planning-dilemma-in-ai-coding-superpowers-vs-abject/
-  - https://paseo.sh
-  - https://github.com/hyperpuncher/pi-ui
-  - https://github.com/mattiacerutti/supernova
-  - sandbox/vm/microvm/isolation
-  - memory system
-- bookmark some sessions; preview sessions
-- prevent system sleep while agent working
 
 ? how codex @visualize skill works?
 
@@ -50,6 +36,7 @@ add to sysprompt:
 - "ai" to start llm with microvm isolation - gondolin?
 - pi tool for executing code - like context-mode has
 - security review prompt
+- ideas from https://pi.dev/packages/pi-web-access
 
 - create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
   - only up to latest user message? or more - with user confirmation?
@@ -129,6 +116,7 @@ Makes targeted fixes based on evidence
 - Spec-driven development
 - AI-first company
 - Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions. "progressive disclosure"
+- "semantic zoom" - explain things with multiple detailisation levels: ELI5 etc.
 - refactor: Pilot change + rollout
 - avoid negative framing
 - provide examples instead of complicated instructions
@@ -201,11 +189,11 @@ Makes targeted fixes based on evidence
 
 ## Software Engineering changes
 
-- Engineers increasingly focus on architecture and constraints, while agents implement the code.
-- Agents need architectural supervision. They sometimes introduce inefficient algorithms or unnecessary defensive complexity.
-- Reviews shift from individual lines toward intent and invariants.
-- More extensive testing becomes practical, including hermetic simulations and fuzzing.
-- AI-assisted operations: Dedicated monitoring agents continuously examine telemetry and logs for anomalies.
+- **Engineers increasingly focus on architecture and constraints**, while agents implement the code.
+- **Agents need architectural supervision**. They sometimes introduce inefficient algorithms or unnecessary defensive complexity.
+- **Reviews shift from individual lines toward intent and invariants.**
+- **More extensive testing becomes practical**, including hermetic simulations and fuzzing.
+- **AI-assisted operations**: Dedicated monitoring agents continuously examine telemetry and logs for anomalies.
 
 ## MCPs
 
@@ -248,6 +236,7 @@ Makes targeted fixes based on evidence
 ## AI Sandboxes
 
 - <https://github.com/everruns/bashkit/tree/main>
+- <https://github.com/perplexityai/SPACE>
 
 ## Design skills
 

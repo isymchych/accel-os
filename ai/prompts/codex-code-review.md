@@ -74,8 +74,9 @@ Return every qualifying issue. If none clearly qualify, return none.
 For each finding:
 
 - keep it to one issue
-- explain briefly why it is a bug
-- describe when it happens
+- briefly describe the defect, triggering conditions, and observable impact
+- keep titles descriptive, not imperative
+- do not suggest fixes, replacement code, workarounds, or implementation alternatives
 - match the stated severity to the actual impact
 - use a neutral, direct tone
 
