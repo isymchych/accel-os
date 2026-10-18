@@ -1,28 +1,36 @@
 ---
 name: domain-modeling
-description: Build, sharpen, and document a project's domain model. Use when the user wants to define domain terminology, resolve naming or rule ambiguity, model business objects/relationships/state, or reconcile domain docs with code.
+description:
+  Build, sharpen, and document a project's domain model. Use when the user wants to define domain
+  terminology, resolve naming or rule ambiguity, model business objects/relationships/state, or
+  reconcile domain docs with code.
 disable-model-invocation: true
 ---
 
 # Domain Modeling
 
-Actively build and sharpen the project's domain model as work happens. This skill is for changing or documenting the model, not merely reading vocabulary.
+Actively build and sharpen the project's domain model as work happens. This skill is for changing or
+documenting the model, not merely reading vocabulary.
 
 Resolving a domain question does not itself authorize a document edit.
 
-Prefer project-local domain documents such as `docs/domain-model.md` as the canonical domain context.
+Prefer project-local domain documents such as `docs/domain-model.md` as the canonical domain
+context.
 
 ## Source Of Truth
 
 Find the relevant domain context in this order:
 
 1. A path explicitly named by the user.
-2. Existing project docs matching `docs/**/domain*.md`, `docs/**/model*.md`, or `docs/**/glossary*.md`.
+2. Existing project docs matching `docs/**/domain*.md`, `docs/**/model*.md`, or
+   `docs/**/glossary*.md`.
 3. Existing ADRs under `docs/**/adr/` when the question involves architectural tradeoffs.
 4. Relevant code and tests.
 5. If no domain document exists, propose `docs/domain-model.md` before creating it.
 
-For multi-domain repositories, prefer the narrowest matching domain doc near the affected code or docs. If two plausible domain docs conflict and the correct owner is unclear, ask which one is authoritative.
+For multi-domain repositories, prefer the narrowest matching domain doc near the affected code or
+docs. If two plausible domain docs conflict and the correct owner is unclear, ask which one is
+authoritative.
 
 ## Workflow
 
@@ -55,7 +63,8 @@ For multi-domain repositories, prefer the narrowest matching domain doc near the
 
 ### 5) Update The Domain Document
 
-- When documentation changes are authorized, update docs when a term, rule, relationship, boundary, or transition is resolved. Otherwise present the proposed update.
+- When documentation changes are authorized, update docs when a term, rule, relationship, boundary,
+  or transition is resolved. Otherwise present the proposed update.
 - Do not batch resolved domain facts unnecessarily; capture them while the context is fresh.
 - Do not document guesses as facts.
 - If available evidence is insufficient, ask targeted questions before writing unsupported claims.
@@ -107,5 +116,6 @@ If any condition is missing, update the domain model or existing docs instead of
 
 - Create or update project-local domain docs.
 - Do not treat a domain model as an implementation spec.
-- Do not let external schemas, database tables, API names, or code structure define domain language by default.
+- Do not let external schemas, database tables, API names, or code structure define domain language
+  by default.
 - Do not erase documented ambiguity unless the user or evidence resolves it.

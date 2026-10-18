@@ -1,11 +1,13 @@
 # TODO
 
 - review from DDD point of view
-- Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop confirmation
+- Pipeline / Workflow tool / Chain of subagent calls - Directed Acyclic Graph, human in the loop
+  confirmation
   - https://github.com/nicobailon/pi-subagents
   - https://github.com/ruizrica/agent-pi
   - https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-workflow
-- ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers & so on; build "system"
+- ai account should use gnome-keyring; don't store secrets on disk; same for ssh; check browsers &
+  so on; build "system"
 - /side (codex) or /btw (pi, claude)
 - double-esc to stop streaming response
 - /preview should validate mermaid? or add an agent tool to validate mermaid
@@ -13,26 +15,30 @@
   - SOUL.md like in https://hermes-agent.nousresearch.com/docs/user-guide/features/personality
 - EARS specifications
 - personal memory system https://ericmjl.github.io/blog/2026/6/16/my-coding-agent-learned-a-lesson/
-- observational memory - extract atomic observations, later offload/consolidate them into markdown docs
+- observational memory - extract atomic observations, later offload/consolidate them into markdown
+  docs
 - prompt snippets - to insert snippets into prompts
-- subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
+- subagents that may communicate with each other (child asks questions to parent), also they are
+  panes in tmux
 - pi-extensible-workflows
-- skill to eval AGENTS.md / sys? prompt / skill changes - using cheap models, prepare test data for evals, control group, multiple attempt
+- skill to eval AGENTS.md / sys? prompt / skill changes - using cheap models, prepare test data for
+  evals, control group, multiple attempt
 
-? how codex @visualize skill works?
-? "provide irrefutable proof that this things works"
+? how codex @visualize skill works? ? "provide irrefutable proof that this things works"
 
 add to sysprompt:
 
 > "use subagents to parallellize or manage context"
 
-> For all coding tasks use your judgement to decide an appropriate lower power model and run that in a subagent
+> For all coding tasks use your judgement to decide an appropriate lower power model and run that in
+> a subagent
 
 - local db skill should allow query on stdin
 - read and write tools should expose (short) hash of files, to optimize re-read
 
 - based on https://github.com/can1357/oh-my-pi
-- AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep https://github.com/code-yeongyu/pi-ast-grep/tree/main
+- AST tools: ast_grep and ast_edit for syntax-aware code search and codemods via ast-grep
+  https://github.com/code-yeongyu/pi-ast-grep/tree/main
 - LSP?
 - thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
 - "ai" to start llm with microvm isolation - gondolin?
@@ -40,7 +46,8 @@ add to sysprompt:
 - security review prompt
 - ideas from https://pi.dev/packages/pi-web-access
 
-- create a tool (compress? branch? rewind?) for agent to optionally call to compress recent low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
+- create a tool (compress? branch? rewind?) for agent to optionally call to compress recent
+  low-information messages (i.e. tool calls) with a dense summary (kind of compaction?)
   - only up to latest user message? or more - with user confirmation?
   - what about cache reuse?
   - pi-boomerang
@@ -58,16 +65,20 @@ don't go to the next step without confirmation
 # AI
 
 - memento - extract valuable patterns
-- PLAN - divide into spec/plan; define template for saving complete plan with all context & details so that other coding agent can pick a task and work on it
+- PLAN - divide into spec/plan; define template for saving complete plan with all context & details
+  so that other coding agent can pick a task and work on it
   - research
   - Create a detailed implementation plan with file paths and code references
 - do a architecture critique/code cleanup pass - a SKILL?
-  - remove redundant code, unnecessary abstractions, code that doesn't match style/design preferences
+  - remove redundant code, unnecessary abstractions, code that doesn't match style/design
+    preferences
   - tech debt, potential improvements for clarity or simplicity, maintenance
 - ask for architecture diagrams (mermaid)
-- one of the most valuable abstractions in future codebases may not be a package installed from npm, but a small internal layer built specifically for the product on top of stable primitives
+- one of the most valuable abstractions in future codebases may not be a package installed from npm,
+  but a small internal layer built specifically for the product on top of stable primitives
 
-I would like to review the following points on the current PR (this branch vs main). Spawn one agent per point, wait for all of them, and summarize the result for each point.
+I would like to review the following points on the current PR (this branch vs main). Spawn one agent
+per point, wait for all of them, and summarize the result for each point.
 
 1. Security issue
 2. Code quality
@@ -78,23 +89,19 @@ I would like to review the following points on the current PR (this branch vs ma
 
 # Design
 
-Data flow
-State transitions
-Failure cases
-Boundaries
+Data flow State transitions Failure cases Boundaries
 
 # Debug Mode:
 
-Generates multiple hypotheses about what could be wrong
-Instruments your code with logging statements
-Asks you to reproduce the bug while collecting runtime data
-Analyzes actual behavior to pinpoint the root cause
-Makes targeted fixes based on evidence
+Generates multiple hypotheses about what could be wrong Instruments your code with logging
+statements Asks you to reproduce the bug while collecting runtime data Analyzes actual behavior to
+pinpoint the root cause Makes targeted fixes based on evidence
 
 # mb-spotify
 
 - ai to manage my playlists
-- i may do manual tweaks to playlists - i.e. if i removed song from playlist-don't add it there again
+- i may do manual tweaks to playlists - i.e. if i removed song from playlist-don't add it there
+  again
 
 # PRINCIPLES
 
@@ -108,7 +115,8 @@ Makes targeted fixes based on evidence
 - "distill"/"compress"/"high signal"
 - ~~human-in-the-loop~~ **better?** agent-in-the-loop
 - Critic(/Verifier) pass; argue against itself
-- **build pipelines** even if the end result is an AGENTS.md or SKILL.md - keep "source doc" -> ask agent to build a skill based on it -> improve/compress/"distill"
+- **build pipelines** even if the end result is an AGENTS.md or SKILL.md - keep "source doc" -> ask
+  agent to build a skill based on it -> improve/compress/"distill"
 - (self)-checklists; approval gates
 - scoring rubrics
 - iterate on high-level plan first, before generating comprehensive plan file
@@ -118,26 +126,41 @@ Makes targeted fixes based on evidence
 - require evidence
 - Spec-driven development
 - AI-first company
-- Folding context - is an iterative diverge→converge workflow where you run parallel LLM explorations, compress each into durable notes, then clear and re-inject those summaries to synthesize higher-quality reasoning and decisions. "progressive disclosure"
+- Folding context - is an iterative diverge→converge workflow where you run parallel LLM
+  explorations, compress each into durable notes, then clear and re-inject those summaries to
+  synthesize higher-quality reasoning and decisions. "progressive disclosure"
 - "semantic zoom" - explain things with multiple detailisation levels: ELI5 etc.
 - refactor: Pilot change + rollout
 - avoid negative framing
 - provide examples instead of complicated instructions
 - cognitive offloading vs cognitive surrender
-- Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes cleverness.
+- Ask for the smallest change. Ask what can be deleted. Ask whether an abstraction is earning its
+  keep. Ask for invariants, coupling points, and cognitive load. Ask for a second pass that removes
+  cleverness.
 - Can we make requirements less stupid? what alternative approaches that unlocks?
 - Intent ledger - ADRs, document "why"/reason not "what" or "how"
 - intent engineering -> context engineering -> prompt engineering
 
-- Read the code first, then write a repo walkthrough that follows execution order from entry point to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each step.
+- Read the code first, then write a repo walkthrough that follows execution order from entry point
+  to outcomes, interleaving detailed explanations with small, exact source excerpts that ground each
+  step.
 - setup project constitution (standards, principles) in AGENTS.md - check/use Github speckit
-- Keep lots of small proof-of-concept repos (often “just enough code” to demonstrate a technique). With agents that can search and fetch code, you can point them at your own repos/examples (or even have them clone them) and say “build X using patterns from Y,” meaning you only need to figure out a trick once—then reuse it forever.
-- Put the rationale where the agent can read it, especially for decisions that would be expensive to get wrong.
-- prompts/skills/docs shouldn't be unnecessarily rigid; avoid forced limitations (i.e. 'provide 2-3 options')
-- > The most effective AI-assisted learning relies on established learning science: retrieval practice, spaced repetition, testing, desirable difficulty, Socratic questioning, and teaching concepts back in your own words. AI’s advantage is that it can personalize these techniques cheaply and continuously for an individual learner.
+- Keep lots of small proof-of-concept repos (often “just enough code” to demonstrate a technique).
+  With agents that can search and fetch code, you can point them at your own repos/examples (or even
+  have them clone them) and say “build X using patterns from Y,” meaning you only need to figure out
+  a trick once—then reuse it forever.
+- Put the rationale where the agent can read it, especially for decisions that would be expensive to
+  get wrong.
+- prompts/skills/docs shouldn't be unnecessarily rigid; avoid forced limitations (i.e. 'provide 2-3
+  options')
+- > The most effective AI-assisted learning relies on established learning science: retrieval
+  > practice, spaced repetition, testing, desirable difficulty, Socratic questioning, and teaching
+  > concepts back in your own words. AI’s advantage is that it can personalize these techniques
+  > cheaply and continuously for an individual learner.
 - keep INTENT.md with human input, then generate artifacts based on it
 
 # AI ENGINEERING
+
 - self-healing systems
 
 # USEFUL QUESTIONS
@@ -172,42 +195,54 @@ Makes targeted fixes based on evidence
 - ЛЛМки ліняться, потрібно бути уважним - "збережи ВСЮ інформацію"
 - у ЛЛМом буває ще й "лінивий настрій"
 - деякі ЛЛМки "тупіють" із часом (місяці); всі ЛЛМки тупіють із заповненням контексту
-- ЛЛМки бувають "занадто" розумні - деколи краще брати low модельку для рефакторинга чи дрібних змін, high моделі краще роблять e2e фічі
+- ЛЛМки бувають "занадто" розумні - деколи краще брати low модельку для рефакторинга чи дрібних
+  змін, high моделі краще роблять e2e фічі
 - ЛЛМка - дебагай падіння github actions
 - ad-hoc scripts, skills
 - можна задавати питання - How does logging work in this project?" Explain the code
 - Planner–Executor Pattern:
-  - also Critic: “Review the result and confirm if it meets the plan. If not, explain the discrepancy and propose a fix.”
+  - also Critic: “Review the result and confirm if it meets the plan. If not, explain the
+    discrepancy and propose a fix.”
   - TDD - feedback loop
 - iterate, polish - both the plan and the code
 - semports - semantic ports
-- **Intent Debt** is the missing or decayed record of why a system is built the way it is: goals, constraints, tradeoffs, rejected alternatives, and rationale.
-- **Cognitive Debt** - before writing code was slow, now understanding code is slow -> document rationale, comprehension is first-class eng task
+- **Intent Debt** is the missing or decayed record of why a system is built the way it is: goals,
+  constraints, tradeoffs, rejected alternatives, and rationale.
+- **Cognitive Debt** - before writing code was slow, now understanding code is slow -> document
+  rationale, comprehension is first-class eng task
   - https://addyosmani.com/blog/dont-outsource-learning/
 - https://addyosmani.com/blog/agentic-engineering/
 - https://cursor.com/blog/agent-best-practices
-- > In a system where agent throughput far exceeds human attention, corrections are cheap, and waiting is expensive.
-- > Codex replicates patterns that already exist in the repository—even uneven or suboptimal ones -> regular "garbage collection" / code cleanup tasks by codex, based on "golden rules"
-- > Our most difficult challenges now center on **designing environments, feedback loops, and control systems** that help agents accomplish our goal: build and maintain complex, reliable software at scale.
+- > In a system where agent throughput far exceeds human attention, corrections are cheap, and
+  > waiting is expensive.
+- > Codex replicates patterns that already exist in the repository—even uneven or suboptimal ones ->
+  > regular "garbage collection" / code cleanup tasks by codex, based on "golden rules"
+- > Our most difficult challenges now center on **designing environments, feedback loops, and
+  > control systems** that help agents accomplish our goal: build and maintain complex, reliable
+  > software at scale.
 - > The further away a topic is from your expertise, the smarter an AI will sound
 - > agents optimize code for surface plausibility, not semantic correctness
 
-- > The problem is that your private AI-assisted research might indirectly improve future models that can then compete with you, even if nobody ever directly reads or copies your work.
+- > The problem is that your private AI-assisted research might indirectly improve future models
+  > that can then compete with you, even if nobody ever directly reads or copies your work.
 
 ## Software Engineering changes
 
 - **Engineers increasingly focus on architecture and constraints**, while agents implement the code.
-- **Agents need architectural supervision**. They sometimes introduce inefficient algorithms or unnecessary defensive complexity.
+- **Agents need architectural supervision**. They sometimes introduce inefficient algorithms or
+  unnecessary defensive complexity.
 - **Reviews shift from individual lines toward intent and invariants.**
 - **More extensive testing becomes practical**, including hermetic simulations and fuzzing.
-- **AI-assisted operations**: Dedicated monitoring agents continuously examine telemetry and logs for anomalies.
+- **AI-assisted operations**: Dedicated monitoring agents continuously examine telemetry and logs
+  for anomalies.
 
 ## MCPs
 
 - [Chrome dev tools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)
 - [Serena MCP](https://github.com/oraios/serena) - use LSP servers
 - [Playwright MCP](https://github.com/microsoft/playwright-mcp) - browser control & automation
-- [Perplexity MCP](https://github.com/perplexityai/modelcontextprotocol) - search & research using Perplexity
+- [Perplexity MCP](https://github.com/perplexityai/modelcontextprotocol) - search & research using
+  Perplexity
 
 ## Docs
 

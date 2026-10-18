@@ -1,14 +1,21 @@
 ---
 name: architecture-review
-description: Architecture-focused review for boundary design, information leakage, dependency shape, and long-term complexity risk. Trigger when the user asks for "architecture review" (or equivalent), especially when a PR changes module interfaces, ownership boundaries, layering, shared data flow, or introduces refactors likely to affect maintainability.
+description:
+  Architecture-focused review for boundary design, information leakage, dependency shape, and
+  long-term complexity risk. Trigger when the user asks for "architecture review" (or equivalent),
+  especially when a PR changes module interfaces, ownership boundaries, layering, shared data flow,
+  or introduces refactors likely to affect maintainability.
 disable-model-invocation: true
 ---
 
 # Architecture Review
 
-Evaluate structural quality, not line-level bugs. Focus on decisions that change dependency direction, abstraction depth, and where complexity lives.
+Evaluate structural quality, not line-level bugs. Focus on decisions that change dependency
+direction, abstraction depth, and where complexity lives.
 
-Review is read-only unless changes are explicitly authorized. Treat structural heuristics and helper output as investigation signals, not findings. Report only evidenced risks; no change warranted is a valid conclusion.
+Review is read-only unless changes are explicitly authorized. Treat structural heuristics and helper
+output as investigation signals, not findings. Report only evidenced risks; no change warranted is a
+valid conclusion.
 
 ## Review Scope
 
@@ -20,13 +27,19 @@ Review is read-only unless changes are explicitly authorized. Treat structural h
 
 ## Available scripts
 
-- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
-- Script path resolution and execution context are separate: resolving the helper path does not determine the working directory.
-- For repository-aware helpers in this skill, run the helper with `cwd` set to the target repository, even when the helper script lives outside that repository.
-- Before invoking a git-inspection helper, verify both the resolved helper path and the working directory.
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working
+  directory.
+- Script path resolution and execution context are separate: resolving the helper path does not
+  determine the working directory.
+- For repository-aware helpers in this skill, run the helper with `cwd` set to the target
+  repository, even when the helper script lives outside that repository.
+- Before invoking a git-inspection helper, verify both the resolved helper path and the working
+  directory.
 - Invoke TypeScript helpers directly with `node`.
-- `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the workspace, staged changes, or a base-ref diff.
-- `scripts/find-pass-through.ts` — Scans changed TS/JS/Rust files for likely pass-through wrappers that mirror another API.
+- `scripts/collect-boundary-diff.ts` — Summarizes boundary-level interface changes from the
+  workspace, staged changes, or a base-ref diff.
+- `scripts/find-pass-through.ts` — Scans changed TS/JS/Rust files for likely pass-through wrappers
+  that mirror another API.
 
 Both helpers accept no arguments for workspace changes, `--staged`, or `--base <ref>`:
 
@@ -43,7 +56,8 @@ node <resolved-path>/scripts/find-pass-through.ts [--staged | --base <ref>]
 - Resolve helper script paths relative to `dirname(SKILL.md)`.
 - Verify the helper path and the `cwd` separately before execution.
 - Run repository-aware helpers with `cwd` set to the target repository.
-- If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory, stop and report the mismatch.
+- If helper path resolution succeeds but `cwd` points at the wrong repo or a non-repo directory,
+  stop and report the mismatch.
 
 ### 2) Map The Change Boundary
 
@@ -59,7 +73,8 @@ node <resolved-path>/scripts/find-pass-through.ts [--staged | --base <ref>]
 
 ### 4) Check Depth And Layering
 
-- Inspect pass-through functions/classes that mirror another API; flag them only when they add avoidable coupling or indirection without a useful policy, contract, or lifecycle boundary.
+- Inspect pass-through functions/classes that mirror another API; flag them only when they add
+  avoidable coupling or indirection without a useful policy, contract, or lifecycle boundary.
 - Check whether adjacent layers expose the same abstraction.
 - Prefer deeper modules with simpler caller APIs.
 
@@ -67,11 +82,13 @@ node <resolved-path>/scripts/find-pass-through.ts [--staged | --base <ref>]
 
 - Count concepts a caller must hold to use the change correctly.
 - Verify common paths stay obvious and low-configuration.
-- Use difficulty explaining an interface briefly as a reason to investigate; identify the concrete caller burden before reporting a finding.
+- Use difficulty explaining an interface briefly as a reason to investigate; identify the concrete
+  caller burden before reporting a finding.
 
 ### 6) Evaluate Change Amplification
 
-- When one behavior tweak requires coordinated edits, check whether a rule is duplicated or responsibilities are legitimately distinct, such as implementation, tests, and documentation.
+- When one behavior tweak requires coordinated edits, check whether a rule is duplicated or
+  responsibilities are legitimately distinct, such as implementation, tests, and documentation.
 - Recommend centralizing only when evidence shows a leaked decision or unnecessary coupling.
 - Prefer reducing call-site complexity even if callee complexity increases.
 

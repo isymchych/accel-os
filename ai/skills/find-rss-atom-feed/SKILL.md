@@ -1,6 +1,9 @@
 ---
 name: find-rss-atom-feed
-description: Find a website's recommended RSS or Atom feed URL from a page or domain. Use when a user asks for a feed link (RSS/Atom), wants to subscribe to a blog/site in a feed reader, or asks to verify whether a site exposes a feed.
+description:
+  Find a website's recommended RSS or Atom feed URL from a page or domain. Use when a user asks for
+  a feed link (RSS/Atom), wants to subscribe to a blog/site in a feed reader, or asks to verify
+  whether a site exposes a feed.
 disable-model-invocation: true
 ---
 
@@ -42,5 +45,6 @@ Use only when the script fails:
 
 ## Available scripts
 
-- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working directory.
+- Resolve all relative helper script paths against `dirname(SKILL.md)`, not the current working
+  directory.
 - `scripts/find_feed.ts` — Discovers and validates RSS/Atom feeds from a website or page URL.

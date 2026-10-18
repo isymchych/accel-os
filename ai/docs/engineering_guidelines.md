@@ -2,7 +2,8 @@
 
 ## Goal
 
-Produce changes that are easy to understand, easy to modify, and hard to misuse. Prefer durable simplicity over cleverness or unnecessary compatibility layers.
+Produce changes that are easy to understand, easy to modify, and hard to misuse. Prefer durable
+simplicity over cleverness or unnecessary compatibility layers.
 
 ## Design principles
 
@@ -10,9 +11,12 @@ Produce changes that are easy to understand, easy to modify, and hard to misuse.
 - Put each rule, parser, normalization step, and invariant in one canonical owner.
 - Hide change-prone decisions behind deep modules with small public surfaces.
 - Keep external schemas at boundaries; normalize into trusted domain types before core logic.
-- Prefer standalone functions and data-oriented boundaries; avoid callbacks and classes unless they clearly simplify ownership.
-- Encode invariants in types, constructors, schemas, modules, and tests instead of scattered defensive checks.
-- Do not add abstraction unless it materially reduces complexity for callers or centralizes real policy.
+- Prefer standalone functions and data-oriented boundaries; avoid callbacks and classes unless they
+  clearly simplify ownership.
+- Encode invariants in types, constructors, schemas, modules, and tests instead of scattered
+  defensive checks.
+- Do not add abstraction unless it materially reduces complexity for callers or centralizes real
+  policy.
 
 ## Boundaries
 
@@ -47,9 +51,11 @@ A good interface is small, precise, and hard to misuse.
 - Keep logic local and readable; avoid magic, implicit globals, and deep indirection.
 - Prefer pure functions for core logic.
 - Isolate side effects at boundaries.
-- Prefer return values over mutating output accumulators unless streaming/performance/API constraints justify mutation.
+- Prefer return values over mutating output accumulators unless streaming/performance/API
+  constraints justify mutation.
 - Inline private helpers used once when the helper name does not add meaning.
-- Remove shallow pass-through helpers unless they centralize reusable policy or provide a stable semantic boundary.
+- Remove shallow pass-through helpers unless they centralize reusable policy or provide a stable
+  semantic boundary.
 - Avoid type-level indirection that makes contracts harder to read.
 
 ## Testing
@@ -64,7 +70,8 @@ Add or update tests when:
 - API/DB/domain mapping changes;
 - fixing a contract bug or regression.
 
-Prefer targeted tests close to the enforcing layer. If a behavior is hard to test, reconsider the boundary.
+Prefer targeted tests close to the enforcing layer. If a behavior is hard to test, reconsider the
+boundary.
 
 ## Cleanup workflow
 

@@ -1,13 +1,13 @@
 # macOS setup
 
-The macOS support tier covers the portable Accel OS core: shell configuration,
-the pinned Node runtime, `ACCEL_OS`, `ai`, and portable repository commands. The
-Arch package, service, Sway, and `just doctor` automation does not apply.
+The macOS support tier covers the portable Accel OS core: shell configuration, the pinned Node
+runtime, `ACCEL_OS`, `ai`, and portable repository commands. The Arch package, service, Sway, and
+`just doctor` automation does not apply.
 
 ## Bootstrap
 
-Install [Homebrew](https://brew.sh/), then make it available in the current
-shell. Use the path matching the host:
+Install [Homebrew](https://brew.sh/), then make it available in the current shell. Use the path
+matching the host:
 
 ```bash
 # Apple Silicon
@@ -23,17 +23,16 @@ Install the portable prerequisites:
 brew install git chezmoi fnm just zsh
 ```
 
-Follow the canonical [repository bootstrap](../../README.md#bootstrap), then set
-Zsh as the login shell:
+Follow the canonical [repository bootstrap](../../README.md#bootstrap), then set Zsh as the login
+shell:
 
 ```bash
 chsh -s /bin/zsh
 ```
 
-Run `./bootstrap` to inspect the Chezmoi changes and `./bootstrap --apply` to
-apply them, install the pinned Node runtime and repository dependencies, and
-verify the portable configuration. Start a new login shell afterward so
-`ACCEL_OS`, `~/bin`, and the managed shell configuration are available.
+Run `./bootstrap` to inspect the Chezmoi changes and `./bootstrap --apply` to apply them, install
+the pinned Node runtime and repository dependencies, and verify the portable configuration. Start a
+new login shell afterward so `ACCEL_OS`, `~/bin`, and the managed shell configuration are available.
 
 ## Optional workstation setup
 
@@ -73,8 +72,8 @@ brew install --cask \
 
 ### Applications
 
-- iTerm2: install the desired release, then configure it to load preferences
-  from `~/.config/iterm2`.
+- iTerm2: install the desired release, then configure it to load preferences from
+  `~/.config/iterm2`.
 - KDiff3: `brew install --cask kdiff3`
 - LinearMouse: `brew install --cask linearmouse --no-quarantine`
 - Rectangle: `brew install --cask rectangle`
@@ -85,15 +84,14 @@ brew install --cask \
 
 ### Emacs
 
-Use the `d12frosted/homebrew-emacs-plus` tap and select the current Emacs
-version and build options intentionally rather than relying on the historical
-version-specific command previously recorded here.
+Use the `d12frosted/homebrew-emacs-plus` tap and select the current Emacs version and build options
+intentionally rather than relying on the historical version-specific command previously recorded
+here.
 
 ### Other development tools
 
 - `brew install ms-jpq/sad/sad`
-- Install a Git credential manager when passwordless HTTPS authentication is
-  needed.
+- Install a Git credential manager when passwordless HTTPS authentication is needed.
 
 ## Settings
 

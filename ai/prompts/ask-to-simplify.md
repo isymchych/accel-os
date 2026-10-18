@@ -5,8 +5,8 @@ argument-hint: "[code target; defaults to current task's changes]"
 
 I'd like to know if we can simplify & clean up code: **$ARGUMENTS**.
 
-Review only; do not edit files. If no target is supplied, review the current
-task's changes. If that scope is unclear, ask before proceeding.
+Review only; do not edit files. If no target is supplied, review the current task's changes. If that
+scope is unclear, ask before proceeding.
 
 Focus on:
 
@@ -20,31 +20,30 @@ Focus on:
 - cognitive load for the next maintainer
 - cleverness that can be avoided
 
-Do not conduct a general correctness review, but check that each proposed
-simplification preserves behavior, including errors, side effects, ordering,
-and edge cases. Do not recommend removing guards, tests, or constraints without
-understanding the intent they protect.
+Do not conduct a general correctness review, but check that each proposed simplification preserves
+behavior, including errors, side effects, ordering, and edge cases. Do not recommend removing
+guards, tests, or constraints without understanding the intent they protect.
 
-Preserve abstractions that name meaningful concepts or isolate responsibilities.
-A single caller is a reason to investigate, not proof that an abstraction is
-unnecessary; evaluate the resulting caller and module together.
+Preserve abstractions that name meaningful concepts or isolate responsibilities. A single caller is
+a reason to investigate, not proof that an abstraction is unnecessary; evaluate the resulting caller
+and module together.
 
-Follow project conventions. Recommend changes that reduce reasoning effort,
-not merely express a stylistic preference.
+Follow project conventions. Recommend changes that reduce reasoning effort, not merely express a
+stylistic preference.
 
 Output:
 
-List findings by net maintenance benefit, from high to low, accounting for
-migration cost, regression risk, and review burden. Make each finding easy to scan:
+List findings by net maintenance benefit, from high to low, accounting for migration cost,
+regression risk, and review burden. Make each finding easy to scan:
 
 - a short descriptive heading
 - the relevant `file:line`
 - why the current code is unnecessarily complex
 - the concrete simplification
-- brief evidence from relevant callers, entry points, configuration, tests, or
-  documented contracts; caller counts alone do not establish that code is dead
-- why behavior remains equivalent, any uncertainty or focused verification
-  needed, and material tradeoffs
+- brief evidence from relevant callers, entry points, configuration, tests, or documented contracts;
+  caller counts alone do not establish that code is dead
+- why behavior remains equivalent, any uncertainty or focused verification needed, and material
+  tradeoffs
 
 Use these tags only when they make a finding clearer:
 
@@ -56,8 +55,7 @@ Use these tags only when they make a finding clearer:
 - `cohesion`: misplaced responsibility or a fragmented module
 - `invariant`: a rule that can replace defensive states or branching
 
-Do not optimize for line count; optimize for fewer concepts, states,
-dependencies, and coupling points.
+Do not optimize for line count; optimize for fewer concepts, states, dependencies, and coupling
+points.
 
-Do not manufacture findings. If none are worthwhile, say:
-`No worthwhile simplifications found.`
+Do not manufacture findings. If none are worthwhile, say: `No worthwhile simplifications found.`

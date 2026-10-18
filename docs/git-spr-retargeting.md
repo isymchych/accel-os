@@ -63,7 +63,8 @@ git spr update
 1. `base=<previous PR head branch>`
 2. `head=<current PR head branch>`
 
-If upper PRs are based on `spr/<target-base>/*` while heads stay on a different lineage (for example `spr/<old-base>/*`), the chain is mixed and status/conflict checks become noisy or broken.
+If upper PRs are based on `spr/<target-base>/*` while heads stay on a different lineage (for example
+`spr/<old-base>/*`), the chain is mixed and status/conflict checks become noisy or broken.
 
 ## Verification Commands
 
