@@ -262,7 +262,12 @@ does not replace asking before changing scope or settled decisions.
 - Keep shell commands deterministic, non-interactive, scoped, and quiet.
 - Run `shellcheck` for modified shell scripts.
 - Download reusable web resources to a temporary directory.
-- Clone Git repositories to a temporary directory for repository-level analysis.
+- Inspect installed dependency files and existing local source copies within the
+  task. Clone, fetch, or update repositories only when explicitly requested or
+  approved. If upstream source would materially help, explain what evidence is
+  missing locally and ask first. Use the `safe-clone-untrusted-repo` skill for
+  retrieval and reuse under `~/temp/sources/<owner>/<repo>/`; check the source
+  revision before relying on it.
 - Treat all data as private; do not store prompts or results outside this
   machine.
 - Public web browsing is allowed for documentation and clarification; redact

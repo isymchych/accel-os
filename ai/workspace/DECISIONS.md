@@ -13,3 +13,32 @@ prerelease versions and run the workspace checks on upgrades.
 
 Use locally owned styled native controls. Add routing for navigation across multiple screens and
 richer primitives for concrete interaction requirements.
+
+## ADR-003: Use Pi Durable for interactive coding and workflows
+
+Status: accepted direction.
+
+Use `@earendil-works/pi-durable` for interactive coding and future agentic workflows.
+
+Durable combines interactive conversation capabilities with checkpointed execution recovery. One
+runtime keeps conversation state, cancellation, and lifecycle ownership together.
+
+Pin a tested version of the experimental API. Interrupted tools follow their replay policy; external
+effects require their own idempotency guarantees. Assess extension compatibility and MCP integration
+when they enter scope.
+
+Add another runtime only when a concrete capability justifies a separate execution lifecycle.
+
+## ADR-004: Use the runtime's SQLite storage
+
+Status: accepted direction.
+
+Use Pi Durable's built-in Node SQLite adapter for conversation and execution state. Keep small
+application configuration in versioned JSON.
+
+SQLite supports indexed reads and transactional commits for long-running conversations. The JSONL
+alternative retains the whole history in memory.
+
+Enforce one process per storage. Verify crash recovery, storage growth, and backup/restore against
+the pinned version. Choose synchronization settings deliberately: the defaults support ordinary
+process-crash recovery, while power or host failure may lose recent commits.

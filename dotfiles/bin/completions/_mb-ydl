@@ -1,0 +1,7 @@
+#compdef mb-ydl
+
+_mb-ydl() {
+  _arguments -s \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:video URL:_urls'
+}

@@ -17,8 +17,10 @@
 - prompt snippets - to insert snippets into prompts
 - subagents that may communicate with each other (child asks questions to parent), also they are panes in tmux
 - pi-extensible-workflows
+- skill to eval AGENTS.md / sys? prompt / skill changes - using cheap models, prepare test data for evals, control group, multiple attempt
 
 ? how codex @visualize skill works?
+? "provide irrefutable proof that this things works"
 
 add to sysprompt:
 
@@ -44,6 +46,7 @@ add to sysprompt:
   - pi-boomerang
   - https://github.com/gopherbone/al-jaffee
   - oh-my-pi checkpoint/rewind tools
+  - https://www.youtube.com/watch?v=3b0U4_02bAE
 
 DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> ARCHITECTURE -> PROGRAM DESIGN -> PLAN -> EXECUTE
 
@@ -134,6 +137,9 @@ Makes targeted fixes based on evidence
 - > The most effective AI-assisted learning relies on established learning science: retrieval practice, spaced repetition, testing, desirable difficulty, Socratic questioning, and teaching concepts back in your own words. AI’s advantage is that it can personalize these techniques cheaply and continuously for an individual learner.
 - keep INTENT.md with human input, then generate artifacts based on it
 
+# AI ENGINEERING
+- self-healing systems
+
 # USEFUL QUESTIONS
 
 - what are pain points of ...?
@@ -159,6 +165,7 @@ Makes targeted fixes based on evidence
 
 # Getting started with AI coding agents
 
+- Stanford CS146S course
 - Bad metrics https://third-bit.com/2026/05/20/twelve-ways-to-be-wrong/
 - Focus on judgment, critique, and collaboration, not “generate code” first - ask questions
 - The key is providing detailed context

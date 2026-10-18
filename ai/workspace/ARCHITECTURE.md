@@ -25,13 +25,29 @@ Agreed direction:
 - Hono RPC for reads and commands, with feature-owned Solid state for live SSE snapshots. Add
   routing for navigation across multiple screens.
 - Playwright through `@playwright/test` for end-to-end browser tests.
-- `@earendil-works/pi-durable` as the intended runtime, subject to a bounded integration check.
-- Versioned JSON validated with TypeBox for application configuration; `pi-durable`'s built-in JSONL
-  storage remains authoritative for conversation and execution state. SQLite is not part of the
-  initial design.
+- `@earendil-works/pi-durable` as the intended runtime for interactive coding and future agentic
+  workflows, subject to a bounded integration check.
+- Versioned JSON validated with TypeBox for application configuration; `pi-durable`'s built-in
+  SQLite storage remains authoritative for conversation and execution state.
 
-Proposed first product slice: select a local project, create or reopen a conversation, submit input,
-observe responses and tool activity, stop work, reconnect, and recover after a server restart.
+### MVP scope
+
+Agreed target: basic interactive coding with durable execution.
+
+Proposed first product slice, pending confirmation:
+
+- Register and select a local project; create or reopen a conversation.
+- Submit input and observe streamed responses and tool activity.
+- Read and edit files and run commands under the agreed execution policy.
+- Stop work, reconnect to ongoing work, and recover eligible pending work after a server restart.
+- Use an initial provider/model with server-side credentials.
+
+Proposed deferrals, pending confirmation: codemode, MCP, skills, prompt templates, custom Pi
+extensions, and richer session interactions. Reuse runtime and library capabilities as these enter
+scope.
+
+Confirm interactions, credential flow, and host-write/shell authority before real execution. Presets
+and other capabilities below describe longer-term direction.
 
 Multi-user hosting, remote access, agent orchestration, plugin loading, embedded terminals, and a
 separate memory system are deferred. These are not permanent exclusions; add them when a concrete
@@ -188,7 +204,7 @@ scheduler is introduced.
 
 The upstream durable README marks the API experimental. It documents persistent conversations,
 request-ID deduplication, snapshot-based watches, explicit cancellation, tool replay policies, and
-built-in JSONL storage. Storage has a single-process owner and no cross-process locking. See [1].
+built-in SQLite storage. Storage has a single-process owner and no cross-process locking. See [1].
 
 Hono RPC derives types from validated inputs and route responses; global error handlers require
 explicit treatment in the type surface. See [2]. Oxlint integrates tsgolint for type-aware linting
@@ -238,38 +254,35 @@ See [1]. It prevents work prepared for one project or tool policy from executing
 Idle-time reconfiguration is supported; live reconfiguration needs a separate, explicit product
 requirement.
 
-### Runtime JSONL persistence
+### Runtime SQLite persistence
 
-Use the runtime's built-in Node JSONL adapter, `openNodeJsonlStorage` from
-`@earendil-works/pi-durable/storage/jsonl/node`, in a private user-data directory outside the
+Use the runtime's built-in Node SQLite adapter, `openNodeSqliteStorage` from
+`@earendil-works/pi-durable/storage/sqlite/node`, in a private user-data directory outside the
 repository. Choose and document the exact location and backup procedure during persistence
 implementation. Prevent simultaneous storage owners before opening the harness; the mechanism must
-survive stale-owner recovery without allowing two live owners.
+survive stale-owner recovery without allowing two live owners. SQLite locking does not replace the
+harness's single-process ownership requirement.
 
-Keep `app-state.json` separate from the harness-owned runtime directory. The upstream JSONL
-specification describes a main commit log, document/task sidecars, and a commit-marker publication
-protocol; this is not merely an editable conversation transcript. See [7].
+Keep `app-state.json` separate from the harness-owned database. One SQLite transaction represents
+one runtime commit. Let the harness manage its schema and migrations; application TypeBox schemas
+and migrations apply to application configuration, not runtime records. Do not introduce a parallel
+transcript/task database or edit runtime tables manually. Provide readable conversation exports
+through the application if needed. See [7].
 
-Let the harness manage runtime files and their format. Application TypeBox schemas and migrations
-apply to application configuration, not runtime records. Do not implement a custom transactional
-file store or edit runtime files manually. Provide readable conversation exports through the
-application if needed.
+The Node adapter defaults to WAL mode with `synchronous = NORMAL`: commits survive ordinary process
+crashes, but the newest may be lost on power or host failure. Verify the pinned adapter's settings
+and document the chosen synchronization policy during integration rather than promising durable
+acknowledgements across power loss. See [1].
 
-The specification documents ordinary process-crash consistency, not guaranteed power-loss
-durability. Its `fsync` option flushes affected sidecars before the main marker, but ordinary
-publication does not explicitly flush that marker; even an acknowledged tail commit may disappear
-after host failure. See [7]. Choose the flushing policy during the integration check and document
-this limit rather than promising durable acknowledgements across power loss.
+Measure database/WAL growth, memory use, and reopen time with representative streaming and tool
+output. If they exceed the workspace's operational budget, investigate supported upstream
+maintenance or storage options; do not add application-written runtime pruning.
 
-The specification says the main log is not initially compacted. See [7]. Measure directory growth
-and reopen time with representative streaming and tool output. If either exceeds the workspace's
-operational budget, investigate supported upstream maintenance or storage options; do not truncate
-or compact runtime logs with application-written tooling.
-
-Back up the complete runtime directory while the harness is closed, together with application
-configuration. Verify restoration into a separate directory using the pinned runtime version.
-Closed-harness backup avoids copying a partially published multi-file commit; it does not create a
-transaction between configuration and runtime state.
+Back up the complete runtime storage while the harness is closed, together with application
+configuration. Account for any remaining SQLite WAL files; copying only a live database file is not
+a valid backup procedure. Verify restoration into a separate directory using the pinned runtime
+version. Closed-harness backup does not create a transaction between configuration and runtime
+state.
 
 ### Application JSON persistence
 
@@ -526,12 +539,13 @@ workflows. Defer a gallery/Storybook until in-project examples no longer suffice
 Use these checks as acceptance criteria for the corresponding capabilities.
 
 1. **Runtime compatibility check:** use an exact runtime version, fake provider, and temporary
-   built-in JSONL storage. Demonstrate submit, watch, request-ID retry, stop, close/reopen, and
+   built-in SQLite storage. Demonstrate submit, watch, request-ID retry, stop, close/reopen, and
    recovery of pending work after an abrupt process exit. Establish a safe single-owner startup
-   mechanism. Measure directory growth and reopen time with representative streaming/tool output;
-   select the flushing policy and document process-crash versus host-failure durability limits.
-   Verify closed-harness backup and restoration of the complete runtime directory and application
-   configuration. Process-exit tests do not establish power-loss durability.
+   mechanism. Measure database/WAL growth, memory use, and reopen time with representative
+   streaming/tool output; select the synchronization policy and document process-crash versus
+   host-failure durability limits. Verify closed-harness backup and restoration of the complete
+   runtime storage and application configuration. Process-exit tests do not establish power-loss
+   durability.
 2. **Typed transport:** the diagnostic route connects TypeBox/canonical JSON validation to Hono RPC
    and the Solid client, with valid/invalid input type checks. As routes and runtime integration
    expand, verify error narrowing and that server implementation values cannot enter the browser
@@ -574,7 +588,7 @@ processes and temporary data; tests must not share a writable runtime directory.
 
 Keep browser journeys under `tests/e2e/` and configuration in `playwright.config.ts`. As runtime
 integration is added, exercise the real frontend, Hono routes, SSE transport, and runtime with a
-deterministic fake model, isolated application JSON, and isolated JSONL storage.
+deterministic fake model, isolated application JSON, and isolated SQLite storage.
 
 Use Playwright's local-server support to start the application under test. Readiness checks must
 confirm the test instance is ready; do not silently attach to an existing personal server. Supply
@@ -591,10 +605,10 @@ Keep E2E execution in the workspace `Justfile` and use system Chromium as select
 [ADR-001](DECISIONS.md#adr-001-use-system-chromium-for-e2e). [README.md](README.md) owns browser
 configuration and check commands.
 
-Choose engineering defaults within the slice that owns them: initial provider and credential
-configuration in runtime setup; data location, backup and flushing policy in persistence; request
-and output limits in transport. Document the choices and their operational limits rather than
-treating them as broad product questions. Preserve the security, recovery, and persistence
+Once the initial provider and credential flow are selected, choose their implementation defaults in
+runtime setup. Choose data location, backup and SQLite synchronization policy in persistence, and
+request and output limits in transport. Document the choices and their operational limits rather
+than treating them as broad product questions. Preserve the security, recovery, and persistence
 requirements above. Escalate only if evidence requires a product tradeoff or a change to the agreed
 architecture.
 
@@ -607,8 +621,7 @@ browser-specific lint environments and keep workspace operations, including E2E,
 Resolve these before implementing real user interactions and tool execution; harmless integration
 checks can proceed independently:
 
-1. **Initial scope:** confirm project registration and selection, conversation creation and
-   reopening, submission, observation, Stop, reconnect, and restart recovery as the first slice.
+1. **Initial scope:** confirm the proposed [MVP interactions](#mvp-scope) and integration deferrals.
    Additional interactions, including project deletion and reassignment, stay deferred unless
    explicitly added. If they are added, define how existing conversation references remain valid
    before implementing them.
@@ -618,6 +631,9 @@ checks can proceed independently:
    are agreed. If execution must be confined rather than merely rooted in a working directory,
    define the isolation boundary before enabling those tools. Localhost deployment does not grant
    tool permissions or provide isolation.
+3. **Credentials:** choose the initial provider/model and server-side credential flow. Reusing an
+   existing CLI account needs a verified token-refresh ownership strategy; account switching and
+   browser-based credential management are not implicitly required.
 
 Runtime compatibility, single-owner enforcement, RPC typing, persistence policy, and transport
 limits are engineering checks under the section above, not additional open product decisions. Do not
@@ -635,7 +651,7 @@ version before relying on it in code.
 4. [Solid 2 documentation](https://v2.solidjs.com/)
 5. [Tailwind theme variables](https://tailwindcss.com/docs/theme)
 6. [Lucide icons](https://lucide.dev/)
-7. [Pi Durable specification, JSONL storage](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md#113-jsonl)
+7. [Pi Durable specification, SQLite storage](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md#112-sqlite)
 8. [Playwright local web servers](https://playwright.dev/docs/test-webserver)
 9. [Playwright best practices](https://playwright.dev/docs/best-practices)
 10. [Pi Durable specification, submission and task outcomes](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md)
