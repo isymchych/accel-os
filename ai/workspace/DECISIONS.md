@@ -42,3 +42,17 @@ alternative retains the whole history in memory.
 Enforce one process per storage. Verify crash recovery, storage growth, and backup/restore against
 the pinned version. Choose synchronization settings deliberately: the defaults support ordinary
 process-crash recovery, while power or host failure may lose recent commits.
+
+## ADR-005: Separate workspace access from agent execution ownership
+
+Status: accepted direction.
+
+Agent hosts own durable conversations and execution. The workspace provides observation,
+coordination, and management through independently connected clients.
+
+Host-owned execution lets admitted work continue across client disconnects and supports future
+remote hosts and shared web/mobile views. Each host retains authoritative state; clients observe it
+and issue commands under explicit permissions.
+
+Start with workspace services and one local agent host in a single Node process. Extend to remote
+hosts and execution environments as their membership, authority, and lifecycle policies are defined.

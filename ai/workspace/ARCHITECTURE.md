@@ -9,9 +9,10 @@ Consequential tradeoffs are recorded in [DECISIONS.md](DECISIONS.md).
 
 ## Direction and scope
 
-Build a lightweight local web workspace for interacting with AI agents. Optimize for explicit
-ownership, useful types, low cognitive load, and long-term maintainability by humans and coding
-agents.
+Build a lightweight workspace for observing, coordinating, and managing independently running AI
+agents. Start with local interactive coding and preserve a path to multiple agent hosts and web,
+mobile, and terminal clients. Optimize for explicit ownership, useful types, low cognitive load, and
+long-term maintainability by humans and coding agents.
 
 Agreed direction:
 
@@ -49,9 +50,38 @@ scope.
 Confirm interactions, credential flow, and host-write/shell authority before real execution. Presets
 and other capabilities below describe longer-term direction.
 
-Multi-user hosting, remote access, agent orchestration, plugin loading, embedded terminals, and a
-separate memory system are deferred. These are not permanent exclusions; add them when a concrete
-use case establishes their requirements.
+Remote access, agent orchestration, multi-user hosting, plugin loading, embedded terminals, and a
+separate memory system remain future scope.
+
+### Distributed direction
+
+Agent hosts own durable conversations and execution. Clients observe state and submit commands
+through the workspace. The initial deployment colocates the workspace backend and one local agent
+host in a single Node process.
+
+Future deployments connect registered hosts into a constellation, with shared views across clients.
+A host may run tools in its own environment or use a remote execution environment. Provisioning a
+new host and joining an existing host are distinct ways to establish membership. Observation,
+execution, and administration each require explicit authority.
+
+The future constellation page shows registered hosts and their agents, conversations, and runs,
+including hosts started independently and joined from another workspace instance.
+
+Hosts continue admitted work within their execution policy while clients are disconnected.
+Scheduling new work, spawning agents, and provisioning resources require separately defined
+permissions.
+
+Keep host identity stable across client connections and restarts. Resolve project paths within their
+owning execution environment. Host observations carry connection status and last-observed state;
+command completion requires confirmation from the execution owner.
+
+Cloud provisioning, suspension, and wake-up belong to environment lifecycle management. Conversation
+identity and durable state survive environment suspension; retained artifacts follow an explicit
+persistence policy. Waking suspended compute requires an external wake mechanism.
+
+Autonomy policy, constellation membership and synchronization, remote provisioning, and networking
+remain design decisions for future slices. Iroh is a candidate transport. Browser, mobile, edge, and
+IoT execution hosts require platform-specific runtime and storage assessment.
 
 ## Ownership and boundaries
 
@@ -74,9 +104,10 @@ Node server
 Production uses one loopback HTTP origin for the UI and API. During development, Vite proxies API
 and stream requests to the loopback backend. Neither server binds to a public interface.
 
-One Node process owns the harness and its storage. Browser connections are observers and command
-clients, not owners of running work. Development restarts must close the previous storage owner
-before opening another.
+In the initial deployment, one Node process hosts workspace services and the local agent host.
+`server/runtime/` owns the host's harness, storage, and execution environments. Client connections
+observe state and issue commands; admitted work belongs to the host. Development restarts must close
+the previous storage owner before opening another.
 
 ### Source layout
 
@@ -138,6 +169,17 @@ feature. Do not preemptively add an API workspace package.
 Enforce import rules mechanically with the installed lint tooling or a focused repository check;
 folder naming alone is not enforcement.
 
+### Application features
+
+Model product capabilities as application-owned features with flags or toggles, not user-facing
+extensions. Features may use Durable tools, hooks, and tasks through `server/runtime/`; Durable
+extensions remain an internal integration mechanism, not an application plugin framework.
+
+Keep feature availability, per-conversation selection, and execution authority separate.
+Availability controls which capabilities the application exposes; conversation configuration selects
+among those capabilities. Enabling a feature does not grant permission to execute its actions.
+Feature services enforce these distinctions on the backend.
+
 ### Types and boundary validation
 
 All three TypeScript configurations use strict checking. The client configuration targets browser
@@ -167,16 +209,30 @@ validation of streamed JSON.
 
 ## Runtime, persistence, and lifecycle
 
-### Domain model
+### Domain model and glossary
 
-| Concept       | Meaning and owner                                                                                                                                                                                   |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project       | Application-owned registration identifying a canonical execution directory. A project is not a running agent.                                                                                       |
-| Agent preset  | Application-owned reusable model, instructions, tool selection, and execution configuration. Applying a preset resolves concrete conversation configuration; a preset is not a live agent instance. |
-| Conversation  | Harness-owned durable transcript and associated documents, identified by its runtime ID and linked to a registered project.                                                                         |
-| Submission    | Harness-owned record of admitted input or a write. The first slice exposes user input, with a request ID for retry deduplication.                                                                   |
-| Run           | The sequence of model turns and tool calls from admitted input toward a final answer; not a separate application job record.                                                                        |
-| Turn and task | A turn is a model response and its tool calls. Durable tasks checkpoint generation/tool work and provide execution diagnostics.                                                                     |
+These terms describe the agreed direction; distributed capabilities enter scope through future
+slices.
+
+| Term                  | Meaning and owner                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace             | Application for observing, coordinating, and managing agent work.                                                                                   |
+| Client                | Web, mobile, or terminal interface that observes state and issues commands.                                                                         |
+| Constellation         | Collection of registered agent hosts visible through a workspace, with explicit observation and control permissions.                                |
+| Agent host            | Service that owns Durable harnesses, their persistent state, and execution lifecycle. A machine may host multiple such services.                    |
+| Execution environment | Filesystem and process context in which tools operate, such as a host directory, container, VM, or remote environment.                              |
+| Project               | Application-owned registration of a working context in an execution environment; initially a canonical directory on the local host.                 |
+| Agent                 | User-facing name for the configured participant in a conversation. Initially its identity and configuration belong to that conversation.            |
+| Agent preset          | Application-owned reusable model, instructions, tools, and execution configuration, resolved into concrete conversation configuration when applied. |
+| Conversation          | Harness-owned durable transcript and associated documents, identified by its runtime ID and linked to a registered project.                         |
+| Submission            | Harness-owned record of admitted input or a write. The first slice exposes user input, with a request ID for retry deduplication.                   |
+| Run                   | Sequence of model turns and tool calls from admitted input toward a final answer, represented by harness state.                                     |
+| Turn                  | One model response and its tool calls.                                                                                                              |
+| Task                  | Durable checkpointed unit of execution used for generation, tools, and execution diagnostics.                                                       |
+
+Use **run** for the domain concept and **execution** for the general activity. A future requirement
+for agent identity across conversations, such as a named scheduled maintenance agent, would justify
+a separate agent entity.
 
 The runtime concepts follow the upstream definitions; application projects and presets are separate
 configuration concepts. See [1]. Preserve runtime IDs in application references rather than
@@ -242,6 +298,9 @@ Reject changes to a busy conversation's model, instructions, tools/extensions, a
 directory. Enforce this on the backend, not only by disabling UI controls. Order the busy check and
 configuration change with submission admission so a concurrent submit cannot slip between the check
 and the change. Stop does not unlock configuration until the harness confirms idle.
+
+Feature toggles that alter tools, instructions, or execution context follow the same idle-only rule.
+Presentation-only toggles may change immediately.
 
 Do not hot-reload host defaults or registry definitions that alter affected busy conversations.
 Resolve inherited execution choices explicitly where needed to uphold the same rule. Changing a
@@ -432,6 +491,18 @@ persistence, startup, and stream delivery. Include operation and available
 conversation/submission/task identifiers, with sanitized error information. Raw provider exceptions,
 credentials, prompts, and tool payloads are not safe browser details or default log content. Losing
 the stream is a connection error, not evidence of execution failure.
+
+### Runtime introspection
+
+Design direction, not an additional MVP requirement: provide read-only, server-authoritative
+inspection of available and enabled capabilities, effective conversation configuration, active tasks
+and their ownership, pending submissions, and blocked or interrupted work with its reasons.
+
+Normalize inspection results into application-owned contracts in `server/runtime/`; keep raw harness
+documents and provider types private. Apply observation permissions and expose only safe fields,
+excluding credentials and sensitive configuration. A browser panel and a future agent-callable
+inspection tool should use the same inspection service rather than maintain separate runtime views.
+Inspection does not grant execution authority.
 
 ### Localhost security and execution policy
 

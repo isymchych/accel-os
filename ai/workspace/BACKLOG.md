@@ -2,7 +2,11 @@
 - The Place - for intrecating with agents. it should feel like that, not like regular "chat app"
 - sandboxing? microvm? devcontainer? code-first? only allow codemode?
 - memory system / compound engineering
-- live system introspection / repl - like lisp machine / emacs / - find out best ideas/practices
+- live system introspection / repl
+  - do we even need it? chat is repl, expose introspection tools there
+  - like lisp machine / emacs /
+  - find out best ideas/practices;
+  - runtime inspection like deepseek harness; browser controll
 - ! infrastructure for long-running tasks, secure permissions, and state persistence
 
 ## Features
