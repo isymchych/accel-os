@@ -210,7 +210,38 @@
   (setq lsp-volar-take-over-mode nil)
   (setq lsp-volar-hybrid-mode t)
   :config
+  (require 'project)
+
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.worktrees\\'")
+
+  (defun mb/lsp-eslint-config-present-p (filename &optional _mode)
+    "Find a modern ESLint config between FILENAME and its project root.
+Without a detected project, check only the file's own directory."
+    (let* ((directory (file-name-directory (expand-file-name filename)))
+           (project (project-current nil directory))
+           (root (if project
+                     (file-name-as-directory (expand-file-name (project-root project)))
+                   directory))
+           (config nil))
+      (while (and directory (file-in-directory-p directory root) (not config))
+        (setq config
+              (seq-some
+               (lambda (name)
+                 (file-regular-p (expand-file-name name directory)))
+               '("eslint.config.js" "eslint.config.mjs" "eslint.config.cjs"
+                 "eslint.config.ts" "eslint.config.mts" "eslint.config.cts")))
+        (setq directory
+              (unless (file-equal-p directory root)
+                (file-name-directory (directory-file-name directory)))))
+      config))
+
+  (with-eval-after-load 'lsp-eslint
+    ;; Розгортаємо setf лише після завантаження визначення структури lsp--client.
+    (eval
+     '(add-function :before-while
+                    (lsp--client-activation-fn (gethash 'eslint lsp-clients))
+                    #'mb/lsp-eslint-config-present-p)
+     t))
 
   ;; lsp-mode supplies (inlineCompletion . ()); its JSON serializer emits null,
   ;; which tsgo rejects because textDocument.inlineCompletion must be an object.
@@ -227,15 +258,19 @@
 
   ;; lsp-mode's tsgo client resolves a system "tsgo" or its own downloaded
   ;; package.  An opted-in project instead uses its node_modules/.bin/tsc;
-  ;; resolve that path per project without changing the default client.
+  ;; resolve that path per source buffer without changing the default client.
   (defun mb/lsp-package-path (orig-fn dependency)
     "Use project-local TypeScript when the tsgo client is explicitly enabled.
 Otherwise resolve DEPENDENCY through ORIG-FN."
     (if (and (eq dependency 'tsgo) (memq 'tsgo lsp-enabled-clients))
         (let* ((tsc-relative-path "node_modules/.bin/tsc")
-               (root (locate-dominating-file default-directory tsc-relative-path)))
+               ;; lsp-mode binds default-directory to the workspace root at startup.
+               (source-directory (if buffer-file-name
+                                     (file-name-directory buffer-file-name)
+                                   default-directory))
+               (root (locate-dominating-file source-directory tsc-relative-path)))
           (unless root
-            (user-error "Could not find %s from %s" tsc-relative-path default-directory))
+            (user-error "Could not find %s from %s" tsc-relative-path source-directory))
           (expand-file-name tsc-relative-path root))
       (funcall orig-fn dependency)))
 

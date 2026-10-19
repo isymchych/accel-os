@@ -16,9 +16,26 @@ if (( ${#test_files[@]} == 0 )); then
   exit 1
 fi
 
-emacs_args=(--batch -Q)
+unit_args=()
+startup_args=()
 for test_file in "${test_files[@]}"; do
-  emacs_args+=(--load "$test_file")
+  case "$test_file" in
+    *-startup-test.el) startup_args+=(--load "$test_file") ;;
+    *) unit_args+=(--load "$test_file") ;;
+  esac
 done
 
-exec emacs "${emacs_args[@]}" --funcall ert-run-tests-batch-and-exit
+if (( ${#unit_args[@]} > 0 )); then
+  emacs --batch -Q "${unit_args[@]}" --funcall ert-run-tests-batch-and-exit
+fi
+
+if (( ${#startup_args[@]} > 0 )); then
+  startup_directory="$(mktemp -d)"
+  trap 'rm -rf -- "$startup_directory"' EXIT
+
+  ACCEL_OS="$repo_root" EMACS_TEST_DIRECTORY="$startup_directory" emacs --batch -Q \
+    --directory "$repo_root/scripts" \
+    --load "$repo_root/scripts/check-emacs-startup.el" \
+    "${startup_args[@]}" \
+    --funcall ert-run-tests-batch-and-exit
+fi

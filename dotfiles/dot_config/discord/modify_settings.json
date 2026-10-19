@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Keep closing Discord from minimizing to the tray; preserve app-managed state.
+jq -s 'add // {} | .MINIMIZE_TO_TRAY = false'

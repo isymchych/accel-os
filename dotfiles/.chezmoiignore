@@ -34,6 +34,7 @@ bin/completions/_mb-touchpad
 .Xdefaults
 .config/chromium-flags.conf
 .config/darkman/**
+.config/discord/**
 .config/fuzzel/**
 .config/gtk-3.0/**
 .config/kanshi/**

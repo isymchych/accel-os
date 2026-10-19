@@ -1,4 +1,43 @@
-[KDiff3 Options]
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Own preferences only; KDiff3 owns window state, history, and unknown settings.
+# Read values as literal lines so KDE's backslash escapes survive unchanged.
+awk '
+  function missing(    i, key) {
+    for (i = 1; i <= count; i++) {
+      key = order[i]
+      if (!(key in seen)) {
+        print preferences[key]
+        seen[key] = 1
+      }
+    }
+  }
+  NR == FNR {
+    key = substr($0, 1, index($0, "=") - 1)
+    order[++count] = key
+    preferences[key] = $0
+    next
+  }
+  /^\[/ {
+    if (in_options) missing()
+    in_options = ($0 == "[KDiff3 Options]")
+    if (in_options) found = 1
+  }
+  {
+    key = substr($0, 1, index($0, "=") - 1)
+    if (in_options && key in preferences) {
+      print preferences[key]
+      seen[key] = 1
+    } else {
+      print
+    }
+  }
+  END {
+    if (!found) print "[KDiff3 Options]"
+    missing()
+  }
+' /dev/fd/3 - 3<<'PREFERENCES'
 ApplicationFont=Noto Sans,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
 AutoAdvance=false
 AutoAdvanceDelay=500
@@ -38,7 +77,6 @@ FollowDirLinks=true
 FollowFileLinks=true
 Font=Iosevka Semibold,12,-1,5,600,0,0,0,0,0,0,0,0,0,0,1,Regular,0,0
 FullAnalysis=false
-Geometry=600,400
 HistoryEntryStartRegExp=\\\\s*\\\\\\\\main\\\\\\\\(\\\\S+)\\\\s+([0-9]+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ([0-9][0-9][0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])\\\\s+(.*)
 HistoryEntryStartSortKeyOrder=4\\,3\\,2\\,5\\,1\\,6
 HistoryMergeSorting=false
@@ -57,13 +95,7 @@ MidAgeFileColor=192,192,0
 MissingFileColor=0,0,0
 NewestFileColor=0,208,0
 OldestFileColor=240,0,0
-Position=0,22
 PreProcessorCmd=\\0
-RecentAFiles=
-RecentBFiles=
-RecentCFiles=
-RecentEncodings=
-RecentOutputFiles=
 RecursiveDirs=true
 ReplaceTabs=false
 RightToLeftLanguage=false
@@ -88,10 +120,5 @@ UseCvsIgnore=false
 WhiteSpace2FileMergeDefault=0
 WhiteSpace3FileMergeDefault=0
 WhiteSpaceEqual=true
-WindowStateFullScreen=false
-WindowStateMaximised=false
 WordWrap=false
-mainWindow-geometry=\x01\xd9\xd0\xcb\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00@\x00\x00\x0bs\x00\x00\x06S\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x0b\xb0\x00\x00\x00\x00\x00\x00\x00@\x00\x00\x0bs\x00\x00\x06S
-mainWindow-state=\x00\x00\x00\xff\x00\x00\x00\x01\xfd\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfc\x02\x00\x00\x00\x02\xfb\x00\x00\x00$\x00D\x00i\x00r\x00e\x00c\x00t\x00o\x00r\x00y\x00M\x00e\x00r\x00g\x00e\x00D\x00o\x00c\x00k\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\x00^\x00\xff\xff\xff\xfb\x00\x00\x00\x1a\x00M\x00e\x00r\x00g\x00e\x00I\x00n\x00f\x00o\x00D\x00o\x00c\x00k\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\x00|\x00\xff\xff\xff\x00\x00\x0bt\x00\x00\x06\x14\x00\x00\x00\x04\x00\x00\x00\x04\x00\x00\x00\x08\x00\x00\x00\x08\xfc\x00\x00\x00\x00
-shell-geometry=\x01\xd9\xd0\xcb\x00\x03\x00\x00\x00\x00\x00;\x00\x00\x00\x19\x00\x00\x0b\xae\x00\x00\x06\x8f\x00\x00\x00;\x00\x00\x00\x19\x00\x00\x0b\xae\x00\x00\x06\x8f\x00\x00\x00\x00\x00\x00\x00\x00\x0b\xb0\x00\x00\x00;\x00\x00\x00\x19\x00\x00\x0b\xae\x00\x00\x06\x8f
-shell-state=\x00\x00\x00\xff\x00\x00\x00\x00\xfd\x00\x00\x00\x00\x00\x00\x0bt\x00\x00\x06\x14\x00\x00\x00\x04\x00\x00\x00\x04\x00\x00\x00\x08\x00\x00\x00\x08\xfc\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x16\x00m\x00a\x00i\x00n\x00T\x00o\x00o\x00l\x00B\x00a\x00r\x01\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00
+PREFERENCES

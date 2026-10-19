@@ -82,10 +82,14 @@
 - For Node shims, invoke the wrapped tool (`npm run lint`, etc.) to confirm path resolution.
 - Store Emacs ERT tests in `dotfiles/dot_config/emacs/tests/`, name them `*-test.el`, and run
   syntax, Checkdoc, and ERT validation with `./scripts/check-emacs`.
+- Name startup integration tests `*-startup-test.el`. The runner loads development configuration
+  in a separate Emacs process with temporary state and already-installed packages.
 - Format Emacs Lisp with `./scripts/format-emacs`; use `./scripts/format-emacs --check` for
   non-mutating verification.
-- Emacs tests must load the actual configuration modules rather than copying their definitions, and
-  must clean up modified global state, windows, buffers, hooks, and temporary files.
+- Emacs tests must load actual configuration modules, not copy definitions or extract selected forms.
+  For load-order-sensitive integrations, use a fresh batch Emacs process that reproduces the supported
+  startup and compilation order.
+- Tests must clean up modified global state, windows, buffers, hooks, and temporary files.
 - Document manual verification steps in commit messages when automation is impossible.
 
 ## Commit & Pull Request Guidelines
