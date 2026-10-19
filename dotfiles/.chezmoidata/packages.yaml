@@ -21,6 +21,7 @@ packages:
         features:
           workstation:
             cli:
+              - dust # Readable disk usage tree launched from Waybar
               - ripgrep # fast project search
               - fd # ergonomic file finder
               - tokei # code line counts

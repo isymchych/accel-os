@@ -64,11 +64,21 @@
     "on-click": "gsimplecal"
   },
   "cpu": {
+    "interval": 3,
+    "states": {
+      "warning": 60,
+      "critical": 95
+    },
     "format": " {usage:2}%",
     "tooltip": true,
     "on-click": "xterm run -- htop --sort-key=PERCENT_CPU"
   },
   "memory": {
+    "interval": 3,
+    "states": {
+      "warning": 60,
+      "critical": 90
+    },
     "format": "RAM {percentage:2}%",
     "tooltip-format": "{used:0.1f}GiB out of {total:0.1f}GiB used",
     "on-click": "xterm run -- htop --sort-key=PERCENT_MEM"
@@ -79,12 +89,18 @@
   },
   "disk": {
     "interval": 30,
+    "states": {
+      "warning": 75,
+      "critical": 95
+    },
     "format": "  {percentage_used:2}%",
-    "path": "/home"
+    "path": "/home",
+    "on-click": "xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
   },
   "temperature": {
     "hwmon-path": "/sys/class/hwmon/hwmon1/temp1_input",
-    "critical-threshold": 98,
+    "warning-threshold": 55,
+    "critical-threshold": 70,
     "format": "   {temperatureC:2}°"
   },
   "battery": {

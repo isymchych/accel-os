@@ -111,6 +111,35 @@ window#waybar {
   padding: 8px 1px 8px 3px;
 }
 
+#cpu.warning,
+#memory.warning,
+#disk.warning,
+#temperature.warning,
+#battery.warning:not(.charging) {
+  color: @warning-color;
+  background-color: @warning-bg-color;
+}
+
+#cpu.critical,
+#memory.critical,
+#disk.critical,
+#temperature.critical,
+#battery.critical:not(.charging) {
+  color: @critical-color;
+  background-color: @critical-bg-color;
+  animation-name: resource-critical-pulse;
+  animation-duration: 1.5s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes resource-critical-pulse {
+  to {
+    background-color: #733a40;
+  }
+}
+
 #backlight {
   padding: 8px 1px 8px 5px;
 }
@@ -157,30 +186,9 @@ window#waybar {
   }
 }
 
-#battery.critical:not(.charging) {
-  color: @critical-color;
-  background-color: @critical-bg-color;
-
-  animation-name: blink;
-  animation-duration: 0.5s;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-}
-
 #battery.charging {
   background-color: inherit;
   color: inherit;
-}
-
-#battery.warning:not(.charging) {
-  background-color: @warning-bg-color;
-  color: @warning-color;
-}
-
-#temperature.critical {
-  color: @critical-color;
-  background-color: @critical-bg-color;
 }
 
 #pulseaudio {

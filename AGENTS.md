@@ -117,8 +117,8 @@
 - When inspecting installed Pi package APIs in this repo, start from root-level
   `node_modules/@earendil-works/*/dist/*.d.ts` and exclude `*.map` from code searches because
   workspace dependencies are hoisted and sourcemaps make compiled output noisy.
-- When changing dotfiles behavior that introduces or depends on installed tools, update the relevant
-  platform docs so fresh-host setup stays reproducible.
+- Declare tools required by dotfiles in the canonical package inventory. Update platform docs when
+  users need manual setup or operational guidance beyond the managed configuration.
 - Before formatting files, inspect the repository's declared formatter and scripts, then use that
   formatter directly; do not invoke an undeclared formatter through `npx` because it can produce
   incompatible output or download untracked tooling.
