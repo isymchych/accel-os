@@ -25,17 +25,15 @@ server syntax erasable for Node's native TypeScript execution; Vite owns browser
 
 ## Read before changing
 
-- `README.md`: development, startup, configuration, and check commands.
-- `ARCHITECTURE.md`: canonical architecture requirements. Read ownership and boundary validation for
-  structural/API changes; runtime and persistence for integration changes; transport and recovery
-  for submission/stream changes; frontend design for UI changes; security before enabling execution.
-- `DESIGN.md`: visual direction and [motion guidance](DESIGN.md#motion) for UI changes.
-- `DECISIONS.md`: consequential choices, including system Chromium for E2E.
+Read the relevant `DOMAIN.md` rules for behavior changes, `ARCHITECTURE.md` sections for
+structural/API/runtime changes, and `DESIGN.md` for UI changes. `README.md` lists commands and
+documentation; `DECISIONS.md` records consequential choices. Read the architecture's security
+requirements before enabling execution.
 
-Treat architecture proposals as design direction. Resolve initial product scope and execution
-authority before real user interactions and tool execution. Loopback binding and working-directory
-selection provide network and execution context; sandboxing requires a separate isolation boundary.
-Run runtime checks exclusively with fake providers, harmless tools, and isolated temporary state.
+Treat proposals as direction, not implementation permission. Resolve the
+[open product decisions](VISION.md#product-decisions-before-the-first-slice) before real user
+interactions or tool execution. Run runtime checks exclusively with fake providers, harmless tools,
+and isolated temporary state.
 
 ## UI primitives
 
@@ -47,8 +45,8 @@ the semantic tokens in `client/styles/theme.css`.
 - Button and Input forward native attributes and events. Features provide labels and control values;
   native elements own interaction behavior.
 - Read reactive values through their props object. Use Solid 2 APIs and native HTML attribute names.
-- Add primitives only for distinct, reusable interactions. Follow the architecture's token and
-  interaction requirements.
+- Add primitives only for distinct, reusable interactions. Follow `DESIGN.md` for interaction
+  requirements.
 
 ### Component references
 

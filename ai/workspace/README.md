@@ -7,9 +7,16 @@ browser-to-server communication.
 Solid 2 and its Vite plugin are pinned to prerelease versions. Review their release notes and rerun
 the workspace checks when upgrading.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for architecture requirements and intended direction,
-[DECISIONS.md](DECISIONS.md) for consequential choices, and [AGENTS.md](AGENTS.md) for development
-guidance.
+## Documentation
+
+Design documents describe the intended direction, not implementation completion.
+
+- [Vision](VISION.md): purpose, scope, and open product decisions.
+- [Domain](DOMAIN.md): terms and behavioral rules.
+- [Architecture](ARCHITECTURE.md): technical structure and constraints.
+- [Design](DESIGN.md): visual and interaction guidance.
+- [Decisions](DECISIONS.md): consequential choices and rationale.
+- [Agent guide](AGENTS.md): development instructions.
 
 ## Development
 

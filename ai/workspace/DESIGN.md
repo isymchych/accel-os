@@ -92,8 +92,6 @@ Earendil tokens. No reference fonts, logos, textures, or shader assets are adopt
 
 ### Scope and ownership
 
-- This document guides visual choices; [ARCHITECTURE.md](ARCHITECTURE.md) remains authoritative for
-  behavior, scope, and ownership.
 - `client/styles/theme.css` owns runtime tokens and Tailwind mappings. `client/ui/` owns domain-free
   primitives; features own content and state.
 - Apply the proposed warm colors, serif/mono roles, and 4px radius through a separately authorized
@@ -123,8 +121,7 @@ Map the active theme to existing semantic names such as `--background`, `--foreg
 `--primary-foreground`, `--muted-foreground`, `--border`, `--input`, `--destructive`, and `--ring`.
 The light/night names here describe palette pairs, not a second runtime theming mechanism.
 
-Default to system theme preference. Any future explicit override follows the application-preference
-ownership in the architecture.
+Default to system theme preference.
 
 Status is text-first: pair a clear label with an icon where helpful. Color may reinforce status but
 never distinguish execution from connection on its own.
@@ -161,8 +158,8 @@ Use two complementary densities:
   controls with 8-16px gaps; separate groups with 24-32px.
 
 Use Tailwind's existing spacing scale. The front matter records recurring reference steps, not a
-requirement to alias every utility. Begin with 16px outer gutters on narrow views and 32px on wide
-views.
+requirement to alias every utility. Centralize shared control and icon sizes. Begin with 16px outer
+gutters on narrow views and 32px on wide views.
 
 Let available content width determine column changes rather than copying Earendil's viewport-edge
 chrome. Narrow layouts stack or disclose secondary panels while keeping the current task and primary
@@ -216,15 +213,19 @@ Use explicit field labels, opaque surfaces, and the control-edge color. Placehol
 labels rather than replaces them. Associate errors and help text with their fields. Preserve input
 during recoverable failures.
 
+Document each primitive's label, event, and controlled-state ownership. Cover applicable loading,
+empty, error, disabled, permission, success, and overflow states.
+
 ### Reading and activity
 
 Distinguish author, prose, code, and tool metadata through hierarchy rather than a separate colored
 bubble for every message. Tool summaries are compact; detailed output uses an operable disclosure.
 Do not collapse information necessary to understand a failure.
 
-Show execution activity and browser connection separately, following the architecture's state
-contracts. Disconnected information is last observed, not proof that execution stopped. Do not
-invent product state to fit a visual badge.
+Show the independent
+[execution, outcome, and connection states](DOMAIN.md#activity-outcomes-and-connection) without
+inventing product state to fit a visual badge. Streaming preserves reading position and active
+input.
 
 ### Feedback and overlays
 
@@ -232,8 +233,10 @@ Empty states give the next useful action; errors explain the problem and recover
 preserves layout and does not masquerade as confirmed results. Disabled controls remain readable and
 communicate why when the reason is unclear.
 
-Use shared primitives with clear triggers and straightforward dismissal. Use Lucide icons
-consistently and pair unfamiliar actions with visible text.
+Use shared primitives with clear triggers and straightforward dismissal. Use Lucide icons with
+consistent sizing, strokes, semantic foregrounds, and meanings. Size interactive targets
+independently of icon dimensions. Tooltips supplement visible controls; pair unfamiliar or
+consequential actions with visible text.
 
 ## Do's and Don'ts
 

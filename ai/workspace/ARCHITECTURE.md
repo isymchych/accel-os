@@ -3,16 +3,7 @@
 Status: draft. Architecture direction agreed; product scope and integration details remain proposals
 where marked.
 
-See [README.md](README.md) for operation and [AGENTS.md](AGENTS.md) for development guidance.
-
-Consequential tradeoffs are recorded in [DECISIONS.md](DECISIONS.md).
-
-## Direction and scope
-
-Build a lightweight workspace for observing, coordinating, and managing independently running AI
-agents. Start with local interactive coding and preserve a path to multiple agent hosts and web,
-mobile, and terminal clients. Optimize for explicit ownership, useful types, low cognitive load, and
-long-term maintainability by humans and coding agents.
+## Technical direction
 
 Agreed direction:
 
@@ -30,58 +21,6 @@ Agreed direction:
   workflows, subject to a bounded integration check.
 - Versioned JSON validated with TypeBox for application configuration; `pi-durable`'s built-in
   SQLite storage remains authoritative for conversation and execution state.
-
-### MVP scope
-
-Agreed target: basic interactive coding with durable execution.
-
-Proposed first product slice, pending confirmation:
-
-- Register and select a local project; create or reopen a conversation.
-- Submit input and observe streamed responses and tool activity.
-- Read and edit files and run commands under the agreed execution policy.
-- Stop work, reconnect to ongoing work, and recover eligible pending work after a server restart.
-- Use an initial provider/model with server-side credentials.
-
-Proposed deferrals, pending confirmation: codemode, MCP, skills, prompt templates, custom Pi
-extensions, and richer session interactions. Reuse runtime and library capabilities as these enter
-scope.
-
-Confirm interactions, credential flow, and host-write/shell authority before real execution. Presets
-and other capabilities below describe longer-term direction.
-
-Remote access, agent orchestration, multi-user hosting, plugin loading, embedded terminals, and a
-separate memory system remain future scope.
-
-### Distributed direction
-
-Agent hosts own durable conversations and execution. Clients observe state and submit commands
-through the workspace. The initial deployment colocates the workspace backend and one local agent
-host in a single Node process.
-
-Future deployments connect registered hosts into a constellation, with shared views across clients.
-A host may run tools in its own environment or use a remote execution environment. Provisioning a
-new host and joining an existing host are distinct ways to establish membership. Observation,
-execution, and administration each require explicit authority.
-
-The future constellation page shows registered hosts and their agents, conversations, and runs,
-including hosts started independently and joined from another workspace instance.
-
-Hosts continue admitted work within their execution policy while clients are disconnected.
-Scheduling new work, spawning agents, and provisioning resources require separately defined
-permissions.
-
-Keep host identity stable across client connections and restarts. Resolve project paths within their
-owning execution environment. Host observations carry connection status and last-observed state;
-command completion requires confirmation from the execution owner.
-
-Cloud provisioning, suspension, and wake-up belong to environment lifecycle management. Conversation
-identity and durable state survive environment suspension; retained artifacts follow an explicit
-persistence policy. Waking suspended compute requires an external wake mechanism.
-
-Autonomy policy, constellation membership and synchronization, remote provisioning, and networking
-remain design decisions for future slices. Iroh is a candidate transport. Browser, mobile, edge, and
-IoT execution hosts require platform-specific runtime and storage assessment.
 
 ## Ownership and boundaries
 
@@ -169,17 +108,6 @@ feature. Do not preemptively add an API workspace package.
 Enforce import rules mechanically with the installed lint tooling or a focused repository check;
 folder naming alone is not enforcement.
 
-### Application features
-
-Model product capabilities as application-owned features with flags or toggles, not user-facing
-extensions. Features may use Durable tools, hooks, and tasks through `server/runtime/`; Durable
-extensions remain an internal integration mechanism, not an application plugin framework.
-
-Keep feature availability, per-conversation selection, and execution authority separate.
-Availability controls which capabilities the application exposes; conversation configuration selects
-among those capabilities. Enabling a feature does not grant permission to execute its actions.
-Feature services enforce these distinctions on the backend.
-
 ### Types and boundary validation
 
 All three TypeScript configurations use strict checking. The client configuration targets browser
@@ -209,53 +137,6 @@ validation of streamed JSON.
 
 ## Runtime, persistence, and lifecycle
 
-### Domain model and glossary
-
-These terms describe the agreed direction; distributed capabilities enter scope through future
-slices.
-
-| Term                  | Meaning and owner                                                                                                                                   |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace             | Application for observing, coordinating, and managing agent work.                                                                                   |
-| Client                | Web, mobile, or terminal interface that observes state and issues commands.                                                                         |
-| Constellation         | Collection of registered agent hosts visible through a workspace, with explicit observation and control permissions.                                |
-| Agent host            | Service that owns Durable harnesses, their persistent state, and execution lifecycle. A machine may host multiple such services.                    |
-| Execution environment | Filesystem and process context in which tools operate, such as a host directory, container, VM, or remote environment.                              |
-| Project               | Application-owned registration of a working context in an execution environment; initially a canonical directory on the local host.                 |
-| Agent                 | User-facing name for the configured participant in a conversation. Initially its identity and configuration belong to that conversation.            |
-| Agent preset          | Application-owned reusable model, instructions, tools, and execution configuration, resolved into concrete conversation configuration when applied. |
-| Conversation          | Harness-owned durable transcript and associated documents, identified by its runtime ID and linked to a registered project.                         |
-| Submission            | Harness-owned record of admitted input or a write. The first slice exposes user input, with a request ID for retry deduplication.                   |
-| Run                   | Sequence of model turns and tool calls from admitted input toward a final answer, represented by harness state.                                     |
-| Turn                  | One model response and its tool calls.                                                                                                              |
-| Task                  | Durable checkpointed unit of execution used for generation, tools, and execution diagnostics.                                                       |
-
-Use **run** for the domain concept and **execution** for the general activity. A future requirement
-for agent identity across conversations, such as a named scheduled maintenance agent, would justify
-a separate agent entity.
-
-The runtime concepts follow the upstream definitions; application projects and presets are separate
-configuration concepts. See [1]. Preserve runtime IDs in application references rather than
-identifying a conversation by its current route or display title.
-
-Keep these dimensions independent:
-
-| Dimension          | Presentation contract                                                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Execution activity | Derive idle/running from committed harness state. Show stopping while an explicit Stop request is pending; do not treat the request as confirmation of idle. Surface blocked work explicitly, not as normal progress. |
-| Submission outcome | Pending while unsettled, answered when the runtime reports `done`, and unanswered with its reason when it reports `unanswered`. Cancellation is a reason, not an ordinary provider failure.                           |
-| Browser connection | Connecting, connected, or disconnected; this describes observation, not whether work exists. Disconnected execution information is last observed, not current confirmation.                                           |
-
-The labels are application presentation, not a new persisted state machine. Derive execution and
-submission state from harness snapshots and records; retain only transient connection and command
-feedback in client state. Runtime submission records distinguish unsettled and terminal outcomes.
-See [10].
-
-An input moves from admission to pending and then an answered/unanswered outcome. A run can finish
-while the browser is disconnected, and a tool can fail while its run continues. Changing the route
-detaches observation, not execution. No application-owned transcript, run-status table, or task
-scheduler is introduced.
-
 ### Verified dependency constraints
 
 The upstream durable README marks the API experimental. It documents persistent conversations,
@@ -270,16 +151,19 @@ rather than requiring a separate lint workflow. See [3].
 
 - `server/runtime/` owns harness startup, shutdown, storage access, watch adaptation, registry
   setup, and execution environments.
-- Feature services own product rules such as project association, configuration permissions, and
-  submission policy.
+- Feature services enforce project association, configuration permissions, submission policy, and
+  the separation of capability availability, conversation selection, and execution authority.
+  Features use Durable tools, hooks, and tasks through `server/runtime/`; runtime extensions are
+  internal integration, not an application plugin framework.
 - Durable storage owns conversation and execution state. Do not maintain a second authoritative
   transcript or run-status table.
 - Application JSON owns registered projects, agent presets, and persisted preferences.
 - Harness application documents own metadata that must commit with conversation state, including
   each conversation's project association. Reference project IDs from the JSON catalog; do not
   duplicate the catalog inside the harness.
-- The client owns drafts, selected views, expanded output, and connection status. Server snapshots
-  own persisted conversation and run state.
+- The client owns drafts, selected views, expanded output, connection status, and command feedback.
+  Derive execution and submission state from committed harness snapshots and records, not a second
+  persisted state machine or application task scheduler. See [10].
 - Credentials remain server-side, supplied through the host's existing credential mechanisms. Do not
   put provider credentials in browser storage or Vite-exposed environment variables.
 
@@ -287,31 +171,17 @@ Pin the runtime to an exact tested version at implementation time. Keep its inte
 without inventing a general-purpose agent-provider interface. Review upgrades for API and
 persisted-state compatibility; take a restorable backup before changes that can alter storage.
 
-### Configuration safety
+### Configuration enforcement
 
-Resolve a selected preset into concrete conversation configuration when it is applied. Later preset
-edits affect future applications, not conversations already configured from that preset. Store the
-effective configuration in the harness-owned conversation documents, not merely a reference to
-mutable application JSON.
+Enforce the [configuration safety rules](DOMAIN.md#configuration-safety) in backend feature
+services, not only by disabling UI controls. Order the busy check and configuration change with
+submission admission so a concurrent submit cannot slip between them.
 
-Reject changes to a busy conversation's model, instructions, tools/extensions, and working
-directory. Enforce this on the backend, not only by disabling UI controls. Order the busy check and
-configuration change with submission admission so a concurrent submit cannot slip between the check
-and the change. Stop does not unlock configuration until the harness confirms idle.
+Resolve effective conversation configuration into harness-owned application documents rather than
+retaining only a reference to mutable application JSON.
 
-Feature toggles that alter tools, instructions, or execution context follow the same idle-only rule.
-Presentation-only toggles may change immediately.
-
-Do not hot-reload host defaults or registry definitions that alter affected busy conversations.
-Resolve inherited execution choices explicitly where needed to uphold the same rule. Changing a
-registered project's path must not silently retarget a configured conversation; applying the new
-execution directory is an explicit idle-only change.
-
-This constraint is intentional: upstream resolves some agent/environment choices at each task phase,
-so changing a working directory or extension can affect tool calls already requested by the model.
-See [1]. It prevents work prepared for one project or tool policy from executing under another.
-Idle-time reconfiguration is supported; live reconfiguration needs a separate, explicit product
-requirement.
+The domain rule preserves execution context because upstream resolves some agent/environment choices
+at each task phase. Verify that behavior against the pinned runtime; see [1].
 
 ### Runtime SQLite persistence
 
@@ -425,12 +295,9 @@ accumulating homemade cache, retry, and invalidation machinery.
 3. The runtime durably admits the submission before HTTP success is returned.
 4. The client observes committed progress through the stream.
 
-An ambiguous HTTP failure does not prove that admission failed. Retry the same logical submission
-with the same request ID. A newly composed input gets a new ID. Define the request-ID scope and
-reject reuse with different content, rather than silently accepting a mismatched retry.
-
-Proposed first busy policy: reject new input while a conversation is busy. Do not silently queue or
-steer. Revisit this when the UI explicitly supports follow-up or steering semantics.
+Retain the request ID across ambiguous HTTP failures so retries cannot duplicate admitted input.
+Define its scope and reject reuse with different content. Feature services enforce the
+[busy-input policy](DOMAIN.md#submission-and-stopping) once confirmed.
 
 ### Streaming
 
@@ -446,8 +313,7 @@ Use the runtime's committed-state watch rather than a separate event log. Normal
 Bound pending output per connection and coalesce superseded snapshots for slow readers. Dispose the
 server watch on disconnect and the client subscription on conversation change or unmount. Reconnect
 starts a new stream generation with a fresh snapshot; reject callbacks from superseded connections.
-Show stale/disconnected state until a fresh snapshot arrives; do not mark the agent idle merely
-because transport failed.
+Show stale/disconnected state until a fresh snapshot arrives.
 
 This intentionally favors a simple client over bandwidth efficiency. Full snapshots become
 unsuitable when large transcripts or tool output make serialization materially affect responsiveness
@@ -456,31 +322,18 @@ recovery, guided by measurements rather than a speculative replay framework.
 
 ### Cancellation and restart
 
-- Closing a tab or aborting an HTTP wait detaches that client; it does not stop admitted work.
-- Stop is an explicit command. Show stopping until the runtime confirms the conversation has become
-  idle.
-- Proposed Stop semantics include cancellation of the active run and its owned foreground work.
-  Background work is deferred until its cancellation policy is designed.
-- Graceful server shutdown closes observers and runtime resources; it is not a user Stop action.
-- Restart resumes eligible pending work after registry and execution environments are ready.
-  Unavailable definitions or credentials produce visible diagnostics rather than indefinite apparent
-  activity.
-- Recovery never means exactly-once external side effects. Replay-safe declarations require
-  evidence; interrupted unsafe tools must be surfaced for review instead of blindly rerun.
+Implement the [domain lifecycle rules](DOMAIN.md#submission-and-stopping) through the runtime:
+disconnect disposes observation, explicit Stop requests cancellation, and shutdown closes observers
+and runtime resources. Restart recovery waits for registry and execution-environment readiness.
+Require evidence for replay-safe tool declarations.
 
 ### Failure presentation and boundary diagnostics
 
 Present the harness's existing submission failure reasons/details, tool error results and partial
 output, and terminal task outcomes or blocked-work diagnostics. See [10]. Normalize them into
 application-owned, browser-safe contracts and link the summary to the relevant submission or tool
-result. A user should understand why input went unanswered or work is blocked without inspecting the
-entire transcript.
-
-Distinguish provider failure, tool failure, interrupted execution, invalid/unavailable
-configuration, and browser transport failure. Do not mark an entire run failed merely because one
-tool returned an error; execution may continue. Preserve cancellation as an explicit outcome. Show a
-useful fallback for unfamiliar runtime reasons rather than discarding the failure or claiming
-success.
+result. Preserve the distinct outcomes and fallback behavior in
+[Failure meaning](DOMAIN.md#failure-meaning).
 
 Use committed runtime records as the diagnostic source of truth. Do not create a parallel runtime
 diagnostic store, copy task history into application JSON, or introduce an observability subsystem
@@ -489,8 +342,7 @@ for the first slice.
 Local application logs cover failures outside that runtime state: HTTP handling, application JSON
 persistence, startup, and stream delivery. Include operation and available
 conversation/submission/task identifiers, with sanitized error information. Raw provider exceptions,
-credentials, prompts, and tool payloads are not safe browser details or default log content. Losing
-the stream is a connection error, not evidence of execution failure.
+credentials, prompts, and tool payloads are not safe browser details or default log content.
 
 ### Runtime introspection
 
@@ -522,130 +374,57 @@ another local process.
 - Keep storage and credentials private to the user and avoid logging secrets or whole prompts by
   default.
 
-Tool permissions and approvals are unresolved product decisions. No approval mechanism, persistence
-model, or approval semantics are selected. Whether approvals are needed, which actions they cover,
-and their scope, rejection, disconnect, and restart behavior remain questions for the
-execution-authority decision; do not implement that machinery before the decision. Until a
-host-write and shell policy is agreed, the first integration check uses a fake model and harmless
-tools. A working directory is not filesystem isolation; host shell access must never be presented as
-confined to the selected project. Adding real sandboxing requires a separate execution-boundary
-design.
+Resolve [execution authority](VISION.md#product-decisions-before-the-first-slice) before enabling
+host-write and shell tools or implementing approval machinery. A working directory is not filesystem
+isolation; host shell access must never be presented as confined to the selected project. Sandboxing
+requires a separate execution-boundary design.
 
 ## Frontend design
 
 Accessibility is out of scope for this project.
 
-The local design system owns tokens, domain-free primitives, and usage contracts, not a separate
-package or generic framework. Features own terminology, domain state, and compositions; promote a
-composition to `ui/` only when domain-free and shared.
+`client/styles/theme.css` owns semantic CSS variables and Tailwind mappings; `@theme` produces
+utilities and `@theme inline` references other variables. See [5]. Light/dark themes share token
+names; persist any explicit theme override in application preferences, not a separate store.
 
-### Direction and ownership
+`client/ui/` owns domain-free primitives and finite, typed size/emphasis variants. Features own
+terminology, state, and compositions; promote only shared, domain-free compositions to `ui/`. Keep
+imports explicit and add providers, styling engines, or wrappers only for concrete needs. No
+separate design-system package, initial global store, or generic plugin system is needed.
 
-Use clear hierarchy, readable conversations/code, familiar controls, and restrained emphasis.
-Establish palette, typography, and density using representative conversation/settings content in the
-first UI slice.
+Use [DESIGN.md](DESIGN.md) for presentation and interaction requirements and
+[AGENTS.md](AGENTS.md#ui-primitives) for Solid component conventions. Import Lucide icons directly
+through a Solid 2-compatible integration. See [6]. Validate patterns in working feature screens;
+defer a gallery/Storybook until in-project examples no longer suffice.
 
-`client/styles/theme.css` owns design values and Tailwind mapping; `client/ui/` owns reusable Solid
-primitives. [AGENTS.md](AGENTS.md#ui-primitives) owns component guidance. Keep imports explicit; add
-providers, styling engines, or native-element wrappers for concrete responsibilities.
-
-### Tokens and theming
-
-Define locally owned semantic CSS variables and Tailwind tokens centrally: `@theme` produces
-utilities; `@theme inline` references other variables. See [5].
-
-- **Color:** surface/text pairs, primary action, muted content, border/input, destructive action,
-  and interaction feedback. Use shared semantic names consistently across features.
-- **Typography:** body/UI and monospace roles, a small hierarchy, readable line heights, and initial
-  system font stacks; external fonts are optional.
-- **Sizing:** use Tailwind's scale; centralize shared control/icon sizes without aliasing every
-  spacing utility.
-- **Shape:** a small radius/shadow vocabulary; elevation signifies layering.
-- **Motion:** immediate state changes by default; follow the [motion guidance](DESIGN.md#motion) for
-  interactions that need spatial continuity.
-
-Light/dark themes share token names and default to system preference. Persist any explicit override
-in application preferences, not another store. Check readability and interactive states in both
-themes.
-
-### Primitives and states
-
-Prefer native web platform capabilities where feasible. Add custom behavior or libraries for
-concrete gaps.
-
-Begin with needed buttons, inputs/textarea, labeled fields, and feedback; add dialogs, menus,
-tooltips, and other primitives for required interactions. When shared controls need size or emphasis
-variants, define a finite, typed set owned by the primitive. Features use those variants
-consistently.
-
-Document each primitive's label, event, and controlled-state ownership. Cover applicable loading,
-empty, error, disabled, permission, success, and overflow states; empty/error feedback explains the
-next useful action. Follow lifecycle/transport rules for execution, connection, and drafts. Keep
-feature state and public entry points explicit, without an initial global store or generic plugin
-system.
-
-### Icons
-
-Use Lucide icons through a Solid 2-compatible integration and import them directly where used. See
-[6]. Use consistent sizing, strokes, semantic foregrounds, and meanings across features. Size
-interactive targets independently of icon dimensions. Use tooltips as supplementary help. Pair
-unfamiliar or consequential actions with visible text.
-
-### Usability and acceptance
-
-Acceptance requires clear controls, readable content, useful feedback, and working core workflows.
-Show field errors beside the relevant inputs and make dialog dismissal straightforward.
-
-Streaming preserves the user's reading position and active input. Keep primary actions reachable
-alongside long paths, model names, code, and tool output. Check representative narrow/wide views.
-
-Inspect representative controls/states in the first working screen before spreading patterns. Use
-focused interaction tests and manual rendered checks for hierarchy, density, themes, and core
-workflows. Defer a gallery/Storybook until in-project examples no longer suffice.
-
-## Remaining checks and product decisions
+## Verification
 
 ### Integration checks
 
 Use these checks as acceptance criteria for the corresponding capabilities.
 
-1. **Runtime compatibility check:** use an exact runtime version, fake provider, and temporary
-   built-in SQLite storage. Demonstrate submit, watch, request-ID retry, stop, close/reopen, and
-   recovery of pending work after an abrupt process exit. Establish a safe single-owner startup
-   mechanism. Measure database/WAL growth, memory use, and reopen time with representative
-   streaming/tool output; select the synchronization policy and document process-crash versus
-   host-failure durability limits. Verify closed-harness backup and restoration of the complete
-   runtime storage and application configuration. Process-exit tests do not establish power-loss
-   durability.
-2. **Typed transport:** the diagnostic route connects TypeBox/canonical JSON validation to Hono RPC
-   and the Solid client, with valid/invalid input type checks. As routes and runtime integration
-   expand, verify error narrowing and that server implementation values cannot enter the browser
-   bundle; decide whether RPC typing needs a declaration boundary. Retain validation compatibility
-   and input type checks.
-3. **Conversation slice:** exercise submission and SSE together. A simulated lost HTTP response
-   followed by retry creates one input. Disconnect/reconnect converges to server state, cancellation
-   reaches idle, slow readers have bounded pending output, and stale connection callbacks or late
-   HTTP responses cannot overwrite current state. Verify ordinary read refreshes and command
-   responses preserve the streamed snapshot, and conversation changes dispose the old subscription
-   without duplicating observers. Configuration changes refresh affected read data while preserving
-   drafts and live conversation state.
-4. **Security and UI checks:** reject hostile hosts/origins, traversal, mismatched request IDs, and
-   oversized inputs. Verify safe Markdown and observable error/disconnection states. Exercise
-   available primitive variants, core control interactions, dialog dismissal, and long content;
-   inspect representative narrow/wide views in both themes. These checks validate the design system
-   in feature compositions, not only isolated controls.
-5. **Application-state persistence:** temporary-file tests cover missing-file initialization,
-   round-trip persistence, invalid-file preservation, newer-version rejection, concurrent mutations
-   without lost updates, and failed saves without publishing uncommitted state. Add migration tests
-   when a historical version exists. Verify missing project references fail explicitly instead of
-   selecting a fallback directory.
-6. **Configuration and lifecycle:** prove preset edits do not change configured conversations,
-   busy-time execution changes are rejected, and concurrent submission/configuration requests cannot
-   bypass the busy guard. Verify Stop does not unlock configuration prematurely. Exercise
-   pending-to-answered/unanswered transitions independently of connection state; tool failure can
-   remain visible while execution continues. Existing runtime reasons and blocked-work diagnostics
-   produce sanitized, actionable summaries without a second diagnostic store. Approval behavior is
-   not tested or implemented until the product decision is made.
+1. **Runtime:** with an exact version and temporary SQLite storage, exercise submit, watch, retry,
+   Stop, close/reopen, and abrupt-exit recovery. Measure database/WAL growth, memory use, and reopen
+   time with representative output. Verify single-owner startup, the selected synchronization
+   policy, and closed-harness backup/restoration of runtime storage and application configuration.
+   Process-exit tests do not establish power-loss durability.
+2. **Transport:** verify TypeBox/canonical JSON validation through Hono RPC to the Solid client.
+   Retain valid/invalid input checks, error narrowing, and browser bundle boundaries as routes
+   expand. Simulate a lost submission response: retry must create one input. Verify reconnect
+   convergence, cancellation to idle, bounded slow-reader output, observer cleanup, and rejection of
+   stale callbacks/late responses. Read refreshes and commands must preserve drafts and the
+   stream-owned snapshot.
+3. **Security and UI:** reject hostile hosts/origins, traversal, mismatched request IDs, and
+   oversized input. Verify safe Markdown, error/disconnection feedback, primitive variants, control
+   interactions, dismissal, and long content in feature screens, in both themes and narrow/wide
+   views.
+4. **Application state:** verify initialization, round trips, invalid-file preservation,
+   newer-version rejection, concurrent mutations, failed-save isolation, and explicit
+   missing-project errors. Add historical migration checks when a historical schema exists.
+5. **Configuration and lifecycle:** verify preset snapshotting, busy guards under concurrent
+   submission/configuration, and Stop waiting for confirmed idle. Check submission outcomes
+   independently of connection state, continuing runs after tool failure, and safe summaries of
+   runtime failures/blocked work. Approval behavior awaits the product decision.
 
 Use Node's test runner for server and contracts checks where it suffices. Playwright is the selected
 E2E runner; choose any separate component-test tooling only when focused interactive checks require
@@ -686,30 +465,6 @@ architecture.
 The workspace is registered in root npm workspaces and formatter/lint scopes. Preserve
 browser-specific lint environments and keep workspace operations, including E2E, in
 `ai/workspace/Justfile`; do not add a parallel repository orchestration system.
-
-### Product decisions before the first slice
-
-Resolve these before implementing real user interactions and tool execution; harmless integration
-checks can proceed independently:
-
-1. **Initial scope:** confirm the proposed [MVP interactions](#mvp-scope) and integration deferrals.
-   Additional interactions, including project deletion and reassignment, stay deferred unless
-   explicitly added. If they are added, define how existing conversation references remain valid
-   before implementing them.
-2. **Execution authority:** decide whether agents may edit host files and execute shell commands.
-   Approvals remain explicitly undecided: are they needed, for which actions, and with what scope
-   and rejection/disconnect/restart behavior? Select no approval mechanism until those requirements
-   are agreed. If execution must be confined rather than merely rooted in a working directory,
-   define the isolation boundary before enabling those tools. Localhost deployment does not grant
-   tool permissions or provide isolation.
-3. **Credentials:** choose the initial provider/model and server-side credential flow. Reusing an
-   existing CLI account needs a verified token-refresh ownership strategy; account switching and
-   browser-based credential management are not implicitly required.
-
-Runtime compatibility, single-owner enforcement, RPC typing, persistence policy, and transport
-limits are engineering checks under the section above, not additional open product decisions. Do not
-reopen the agreed localhost deployment and separated-source direction without new requirements or a
-concrete blocker.
 
 ## Sources
 
