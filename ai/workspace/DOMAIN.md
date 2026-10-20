@@ -5,21 +5,22 @@ scope.
 
 ## Glossary
 
-| Term                  | Meaning and owner                                                                                                                                   |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace             | Application for observing, coordinating, and managing agent work.                                                                                   |
-| Client                | Web, mobile, or terminal interface that observes state and issues commands.                                                                         |
-| Constellation         | Collection of registered agent hosts visible through a workspace, with explicit observation and control permissions.                                |
-| Agent host            | Service that owns Durable harnesses, their persistent state, and execution lifecycle. A machine may host multiple such services.                    |
-| Execution environment | Filesystem and process context in which tools operate, such as a host directory, container, VM, or remote environment.                              |
-| Project               | Application-owned registration of a working context in an execution environment; initially a canonical directory on the local host.                 |
-| Agent                 | User-facing name for the configured participant in a conversation. Initially its identity and configuration belong to that conversation.            |
-| Agent preset          | Application-owned reusable model, instructions, tools, and execution configuration, resolved into concrete conversation configuration when applied. |
-| Conversation          | Harness-owned durable transcript and associated documents, identified by its runtime ID and linked to a registered project.                         |
-| Submission            | Harness-owned record of admitted input or a write. The first slice exposes user input, with a request ID for retry deduplication.                   |
-| Run                   | Sequence of model turns and tool calls from admitted input toward a final answer, represented by harness state.                                     |
-| Turn                  | One model response and its tool calls.                                                                                                              |
-| Task                  | Durable checkpointed unit of execution used for generation, tools, and execution diagnostics.                                                       |
+| Term                       | Meaning and owner                                                                                                                                   |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace                  | Application for observing, coordinating, and managing agent work.                                                                                   |
+| Client                     | Web, mobile, or terminal interface that observes state and issues commands.                                                                         |
+| Constellation              | Collection of registered agent hosts visible through a workspace, with explicit observation and control permissions.                                |
+| Agent host                 | Service that owns Durable harnesses, their persistent state, and execution lifecycle. A machine may host multiple such services.                    |
+| Execution environment      | Filesystem and process context in which tools operate, such as a host directory, container, VM, or remote environment.                              |
+| Project                    | Application-owned registration of a working context in an execution environment; initially a canonical directory on the local host.                 |
+| Agent                      | User-facing name for the configured participant in a conversation. Initially its identity and configuration belong to that conversation.            |
+| Agent preset               | Application-owned reusable model, instructions, tools, and execution configuration, resolved into concrete conversation configuration when applied. |
+| Conversation configuration | Resolved model, instructions, tools, and execution context owned by a conversation, independent of later changes to its source preset.              |
+| Conversation               | Harness-owned durable transcript and associated documents, identified by its runtime ID and linked to a registered project.                         |
+| Submission                 | Harness-owned record of admitted input or a write. The first slice exposes user input, with a request ID for retry deduplication.                   |
+| Run                        | Sequence of model turns and tool calls from admitted input toward a final answer, represented by harness state.                                     |
+| Turn                       | One model response and its tool calls.                                                                                                              |
+| Task                       | Durable checkpointed unit of execution used for generation, tools, and execution diagnostics.                                                       |
 
 Use **run** for the domain concept and **execution** for the general activity. A future requirement
 for agent identity across conversations, such as a named scheduled maintenance agent, would justify

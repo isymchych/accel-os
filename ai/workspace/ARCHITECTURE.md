@@ -44,9 +44,9 @@ Production uses one loopback HTTP origin for the UI and API. During development,
 and stream requests to the loopback backend. Neither server binds to a public interface.
 
 In the initial deployment, one Node process hosts workspace services and the local agent host.
-`server/runtime/` owns the host's harness, storage, and execution environments. Client connections
-observe state and issue commands; admitted work belongs to the host. Development restarts must close
-the previous storage owner before opening another.
+`server/runtime/` owns the host's session harnesses, storage, and execution environments. Client
+connections observe state and issue commands; admitted work belongs to the host. Development
+restarts must close the previous storage owner before opening another.
 
 ### Source layout
 
@@ -151,10 +151,10 @@ rather than requiring a separate lint workflow. See [3].
 
 - `server/runtime/` owns harness startup, shutdown, storage access, watch adaptation, registry
   setup, and execution environments.
-- Feature services enforce project association, configuration permissions, submission policy, and
-  the separation of capability availability, conversation selection, and execution authority.
-  Features use Durable tools, hooks, and tasks through `server/runtime/`; runtime extensions are
-  internal integration, not an application plugin framework.
+- Feature services enforce project association, conversation-configuration permissions, submission
+  policy, and the separation of capability availability, conversation selection, and execution
+  authority. Features use Durable tools, hooks, and tasks through `server/runtime/`; runtime
+  extensions are internal integration, not an application plugin framework.
 - Durable storage owns conversation and execution state. Do not maintain a second authoritative
   transcript or run-status table.
 - Application JSON owns registered projects, agent presets, and persisted preferences.
@@ -171,11 +171,22 @@ Pin the runtime to an exact tested version at implementation time. Keep its inte
 without inventing a general-purpose agent-provider interface. Review upgrades for API and
 persisted-state compatibility; take a restorable backup before changes that can alter storage.
 
-### Configuration enforcement
+### Application-facing runtime operations
+
+`server/runtime/` exposes operations to create or reopen sessions, read conversation state, apply
+conversation configuration, submit input with a request ID, request cancellation, and watch
+committed snapshots. It owns session-harness lookup and returns application-owned results rather
+than raw runtime documents. Submission success means durable acceptance, not completion; a
+cancellation request does not establish idle.
+
+### Conversation configuration enforcement
 
 Enforce the [configuration safety rules](DOMAIN.md#configuration-safety) in backend feature
-services, not only by disabling UI controls. Order the busy check and configuration change with
-submission admission so a concurrent submit cannot slip between them.
+services, not only by disabling UI controls. Route submission admission and
+conversation-configuration changes through one coordination boundary in `server/runtime/` for the
+affected conversation. Order the busy check and configuration commit with submission admission so a
+concurrent submit cannot slip between them. Feature services own the policy; runtime operations
+uphold that ordering.
 
 Resolve effective conversation configuration into harness-owned application documents rather than
 retaining only a reference to mutable application JSON.
@@ -186,17 +197,19 @@ at each task phase. Verify that behavior against the pinned runtime; see [1].
 ### Runtime SQLite persistence
 
 Use the runtime's built-in Node SQLite adapter, `openNodeSqliteStorage` from
-`@earendil-works/pi-durable/storage/sqlite/node`, in a private user-data directory outside the
-repository. Choose and document the exact location and backup procedure during persistence
-implementation. Prevent simultaneous storage owners before opening the harness; the mechanism must
-survive stale-owner recovery without allowing two live owners. SQLite locking does not replace the
-harness's single-process ownership requirement.
+`@earendil-works/pi-durable/storage/sqlite/node`, with one database per independent session/harness.
+A session's database contains its main conversation, related subagent conversations, and tasks.
+Store databases under `sessions/<session-id>.sqlite` in a private user-data directory outside the
+repository. Choose and document the exact root location and backup procedure during persistence
+implementation. Prevent simultaneous owners of each database before opening its harness; the
+mechanism must survive stale-owner recovery without allowing two live owners. SQLite locking does
+not replace the harness's single-process ownership requirement.
 
-Keep `app-state.json` separate from the harness-owned database. One SQLite transaction represents
-one runtime commit. Let the harness manage its schema and migrations; application TypeBox schemas
-and migrations apply to application configuration, not runtime records. Do not introduce a parallel
-transcript/task database or edit runtime tables manually. Provide readable conversation exports
-through the application if needed. See [7].
+Keep application configuration files separate from harness-owned databases. One SQLite transaction
+represents one runtime commit. Let the harness manage its schema and migrations; application TypeBox
+schemas and migrations apply to application configuration, not runtime records. Do not introduce a
+parallel transcript/task database or edit runtime tables manually. Provide readable conversation
+exports through the application if needed. See [7].
 
 The Node adapter defaults to WAL mode with `synchronous = NORMAL`: commits survive ordinary process
 crashes, but the newest may be lost on power or host failure. Verify the pinned adapter's settings
@@ -207,32 +220,29 @@ Measure database/WAL growth, memory use, and reopen time with representative str
 output. If they exceed the workspace's operational budget, investigate supported upstream
 maintenance or storage options; do not add application-written runtime pruning.
 
-Back up the complete runtime storage while the harness is closed, together with application
-configuration. Account for any remaining SQLite WAL files; copying only a live database file is not
-a valid backup procedure. Verify restoration into a separate directory using the pinned runtime
-version. Closed-harness backup does not create a transaction between configuration and runtime
-state.
+Back up each session's complete runtime storage while its harness is closed, together with
+application configuration. Account for any remaining SQLite WAL files; copying only a live database
+file is not a valid backup procedure. Verify restoration into a separate directory using the pinned
+runtime version. Closed-harness backup does not create a transaction between configuration and
+runtime state.
 
 ### Application JSON persistence
 
-Start with one small `app-state.json` in the private user-data directory:
+Keep configuration in separate files in the private user-data directory:
 
-```json
-{
-  "schemaVersion": 1,
-  "projects": [],
-  "agentPresets": [],
-  "preferences": {}
-}
+```text
+preferences.json
+projects.json
+agent-presets.json
 ```
 
-`schemaVersion` identifies the persisted shape, not a mutation counter. Define the TypeBox schema
-and derived state type beside their server-side persistence owner. Persistence schemas are not
-automatically HTTP contracts; expose only the fields each route needs.
+Each file has its own `schemaVersion`, identifying its persisted shape rather than a mutation
+counter. Define each TypeBox schema and derived state type beside its server-side persistence owner.
+Persistence schemas are not automatically HTTP contracts; expose only the fields each route needs.
 
-Feature services apply product rules through one concrete application-state module. That module owns
-parsing, validation, migrations, and file replacement. Keep it in `server/lib/`; do not introduce a
-generic storage framework or separate files per feature without a concrete need.
+Each feature owns its configuration file's parsing, validation, migrations, and serialized updates.
+Keep any shared file-writing mechanics domain-free in `server/lib/`; do not introduce a generic
+storage framework. Apply the following requirements to each file:
 
 - Only the backend writes the file. Treat manual edits as offline changes made while the server is
   stopped; live file watching and merging are not part of the initial design.
@@ -252,15 +262,15 @@ generic storage framework or separate files per feature without a concrete need.
 - Keep credentials out of this file. Project registrations and presets may refer to server-side
   credential sources, not contain their secrets.
 
-Application JSON updates and harness commits are not one transaction. Keep configuration changes
-independent of conversation admission; resolve the selected project and preset before admitting
-work. Missing project references must surface as configuration errors, not silently select another
-directory. Deletion and reassignment rules must preserve this invariant.
+Updates across configuration files and harness commits are not one transaction. Keep saved project,
+preset, and preference updates independent of conversation admission; resolve the selected project
+and preset before admitting work. Missing project references must surface as configuration errors,
+not silently select another directory. Deletion and reassignment rules must preserve this invariant.
 
-The JSON approach assumes small, infrequently changed configuration with one writer. Reconsider it
-when measured file size or write frequency makes whole-file replacement costly, or when requirements
-demand atomic changes across application and runtime state. Do not add a second database merely to
-anticipate those conditions.
+The JSON approach assumes small, infrequently changed configuration files with one backend writer.
+Reconsider it when measured file size or write frequency makes whole-file replacement costly, or
+when requirements demand atomic changes across configuration files or application and runtime state.
+Do not add a separate configuration database merely to anticipate those conditions.
 
 ## Transport, recovery, and security
 
@@ -405,9 +415,9 @@ Use these checks as acceptance criteria for the corresponding capabilities.
 
 1. **Runtime:** with an exact version and temporary SQLite storage, exercise submit, watch, retry,
    Stop, close/reopen, and abrupt-exit recovery. Measure database/WAL growth, memory use, and reopen
-   time with representative output. Verify single-owner startup, the selected synchronization
-   policy, and closed-harness backup/restoration of runtime storage and application configuration.
-   Process-exit tests do not establish power-loss durability.
+   time with representative output. Verify session isolation, single-owner startup per database, the
+   selected synchronization policy, and closed-harness backup/restoration of runtime storage and
+   application configuration. Process-exit tests do not establish power-loss durability.
 2. **Transport:** verify TypeBox/canonical JSON validation through Hono RPC to the Solid client.
    Retain valid/invalid input checks, error narrowing, and browser bundle boundaries as routes
    expand. Simulate a lost submission response: retry must create one input. Verify reconnect
@@ -418,13 +428,15 @@ Use these checks as acceptance criteria for the corresponding capabilities.
    oversized input. Verify safe Markdown, error/disconnection feedback, primitive variants, control
    interactions, dismissal, and long content in feature screens, in both themes and narrow/wide
    views.
-4. **Application state:** verify initialization, round trips, invalid-file preservation,
-   newer-version rejection, concurrent mutations, failed-save isolation, and explicit
-   missing-project errors. Add historical migration checks when a historical schema exists.
-5. **Configuration and lifecycle:** verify preset snapshotting, busy guards under concurrent
-   submission/configuration, and Stop waiting for confirmed idle. Check submission outcomes
-   independently of connection state, continuing runs after tool failure, and safe summaries of
-   runtime failures/blocked work. Approval behavior awaits the product decision.
+4. **Application state:** for each configuration file, verify initialization, round trips,
+   invalid-file preservation, newer-version rejection, concurrent mutations, failed-save isolation,
+   and explicit missing-project errors. Add historical migration checks when a historical schema
+   exists.
+5. **Conversation configuration and lifecycle:** verify preset snapshotting, busy guards under
+   concurrent submission/conversation-configuration changes, and Stop waiting for confirmed idle.
+   Check submission outcomes independently of connection state, continuing runs after tool failure,
+   and safe summaries of runtime failures/blocked work. Approval behavior awaits the product
+   decision.
 
 Use Node's test runner for server and contracts checks where it suffices. Playwright is the selected
 E2E runner; choose any separate component-test tooling only when focused interactive checks require

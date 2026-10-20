@@ -1,3 +1,11 @@
+## TODO
+
+- rename "runtime" to something more interesting - i.e. "robot"/"agent"?
+- review the ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
+- company? - agentic system/organization
+
+---
+
 - personal playground
 - The Place - for intrecating with agents. it should feel like that, not like regular "chat app"
 - sandboxing? microvm? devcontainer? code-first? only allow codemode?
@@ -8,6 +16,7 @@
   - find out best ideas/practices;
   - runtime inspection like deepseek harness; browser controll
 - ! infrastructure for long-running tasks, secure permissions, and state persistence
+- more things ephemeral? projects/runners
 
 ## Features
 
