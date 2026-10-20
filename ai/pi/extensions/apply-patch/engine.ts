@@ -104,21 +104,6 @@ function buildPreflightFailureResult(
   };
 }
 
-function assertOperationsAreValid(operations: readonly PatchOperation[], cwd: string): void {
-  if (operations.length === 0) {
-    throw new Error("No files were modified.");
-  }
-
-  const sourcePaths = new Set<string>();
-  for (const operation of operations) {
-    const sourcePath = resolvePatchPath(cwd, operation.path);
-    if (sourcePaths.has(sourcePath)) {
-      throw new Error(`Multiple operations target ${operation.path}.`);
-    }
-    sourcePaths.add(sourcePath);
-  }
-}
-
 export async function executeApplyPatchTool(
   _toolCallId: string,
   params: ApplyPatchInput,
@@ -134,7 +119,9 @@ export async function executeApplyPatchTool(
 ): Promise<ApplyPatchToolResult> {
   const operations = parsePatch(params.input);
   const updateFileMode = options?.updateFileMode ?? "preserve";
-  assertOperationsAreValid(operations, cwd);
+  if (operations.length === 0) {
+    throw new Error("No files were modified.");
+  }
   const preflightFailure = await getPreflightFailure(operations, cwd, updateFileMode, signal);
   if (preflightFailure !== undefined) {
     return buildPreflightFailureResult(preflightFailure);

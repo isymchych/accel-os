@@ -28,6 +28,11 @@ Codex version or remains identical to later upstream code.
 - The implementation is a Pi extension using Node TypeScript and Pi's tool, rendering,
   constrained-sampling, and file-mutation APIs.
 - Preview uses a virtual workspace before the real workspace is mutated.
+- Repeated source paths are allowed. Operations run in patch order against the results of earlier
+  operations, rather than requiring one operation per source path as upstream verification does.
+- Previews and summaries retain each operation in order, including intermediate changes to the same
+  file; they are not a net diff. Preflight failure leaves files unchanged, but execution failures
+  can leave earlier operations applied.
 - Results include combined previews, fuzz accounting, partial-success state, uncertain-state
   reporting, and explicit recovery paths.
 - Preflight failures return structured operation and chunk locations while confirming that no files
@@ -48,6 +53,8 @@ Codex version or remains identical to later upstream code.
 - Preserve mode retains existing line contents and endings where the patch does not replace them.
 - Failed replacement must preserve the original file whenever the atomic rename has not occurred.
 - Mutations must reject paths containing symbolic-link components.
+- Preflight and execution must use the same sequential semantics for repeated paths, including paths
+  created, deleted, or moved by earlier operations.
 - State-unknown move failures must identify both source and destination as recovery paths.
 
 These invariants should remain covered by local tests even if upstream behavior changes.

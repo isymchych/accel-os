@@ -25,7 +25,7 @@ import {
   prepareApplyPatchArguments,
   type ApplyPatchInput,
 } from "./tool.ts";
-import { WorkspaceMutationError } from "./workspace.ts";
+import { createRealWorkspace, WorkspaceMutationError } from "./workspace.ts";
 
 interface ApplyPatchToolDetails extends Record<string, unknown> {
   diff?: string;
@@ -180,7 +180,8 @@ test("tool exposes OpenAI Lark constrained sampling grammar", () => {
     "After a formatter, generator, or other state-changing command touches target files, reread or inspect those files before constructing another patch.",
     "Pass the full patch text in apply_patch.input.",
     "apply_patch accepts relative or absolute file paths in patch headers.",
-    "apply_patch rejects symbolic-link targets, existing add or move destinations, repeated source targets, and move-only updates.",
+    "Operations run in patch order; repeated paths are allowed, and each operation sees the results of earlier operations.",
+    "apply_patch rejects symbolic-link targets, add or move destinations that exist at that step, and move-only updates.",
   ]);
 });
 
@@ -515,13 +516,11 @@ test("apply_patch reports line numbers for malformed consecutive contexts", asyn
   );
 });
 
-test("apply_patch rejects repeated source targets before mutation", async (t) => {
+test("apply_patch updates a file added earlier in the same patch", async (t) => {
   const cwd = await createTempWorkspace(t);
 
-  await assert.rejects(
-    async () =>
-      runApplyPatch(cwd, {
-        input: `*** Begin Patch
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
 *** Add File: note.txt
 +alpha
 +beta
@@ -531,11 +530,207 @@ test("apply_patch rejects repeated source targets before mutation", async (t) =>
 +one
  beta
 *** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "one\nbeta\n");
+  assert.deepEqual(result.details?.result?.failures, []);
+  assert.deepEqual(
+    result.details.preview?.files.map((file) => file.operation),
+    ["add", "update"],
+  );
+});
+
+test("apply_patch matches repeated updates against preceding results and previews each step", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "alpha\n");
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: note.txt
+@@
+-alpha
++beta
+*** Update File: ${join(cwd, "note.txt")}
+@@
+-beta
++gamma
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "gamma\n");
+  assert.deepEqual(result.details?.result?.failures, []);
+  assert.deepEqual(result.details.result.appliedFiles, ["note.txt", join(cwd, "note.txt")]);
+  assert.deepEqual(result.details.preview, {
+    files: [
+      {
+        filePath: "note.txt",
+        operation: "update",
+        diff: "-1 alpha\n+1 beta",
+        added: 1,
+        removed: 1,
+      },
+      {
+        filePath: join(cwd, "note.txt"),
+        operation: "update",
+        diff: "-1 beta\n+1 gamma",
+        added: 1,
+        removed: 1,
+      },
+    ],
+    added: 2,
+    removed: 2,
+  });
+  assert.equal(
+    result.details.diff,
+    `File: note.txt\n-1 alpha\n+1 beta\n\nFile: ${join(cwd, "note.txt")}\n-1 beta\n+1 gamma`,
+  );
+});
+
+test("apply_patch can delete, recreate, and update the same path", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "original\n");
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Delete File: note.txt
+*** Add File: note.txt
++replacement
+*** Update File: note.txt
+@@
+-replacement
++final
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "final\n");
+  assert.deepEqual(result.details?.result?.failures, []);
+  assert.deepEqual(
+    result.details.preview?.files.map((file) => file.operation),
+    ["delete", "add", "update"],
+  );
+});
+
+test("apply_patch can move a file back to its source and update it again", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "src.txt", "alpha\n");
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: src.txt
+*** Move to: dst.txt
+@@
+-alpha
++beta
+*** Update File: dst.txt
+*** Move to: src.txt
+@@
+ beta
+*** Update File: src.txt
+@@
+-beta
++gamma
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "src.txt"), "gamma\n");
+  assert.equal(await fileExists(cwd, "dst.txt"), false);
+  assert.deepEqual(result.details?.result?.failures, []);
+  assert.deepEqual(result.details.result.appliedFiles, ["dst.txt", "src.txt", "src.txt"]);
+  assert.deepEqual(
+    result.details.preview?.files.map((file) => [file.filePath, file.moveTo]),
+    [
+      ["src.txt", "dst.txt"],
+      ["dst.txt", "src.txt"],
+      ["src.txt", undefined],
+    ],
+  );
+});
+
+test("apply_patch leaves files unchanged when a repeated operation fails preflight", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "alpha\n");
+
+  const { result } = await runApplyPatch(cwd, {
+    input: `*** Begin Patch
+*** Update File: note.txt
+@@
+-alpha
++beta
+*** Update File: note.txt
+@@
+-alpha
++gamma
+*** End Patch`,
+  });
+
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "alpha\n");
+  assert.deepEqual(result.details?.result?.appliedFiles, []);
+  assert.equal(result.details.result.hasPartialSuccess, false);
+  assert.deepEqual(result.details.result.failures, [
+    {
+      filePath: "note.txt",
+      operation: "update",
+      message: "Failed to find expected lines in note.txt:\nalpha",
+      phase: "preflight",
+      operationIndex: 1,
+      chunkIndex: 0,
+      recoveryPaths: ["note.txt"],
+    },
+  ]);
+  assert.match(getTextOutput(result), /no files were modified/);
+});
+
+test("apply_patch reports only completed steps when a repeated write fails", async (t) => {
+  const cwd = await createTempWorkspace(t);
+  await writeWorkspaceFile(cwd, "note.txt", "alpha\n");
+  const workspace = createRealWorkspace();
+  let writes = 0;
+
+  const { result } = await runApplyPatch(
+    cwd,
+    {
+      input: `*** Begin Patch
+*** Update File: note.txt
+@@
+-alpha
++beta
+*** Update File: note.txt
+@@
+-beta
++gamma
+*** Add File: later.txt
++later
+*** End Patch`,
+    },
+    {
+      createRealWorkspace: () => ({
+        ...workspace,
+        replaceText: async (path, content): Promise<void> => {
+          writes += 1;
+          if (writes === 2) {
+            throw new Error("simulated second write failure");
+          }
+          await workspace.replaceText(path, content);
+        },
       }),
-    /Multiple operations target note\.txt/,
+    },
   );
 
-  assert.equal(await fileExists(cwd, "note.txt"), false);
+  assert.equal(await readWorkspaceFile(cwd, "note.txt"), "beta\n");
+  assert.equal(await fileExists(cwd, "later.txt"), false);
+  assert.deepEqual(result.details?.result?.appliedFiles, ["note.txt"]);
+  assert.equal(result.details.result.hasPartialSuccess, true);
+  assert.deepEqual(result.details.result.failures, [
+    {
+      filePath: "note.txt",
+      operation: "update",
+      message: "simulated second write failure",
+    },
+  ]);
+  assert.deepEqual(result.details.result.recoveryInstructions.mustReadFiles, ["note.txt"]);
+  assert.equal(result.details.diff, "File: note.txt\n-1 alpha\n+1 beta");
+  assert.equal(result.details.preview?.files.length, 1);
+  assert.match(getTextOutput(result), /failed after applying 1 operation/);
 });
 
 test("apply_patch supports delete then move to the same destination in one patch", async (t) => {

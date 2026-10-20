@@ -566,7 +566,7 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
     name: "apply_patch",
     label: "apply_patch",
     description:
-      "Apply safe, Codex-compatible patch envelopes with add/delete/update/move file operations.",
+      "Apply safe patch envelopes with sequential add/delete/update/move file operations, including repeated paths.",
     promptSnippet:
       "Apply Codex-style patch envelopes for multi-file edits, updates, adds, deletes, and moves",
     promptGuidelines: [
@@ -575,7 +575,8 @@ export default function applyPatchExtension(pi: ExtensionAPI): void {
       "After a formatter, generator, or other state-changing command touches target files, reread or inspect those files before constructing another patch.",
       "Pass the full patch text in apply_patch.input.",
       "apply_patch accepts relative or absolute file paths in patch headers.",
-      "apply_patch rejects symbolic-link targets, existing add or move destinations, repeated source targets, and move-only updates.",
+      "Operations run in patch order; repeated paths are allowed, and each operation sees the results of earlier operations.",
+      "apply_patch rejects symbolic-link targets, add or move destinations that exist at that step, and move-only updates.",
     ],
     parameters: applyPatchSchema,
     constrainedSampling: APPLY_PATCH_CONSTRAINED_SAMPLING,
