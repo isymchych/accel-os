@@ -45,6 +45,20 @@ configuration defaults it to `$HOME/accel-os`; configure the environment before 
 repository lives elsewhere. Arch package installation and managed services are derived from host
 features in `dotfiles/.chezmoidata/`.
 
+## Verification
+
+Use an area check while working on a focused change:
+
+- `just check-ai` — formatting, linting, typechecking, and tests for all AI workspaces.
+- `just check-commands` — formatting, linting, typechecking, and tests for installed commands, plus
+  wrapper completion validation.
+- `just check-dotfiles` — host configuration, completions, Emacs validation and tests, Emacs
+  formatting, and dotfiles Markdown formatting.
+
+`just check` remains the full repository gate. Use it for changes to `packages/shared`, repository
+automation, or shared tooling configuration, and for cross-area changes. It also checks
+repository-wide Markdown formatting.
+
 ## Guides
 
 - [Arch Linux setup](docs/linux/README.md)

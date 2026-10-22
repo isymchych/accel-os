@@ -20,7 +20,12 @@
   "scripts": {
     "fmt": "oxfmt ai/pi ai/skills ai/workspace packages scripts '**/*.md'",
     "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages scripts '**/*.md'",
+    "fmt:check:ai": "oxfmt --check ai",
+    "fmt:check:commands": "oxfmt --check packages/commands",
+    "fmt:check:dotfiles": "oxfmt --check 'dotfiles/**/*.md'",
     "lint": "oxlint ai/pi ai/skills ai/workspace packages scripts",
+    "lint:ai": "oxlint ai",
+    "lint:commands": "oxlint packages/commands",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

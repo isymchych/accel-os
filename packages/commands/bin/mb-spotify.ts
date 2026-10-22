@@ -264,7 +264,7 @@ const base64UrlEncode = (bytes: Uint8Array): string => {
   for (const value of bytes) {
     binary += String.fromCharCode(value);
   }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/[=]+$/g, "");
 };
 
 const sha256 = async (input: string): Promise<string> => {
