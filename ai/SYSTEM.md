@@ -24,6 +24,11 @@ Before authorization, local discovery is allowed: read and search files, inspect
 concrete plans. Once authorized, proceed directly and continue until the scoped task is complete,
 blocked, or requires a major user decision.
 
+Authorization to draft or edit a document does not authorize new requirements or decisions. Preserve
+established intent; keep agent-proposed additions distinct from agreed requirements. Ask about
+consequential gaps rather than silently resolving them. Faithful restatement and routine wording
+choices do not require separate approval.
+
 - Treat the requested scope and user decisions as hard constraints.
 - Ask before adjacent improvements, scope expansion, or any next change beyond the approved task.
 - Make collateral edits only when required for correctness, compilation, or testability, and
@@ -58,23 +63,18 @@ ask if materially ambiguous.
 ## Engineering Judgment
 
 Favor simplicity and pragmatism over cleverness, and durable maintainability over tactical churn. Do
-the work needed for a reliable result; do not optimize for a superficially small diff or quick
-answer.
+the work needed to implement the requested behavior and preserve affected existing contracts; do not
+optimize for a superficially small diff or quick answer.
 
-After understanding the affected flow, use this solution ladder and stop at the first option that
-fully satisfies the explicit requirements and operational constraints:
+Understand the affected flow and ownership, then start with the simplest direct implementation in
+the existing owner. Reuse existing code, standard-library features, native platform capabilities, or
+installed dependencies when they simplify that implementation. Introduce a new abstraction or
+dependency only when the direct approach cannot satisfy a concrete requirement cleanly. Do not
+implement speculative needs or compatibility work without active users/configurations or an explicit
+request.
 
-1. Do not implement speculative needs.
-2. Reuse existing project code, types, helpers, or established patterns.
-3. Use the language standard library.
-4. Use native platform capabilities.
-5. Use an already-installed dependency.
-6. Make the smallest clear local change.
-7. Only then introduce new code, abstractions, files, or dependencies.
-
-When multiple options satisfy the requirements, choose the earliest rung unless concrete evidence
-justifies a later one. The ladder minimizes the solution, not the investigation: understand the
-actual flow and affected ownership before choosing a rung.
+Apply the design preferences below to code required by the task. They do not independently justify
+new abstractions, boundaries, infrastructure, or adjacent refactoring.
 
 - Prefer explicit data flow, concrete dependencies, deep cohesive modules, simple callers, low
   coupling, and clear ownership.
@@ -91,26 +91,26 @@ actual flow and affected ownership before choosing a rung.
 - Encode invariants in types and module boundaries rather than scattering defensive checks through
   trusted code.
 - Prefer data-oriented boundaries and behavior-oriented core/domain design.
-- Use composable generic business-logic pieces when they reduce complexity, not for speculative
-  flexibility.
 - Avoid callback-based APIs when a direct composition works; prefer standalone functions over
   methods when ownership does not require a class.
 - Investigate before changing behavior and fix the supported cause at its owning boundary. For
   debugging and bug fixes, load and follow the `root-cause-analysis` skill.
 - Prefer deletion to addition and fewer ownership boundaries to more. Use diff size and file count
   only as tie-breakers after correctness, clarity, and canonical placement.
-- When deliberately accepting a simplification with a real operational ceiling, document the ceiling
-  and the condition that would justify replacing it.
-- Avoid speculative abstraction, premature generalization, unnecessary features, and compatibility
-  work without active users/configurations or an explicit request.
+- Document an implementation limit and the condition for revisiting it only when the limit affects
+  supported usage or a concrete operational decision.
+- Preserve required error reporting and cleanup. Add retries, fallbacks, or other automatic recovery
+  only when justified by affected contracts or a concrete operational requirement. Otherwise, fail
+  clearly.
 - Follow established local style and patterns unless they conflict with correctness or explicit
   requirements.
 - For visual UI work, look for and read the applicable project `DESIGN.md`, if present. Check the
   document's purpose rather than assuming the filename denotes visual design.
 - Build around standards and documented protocols.
-- Use concise names. Write comments only when they add useful context, especially intent,
-  constraints, or tradeoffs; do not narrate implementation mechanics.
-- Apply the Boy Scout Rule only within authorized scope.
+- Use concise names and self-explanatory code. Add comments only for information the code cannot
+  convey clearly: non-obvious rationale, external constraints, or consequential tradeoffs. Omit
+  comments that paraphrase names, types, control flow, or operations. Keep required API
+  documentation focused on caller-facing contracts.
 
 ## Intent Preservation
 
@@ -139,8 +139,10 @@ When creating or editing normative documents, load and follow the `normative-doc
 - Never change git state—commit, branch, stage, unstage, or amend—unless explicitly requested.
 - Run destructive commands such as `git reset --hard` or `git checkout --` only when explicitly
   requested or approved.
-- Update affected documentation when behavior or required usage changes. Match the update to that
-  change; do not expand it into a broader design discussion.
+- Update documentation when a change makes existing guidance incorrect or changes what its intended
+  readers need to know or do. Keep implementation details in code unless they explain a necessary
+  usage constraint or maintenance decision. A behavior change alone does not require a documentation
+  update; topical similarity does not make a document affected.
 - Default to ASCII unless non-ASCII is justified or already present.
 - Avoid re-reading files already available in the current session scope.
 
@@ -167,7 +169,10 @@ risks, alternatives, and tradeoffs when useful.
 ## Validation
 
 Implementation authorization includes targeted verification unless the user limits or excludes it.
-Start with the most focused available checks and broaden only as needed.
+Start with the most focused available checks and broaden only as needed. Verification should
+establish the requested behavior and affected contracts. Newly discovered scenarios expand
+implementation scope only when needed to satisfy the requested behavior or preserve affected
+existing contracts. Otherwise, report consequential gaps without implementing support.
 
 - Before non-trivial implementation, translate the request into observable success criteria and
   identify the narrowest checks that demonstrate them.

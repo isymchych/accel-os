@@ -11,7 +11,8 @@ a one-shot Tilth process with an explicit working directory. The launcher defaul
 explicitly loads Pi's built-in MCP, codemode, and tool-search extensions. `ai/pi/mcp.json` does not
 configure Tilth.
 
-Evidence baseline: installed Pi 1.0.4 and Tilth 0.10.1. Recheck provider contracts when changing
+Original assessment baseline: Pi 1.0.4 and Tilth 0.10.1. The CLI adapter now pins Tilth 0.12.0; its
+scope changes are noted below. The native Pi MCP assessment has not been revalidated against newer
 versions. Editing this guidance does not authorize changes to the launcher, extensions, or MCP
 configuration.
 
@@ -113,9 +114,10 @@ supply. Avoid copying schemas or wrapping every MCP tool solely to retain the ex
 
 ### Repository targeting
 
-Tilth 0.10.1 search/list/grok scope resolution defaults to the server working directory when `scope`
-is omitted, even if `root` is supplied. An explicit relative scope requires an absolute root; an
-absolute scope selects the directory directly. Native MCP does not change these server rules.
+Tilth 0.12.0 fixes omitted-scope resolution: an omitted `scope` searches `root`, rather than the
+server working directory. File-valued directory scopes now fail instead of silently widening the
+search. Use an existing directory as `scope` and a file name as `glob` for a one-file search. These
+targeting fixes do not resolve process-local expansion suppression.
 
 A migration must preserve correct targeting for the active repository, subdirectories, and other
 checkouts. Use explicit absolute directory scopes where appropriate; verify read/deps/diff against
@@ -239,6 +241,7 @@ Local implementation evidence:
 
 Version-pinned upstream evidence:
 
+- [Tilth 0.12.0 release notes](https://github.com/jahala/tilth/releases/tag/v0.12.0)
 - [Pi 1.0.4 MCP documentation](https://github.com/earendil-works/pi/blob/v1.0.4/packages/coding-agent/docs/mcp.md)
 - [Pi 1.0.4 codemode documentation](https://github.com/earendil-works/pi/blob/v1.0.4/packages/coding-agent/docs/codemode.md)
 - [Tilth 0.10.1 session state](https://github.com/jahala/tilth/blob/v0.10.1/src/session.rs)

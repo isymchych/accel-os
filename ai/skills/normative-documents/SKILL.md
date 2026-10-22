@@ -32,10 +32,16 @@ intended requirement.
 
 ## Requirement integrity
 
+- Ground each statement presented as an established requirement or recommendation in an explicit
+  request, an applicable authoritative requirement, or an accepted decision. Best practices,
+  observed implementation behavior, and previously generated suggestions are not approval. Keep
+  proposed additions distinct from agreed requirements; leave consequential gaps open for a decision
+  rather than inventing obligations to complete the document.
 - Treat requirement-level edits as behavior changes. Before proposing or applying replacement
-  wording, compare the affected requirements with the proposed result. Preserve their force, scope,
-  conditions, exceptions, ordering constraints, and validation obligations unless changing them is
-  explicitly authorized.
+  wording, compare the affected requirements with the proposed result. Check for additions and
+  strengthening as well as omissions and weakening. Preserve their force, scope, conditions,
+  exceptions, ordering constraints, and validation obligations unless changing them is explicitly
+  authorized. Faithful restatement and routine wording choices do not require separate approval.
 - Treat omission or weakening as removal. Ask before removing requirements beyond the user's
   explicit request.
 - Check the edited scope and directly affected guidance for contradictions, missing decision

@@ -8,7 +8,7 @@ Critique **$ARGUMENTS** as a normative document.
 Focus on:
 
 - consistency
-- missing rules or decision guidance
+- missing expression of established rules or decision guidance
 - durability and self-containment
 - concision and sharpness
 - noisy, historical, implementation-shaped, or duplicated wording
@@ -31,7 +31,7 @@ For each:
 
 Priority:
 
-- P0: contradiction, wrong decision, or missing required rule
+- P0: contradiction, wrong decision, or omission of an established required rule
 - P1: ambiguous, non-durable, or weak guidance
 - P2: cleanup only
 
@@ -53,7 +53,11 @@ Review standard:
 - Apply the requirement-preservation principles in
   `$ACCEL_OS/ai/skills/normative-documents/SKILL.md` within this read-only critique; keep the output
   format above.
-- Label weakened or removed requirements as proposed behavior changes, not equivalent wording.
+- Distinguish missing expression of an established requirement from a proposed new requirement.
+  Support claims of missing requirements with the request or applicable authority; do not present
+  optional improvements as defects.
+- Label added, strengthened, weakened, or removed requirements as proposed behavior changes, not
+  equivalent wording.
 - Preserve load-bearing rationale and constraints even when they are historical, negative, or
   implementation-specific.
 - prefer domain rules over storage/code details

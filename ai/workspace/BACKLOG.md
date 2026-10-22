@@ -2,21 +2,38 @@
 
 - rename "runtime" to something more interesting - i.e. "robot"/"agent"?
 - review the ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
-- company? - agentic system/organization
+- company? - agentic system/organisation
+- separating where the work executes from where the developer controls it
+- the UI, agent execution engine, and synchronization layer are separate systems
+
+> The interesting abstraction is:
+
+> Agent = execution backend
+
+> Session = durable conversation and command state
+
+> Workspace = device + project folder
+
+> UI = replaceable control surface
+
+> Sync = optional coordination between machines
 
 ---
 
 - personal playground
 - The Place - for intrecating with agents. it should feel like that, not like regular "chat app"
+  - better operating environment for agents
 - sandboxing? microvm? devcontainer? code-first? only allow codemode?
 - memory system / compound engineering
 - live system introspection / repl
   - do we even need it? chat is repl, expose introspection tools there
   - like lisp machine / emacs /
   - find out best ideas/practices;
-  - runtime inspection like deepseek harness; browser controll
+  - runtime inspection like deepseek harness; browser control
 - ! infrastructure for long-running tasks, secure permissions, and state persistence
 - more things ephemeral? projects/runners
+- connect/control other machines - ssh?
+- project vs one-off tasks
 
 ## Features
 
@@ -31,6 +48,7 @@
 - code review tool - important changes, guided explanations, ai code review comments - for local
   changes & external PRs
 - search in session, in all sessions
+- terminal
 
 ## UI
 
@@ -52,6 +70,7 @@
   - https://t3.codes/
   - https://github.com/backnotprop/plannotator
   - https://github.com/disler/durable-pi
+  - https://github.com/zeronsh/zeron
   - AMP web
   - sandbox/vm/microvm/isolation; new agent -> fresh env? how to access it i.e. from my emacs? how
     to work on the same feature from multiple sessions/threads?

@@ -363,6 +363,13 @@ Otherwise resolve DEPENDENCY through ORIG-FN."
   (put 'javascript-oxlint 'flycheck-enabled
        #'mb/flycheck-javascript-oxlint-enabled-p)
 
+  ;; Перевіряємо збережений файл, щоб тимчасові копії не потрапляли до збірки.
+  (put 'javascript-oxlint 'flycheck-command
+       (mapcar (lambda (argument)
+                 (if (eq argument 'source-inplace) 'source-original argument))
+               (flycheck-checker-get 'javascript-oxlint 'command)))
+  (put 'javascript-oxlint 'flycheck-predicate #'flycheck-buffer-saved-p)
+
   (with-eval-after-load 'lsp-diagnostics
     (lsp-diagnostics-lsp-checker-if-needed)
     (flycheck-add-next-checker 'lsp 'javascript-oxlint))

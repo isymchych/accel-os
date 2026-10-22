@@ -158,6 +158,9 @@ pinpoint the root cause Makes targeted fixes based on evidence
   > concepts back in your own words. AI’s advantage is that it can personalize these techniques
   > cheaply and continuously for an individual learner.
 - keep INTENT.md with human input, then generate artifacts based on it
+- frontend dev: Reusable behavior, algorithms, protocols, and complex functionality retain strong
+  value. Reusable UI structure and styling may increasingly be generated and customized rather than
+  consumed through rigid component APIs.
 
 # AI ENGINEERING
 

@@ -7,11 +7,10 @@
  * subsequently report definitions as already shown even when their original
  * output exists only on the abandoned branch.
  *
- * Direct invocation also gives every call an explicit `ctx.cwd`. Tilth MCP's
- * search/list/grok scope resolution currently ignores `root` when `scope` is
- * omitted, which can silently inspect the server launch directory instead of
- * the requested repository. One-shot execution additionally prevents timed-out
- * MCP workers and process-lifetime caches from leaking across calls.
+ * Direct invocation also gives every call an explicit `ctx.cwd`. Tilth 0.12.0
+ * fixes MCP's omitted-scope root resolution, but does not make expansion state
+ * branch-aware. One-shot execution additionally prevents timed-out MCP workers
+ * and process-lifetime caches from leaking across calls.
  *
  * The tradeoff is repeated parsing and maintenance of this thin adapter, which
  * is accepted in favor of branch-local, explicit, deterministic tool behavior.
@@ -76,7 +75,8 @@ const TILTH_GUIDANCE = `## Tilth CLI workflow
 - Use \`tilth_deps\` only before changes that may affect callers, exported APIs, or file locations.
 - Use \`tilth_grok\` only for end-to-end understanding of one symbol; otherwise use search/read.
 - Use \`tilth_diff\` for structural change review; use raw \`git diff --patch\` only when exact patch text is required.
-    - Tilth search/read/list/deps/grok tools can inspect another repository or checkout: pass its absolute path as \`scope\`. For \`tilth_diff\`, pass it as \`repository\`; \`scope\` is a repository-relative changed file or \`file:function\` filter, not a directory.
+- Read/search/list/deps/grok \`scope\` must be an existing directory. For a one-file search, use its directory as \`scope\` and its name as \`glob\`.
+- Tilth search/read/list/deps/grok tools can inspect another repository or checkout: pass its absolute path as \`scope\`. For \`tilth_diff\`, pass it as \`repository\`; \`scope\` is a repository-relative changed file or \`file:function\` filter, not a directory.
 - For authorized inspection of temporary or untrusted clones, prefer Tilth search/read/list over \`git grep\`, \`git ls-files\`, \`find\`, or broad file reads. Tilth inspects files; it does not execute repository code.`;
 
 const tilthNamespace = {

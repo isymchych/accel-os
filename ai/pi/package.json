@@ -16,7 +16,7 @@
     "chrome-devtools-mcp": "^1.0.1",
     "diff": "^9.0.0",
     "srcwalk": "1.8.1",
-    "tilth": "0.10.1",
+    "tilth": "0.12.0",
     "typebox": "^1.1.36"
   }
 }

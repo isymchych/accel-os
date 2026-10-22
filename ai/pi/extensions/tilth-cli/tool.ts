@@ -36,7 +36,7 @@ export const tilthReadSchema = Type.Object(
     scope: Type.Optional(
       Type.String({
         description:
-          "Optional subdirectory, or an absolute path to another repository or checkout, to resolve relative paths against.",
+          "Optional existing directory to resolve relative paths against, including an absolute path to another repository or checkout.",
       }),
     ),
     section: Type.Optional(
@@ -75,7 +75,7 @@ export const tilthSearchSchema = Type.Object(
     scope: Type.Optional(
       Type.String({
         description:
-          "Optional subdirectory, or an absolute path to another repository or checkout, to search within.",
+          "Optional existing directory to search within, including an absolute path to another repository or checkout. Use glob to filter files.",
       }),
     ),
     expand: Type.Optional(
@@ -111,7 +111,7 @@ export const tilthListSchema = Type.Object(
     }),
     scope: Type.Optional(
       Type.String({
-        description: "Optional subdirectory to list within.",
+        description: "Optional existing directory to list within. Use pattern to filter files.",
       }),
     ),
     budget: Type.Optional(
@@ -133,7 +133,7 @@ export const tilthDepsSchema = Type.Object(
     scope: Type.Optional(
       Type.String({
         description:
-          "Optional subdirectory, or an absolute path to another repository or checkout, to search for dependents within.",
+          "Optional existing directory to search for dependents within, including an absolute path to another repository or checkout. Use path for the file to analyze.",
       }),
     ),
     budget: Type.Optional(
@@ -155,7 +155,7 @@ export const tilthGrokSchema = Type.Object(
     scope: Type.Optional(
       Type.String({
         description:
-          "Optional subdirectory, or an absolute path to another repository or checkout, to narrow the search within.",
+          "Optional existing directory to narrow the search within, including an absolute path to another repository or checkout. Use target to select a symbol or path:line.",
       }),
     ),
     full: Type.Optional(
