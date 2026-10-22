@@ -70,190 +70,141 @@ components:
 
 # Quiet Workshop
 
-## Overview
+Proposed visual direction, to be refined through representative screens. Adopting it requires a
+separately authorized UI change; mentioning a component or behavior here does not add it to scope.
 
-**Status: proposed visual direction.** This is a reusable starting point for the AI workspace,
-intended to evolve through representative screens rather than prescribe a finished product.
+A quiet reading room with a well-organized workbench: warm, literate, precise, and calm. Reading
+feels inviting; controls feel direct. Clarity wins over atmosphere.
 
-The character is a quiet reading room with a well-organized workbench: warm, literate, precise, and
-calm. Reading should feel inviting; operating the tool should feel direct. Prefer clarity over
-atmosphere whenever they compete.
+## Reference and ownership
 
 Inspired by
 [Earendil's website source](https://github.com/earendil-works/website/tree/3bbe3f2b0a50df2dd2f68ea76f1e3743b80eb375),
-especially `_static/styles.css`, its font definitions, and `_static/script.js`. The observed
-reference combines serif/mono typography, neutral day/night themes, spacious framing, dotted links,
-and a grain-treated ocean scene. This guide adapts those principles; it does not reproduce
-Earendil's identity or layout.
+especially `_static/styles.css`, its fonts, and `_static/script.js`: serif/mono typography,
+day/night neutrals, spacious framing, dotted links, and a grain-treated ocean scene.
 
-The front matter defines proposed baseline values. System font substitutions, the palette's
-supporting colors, compact framing, and component treatments are local design choices, not extracted
-Earendil tokens. No reference fonts, logos, textures, or shader assets are adopted.
+This is an adaptation, not a copy of its identity or layout. The front matter proposes local
+baseline values, including system fonts, supporting colors, compact framing, and component
+treatments. No reference fonts, logos, textures, or shader assets are adopted.
 
-### Scope and ownership
-
-- `client/styles/theme.css` owns runtime tokens and Tailwind mappings. `client/ui/` owns domain-free
-  primitives; features own content and state.
-- Apply the proposed warm colors, serif/mono roles, and 4px radius through a separately authorized
-  UI change.
-- Keep shared design values in the canonical CSS tokens and reference them from feature styles.
+`client/styles/theme.css` owns runtime tokens and Tailwind mappings; shared styles reference those
+tokens. `client/ui/` owns domain-free primitives; features own content and state.
 
 ## Colors
 
-Use warm neutrals for the main interface. Contrast, typography, and placement provide emphasis
-before color does.
+Use warm neutrals. Establish emphasis through contrast, typography, and placement before color.
 
-| Role              | Light token        | Dark token               | Application                            |
-| ----------------- | ------------------ | ------------------------ | -------------------------------------- |
-| Canvas            | `background`       | `night-background`       | Main working surface                   |
-| Main ink          | `foreground`       | `night-foreground`       | Reading, labels, icons                 |
-| Secondary surface | `surface`          | `night-surface`          | Grouped controls, menus, code          |
-| Secondary ink     | `muted-foreground` | `night-muted-foreground` | Supporting text and metadata           |
-| Separator         | `border`           | `night-border`           | Nonessential dividers                  |
-| Control edge      | `control-border`   | `night-control-border`   | Required input/control boundaries      |
-| Danger            | `destructive`      | `night-destructive`      | Destructive actions and error feedback |
+| Role              | Light / dark tokens                           | Use                            |
+| ----------------- | --------------------------------------------- | ------------------------------ |
+| Canvas            | `background` / `night-background`             | Main surface                   |
+| Ink               | `foreground` / `night-foreground`             | Text and icons                 |
+| Secondary surface | `surface` / `night-surface`                   | Controls, menus, code          |
+| Secondary ink     | `muted-foreground` / `night-muted-foreground` | Supporting text                |
+| Separator         | `border` / `night-border`                     | Nonessential dividers          |
+| Control edge      | `control-border` / `night-control-border`     | Required boundaries            |
+| Danger            | `destructive` / `night-destructive`           | Destructive actions and errors |
 
-The primary action is ink-filled with canvas-colored text; invert those roles in dark mode. Hover
-and pressed states strengthen the border or underline without changing layout. Selection uses a
-secondary surface plus an explicit marker, not a faint color wash alone.
+Map the active palette to existing semantic tokens such as `--background`, `--foreground`,
+`--primary`, `--primary-foreground`, `--muted-foreground`, `--border`, `--input`, `--destructive`,
+and `--ring`. These light/night pairs are not another theme system. Default to the system
+preference.
 
-Map the active theme to existing semantic names such as `--background`, `--foreground`, `--primary`,
-`--primary-foreground`, `--muted-foreground`, `--border`, `--input`, `--destructive`, and `--ring`.
-The light/night names here describe palette pairs, not a second runtime theming mechanism.
+Primary actions use ink with canvas-colored text, inverted in dark mode. Hover and pressed states
+strengthen borders or underlines without shifting layout. Selection combines a secondary surface
+with an explicit marker, not a faint wash alone.
 
-Default to system theme preference.
-
-Status is text-first: pair a clear label with an icon where helpful. Color may reinforce status but
-never distinguish execution from connection on its own.
+Status uses clear text, optionally reinforced by an icon and color. Color alone must not distinguish
+execution from connection.
 
 ## Typography
 
-The contrast between literary reading and technical operation is the signature.
+Serif reading and technical monospace are the signature:
 
-- **Reading:** serif for conversation prose and explanatory content, starting at 18px/1.6. Keep
-  paths, commands, and inline code monospace.
-- **Headings:** upright serif, usually 28px/1.2; use 22px for subsection headings. Italics are
-  occasional editorial emphasis, not the default for operational text.
-- **UI:** monospace at 15px/1.4 for navigation, buttons, fields, and concise labels. Prefer sentence
-  case. Reserve uppercase for short, nonessential overlines.
-- **Metadata:** monospace at 13px/1.4; do not shrink essential status or actions into this role.
-- **Code:** monospace at 14px/1.5. Preserve indentation and selection. Use localized horizontal
-  scrolling for preformatted content rather than page overflow.
+- **Prose:** serif, starting at 18px/1.6. Paths, commands, and inline code remain monospace.
+- **Headings:** upright serif, usually 28px/1.2; 22px for subsections. Use italics sparingly, not as
+  the default for operational text.
+- **Controls:** monospace, 15px/1.4; prefer sentence case. Uppercase is for short, nonessential
+  overlines.
+- **Metadata:** monospace, 13px/1.4. Keep essential status and actions out of this role.
+- **Code:** monospace, 14px/1.5. Preserve indentation and selection; scroll long blocks horizontally
+  within their container, not the page.
 
-Start with the system stacks in the front matter. Earendil's Plantin and Departure Mono are
-references, not font dependencies. A custom face requires separate approval, appropriate licensing,
-and rendered readability checks.
+Start with the front matter's system stacks. Plantin and Departure Mono are references, not
+dependencies. Custom fonts need separate approval, appropriate licensing, and rendered readability
+checks.
 
-Use weight 400 for the baseline and 700 for explicit emphasis. Maintain semantic heading order
-independently of visual size. Keep type roles centralized in `theme.css`, retaining compatible
-primitive font mappings.
+Use weight 400 normally and 700 for emphasis. Keep semantic heading order independent of size.
+Centralize type roles in `theme.css`, retaining compatible primitive mappings.
 
-## Layout
+## Layout and shape
 
-Use two complementary densities:
+Reading areas use a centered column, normally 65-75 characters wide, and generous paragraph rhythm;
+surrounding panels need not share that width. Working areas use compact, aligned controls: 8-16px
+within groups, 24-32px between groups.
 
-- **Reading areas:** a centered column, normally 65-75 characters wide, with generous paragraph
-  rhythm. Constrain prose, not every surrounding panel.
-- **Working areas:** compact, aligned navigation, settings, and activity lists. Group related
-  controls with 8-16px gaps; separate groups with 24-32px.
+Use Tailwind's spacing scale; the reference values do not require utility aliases. Centralize shared
+control/icon sizes. Start with 16px outer gutters on narrow views and 32px on wide ones.
 
-Use Tailwind's existing spacing scale. The front matter records recurring reference steps, not a
-requirement to alias every utility. Centralize shared control and icon sizes. Begin with 16px outer
-gutters on narrow views and 32px on wide views.
+Let content width determine columns. Narrow views stack or disclose secondary panels while keeping
+the task, essential state, and primary action reachable. Prefer document flow; sticky controls must
+leave room for inputs and long output. Wrap identifiers where practical and keep full values
+available when truncating.
 
-Let available content width determine column changes rather than copying Earendil's viewport-edge
-chrome. Narrow layouts stack or disclose secondary panels while keeping the current task and primary
-action reachable. Do not hide essential state merely to preserve whitespace.
+Separate flat surfaces with tone, spacing, and fine rules; use mostly straight edges with 4px
+corners on controls and overlays. Avoid a floating card for every message; popovers and dialogs may
+use one restrained shadow to clarify overlap. Reserve circles for naturally circular icons or
+avatars; pills are not the default control shape. Vary shape to communicate roles, not to decorate.
 
-Prefer document flow. Sticky controls leave room for active inputs and long output. Wrap identifiers
-where practical; keep full values available when truncation is necessary.
+Optional texture stays static, subtle, and beneath opaque reading/control surfaces; the interface
+remains complete without it. Ocean animation, grain, and stars are not baseline requirements.
+Atmospheric backgrounds belong on experiential surfaces, not behind sustained reading or operational
+panels.
 
-## Elevation & Depth
-
-Separate layers with tone, spacing, and fine rules. Avoid turning each message or section into a
-floating card. Popovers and dialogs may use one restrained shadow when it clarifies overlap;
-ordinary content stays flat.
-
-Texture is optional. If introduced, keep it static, subtle, and beneath opaque reading/control
-surfaces. The interface must remain complete without it.
-
-Ocean animation, film grain, and star ornament are not baseline requirements. An atmospheric
-background belongs only on a deliberately experiential surface, not behind sustained reading or
-operational panels.
-
-### Motion
-
-Use immediate updates and scrolling by default. Reserve minimal, localized motion for essential
-interaction clarity; keep controls responsive.
-
-## Shapes
-
-Use mostly straight edges with a small 4px radius for controls and overlays. Hairline dividers and
-modest corners should feel precise, not severe.
-
-Reserve circular shapes for naturally circular icons or avatars. Avoid pill-shaped controls as the
-default. Shape variation should communicate a different role rather than decorate a component.
+Use immediate updates and scrolling by default, with minimal local motion only for essential
+interaction clarity. Controls stay responsive.
 
 ## Components
 
-These are usage contracts for needed components, not permission to scaffold unimplemented features.
+### Navigation and actions
 
-### Navigation and links
+Use clear navigation labels and a persistent current-location marker. Reading links have dotted
+underlines at rest and solid underlines on hover; ornamental stars are optional.
 
-Navigation uses clear text labels and a persistent current-location marker. Reading links use a
-dotted underline at rest and a solid underline on hover. Ornamental stars are optional decoration.
+Give each task group one dominant action. Primary buttons use inverse ink/canvas; secondary buttons
+use visible outlines; tertiary actions remain recognizable controls.
 
-### Actions and fields
-
-Keep one clearly dominant action per task group. Primary buttons use the inverse ink/canvas
-treatment; secondary buttons use a visible outline; tertiary actions remain recognizable as
-controls.
-
-Use explicit field labels, opaque surfaces, and the control-edge color. Placeholder text supplements
-labels rather than replaces them. Associate errors and help text with their fields. Preserve input
-during recoverable failures.
+Fields need explicit labels, opaque surfaces, and control-edge borders. Placeholders supplement
+labels. Associate help and errors with the field; preserve input through recoverable failures.
 
 Document each primitive's label, event, and controlled-state ownership. Cover applicable loading,
 empty, error, disabled, permission, success, and overflow states.
 
 ### Reading and activity
 
-Distinguish author, prose, code, and tool metadata through hierarchy rather than a separate colored
-bubble for every message. Tool summaries are compact; detailed output uses an operable disclosure.
-Do not collapse information necessary to understand a failure.
+Distinguish author, prose, code, and tool metadata through hierarchy, not a colored bubble for every
+message. Keep tool summaries compact and details in operable disclosures; keep failure-critical
+information visible.
 
-Show the independent
-[execution, outcome, and connection states](DOMAIN.md#activity-outcomes-and-connection) without
-inventing product state to fit a visual badge. Streaming preserves reading position and active
-input.
+Show [execution, outcomes, and connection](DOMAIN.md#activity-outcomes-and-connection)
+independently. Badges reflect domain state rather than inventing it. Streaming preserves reading
+position and active input.
 
 ### Feedback and overlays
 
-Empty states give the next useful action; errors explain the problem and recovery. Loading feedback
-preserves layout and does not masquerade as confirmed results. Disabled controls remain readable and
-communicate why when the reason is unclear.
+Empty states suggest the next useful action; errors explain the problem and recovery. Loading
+preserves layout and never masquerades as confirmed results. Disabled controls remain readable and
+explain why when unclear.
 
-Use shared primitives with clear triggers and straightforward dismissal. Use Lucide icons with
-consistent sizing, strokes, semantic foregrounds, and meanings. Size interactive targets
-independently of icon dimensions. Tooltips supplement visible controls; pair unfamiliar or
-consequential actions with visible text.
+Use shared overlay primitives with clear triggers and straightforward dismissal. Lucide icons have
+consistent sizes, strokes, semantic foregrounds, and meanings; size interactive targets separately.
+Tooltips supplement visible controls. Unfamiliar or consequential actions need visible text.
 
-## Do's and Don'ts
+## Refinement
 
-- Do preserve serif reading, technical monospace, warm neutrals, and restrained emphasis as the core
-  identity.
-- Do adapt density to the task instead of imposing a landing-page composition.
-- Do retain familiar controls and visible affordances.
-- Do check readability in both themes, narrow/wide layouts, and long content.
-- Do validate core workflows alongside rendered hierarchy.
-- Don't copy Earendil's brand assets or make decorative effects prerequisites.
-- Don't introduce fonts, components, theme persistence, or product behavior solely because this
-  guide mentions them.
-- Don't treat a token/document check as proof of rendered usability.
+Before adopting the direction, compare representative prose, code, and settings in both themes,
+narrow/wide layouts, and long content. Check core workflows as well as hierarchy; token checks alone
+do not establish usability.
 
-### Refinement checkpoints
-
-Before adopting this direction, compare representative reading, code, and settings content in both
-themes. Resolve serif suitability for long responses, monospace legibility in controls, operational
-density, and whether texture adds value. Record approved adjustments here and reconcile implemented
-values with `theme.css`; leave unrelated architecture decisions unchanged.
+Resolve serif suitability for long responses, monospace legibility, working density, and whether
+texture helps. Record approved adjustments here and reconcile runtime values in `theme.css`, without
+changing unrelated architecture decisions.

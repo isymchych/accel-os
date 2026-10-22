@@ -1,71 +1,56 @@
 # AI workspace vision
 
-Status: draft. Product direction agreed; initial scope and deferrals remain proposals where marked.
+Draft vision. The product direction and MVP decisions below are agreed; later capabilities remain
+future scope.
 
 ## Purpose
 
-Build a lightweight workspace for observing, coordinating, and managing independently running AI
-agents. Start with local interactive coding and preserve a path to multiple agent hosts and web,
-mobile, and terminal clients. Optimize for explicit ownership, useful types, low cognitive load, and
-long-term maintainability by humans and coding agents.
+A personal control center for independently running agents and their workflows. Users choose what
+runs, where, and when, and coordinate overlapping work themselves. Execution stays observable,
+controllable, and recoverable across client disconnections.
+
+Interactive coding begins a broader set of agent workflows. Conversations provide one interface to
+agent work. Favor clear ownership, useful types, low cognitive load, and long-term maintainability
+for humans and coding agents.
 
 ## Initial scope
 
-Agreed target: basic interactive coding with durable execution.
+The first usable version is local interactive coding with durable execution:
 
-Proposed first product slice, pending confirmation:
-
-- Register and select a local project; create or reopen a conversation.
-- Submit input and observe streamed responses and tool activity.
-- Read and edit files and run commands under the agreed execution policy.
+- Choose a working directory, directly or through an optional saved project.
+- Create or reopen a conversation; submit input and stream responses and tool activity.
+- Send explicit follow-up input while busy.
+- See running, waiting, and blocked work in a work view.
+- Read and edit files and run commands under the execution policy below.
 - Stop work, reconnect to ongoing work, and recover eligible pending work after a server restart.
-- Use an initial provider/model with server-side credentials.
+- Reuse the existing `ai/` provider, model, account, and server-side credential mechanisms.
 
-Proposed deferrals, pending confirmation: codemode, MCP, skills, prompt templates, custom Pi
-extensions, and richer session interactions. Reuse runtime and library capabilities as these enter
-scope.
+Prioritize the work view over presets or extensive settings.
 
-Presets and other capabilities outside the first slice describe longer-term direction.
+## Agreed MVP decisions
 
-Remote access, agent orchestration, multi-user hosting, plugin loading, embedded terminals, and a
-separate memory system remain future scope.
+1. **Scope:** start with the [initial interactions](#initial-scope). Project deletion, reassignment,
+   and additional interactions require an explicit scope decision. Before adding deletion or
+   reassignment, define how existing conversation references stay valid.
+2. **Execution authority:** agents may read and edit host files and execute shell commands without
+   approvals. They run directly on the host, unsandboxed, with the host process's permissions. The
+   user-provided working directory is a starting context, not a filesystem boundary; localhost
+   provides no isolation.
+3. **Credentials:** the existing `ai/` mechanisms own authentication and credential management for
+   the workspace. A browser account-switching or credential-management interface is optional.
+
+Later scope: presets, steering, remote access, orchestration, multi-user hosting, plugin loading,
+embedded terminals, and a separate memory system. Codemode, MCP, skills, prompt templates, custom Pi
+extensions, and richer session interactions are optional for the first version; reuse supported
+capabilities when they directly serve the initial scope.
 
 ## Longer-term direction
 
-Start with workspace services and one local agent host colocated in a single Node process.
+Start locally, with a path to multiple hosts and web, mobile, and terminal clients. Registered hosts
+form a constellation showing hosts, agents, conversations, and runs, including independently started
+hosts joined from another workspace instance.
 
-Future deployments connect registered hosts into a constellation, with shared views across clients.
-A host may run tools in its own environment or use a remote execution environment. Provisioning a
-new host and joining an existing host are distinct ways to establish membership.
-
-The future constellation page shows registered hosts and their agents, conversations, and runs,
-including hosts started independently and joined from another workspace instance.
-
-Cloud provisioning, suspension, and wake-up belong to environment lifecycle management.
-
-Autonomy policy, constellation membership and synchronization, remote provisioning, and networking
-remain design decisions for future slices. Iroh is a candidate transport. Browser, mobile, edge, and
-IoT execution hosts require platform-specific runtime and storage assessment.
-
-## Product decisions before the first slice
-
-Resolve these before implementing real user interactions and tool execution; harmless integration
-checks can proceed independently:
-
-1. **Initial scope:** confirm the proposed [MVP interactions](#initial-scope) and integration
-   deferrals. Additional interactions, including project deletion and reassignment, stay deferred
-   unless explicitly added. If they are added, define how existing conversation references remain
-   valid before implementing them.
-2. **Execution authority:** decide whether agents may edit host files and execute shell commands.
-   Approvals remain explicitly undecided: are they needed, for which actions, and with what scope
-   and rejection/disconnect/restart behavior? Select no approval mechanism until those requirements
-   are agreed. If execution must be confined rather than merely rooted in a working directory,
-   define the isolation boundary before enabling those tools. Localhost deployment does not grant
-   tool permissions or provide isolation.
-3. **Credentials:** choose the initial provider/model and server-side credential flow. Reusing an
-   existing CLI account needs a verified token-refresh ownership strategy; account switching and
-   browser-based credential management are not implicitly required.
-
-Engineering questions are covered by the [integration checks](ARCHITECTURE.md#integration-checks);
-they are not additional product decisions. Do not reopen the agreed localhost deployment and
-separated-source direction without new requirements or a concrete blocker.
+Support workflows beyond interactive coding and execution in local or remote environments. Autonomy,
+membership, synchronization, provisioning, and networking policies await future decisions.
+[ARCHITECTURE.md](ARCHITECTURE.md#future-host-and-environment-constraints) preserves the technical
+constraints for that direction; [DOMAIN.md](DOMAIN.md) defines behavioral rules.

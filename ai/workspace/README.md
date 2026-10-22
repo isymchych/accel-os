@@ -1,19 +1,23 @@
 # AI workspace
 
-Local, loopback-only browser and server foundation for the AI workspace. The client uses Solid 2 and
-Tailwind through Vite; the server uses Hono on Node. Use the diagnostic screen to verify
-browser-to-server communication.
+Local browser/server foundation for the AI workspace: Solid 2 and Tailwind through Vite, with Hono
+on Node. Both servers are loopback-only. The diagnostic screen checks browser-to-server
+communication.
 
-Solid 2 and its Vite plugin are pinned to prerelease versions. Review their release notes and rerun
-the workspace checks when upgrading.
+Solid 2 and its Vite plugin use pinned prereleases. Review release notes and rerun checks on
+upgrades.
 
 ## Documentation
 
-Design documents describe the intended direction, not implementation completion.
+Design documents describe intended behavior.
+[MVP integration status](MVP.md#modelruntime-integration-status) records implementation evidence and
+remaining checks.
 
-- [Vision](VISION.md): purpose, scope, and open product decisions.
+- [Vision](VISION.md): purpose, scope, and agreed MVP decisions.
 - [Domain](DOMAIN.md): terms and behavioral rules.
 - [Architecture](ARCHITECTURE.md): technical structure and constraints.
+- [MVP implementation](MVP.md): first-release integration details, open questions, and acceptance
+  checks.
 - [Design](DESIGN.md): visual and interaction guidance.
 - [Decisions](DECISIONS.md): consequential choices and rationale.
 - [Agent guide](AGENTS.md): development instructions.
@@ -26,11 +30,11 @@ Run the client and server together from this directory:
 just dev
 ```
 
-The launcher uses the `accel-workspace` tmux session, with the Vite client at
-`http://127.0.0.1:5173` and the backend at `http://127.0.0.1:8787`. Re-running the command attaches
-to the existing session. To end both processes, run `tmux kill-session -t accel-workspace`.
+This starts the `accel-workspace` tmux session: client at `http://127.0.0.1:5173`, backend at
+`http://127.0.0.1:8787`. Run it again to attach; end both with
+`tmux kill-session -t accel-workspace`.
 
-`just server` and `just client` start either process separately.
+Use `just server` or `just client` to start either separately.
 
 ## Production-style startup
 

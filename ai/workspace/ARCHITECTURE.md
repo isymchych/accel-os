@@ -1,495 +1,305 @@
 # AI workspace architecture
 
-Status: draft. Architecture direction agreed; product scope and integration details remain proposals
-where marked.
+Draft architecture. The technical direction and MVP scope are agreed. Runtime integration remains
+proposed where noted.
 
 ## Technical direction
 
-Agreed direction:
-
-- Localhost-only deployment initially.
-- Separate frontend and backend source trees, with feature slices inside each.
-- One private npm package initially, with separate TypeScript configurations for client, server, and
-  contracts.
+- Loopback-only deployment, with separate client and server source in one private npm package.
 - TypeScript 7, Node, Vite, Oxlint with tsgolint, and Oxfmt.
-- Hono and TypeBox for the backend; Hono RPC for browser HTTP calls.
-- Solid 2, Tailwind v4, and locally owned native-control primitives with semantic theme tokens.
-- Hono RPC for reads and commands, with feature-owned Solid state for live SSE snapshots. Add
-  routing for navigation across multiple screens.
-- Playwright through `@playwright/test` for end-to-end browser tests.
-- `@earendil-works/pi-durable` as the intended runtime for interactive coding and future agentic
-  workflows, subject to a bounded integration check.
-- Versioned JSON validated with TypeBox for application configuration; `pi-durable`'s built-in
-  SQLite storage remains authoritative for conversation and execution state.
+- Solid 2, Tailwind v4, locally owned native controls, and semantic theme tokens.
+- Hono and TypeBox, with Hono RPC for HTTP reads and commands and Solid state for live SSE
+  snapshots.
+- Pi Durable for interactive coding and future workflows, subject to
+  [integration checks](MVP.md#integration-checks).
+- Durable's built-in SQLite storage for execution; versioned, TypeBox-validated JSON for application
+  configuration.
+- Playwright for browser tests.
+
+[DOMAIN.md](DOMAIN.md) owns behavioral rules; [VISION.md](VISION.md#agreed-mvp-decisions) owns MVP
+scope and execution authority. This document owns system structure and lasting technical
+constraints; [MVP.md](MVP.md) owns first-release implementation details, open integration questions,
+and acceptance checks.
 
 ## Ownership and boundaries
 
 ```text
-Browser
-  Solid feature UI
-    | HTTP commands and reads via Hono RPC
-    | SSE snapshots
-    v
-Node server
-  Hono routes -> feature services -> pi-durable integration
-                                     |
-                                     v
-                            durable local storage
-                                     |
-                                     v
-                          tool execution environment
+Browser: Solid features
+  | Hono RPC: reads and commands
+  | SSE: committed snapshots
+  v
+Node: Hono routes -> feature services -> server/runtime/
+                                          | Durable harnesses and storage
+                                          | tool execution environments
 ```
 
-Production uses one loopback HTTP origin for the UI and API. During development, Vite proxies API
-and stream requests to the loopback backend. Neither server binds to a public interface.
+One Node process initially hosts workspace services and the local agent host. Production serves UI
+and API from one loopback origin; development uses Vite's proxy for API and stream requests. Both
+servers bind exclusively to loopback addresses. Development restarts must close the previous storage
+owner before opening another.
 
-In the initial deployment, one Node process hosts workspace services and the local agent host.
-`server/runtime/` owns the host's session harnesses, storage, and execution environments. Client
-connections observe state and issue commands; admitted work belongs to the host. Development
-restarts must close the previous storage owner before opening another.
+Reuse Pi's native execution semantics and services; the workspace owns presentation, user intent,
+host discovery, and transport. Local execution works directly with the selected environment.
+Scheduling and remote provisioning belong to later scope.
 
 ### Source layout
 
-The tree illustrates ownership, not a requirement to scaffold empty directories.
+Use this tree to assign ownership; create directories as implementation needs them.
 
 ```text
 client/
-  app/                         # Bootstrap, navigation, composition
-    routes/                    # Thin route modules; screens stay in features
-  features/                    # Conversations, projects, agent settings
-  ui/                          # Domain-free design-system primitives
-  lib/                         # API client and browser infrastructure
-  styles/theme.css             # Semantic tokens and Tailwind mapping
+  app/                    # Bootstrap, navigation, composition
+    routes/               # Thin routes composing feature screens
+  features/               # Product UI and state
+  ui/                     # Domain-free primitives
+  lib/                    # Browser infrastructure and API client
+  styles/theme.css        # Semantic tokens and Tailwind mapping
 server/
-  app/                         # Startup, API composition, shutdown
-  features/                    # Product services and routes
-  runtime/                     # Harness, persistence, environments
-  lib/                         # HTTP and server infrastructure
-contracts/                     # Feature wire schemas and derived types
-tests/integration/             # Cross-boundary Node tests
-tests/e2e/                     # Playwright user journeys
+  app/                    # Startup, API composition, shutdown
+  features/               # Product routes and services
+  runtime/                # Harnesses, persistence, environments
+  lib/                    # Server infrastructure
+contracts/                # Environment-neutral wire schemas and derived types
+tests/integration/        # Cross-boundary Node checks
+tests/e2e/                # Browser journeys
 ```
 
-Put focused tests beside the code they exercise. Use `tests/integration/` for cross-boundary Node
-behavior and `tests/e2e/` for browser journeys. Matching feature names aid navigation; client and
-server internals need not mirror each other.
-
-A server feature can begin with `routes.ts` and `service.ts`; a client feature with a screen and its
-state module. Add subdivisions only when there is a distinct responsibility. Avoid mandatory
-controller/service/repository layers and blanket barrel exports.
+Keep focused tests beside their code. Matching feature names help navigation; client and server
+internals can evolve independently. Start server features with routes and a service, and client
+features with a screen and state. Add subdivisions for distinct responsibilities. Introduce layers
+and barrel exports when concrete needs justify them.
 
 ### Dependency rules
 
 ```text
 client -> contracts <- server
-                      server features -> runtime
+                       features -> runtime
 ```
 
-- Each `app/` composes its environment's features and infrastructure.
-- Client code cannot import server implementation values or Node-only modules.
-- Server code cannot import client code.
-- Contracts depend on environment-neutral schema code, not either application's internals.
-- Features own domain behavior. `lib/` and `ui/` contain no feature-specific policy.
-- Cross-feature calls use narrow, explicit entry points. Resolve orchestration in `app/` when
-  neither feature naturally owns it; avoid cycles.
-- Keep provider types and Chord state inside `server/runtime/`. Return application-owned results to
-  services and routes.
-- Shared contracts contain wire schemas and derived types, not a second domain layer.
+Each `app/` composes its environment. Features own product policy; `lib/` and `ui/` stay
+domain-free. Cross-feature calls use narrow entry points and acyclic dependencies. Put orchestration
+in `app/` when its responsibility lies beyond either individual feature.
 
-Hono RPC introduces one intentional type-only edge: `client/lib/api.ts` imports the composed API
-type from `server/app/api.ts`. Frontend features use the client module, not backend types directly.
+Client code must not import server implementation values or Node-only modules; server code must not
+import client code. Contracts contain environment-neutral wire schemas and depend on schema code.
+Keep domain behavior in features and provider types and Chord state inside `server/runtime/`,
+returning application-owned results.
 
-Separate TypeScript configurations do not make that edge an independent compiler boundary: source
-imports can pull server declarations and dependencies into the client type graph. Verify this in the
-first integration check. If source-based RPC typing defeats the environment boundary, introduce a
-narrow generated declaration surface for the API type rather than exposing server source to every
-feature. Do not preemptively add an API workspace package.
+The sole Hono RPC type-only edge is `client/lib/api.ts` importing the composed API type from
+`server/app/api.ts`. Features use the client module. That import may pull server dependencies into
+the client type graph even with separate TypeScript configurations. Verify the boundary during
+integration; if source typing defeats it, generate a narrow API declaration surface. Introduce an
+API package when a concrete integration need justifies it.
 
-Enforce import rules mechanically with the installed lint tooling or a focused repository check;
-folder naming alone is not enforcement.
+Enforce import boundaries with installed lint tooling or a focused repository check.
 
-### Types and boundary validation
+### Types and validation
 
-All three TypeScript configurations use strict checking. The client configuration targets browser
-APIs, the server configuration targets Node, and contracts require neither environment's globals.
-Prefer type-only imports and explicit relative `.ts` extensions where compatible with the toolchain.
+Use strict TypeScript configurations for browser, Node, and environment-neutral contracts. Prefer
+type-only imports and explicit relative `.ts` extensions where supported. Server code runs through
+Node's native type stripping and follows the repository's erasable-syntax settings; Vite compiles
+the browser.
 
-Run server TypeScript directly with Node's native type stripping. Keep server syntax erasable and
-follow the repository's existing Node TypeScript settings. Vite owns browser compilation and asset
-output.
-
-Define TypeBox wire schemas near each feature's external shape in `contracts/`; derive types instead
-of maintaining parallel interfaces. Parse external JSON through the repository's canonical
-`@accel-os/shared/json` boundary helper where applicable. Hono validation must preserve inferred
-input types, not erase them to `unknown` or `any`.
-
-Use one schema for each wire shape. Internal domain results may differ from transport objects;
-normalize them explicitly where that distinction matters. Provider-owned nested data remains
-permissive for extra fields, while application-owned contracts are explicit.
+Define one TypeBox schema per wire shape near its feature in `contracts/` and derive types from it.
+Parse external JSON through `@accel-os/shared/json` where applicable. Preserve inferred Hono input
+types through the RPC boundary. Keep provider-owned nested data permissive for extra fields;
+application contracts are explicit. Normalize internal domain results to wire shapes where they
+differ.
 
 Expected route failures have explicit JSON responses and status codes. Unexpected failures use one
-sanitized error envelope, with detailed diagnostics only in local logs. Account for middleware and
-global error responses in the RPC type surface. HTTP failure, submission acceptance, and eventual
-run failure are different outcomes.
+sanitized envelope, with detailed diagnostics confined to local logs. Include middleware and global
+errors in RPC typing. HTTP failure, durable acceptance, and eventual run failure are distinct.
 
-Validate SSE payloads before they enter trusted client state. Typed HTTP calls do not replace
-validation of streamed JSON.
+Validate SSE JSON before it enters trusted client state; streams require their own validation.
 
 ## Runtime, persistence, and lifecycle
 
-### Verified dependency constraints
-
-The upstream durable README marks the API experimental. It documents persistent conversations,
-request-ID deduplication, snapshot-based watches, explicit cancellation, tool replay policies, and
-built-in SQLite storage. Storage has a single-process owner and no cross-process locking. See [1].
-
-Hono RPC derives types from validated inputs and route responses; global error handlers require
-explicit treatment in the type surface. See [2]. Oxlint integrates tsgolint for type-aware linting
-rather than requiring a separate lint workflow. See [3].
-
 ### Proposed ownership
 
-- `server/runtime/` owns harness startup, shutdown, storage access, watch adaptation, registry
-  setup, and execution environments.
-- Feature services enforce project association, conversation-configuration permissions, submission
-  policy, and the separation of capability availability, conversation selection, and execution
-  authority. Features use Durable tools, hooks, and tasks through `server/runtime/`; runtime
-  extensions are internal integration, not an application plugin framework.
-- Durable storage owns conversation and execution state. Do not maintain a second authoritative
-  transcript or run-status table.
-- Application JSON owns registered projects, agent presets, and persisted preferences.
-- Harness application documents own metadata that must commit with conversation state, including
-  each conversation's project association. Reference project IDs from the JSON catalog; do not
-  duplicate the catalog inside the harness.
-- The client owns drafts, selected views, expanded output, connection status, and command feedback.
-  Derive execution and submission state from committed harness snapshots and records, not a second
-  persisted state machine or application task scheduler. See [10].
-- Credentials remain server-side, supplied through the host's existing credential mechanisms. Do not
-  put provider credentials in browser storage or Vite-exposed environment variables.
+- **Runtime integration:** harness startup/shutdown, lookup, storage, watches, registries, and
+  execution environments.
+- **Feature services:** user-selected context, configuration permissions, submission policy, and
+  execution authority. Access Durable tools, hooks, and tasks through `server/runtime/`.
+- **Durable storage:** single store for transcripts, run status, task scheduling, execution
+  diagnostics, and accounting.
+- **Application JSON:** registered projects, presets, and persisted preferences.
+- **Harness application documents:** metadata that must commit with conversation state, including
+  resolved configuration and optional project association. Keep the project catalog in application
+  JSON and reference its IDs from harness documents.
+- **Client:** drafts, selected views, expanded output, connection state, and command feedback.
+  Execution and submission state come from committed runtime records.
 
-Pin the runtime to an exact tested version at implementation time. Keep its integration narrow,
-without inventing a general-purpose agent-provider interface. Review upgrades for API and
-persisted-state compatibility; take a restorable backup before changes that can alter storage.
+Pin an exact tested Durable version: its API is experimental. Review API and persisted-state
+compatibility on upgrades and take a restorable backup before storage-changing upgrades. Keep the
+integration narrow and specific to Durable's supported APIs.
 
-### Application-facing runtime operations
+### Pi reuse
 
-`server/runtime/` exposes operations to create or reopen sessions, read conversation state, apply
-conversation configuration, submit input with a request ID, request cancellation, and watch
-committed snapshots. It owns session-harness lookup and returns application-owned results rather
-than raw runtime documents. Submission success means durable acceptance, not completion; a
-cancellation request does not establish idle.
+Durable owns the single execution and conversation lifecycle. Do not nest a coding-agent
+`AgentSession` inside it.
 
-### Conversation configuration enforcement
+- Delegate context management, compaction, and overflow recovery to Durable.
+- Use its submission inbox, committed task graph, and inspection as the queue and status model. Use
+  runtime usage records when exposing consumption.
+- When workflows or codemode enter scope, prefer Durable's owned tasks, child conversations, sleeps,
+  cancellation propagation, and native codemode.
+- Reuse independent resource loaders for skills, templates, and context files where compatible.
+  Verify coding-agent extension compatibility before reuse.
 
-Enforce the [configuration safety rules](DOMAIN.md#configuration-safety) in backend feature
-services, not only by disabling UI controls. Route submission admission and
-conversation-configuration changes through one coordination boundary in `server/runtime/` for the
-affected conversation. Order the busy check and configuration commit with submission admission so a
-concurrent submit cannot slip between them. Feature services own the policy; runtime operations
-uphold that ordering.
+Apply these choices within the [agreed MVP scope](VISION.md#agreed-mvp-decisions). Keep credentials
+server-side, out of browser storage and Vite-exposed variables. Pi's credential handling owns
+refresh.
 
-Resolve effective conversation configuration into harness-owned application documents rather than
-retaining only a reference to mutable application JSON.
+### Runtime operations and configuration
 
-The domain rule preserves execution context because upstream resolves some agent/environment choices
-at each task phase. Verify that behavior against the pinned runtime; see [1].
+Backend feature services enforce [configuration safety](DOMAIN.md#configuration-safety). Coordinate
+configuration commits and submission admission through one per-conversation boundary in
+`server/runtime/`, so each admitted unit receives a consistent resolved configuration. Persist it in
+harness-owned application documents as resolved values.
+
+The [MVP runtime integration](MVP.md#runtime-integration) defines operations and runtime-limited
+configuration guards.
+
+### Runtime terms and state
+
+Identify conversations by runtime ID; routes and titles provide navigation and presentation. Runtime
+terms follow upstream definitions: a conversation owns its durable transcript and associated
+documents; a submission records admitted input or a write; a turn is one model response and its tool
+calls; a task is a durable checkpointed unit for generation, tools, and execution diagnostics. Use
+**run** for the domain concept and **execution** for the general activity.
+
+Derive idle/running and blocked work from committed harness state. Input progresses from admission
+to pending, then answered when the runtime reports `done`, or unanswered with its reason when it
+reports `unanswered`. Present these states directly from runtime records.
+
+### Capability selection
+
+Select implemented capabilities directly through backend feature services under execution policy.
+These services keep availability, conversation selection, and execution authority separate. Runtime
+extensions serve internal integration; application plugin loading remains later scope.
 
 ### Runtime SQLite persistence
 
-Use the runtime's built-in Node SQLite adapter, `openNodeSqliteStorage` from
-`@earendil-works/pi-durable/storage/sqlite/node`, with one database per independent session/harness.
-A session's database contains its main conversation, related subagent conversations, and tasks.
-Store databases under `sessions/<session-id>.sqlite` in a private user-data directory outside the
-repository. Choose and document the exact root location and backup procedure during persistence
-implementation. Prevent simultaneous owners of each database before opening its harness; the
-mechanism must survive stale-owner recovery without allowing two live owners. SQLite locking does
-not replace the harness's single-process ownership requirement.
+Enforce one process owner per database before opening its harness and throughout stale-owner
+recovery. The application must enforce ownership across processes alongside SQLite locking.
 
-Keep application configuration files separate from harness-owned databases. One SQLite transaction
-represents one runtime commit. Let the harness manage its schema and migrations; application TypeBox
-schemas and migrations apply to application configuration, not runtime records. Do not introduce a
-parallel transcript/task database or edit runtime tables manually. Provide readable conversation
-exports through the application if needed. See [7].
+Each runtime commit is one SQLite transaction. Let the harness own its schema and migrations.
+Application TypeBox schemas and migrations apply only to application configuration. Do not edit
+runtime tables manually; provide application-level readable conversation exports if needed.
 
-The Node adapter defaults to WAL mode with `synchronous = NORMAL`: commits survive ordinary process
-crashes, but the newest may be lost on power or host failure. Verify the pinned adapter's settings
-and document the chosen synchronization policy during integration rather than promising durable
-acknowledgements across power loss. See [1].
-
-Measure database/WAL growth, memory use, and reopen time with representative streaming and tool
-output. If they exceed the workspace's operational budget, investigate supported upstream
-maintenance or storage options; do not add application-written runtime pruning.
-
-Back up each session's complete runtime storage while its harness is closed, together with
-application configuration. Account for any remaining SQLite WAL files; copying only a live database
-file is not a valid backup procedure. Verify restoration into a separate directory using the pinned
-runtime version. Closed-harness backup does not create a transaction between configuration and
-runtime state.
+The [MVP storage contract](MVP.md#runtime-sqlite-persistence) defines the adapter, layout,
+synchronization checks, growth measurements, and backup/restore procedure.
 
 ### Application JSON persistence
 
-Keep configuration in separate files in the private user-data directory:
+Each feature owns parsing, migrations, and serialized updates. Keep shared file-writing mechanics as
+focused helpers in `server/lib/`.
 
-```text
-preferences.json
-projects.json
-agent-presets.json
-```
+The [MVP JSON contract](MVP.md#application-json-persistence) defines files, versioning, validation,
+migrations, and safe writes.
 
-Each file has its own `schemaVersion`, identifying its persisted shape rather than a mutation
-counter. Define each TypeBox schema and derived state type beside its server-side persistence owner.
-Persistence schemas are not automatically HTTP contracts; expose only the fields each route needs.
+Configuration files and harness commits persist independently. Keep project, preset, and preference
+updates independent of admission. Resolve the directory and any selected project/preset before
+admitting work; direct directory selection works independently of project registration. Missing
+project references produce errors while preserving the configured directory. Future deletion and
+reassignment must preserve this invariant.
 
-Each feature owns its configuration file's parsing, validation, migrations, and serialized updates.
-Keep any shared file-writing mechanics domain-free in `server/lib/`; do not introduce a generic
-storage framework. Apply the following requirements to each file:
+JSON assumes small, infrequently changed files with one backend writer. Reconsider it when
+measurements show costly whole-file replacements or requirements call for cross-file/runtime
+transactions.
 
-- Only the backend writes the file. Treat manual edits as offline changes made while the server is
-  stopped; live file watching and merging are not part of the initial design.
-- Validate persisted JSON before using it, through the canonical JSON boundary helper. A missing
-  file may initialize defaults; malformed or schema-invalid files must remain intact and produce an
-  actionable error rather than being silently reset.
-- Read the version before selecting its schema. Reject unsupported newer versions without
-  overwriting the file. Validate supported older shapes, migrate sequentially, and validate the
-  current shape before saving. Add historical schemas and migration steps only when an actual schema
-  change requires them.
-- Serialize the entire read-modify-write operation through the single backend owner, not merely the
-  final write. Validate the candidate state before persistence, and acknowledge success only after
-  persistence succeeds. A failed save must not publish the candidate as committed in-memory state.
-- Write a temporary file in the destination directory and replace the destination by rename; clean
-  up failed temporary writes. Define flushing and backup requirements separately rather than
-  treating rename as a guarantee against power loss. Preserve a restorable copy before migration.
-- Keep credentials out of this file. Project registrations and presets may refer to server-side
-  credential sources, not contain their secrets.
+## Commands, snapshots, and lifecycle
 
-Updates across configuration files and harness commits are not one transaction. Keep saved project,
-preset, and preference updates independent of conversation admission; resolve the selected project
-and preset before admitting work. Missing project references must surface as configuration errors,
-not silently select another directory. Deletion and reassignment rules must preserve this invariant.
+Hono RPC carries reads and commands; SSE carries application-owned snapshots of committed runtime
+state. Normalize runtime documents into the browser protocol. Ordinary reads, command feedback, and
+live snapshots have separate client ownership.
 
-The JSON approach assumes small, infrequently changed configuration files with one backend writer.
-Reconsider it when measured file size or write frequency makes whole-file replacement costly, or
-when requirements demand atomic changes across configuration files or application and runtime state.
-Do not add a separate configuration database merely to anticipate those conditions.
+The runtime owns admission, follow-up placement, cancellation, and restart recovery. Transport
+disconnects dispose observation while execution continues. The
+[MVP command flows](MVP.md#commands-and-live-state) define routing, deduplication, and streaming;
+its [recovery contract](MVP.md#recovery-and-cancellation) defines shutdown and startup integration.
 
-## Transport, recovery, and security
+### Failure presentation and inspection
 
-### Routing and HTTP state
+Normalize runtime submission failure reasons/details, tool errors and partial output, terminal task
+outcomes, and blocked-work diagnostics into application-owned, browser-safe contracts in
+`server/runtime/`. Link summaries to the relevant submission or tool result and preserve the
+[distinct failure meanings](DOMAIN.md#activity-outcomes-and-connection).
 
-Choose routing for navigation across multiple screens, with typed parameters and validated URL
-search state. Route modules under `client/app/routes/` compose feature screens and coordinate
-loading; features own product policy. Routes identify the selected project and conversation. Put
-state useful for navigation or reload recovery in the URL.
+Runtime storage owns task history. The [MVP work view](MVP.md#work-view) defines inspection and
+presentation requirements.
 
-Feature modules own ordinary reads such as project lists and settings; `client/lib/api.ts` supplies
-Hono RPC transport. Use Solid state for read results and loading/error feedback. Configure loader
-freshness and refresh behavior deliberately when using route loaders. Live conversation snapshots
-remain separate from ordinary read state.
+Local logs cover failures outside committed runtime state: HTTP, JSON persistence, startup, and
+stream delivery. Include operation and available conversation/submission/task IDs, with sanitized
+errors. Exclude raw provider exceptions, credentials, prompts, and tool payloads from browser
+details and default logs.
 
-Send commands through explicit feature actions using Hono RPC. Solid state owns their pending/error
-feedback, drafts, expanded output, and transient interactions. After a successful configuration
-change, explicitly refresh affected read data without clearing drafts. Preserve drafts across
-recoverable failures independently of read refreshes. Submission retries follow the request-ID rules
-below; do not replay non-idempotent actions indiscriminately. A command response or read refresh is
-not evidence that a run has finished.
+## Future host and environment constraints
 
-Do not add an external query library or implement a generic replacement initially. Reconsider a
-library when independently refreshed data shared across screens, pagination, or repeated
-mutation/cache coordination creates concrete complexity. Prefer an established library over
-accumulating homemade cache, retry, and invalidation machinery.
+These constraints apply when the [longer-term direction](VISION.md#longer-term-direction) enters
+scope.
 
-### Submission
+A constellation consists of registered hosts with explicit observation and control permissions. Host
+identity stays stable across connections and restarts. Scheduling, spawning agents, and provisioning
+need separately defined permissions.
 
-1. The client creates a request ID for one logical submission.
-2. The server validates input and applies feature policy.
-3. The runtime durably admits the submission before HTTP success is returned.
-4. The client observes committed progress through the stream.
+Provisioning a host and joining an existing one are distinct operations. Cloud provisioning,
+suspension, and wake-up belong to environment lifecycle management. Conversation identity and
+durable state survive suspension; retained artifacts need an explicit persistence policy. Waking
+compute requires an external mechanism. Background work requires a defined cancellation policy
+before entering scope.
 
-Retain the request ID across ambiguous HTTP failures so retries cannot duplicate admitted input.
-Define its scope and reject reuse with different content. Feature services enforce the
-[busy-input policy](DOMAIN.md#submission-and-stopping) once confirmed.
+An agent identity spanning conversations, such as a named scheduled maintenance agent, would justify
+a separate agent entity.
 
-### Streaming
+Iroh remains a transport candidate awaiting a selection decision. Browser, mobile, edge, and IoT
+hosts need platform-specific runtime and storage assessment.
 
-Start with SSE carrying complete application-owned conversation snapshots. One feature-owned
-subscription holds snapshot and connection state for the active conversation and shares them with
-child components. Connect with an initial snapshot, then replace state when a newer snapshot
-arrives. The stream exclusively owns the live snapshot; ordinary read refreshes and command
-responses update their separate state. The backend remains authoritative.
+## Security and execution policy
 
-Use the runtime's committed-state watch rather than a separate event log. Normalize it in
-`server/runtime/`; raw runtime documents do not become the public browser protocol.
+Loopback simplifies hosting; local processes remain a security risk. The
+[MVP execution policy](VISION.md#agreed-mvp-decisions) is unsandboxed; never describe shell access
+as confined to the working directory. Sandboxing needs a separate execution-boundary design.
 
-Bound pending output per connection and coalesce superseded snapshots for slow readers. Dispose the
-server watch on disconnect and the client subscription on conversation change or unmount. Reconnect
-starts a new stream generation with a fresh snapshot; reject callbacks from superseded connections.
-Show stale/disconnected state until a fresh snapshot arrives.
-
-This intentionally favors a simple client over bandwidth efficiency. Full snapshots become
-unsuitable when large transcripts or tool output make serialization materially affect responsiveness
-or memory. At that point, add bounded transcript paging or application-owned deltas with snapshot
-recovery, guided by measurements rather than a speculative replay framework.
-
-### Cancellation and restart
-
-Implement the [domain lifecycle rules](DOMAIN.md#submission-and-stopping) through the runtime:
-disconnect disposes observation, explicit Stop requests cancellation, and shutdown closes observers
-and runtime resources. Restart recovery waits for registry and execution-environment readiness.
-Require evidence for replay-safe tool declarations.
-
-### Failure presentation and boundary diagnostics
-
-Present the harness's existing submission failure reasons/details, tool error results and partial
-output, and terminal task outcomes or blocked-work diagnostics. See [10]. Normalize them into
-application-owned, browser-safe contracts and link the summary to the relevant submission or tool
-result. Preserve the distinct outcomes and fallback behavior in
-[Failure meaning](DOMAIN.md#failure-meaning).
-
-Use committed runtime records as the diagnostic source of truth. Do not create a parallel runtime
-diagnostic store, copy task history into application JSON, or introduce an observability subsystem
-for the first slice.
-
-Local application logs cover failures outside that runtime state: HTTP handling, application JSON
-persistence, startup, and stream delivery. Include operation and available
-conversation/submission/task identifiers, with sanitized error information. Raw provider exceptions,
-credentials, prompts, and tool payloads are not safe browser details or default log content.
-
-### Runtime introspection
-
-Design direction, not an additional MVP requirement: provide read-only, server-authoritative
-inspection of available and enabled capabilities, effective conversation configuration, active tasks
-and their ownership, pending submissions, and blocked or interrupted work with its reasons.
-
-Normalize inspection results into application-owned contracts in `server/runtime/`; keep raw harness
-documents and provider types private. Apply observation permissions and expose only safe fields,
-excluding credentials and sensitive configuration. A browser panel and a future agent-callable
-inspection tool should use the same inspection service rather than maintain separate runtime views.
-Inspection does not grant execution authority.
-
-### Localhost security and execution policy
-
-Loopback deployment avoids remote hosting complexity; it is not a sandbox or a defense against
-another local process.
-
-- Bind to explicit loopback addresses and validate accepted hosts and browser origins. Reject
-  unrecognized hosts to constrain DNS-rebinding access.
-- For browser mutations, require the configured same-origin policy and JSON requests. Do not enable
-  wildcard CORS or state-changing GET routes. Keep Vite proxy behavior consistent with those checks.
-- Project selection resolves an opaque registered project ID to a server-owned canonical path. HTTP
-  clients cannot choose arbitrary execution directories.
-- Apply path containment to application file-access endpoints, including traversal and symlink
-  handling. These checks do not contain arbitrary shell execution.
-- Render agent text and tool output as untrusted content. Disable raw HTML in Markdown and restrict
-  link schemes. Do not execute generated content in the UI.
-- Keep storage and credentials private to the user and avoid logging secrets or whole prompts by
-  default.
-
-Resolve [execution authority](VISION.md#product-decisions-before-the-first-slice) before enabling
-host-write and shell tools or implementing approval machinery. A working directory is not filesystem
-isolation; host shell access must never be presented as confined to the selected project. Sandboxing
-requires a separate execution-boundary design.
+- Bind to explicit loopback addresses. Validate hosts and browser origins; reject unrecognized hosts
+  to constrain DNS rebinding.
+- Require configured same-origin checks and JSON for browser mutations. No wildcard CORS or
+  state-changing GET routes. Keep Vite proxy behavior consistent.
+- Accept a directory or opaque saved-project ID. Validate and canonicalize paths on the backend
+  before applying execution policy. Project registration is not an authorization boundary.
+- Enforce containment for application file-access endpoints, including traversal and symlinks. This
+  does not contain arbitrary shell execution.
+- Treat agent text and tool output as untrusted: disable raw HTML in Markdown, restrict link
+  schemes, and never execute generated UI content.
+- Keep storage and credentials private to the user.
 
 ## Frontend design
 
-Accessibility is out of scope for this project.
+Follow [DESIGN.md](DESIGN.md) for presentation and [AGENTS.md](AGENTS.md#ui-primitives) for
+component conventions. [MVP.md](MVP.md#frontend-integration) defines frontend integration details
+and initial tooling limits.
 
-`client/styles/theme.css` owns semantic CSS variables and Tailwind mappings; `@theme` produces
-utilities and `@theme inline` references other variables. See [5]. Light/dark themes share token
-names; persist any explicit theme override in application preferences, not a separate store.
+## Integration status and verification
 
-`client/ui/` owns domain-free primitives and finite, typed size/emphasis variants. Features own
-terminology, state, and compositions; promote only shared, domain-free compositions to `ui/`. Keep
-imports explicit and add providers, styling engines, or wrappers only for concrete needs. No
-separate design-system package, initial global store, or generic plugin system is needed.
-
-Use [DESIGN.md](DESIGN.md) for presentation and interaction requirements and
-[AGENTS.md](AGENTS.md#ui-primitives) for Solid component conventions. Import Lucide icons directly
-through a Solid 2-compatible integration. See [6]. Validate patterns in working feature screens;
-defer a gallery/Storybook until in-project examples no longer suffice.
-
-## Verification
-
-### Integration checks
-
-Use these checks as acceptance criteria for the corresponding capabilities.
-
-1. **Runtime:** with an exact version and temporary SQLite storage, exercise submit, watch, retry,
-   Stop, close/reopen, and abrupt-exit recovery. Measure database/WAL growth, memory use, and reopen
-   time with representative output. Verify session isolation, single-owner startup per database, the
-   selected synchronization policy, and closed-harness backup/restoration of runtime storage and
-   application configuration. Process-exit tests do not establish power-loss durability.
-2. **Transport:** verify TypeBox/canonical JSON validation through Hono RPC to the Solid client.
-   Retain valid/invalid input checks, error narrowing, and browser bundle boundaries as routes
-   expand. Simulate a lost submission response: retry must create one input. Verify reconnect
-   convergence, cancellation to idle, bounded slow-reader output, observer cleanup, and rejection of
-   stale callbacks/late responses. Read refreshes and commands must preserve drafts and the
-   stream-owned snapshot.
-3. **Security and UI:** reject hostile hosts/origins, traversal, mismatched request IDs, and
-   oversized input. Verify safe Markdown, error/disconnection feedback, primitive variants, control
-   interactions, dismissal, and long content in feature screens, in both themes and narrow/wide
-   views.
-4. **Application state:** for each configuration file, verify initialization, round trips,
-   invalid-file preservation, newer-version rejection, concurrent mutations, failed-save isolation,
-   and explicit missing-project errors. Add historical migration checks when a historical schema
-   exists.
-5. **Conversation configuration and lifecycle:** verify preset snapshotting, busy guards under
-   concurrent submission/conversation-configuration changes, and Stop waiting for confirmed idle.
-   Check submission outcomes independently of connection state, continuing runs after tool failure,
-   and safe summaries of runtime failures/blocked work. Approval behavior awaits the product
-   decision.
-
-Use Node's test runner for server and contracts checks where it suffices. Playwright is the selected
-E2E runner; choose any separate component-test tooling only when focused interactive checks require
-it. Live model calls are explicit manual smoke checks, not default tests.
-
-### Test isolation and browser coverage
-
-Deterministic tests use fake providers, harmless tools, and isolated temporary state, never the
-personal workspace or provider credentials. Each test receives independent state and cleans up its
-processes and temporary data; tests must not share a writable runtime directory.
-
-Keep browser journeys under `tests/e2e/` and configuration in `playwright.config.ts`. As runtime
-integration is added, exercise the real frontend, Hono routes, SSE transport, and runtime with a
-deterministic fake model, isolated application JSON, and isolated SQLite storage.
-
-Use Playwright's local-server support to start the application under test. Readiness checks must
-confirm the test instance is ready; do not silently attach to an existing personal server. Supply
-independent ports and storage for concurrent server instances, or serialize the suite until
-isolation is implemented. See [8].
-
-Start with project selection and conversation navigation, submit-to-stream-to-Stop, reload/reconnect
-preserving committed state, and core control interactions. Assert user-visible outcomes through
-role/label locators and retrying assertions rather than fixed sleeps or private component state. See
-[9]. Keep abrupt-process recovery, malformed persistence, and detailed failure injection in the
-focused Node integration suite; E2E complements those tests rather than duplicating every branch.
-
-Keep E2E execution in the workspace `Justfile` and use system Chromium as selected in
-[ADR-001](DECISIONS.md#adr-001-use-system-chromium-for-e2e). [README.md](README.md) owns browser
-configuration and check commands.
-
-Once the initial provider and credential flow are selected, choose their implementation defaults in
-runtime setup. Choose data location, backup and SQLite synchronization policy in persistence, and
-request and output limits in transport. Document the choices and their operational limits rather
-than treating them as broad product questions. Preserve the security, recovery, and persistence
-requirements above. Escalate only if evidence requires a product tradeoff or a change to the agreed
-architecture.
-
-The workspace is registered in root npm workspaces and formatter/lint scopes. Preserve
-browser-specific lint environments and keep workspace operations, including E2E, in
-`ai/workspace/Justfile`; do not add a parallel repository orchestration system.
+[MVP.md](MVP.md#modelruntime-integration-status) records the bounded runtime investigation and its
+remaining checks. It also owns [open implementation decisions](MVP.md#open-decisions) and
+[acceptance checks](MVP.md#acceptance-checks), including isolation and browser coverage. These
+distinguish source findings and required behavior from verified implementation.
 
 ## Sources
 
-Upstream documentation was checked while drafting. Verify behavior against the exact installed
-version before relying on it in code.
+Documentation checked during drafting; verify APIs against the pinned version before implementation.
 
-1. [Pi Durable README](https://github.com/earendil-works/pi/blob/main/packages/durable/README.md)
-2. [Hono RPC guide](https://hono.dev/docs/guides/rpc)
-3. [Oxlint type-aware linting](https://oxc.rs/docs/guide/usage/linter/type-aware)
-4. [Solid 2 documentation](https://v2.solidjs.com/)
-5. [Tailwind theme variables](https://tailwindcss.com/docs/theme)
-6. [Lucide icons](https://lucide.dev/)
-7. [Pi Durable specification, SQLite storage](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md#112-sqlite)
-8. [Playwright local web servers](https://playwright.dev/docs/test-webserver)
-9. [Playwright best practices](https://playwright.dev/docs/best-practices)
-10. [Pi Durable specification, submission and task outcomes](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md)
+- [Pi Durable README](https://github.com/earendil-works/pi/blob/main/packages/durable/README.md):
+  experimental API, persistence, deduplication, snapshots, cancellation, replay, and storage
+  ownership.
+- [Durable SQLite specification](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md#112-sqlite)
+  and
+  [submission/task outcomes](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md).
+- [Hono RPC](https://hono.dev/docs/guides/rpc): inferred inputs/responses and global error typing.
+- [Oxlint type-aware linting](https://oxc.rs/docs/guide/usage/linter/type-aware): tsgolint
+  integration.
+- [Solid 2](https://v2.solidjs.com/),
+  [Tailwind theme variables](https://tailwindcss.com/docs/theme), and [Lucide](https://lucide.dev/).
+- Playwright [local servers](https://playwright.dev/docs/test-webserver) and
+  [best practices](https://playwright.dev/docs/best-practices).

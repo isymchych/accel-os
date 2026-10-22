@@ -1,86 +1,66 @@
 # AI workspace agent guide
 
 Private npm workspace `@accel-os/workspace`: a loopback-only Solid 2/Vite client and Hono/Node
-server. The diagnostic screen verifies browser-to-server communication.
+server. The diagnostic screen checks browser-to-server communication.
 
 Root `../../AGENTS.md` governs this workspace. Paths below are relative to `ai/workspace/`.
 
-## Ownership and navigation
-
-| Path                                    | Owner                                                       |
-| --------------------------------------- | ----------------------------------------------------------- |
-| `client/app/`                           | Browser bootstrap, navigation, and composition              |
-| `client/ui/`, `client/styles/theme.css` | Domain-free primitives and semantic theme tokens            |
-| `client/lib/`                           | Browser infrastructure and Hono RPC transport               |
-| `server/app/`                           | Startup, shutdown, HTTP guards, assets, and API composition |
-| `contracts/`                            | Environment-neutral TypeBox wire schemas and derived types  |
-| `tests/integration/`, `tests/e2e/`      | Cross-boundary Node checks and browser journeys             |
-
-Features own product policy; `lib/` and `ui/` remain domain-free. Add feature subdirectories for
-concrete feature responsibilities.
-
-Client code must not import server implementation values or Node-only modules; server code must not
-import client code. The intentional Hono RPC type-only edge is confined to `client/lib/api.ts`. Keep
-server syntax erasable for Node's native TypeScript execution; Vite owns browser compilation.
-
 ## Read before changing
 
-Read the relevant `DOMAIN.md` rules for behavior changes, `ARCHITECTURE.md` sections for
-structural/API/runtime changes, and `DESIGN.md` for UI changes. `README.md` lists commands and
-documentation; `DECISIONS.md` records consequential choices. Read the architecture's security
-requirements before enabling execution.
+- [DOMAIN.md](DOMAIN.md): behavior, configuration, and lifecycle.
+- [ARCHITECTURE.md](ARCHITECTURE.md): source ownership, imports, APIs, runtime, and security.
+- [MVP.md](MVP.md): first-release implementation details, integration status, and acceptance checks.
+- [DESIGN.md](DESIGN.md): presentation and interaction.
+- [VISION.md](VISION.md#agreed-mvp-decisions): MVP scope, execution authority, and credential reuse.
+- [DECISIONS.md](DECISIONS.md): consequential choices and rationale.
+- [README.md](README.md): development and check commands.
 
-Treat proposals as direction, not implementation permission. Resolve the
-[open product decisions](VISION.md#product-decisions-before-the-first-slice) before real user
-interactions or tool execution. Run runtime checks exclusively with fake providers, harmless tools,
-and isolated temporary state.
+Read the relevant sections, including architecture security requirements before enabling execution.
+Proposals describe direction; implementation requires explicit authorization. Runtime checks must
+use fake providers, harmless tools, and isolated temporary state.
+
+## Code ownership
+
+Follow the [source layout and dependency rules](ARCHITECTURE.md#source-layout). Features own product
+policy; `lib/` and `ui/` stay domain-free. Add feature subdivisions for distinct responsibilities.
+Keep server syntax erasable for Node; Vite compiles the browser.
 
 ## UI primitives
 
-`client/ui/` contains small, locally owned Solid components over native HTML controls. Styling uses
-the semantic tokens in `client/styles/theme.css`.
+Use small, locally owned Solid components over native HTML controls, styled through semantic
+`client/styles/theme.css` tokens. Features own labels, values, state, feedback, and terminology.
+Button and Input forward native attributes/events; native elements own interaction behavior.
 
-- Features own labels, state, feedback, and product terminology.
-- Prefer native web platform capabilities where feasible.
-- Button and Input forward native attributes and events. Features provide labels and control values;
-  native elements own interaction behavior.
-- Read reactive values through their props object. Use Solid 2 APIs and native HTML attribute names.
-- Add primitives only for distinct, reusable interactions. Follow `DESIGN.md` for interaction
-  requirements.
+Read reactive values through the props object. Use Solid 2 APIs and native HTML attribute names.
+Prefer platform capabilities and add primitives for distinct reusable interactions.
 
-### Component references
+When adding shared components, consult relevant documentation, source, and interaction tests:
 
-Consult relevant component documentation, source, and interaction tests when adding shared
-components:
-
-- [Kobalte](https://github.com/kobaltedev/kobalte): primary reference for Solid component patterns
-  and primitive composition.
-- [Base UI](https://github.com/mui/base-ui): primary reference for component composition,
-  interaction behavior, and state management.
-- [React Aria](https://react-aria.adobe.com/): input-interaction patterns.
+- [Kobalte](https://github.com/kobaltedev/kobalte): Solid patterns and primitive composition.
+- [Base UI](https://github.com/mui/base-ui): composition, interactions, and state management.
+- [React Aria](https://react-aria.adobe.com/): input interactions.
 - [Corvu](https://corvu.dev/): overlays and resizable panels.
-- [Zag](https://zagjs.com/): explicit states and transitions for complex controls.
+- [Zag](https://zagjs.com/): complex control states and transitions.
 
-Adapt relevant behavior to Solid 2, local ownership boundaries, and semantic theme tokens. Verify
-compatibility when reusing source.
+Kobalte and Base UI are the primary references. Adapt behavior to Solid 2, local ownership, and
+semantic tokens; verify compatibility before reusing source.
 
 ## Validation
 
-Run workspace commands from this directory; `README.md` owns their inventory. Choose focused checks
-for the affected behavior, then the documented workspace checks for integration. Keep focused tests
-beside code, cross-boundary Node tests in `tests/integration/`, and browser journeys in
-`tests/e2e/`.
+Run commands from this directory. Choose focused checks, then the workspace checks in
+[README.md](README.md#checks) for integration. Keep focused tests beside code, cross-boundary Node
+tests in `tests/integration/`, and browser journeys in `tests/e2e/`.
 
-`npm test` runs Node integration tests; `just test-e2e` runs browser journeys. Typechecking verifies
-invalid RPC input rejection in `client/lib/api.type-test.ts`. E2E requires compatible system
-Chromium and a free test port; rerun it after Chromium or Playwright updates.
+`npm test` runs Node integration tests; `just test-e2e` runs browser journeys. Typechecking checks
+invalid RPC input in `client/lib/api.type-test.ts`. E2E needs compatible system Chromium and a free
+port; rerun after Chromium or Playwright updates.
 
-Root lint and formatting include this workspace. Run the browser build and E2E alongside root
-`just check`. Root `just fmt` also formats Emacs files. Report verification gaps and required
-prerequisites.
+Root lint/formatting includes this workspace. Run the browser build and E2E alongside root
+`just check`; root `just fmt` also formats Emacs files. Report missing prerequisites and
+verification gaps.
 
 ## Maintaining guidance
 
-Correct stale guidance only within authorized scope. Treat user corrections as candidates,
-distinguish lasting rules from task-specific instructions, and use the narrowest existing owner with
-authorization covering that destination.
+Correct guidance only within authorized scope. Treat user corrections as candidates for lasting
+rules that need evaluation before becoming general policy. Keep lasting guidance in its narrowest
+existing owner, with authorization covering that destination.
