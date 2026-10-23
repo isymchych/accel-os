@@ -1,5 +1,6 @@
 alias y=yazi
 alias j=just
 alias cz=chezmoi
+alias p=pnpm
 
 eval "$(fnm env --use-on-cd --resolve-engines --shell zsh)"

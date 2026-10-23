@@ -260,11 +260,13 @@ pinpoint the root cause Makes targeted fixes based on evidence
 - TODO <https://github.com/addyosmani/agent-skills>
 - <https://github.com/humanlayer/skills>
 
-## Semantic code navigation
+## Semantic code navigation / index
 
 - <https://github.com/jahala/tilth>
 - <https://github.com/ind-igo/cx>
 - <https://github.com/sting8k/srcwalk>
+- <https://github.com/defendend/Claude-ast-index-search>
+- <https://github.com/aeroxy/ast-bro>
 
 ## CLI output compressors
 
