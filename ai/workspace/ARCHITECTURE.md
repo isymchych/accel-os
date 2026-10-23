@@ -10,16 +10,16 @@ proposed where noted.
 - Solid 2, Tailwind v4, locally owned native controls, and semantic theme tokens.
 - Hono and TypeBox, with Hono RPC for HTTP reads and commands and Solid state for live SSE
   snapshots.
-- Pi Durable for interactive coding and future workflows, subject to
-  [integration checks](MVP.md#integration-checks).
+- Pi Durable for conversations and execution, with `pi-ai` for model access and authentication,
+  subject to [integration checks](MVP.md#integration-checks).
 - Durable's built-in SQLite storage for execution; versioned, TypeBox-validated JSON for application
   configuration.
 - Playwright for browser tests.
 
 [DOMAIN.md](DOMAIN.md) owns behavioral rules; [VISION.md](VISION.md#agreed-mvp-decisions) owns MVP
 scope and execution authority. This document owns system structure and lasting technical
-constraints; [MVP.md](MVP.md) owns first-release implementation details, open integration questions,
-and acceptance checks.
+constraints; [MVP.md](MVP.md) owns first-release integration requirements, open integration
+questions, and acceptance checks.
 
 ## Ownership and boundaries
 
@@ -30,6 +30,7 @@ Browser: Solid features
   v
 Node: Hono routes -> feature services -> server/runtime/
                                           | Durable harnesses and storage
+                                          | pi-ai providers and authentication
                                           | tool execution environments
 ```
 
@@ -38,9 +39,9 @@ and API from one loopback origin; development uses Vite's proxy for API and stre
 servers bind exclusively to loopback addresses. Development restarts must close the previous storage
 owner before opening another.
 
-Reuse Pi's native execution semantics and services; the workspace owns presentation, user intent,
-host discovery, and transport. Local execution works directly with the selected environment.
-Scheduling and remote provisioning belong to later scope.
+The workspace owns presentation, user intent, configuration, credentials, host discovery, and
+transport. Local execution works directly with the selected environment. Scheduling and remote
+provisioning belong to later scope.
 
 ### Source layout
 
@@ -117,15 +118,18 @@ Validate SSE JSON before it enters trusted client state; streams require their o
 ### Proposed ownership
 
 - **Runtime integration:** harness startup/shutdown, lookup, storage, watches, registries, and
-  execution environments.
+  execution environments, plus configured `pi-ai` model access.
 - **Feature services:** user-selected context, configuration permissions, submission policy, and
   execution authority. Access Durable tools, hooks, and tasks through `server/runtime/`.
 - **Durable storage:** single store for transcripts, run status, task scheduling, execution
   diagnostics, and accounting.
-- **Application JSON:** registered projects, presets, and persisted preferences.
+- **Application JSON:** account configuration, model defaults, registered projects, and persisted
+  preferences. Presets and general provider configuration are post-MVP.
+- **Workspace credentials:** server-side authentication material and persistence.
 - **Harness application documents:** metadata that must commit with conversation state, including
-  resolved configuration and optional project association. Keep the project catalog in application
-  JSON and reference its IDs from harness documents.
+  resolved configuration and account selection, user-stopped execution state, and optional project
+  association. Keep the project catalog in application JSON and reference its IDs from harness
+  documents.
 - **Client:** drafts, selected views, expanded output, connection state, and command feedback.
   Execution and submission state come from committed runtime records.
 
@@ -133,22 +137,28 @@ Pin an exact tested Durable version: its API is experimental. Review API and per
 compatibility on upgrades and take a restorable backup before storage-changing upgrades. Keep the
 integration narrow and specific to Durable's supported APIs.
 
-### Pi reuse
+### Pi integration
 
-Durable owns the single execution and conversation lifecycle. Do not nest a coding-agent
-`AgentSession` inside it.
+Design features around supported Durable and `pi-ai` capabilities. Durable owns the conversation and
+execution lifecycle; `pi-ai` owns provider access, model catalogs, and authentication. Workspace
+services own product policy and configuration.
 
 - Delegate context management, compaction, and overflow recovery to Durable.
 - Use its submission inbox, committed task graph, and inspection as the queue and status model. Use
   runtime usage records when exposing consumption.
 - When workflows or codemode enter scope, prefer Durable's owned tasks, child conversations, sleeps,
   cancellation propagation, and native codemode.
-- Reuse independent resource loaders for skills, templates, and context files where compatible.
-  Verify coding-agent extension compatibility before reuse.
+- Use `pi-ai`'s supported OpenAI login and model catalog for MVP. General provider configuration,
+  custom endpoints, and additional providers are post-MVP.
+
+Workspace configuration supplies model choices and per-conversation account selection. The workspace
+owns its configuration schemas and server-side credential persistence; `pi-ai` supplies
+authentication and OAuth refresh behavior. Account credentials and refresh state remain isolated,
+allowing conversations using different OpenAI accounts to execute concurrently without a global
+active-login switch.
 
 Apply these choices within the [agreed MVP scope](VISION.md#agreed-mvp-decisions). Keep credentials
-server-side, out of browser storage and Vite-exposed variables. Pi's credential handling owns
-refresh.
+server-side, out of browser storage and Vite-exposed variables.
 
 ### Runtime operations and configuration
 
@@ -159,6 +169,12 @@ harness-owned application documents as resolved values.
 
 The [MVP runtime integration](MVP.md#runtime-integration) defines operations and runtime-limited
 configuration guards.
+
+Account selection is independent of conversation identity and historical transcript state. Post-MVP
+switching applies to subsequent submissions while admitted work retains its resolved account. Future
+branches use the currently selected account, not the account at the historical fork point. Keep
+these choices explicit at the application boundary rather than inheriting historical account
+selection from runtime forks.
 
 ### Runtime terms and state
 
@@ -198,8 +214,8 @@ focused helpers in `server/lib/`.
 The [MVP JSON contract](MVP.md#application-json-persistence) defines files, versioning, validation,
 migrations, and safe writes.
 
-Configuration files and harness commits persist independently. Keep project, preset, and preference
-updates independent of admission. Resolve the directory and any selected project/preset before
+Configuration files and harness commits persist independently. Keep project, account, and preference
+updates independent of admission. Resolve the directory, account, and any selected project before
 admitting work; direct directory selection works independently of project registration. Missing
 project references produce errors while preserving the configured directory. Future deletion and
 reassignment must preserve this invariant.
@@ -214,8 +230,12 @@ Hono RPC carries reads and commands; SSE carries application-owned snapshots of 
 state. Normalize runtime documents into the browser protocol. Ordinary reads, command feedback, and
 live snapshots have separate client ownership.
 
-The runtime owns admission, follow-up placement, cancellation, and restart recovery. Transport
-disconnects dispose observation while execution continues. The
+The runtime owns admission, follow-up placement, cancellation, and restart recovery. Workspace
+integration enforces the Stop policy: cancel active work, preserve queued input, and prevent its
+execution until explicit resumption, including across restarts. Direct runtime abort does not
+necessarily implement that policy; the
+[MVP integration constraint](MVP.md#recovery-and-cancellation) must be resolved before Stop enters
+use. Transport disconnects dispose observation while execution continues. The
 [MVP command flows](MVP.md#commands-and-live-state) define routing, deduplication, and streaming;
 its [recovery contract](MVP.md#recovery-and-cancellation) defines shutdown and startup integration.
 
@@ -226,8 +246,9 @@ outcomes, and blocked-work diagnostics into application-owned, browser-safe cont
 `server/runtime/`. Link summaries to the relevant submission or tool result and preserve the
 [distinct failure meanings](DOMAIN.md#activity-outcomes-and-connection).
 
-Runtime storage owns task history. The [MVP work view](MVP.md#work-view) defines inspection and
-presentation requirements.
+Runtime storage owns task history. The [MVP conversation activity](MVP.md#conversation-activity)
+contract defines conversation-list status indicators and conversation-level inspection, without a
+separate work-view screen.
 
 Local logs cover failures outside committed runtime state: HTTP, JSON persistence, startup, and
 stream delivery. Include operation and available conversation/submission/task IDs, with sanitized
@@ -279,20 +300,22 @@ Follow [DESIGN.md](DESIGN.md) for presentation and [AGENTS.md](AGENTS.md#ui-prim
 component conventions. [MVP.md](MVP.md#frontend-integration) defines frontend integration details
 and initial tooling limits.
 
-## Integration status and verification
+## Integration verification
 
-[MVP.md](MVP.md#modelruntime-integration-status) records the bounded runtime investigation and its
-remaining checks. It also owns [open implementation decisions](MVP.md#open-decisions) and
-[acceptance checks](MVP.md#acceptance-checks), including isolation and browser coverage. These
-distinguish source findings and required behavior from verified implementation.
+[MVP.md](MVP.md#models-and-credentials) defines model and credential integration. Its
+[open decisions](MVP.md#open-decisions) and [acceptance checks](MVP.md#acceptance-checks) cover
+runtime readiness, isolation, and browser behavior. The architecture describes the agreed target;
+acceptance checks establish operational readiness.
 
 ## Sources
 
-Documentation checked during drafting; verify APIs against the pinned version before implementation.
+Verify referenced APIs against the pinned dependency versions.
 
 - [Pi Durable README](https://github.com/earendil-works/pi/blob/main/packages/durable/README.md):
   experimental API, persistence, deduplication, snapshots, cancellation, replay, and storage
   ownership.
+- [Pi AI README](https://github.com/earendil-works/pi/blob/main/packages/ai/README.md): provider
+  factories, model catalogs, authentication, and credential stores.
 - [Durable SQLite specification](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md#112-sqlite)
   and
   [submission/task outcomes](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md).

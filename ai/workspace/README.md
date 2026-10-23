@@ -9,14 +9,13 @@ upgrades.
 
 ## Documentation
 
-Design documents describe intended behavior.
-[MVP integration status](MVP.md#modelruntime-integration-status) records implementation evidence and
-remaining checks.
+Design documents describe intended behavior. The [MVP contract](MVP.md) defines first-release
+integration; its [acceptance checks](MVP.md#acceptance-checks) establish readiness.
 
 - [Vision](VISION.md): purpose, scope, and agreed MVP decisions.
 - [Domain](DOMAIN.md): terms and behavioral rules.
 - [Architecture](ARCHITECTURE.md): technical structure and constraints.
-- [MVP implementation](MVP.md): first-release integration details, open questions, and acceptance
+- [MVP contract](MVP.md): first-release integration requirements, open questions, and acceptance
   checks.
 - [Design](DESIGN.md): visual and interaction guidance.
 - [Decisions](DECISIONS.md): consequential choices and rationale.

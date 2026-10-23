@@ -9,15 +9,19 @@ Root `../../AGENTS.md` governs this workspace. Paths below are relative to `ai/w
 
 - [DOMAIN.md](DOMAIN.md): behavior, configuration, and lifecycle.
 - [ARCHITECTURE.md](ARCHITECTURE.md): source ownership, imports, APIs, runtime, and security.
-- [MVP.md](MVP.md): first-release implementation details, integration status, and acceptance checks.
+- [MVP.md](MVP.md): first-release integration requirements and acceptance checks.
 - [DESIGN.md](DESIGN.md): presentation and interaction.
-- [VISION.md](VISION.md#agreed-mvp-decisions): MVP scope, execution authority, and credential reuse.
+- [VISION.md](VISION.md#agreed-mvp-decisions): MVP scope, execution authority, and ownership of
+  configuration and credentials.
 - [DECISIONS.md](DECISIONS.md): consequential choices and rationale.
 - [README.md](README.md): development and check commands.
 
 Read the relevant sections, including architecture security requirements before enabling execution.
 Proposals describe direction; implementation requires explicit authorization. Runtime checks must
 use fake providers, harmless tools, and isolated temporary state.
+
+Consult Pi Durable's examples when useful for feature design and runtime integration. Adapt patterns
+to the workspace's agreed requirements and verify APIs against the pinned dependency version.
 
 ## Code ownership
 

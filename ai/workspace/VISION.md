@@ -20,12 +20,14 @@ The first usable version is local interactive coding with durable execution:
 - Choose a working directory, directly or through an optional saved project.
 - Create or reopen a conversation; submit input and stream responses and tool activity.
 - Send explicit follow-up input while busy.
-- See running, waiting, and blocked work in a work view.
+- See running, waiting, and blocked activity through conversation-list status indicators.
 - Read and edit files and run commands under the execution policy below.
-- Stop work, reconnect to ongoing work, and recover eligible pending work after a server restart.
-- Reuse the existing `ai/` provider, model, account, and server-side credential mechanisms.
+- Stop active work while preserving queued input for explicit resumption.
+- Reconnect to ongoing work and automatically recover eligible unfinished work after a server
+  restart.
+- Log in to multiple OpenAI accounts and use different accounts in concurrent conversations.
 
-Prioritize the work view over presets or extensive settings.
+Conversation-list status indicators suffice for MVP; there is no separate work-view screen.
 
 ## Agreed MVP decisions
 
@@ -36,13 +38,23 @@ Prioritize the work view over presets or extensive settings.
    approvals. They run directly on the host, unsandboxed, with the host process's permissions. The
    user-provided working directory is a starting context, not a filesystem boundary; localhost
    provides no isolation.
-3. **Credentials:** the existing `ai/` mechanisms own authentication and credential management for
-   the workspace. A browser account-switching or credential-management interface is optional.
+3. **Configuration and credentials:** the workspace owns model choices, account selection, and
+   credential configuration. MVP supports OpenAI login with multiple accounts, selected per
+   conversation and usable concurrently. Credentials and refresh state stay isolated per account and
+   server-side. Switching an existing conversation's account is post-MVP; a browser
+   credential-management interface is optional.
+4. **Stop and recovery:** Stop cancels active execution and preserves queued input until explicit
+   resumption, including across server restarts. Automatic recovery follows upstream tool replay
+   policies, with interrupted calls visible and agent inspection before retrying uncertain effects.
+   Recovery requires neither a dedicated dashboard nor blanket human approval. See the
+   [domain lifecycle](DOMAIN.md#work-lifecycle).
 
-Later scope: presets, steering, remote access, orchestration, multi-user hosting, plugin loading,
-embedded terminals, and a separate memory system. Codemode, MCP, skills, prompt templates, custom Pi
-extensions, and richer session interactions are optional for the first version; reuse supported
-capabilities when they directly serve the initial scope.
+Later scope: presets (including storage and UI), account switching within an existing conversation,
+conversation branching, other providers and custom endpoints, steering, remote access,
+orchestration, multi-user hosting, plugin loading, embedded terminals, and a separate memory system.
+Codemode, MCP, skills, prompt templates, custom runtime extensions, and richer session interactions
+are optional for the first version; reuse supported capabilities when they directly serve the
+initial scope.
 
 ## Longer-term direction
 

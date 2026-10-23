@@ -1,56 +1,49 @@
-# AI workspace MVP implementation
+# AI workspace MVP
 
-Implementation contract for the [initial scope](VISION.md#initial-scope), with recorded evidence and
-remaining checks distinguished below. [DOMAIN.md](DOMAIN.md) owns behavioral rules;
-[ARCHITECTURE.md](ARCHITECTURE.md) owns system structure and technical boundaries. Runtime
-integration remains proposed where noted. References to deferred capabilities describe later scope;
-adding them to the MVP requires an explicit decision.
+First-release contract for the [initial scope](VISION.md#initial-scope). [DOMAIN.md](DOMAIN.md) owns
+behavioral rules; [ARCHITECTURE.md](ARCHITECTURE.md) owns system structure and technical boundaries.
+Acceptance checks establish readiness for the agreed direction. References to deferred capabilities
+describe later scope; adding them to the MVP requires an explicit decision.
 
 ## Runtime integration
 
-Expose create/reopen, state reads, configuration changes, submission with request ID, cancellation,
-and committed-snapshot watches through `server/runtime/`. It owns harness lookup and returns
-application-owned results. Submission success confirms durable acceptance. Runtime state confirms
-completion and idle after cancellation.
+Expose create/reopen, state reads, in-scope configuration changes, submission with request ID, Stop,
+explicit resumption, and committed-snapshot watches through `server/runtime/`. It owns harness
+lookup and returns application-owned results. Submission success confirms durable acceptance.
+Runtime state confirms completion and idle after cancellation. Account switching and conversation
+branching are post-MVP.
 
 - Use Durable coding tools and `NodeExecutionEnv` for host files and shell execution; verify process
   termination against the Stop contract.
-- Evaluate `ModelRuntime` as the direct bridge from existing `ai/` model and credential
-  configuration; operational compatibility is still unverified.
+- Supply Durable's model access through a configured `pi-ai` `Models` collection.
 
 Verify configuration isolation through every runtime task phase, including agent and environment
 resolution. Allow configuration editing while preserving running execution context. For changes
 limited by the pinned runtime's context-preservation capabilities, require confirmed idle and
 document the limitation.
 
-### ModelRuntime integration status
+### Models and credentials
 
-Recorded source-level findings from installed Pi 1.3.0 declarations and local upstream source at
-`482c1381a00d8d00bc81697e4a980c593db6803e` (also 1.3.0):
+MVP supports OpenAI login through `pi-ai`, with multiple accounts available concurrently and an
+account selected for each conversation. Use the supported OpenAI provider and model catalog. Other
+providers, custom endpoints, and general multi-provider configuration are post-MVP.
 
-- `ModelRuntime` implements `Models`, accepted by Durable's `HarnessOptions.models`, and appears
-  compatible with direct integration.
-- `ModelRuntime.create()` accepts credential/model paths. Existing
-  `ai/pi/runtime/account-profiles.ts` uses profile-specific `auth.json` and shared `models.json`.
-- Pi OAuth refresh locks the credential store's read-modify-write operation, rechecks freshness, and
-  persists rotated credentials before unlocking.
+Workspace configuration owns model defaults, account selection, and credential references. Different
+conversations must be able to execute simultaneously using different accounts without changing a
+global active login. Resolve these choices consistently with the
+[configuration safety rules](DOMAIN.md#configuration-safety).
 
-Durable is installed as an exact workspace dependency. Recorded workspace typechecking and imports
-of Durable and its Node SQLite adapter passed. Direct `ModelRuntime` execution through Durable
-remains to be verified.
+Keep credential sources server-side. Supply workspace-owned credential persistence through
+`CredentialStore`, with serialized read-modify-write operations and isolated credentials and refresh
+state per account. Preserve other credentials when updating one account.
 
-The remaining bounded check uses fake providers and isolated temporary credentials:
+Let `pi-ai` coordinate OAuth refresh through the store. Concurrent requests reuse refreshed
+credentials, and cancellation preserves rotated tokens. Surface authentication and persistence
+failures as actionable diagnostics.
 
-1. Complete a Durable response with `ModelRuntime` directly.
-2. Verify profile isolation and stable existing-session binding when the CLI's active account
-   changes.
-3. Refresh concurrently from separate processes sharing a temporary auth file; verify reuse of fresh
-   credentials and preservation of rotated tokens.
-4. Verify clear authentication failures and preservation of refreshed credentials during
-   cancellation.
-
-Identify CLI model defaults and provider-extension behavior that need explicit wiring alongside
-`ModelRuntime`. Production integration and account-selection changes require separate authorization.
+Changing an existing conversation's account is post-MVP. Keep account selection independent of
+conversation identity and historical transcript state so switching and branching can follow the
+domain rules when added. A browser credential-management interface is optional.
 
 ## Configuration and persistence
 
@@ -78,9 +71,10 @@ pinned runtime. Configuration and runtime state remain independently persisted i
 
 ### Application JSON persistence
 
-Store `preferences.json`, `projects.json`, and `agent-presets.json` separately in the private
-user-data directory. Each has a `schemaVersion` identifying its persisted shape. Define schemas and
-derived types beside the server persistence owner; expose only needed fields through HTTP contracts.
+Store `preferences.json` and `projects.json` separately in the private user-data directory. Each has
+a `schemaVersion` identifying its persisted shape. Define schemas and derived types beside the
+server persistence owner; expose only needed fields through HTTP contracts. Preset storage and
+schemas are post-MVP.
 
 - The backend owns writes. Manual edits require a stopped server; live watching and merging remain
   later scope.
@@ -127,7 +121,9 @@ complexity.
 Retain the ID across ambiguous HTTP failures; define its scope and reject reuse with different
 content. Newly composed input gets a new ID. Do not indiscriminately retry non-idempotent actions.
 [Explicit follow-ups](DOMAIN.md#work-lifecycle) use Durable's inbox, which owns the queue and
-placement after the active run. Show queued input separately from active execution.
+placement after the active run during normal execution. Show queued input separately from active
+execution. Stop must preserve queued input and prevent its placement until explicit resumption; see
+[recovery and cancellation](#recovery-and-cancellation) for the integration constraint.
 
 ### Streaming
 
@@ -148,16 +144,17 @@ Full snapshots favor a simple client over bandwidth efficiency. If transcript/ou
 materially hurts responsiveness or memory, add bounded paging or application-owned deltas with
 snapshot recovery, based on measurements.
 
-### Work view
+### Conversation activity
 
-The read-only MVP work view derives running, waiting, and blocked work from committed task graphs,
-inspection results, and submission records. Show ownership, pending submissions, and reasons for
-blocked or interrupted work. Broader capability and effective-configuration inspection is future
-direction. Apply observation permissions and exclude credentials and sensitive configuration;
-execution requires its own authority. A future agent-callable inspection tool should share the
-browser panel's inspection service.
+Use conversation-list indicators for running, waiting, and blocked activity; MVP has no separate
+work-view screen. Derive activity from committed task graphs, inspection results, and submission
+records. Conversation details show task ownership, queued submissions, and reasons for blocked or
+interrupted work, including interrupted calls and committed partial output.
 
-Use the runtime's inspection and history directly for MVP observability.
+Use the runtime's inspection and history directly for MVP observability. Broader capability and
+effective-configuration inspection is future direction. Apply observation permissions and exclude
+credentials and sensitive configuration; execution requires its own authority. A future
+agent-callable inspection tool should share the conversation inspection service.
 
 ### Frontend integration
 
@@ -182,16 +179,32 @@ Implement the [domain lifecycle](DOMAIN.md#work-lifecycle) through Durable. Disc
 HTTP wait disposes observation while execution continues. Graceful server shutdown closes observers
 and runtime resources; user Stop follows its own cancellation contract.
 
-At startup, discover unfinished sessions and resume eligible work once definitions and execution
-environments are ready, independently of browser connections. An option to disable recovery remains
-an operational decision. Require evidence for replay-safe tool declarations; surface interrupted
-unsafe tools for review before replay.
+Stop terminates active execution and its owned processes, waits for confirmed idle, and preserves
+queued input until explicit user resumption. Persist the stopped state so neither reconnect nor
+startup recovery starts that queued input.
+
+**Unresolved integration constraint:** Durable 1.4.0's `conversation.abort()` withdraws queued
+inputs; it is not a direct implementation of this Stop contract. Design and verify queue
+preservation and explicit resumption through supported runtime APIs before enabling Stop. Preserve
+the product contract rather than adopting abort's queue-withdrawal behavior.
+
+At startup, discover unfinished sessions and automatically resume eligible work once definitions and
+execution environments are ready, independently of browser connections and respecting user-stopped
+queues. An option to disable recovery remains an operational decision. Preserve upstream tool replay
+policies; require evidence for replay-safe declarations. Interrupted unsafe calls produce
+`interrupted` results with committed partial output rather than automatically rerunning the call.
+Show these in the conversation and instruct the agent to inspect actual state before retrying
+uncertain effects. The agent may issue a new equivalent command, so this is not an exactly-once
+guarantee. Show actionable diagnostics for genuinely blocked execution; do not add a dedicated
+recovery dashboard or blanket human-approval workflow.
 
 ## Open decisions
 
-Resolve data location, backup procedure, SQLite synchronization, and request/output limits in their
-owning implementations. Verify credential reuse and refresh alongside CLI sessions. Document chosen
-limits; escalate only when evidence requires a product tradeoff or architecture change.
+Resolve the OpenAI login setup flow, credential storage and account-configuration layout, data
+location, backup procedure, SQLite synchronization, and request/output limits before their
+corresponding capabilities enter use. Document chosen limits; escalate only when evidence requires a
+product tradeoff or architecture change. The queue-preserving Stop integration above remains
+unverified.
 
 ## Acceptance checks
 
@@ -205,6 +218,12 @@ tools, and isolated temporary state.
   isolation, single database ownership, chosen synchronization policy, closed-harness backup and
   restore, and representative database/WAL growth, memory, and reopen time. Process-exit tests cover
   process crashes; power-loss durability requires separate evidence.
+- **Models and credentials:** complete a Durable response through `pi-ai` with a fake provider.
+  Verify the OpenAI login integration with fake authentication, model availability, and simultaneous
+  conversations bound to different accounts. Account credentials and refresh state stay isolated;
+  configuration changes preserve admitted work's account binding. Concurrent refresh reuses fresh
+  credentials for the same account; cancellation preserves rotated tokens. Authentication and
+  credential-persistence failures produce actionable diagnostics.
 - **Transport:** TypeBox/canonical JSON through Hono RPC to Solid, valid/invalid inputs, error
   narrowing, and browser bundle boundaries. A lost submission response followed by retry creates one
   input. Check reconnect convergence, cancellation to idle, bounded slow-reader output, observer
@@ -216,14 +235,19 @@ tools, and isolated temporary state.
 - **Application state:** for each file, verify initialization, round trips, invalid-file
   preservation, newer-version rejection, concurrent updates, failed-save isolation, and
   missing-project errors. Test historical migrations when historical schemas exist.
-- **Configuration and lifecycle:** preset snapshotting, stable context during concurrent
-  submissions/configuration changes, and idle guards for runtime-limited changes. Stop terminates
-  owned processes and waits for confirmed idle; startup recovery runs independently of browser
-  connections. Outcomes stay independent of connection state; tool failures may leave runs active.
-  Verify safe failure/blocked summaries, follow-ups through the runtime inbox, and task
-  ownership/waiting/blocked reasons in the work view. Disconnected state shows the last observation;
-  a fresh observation confirms current state. File edits and shell commands execute directly under
-  the MVP's unsandboxed host policy.
+- **Configuration and lifecycle:** stable context during concurrent submissions/configuration
+  changes, and idle guards for runtime-limited changes. Stop terminates owned processes and waits
+  for confirmed idle. Queued input remains intact without execution through Stop, reconnect, and
+  restart, and executes only after explicit resumption, without duplicate input. Startup recovery
+  runs independently of browser connections for eligible work. Verify upstream tool replay policies:
+  unsafe interrupted calls do not rerun automatically, their committed partial output is visible,
+  and the model can continue without blanket human approval. Verify recovery instructions direct the
+  agent to inspect actual state before retrying uncertain effects. Outcomes stay independent of
+  connection state; tool failures may leave runs active. Verify safe failure/blocked summaries,
+  follow-ups through the runtime inbox, conversation-list running/waiting/blocked indicators, and
+  task ownership, queued input, and blocked/interrupted reasons in conversation details.
+  Disconnected state shows the last observation; a fresh observation confirms current state. File
+  edits and shell commands execute directly under the MVP's unsandboxed host policy.
 
 ### Test isolation and browser coverage
 
@@ -240,11 +264,12 @@ fake model and isolated JSON/SQLite state. Use Playwright's local-server support
 readiness of the test instance. Connect exclusively to that test instance. Use separate
 ports/storage for concurrent instances or serialize the suite until isolation exists.
 
-Cover directory/project selection, conversation navigation, submit-to-stream-to-Stop,
-reload/reconnect preserving committed state, and core controls. Use role/label locators to assert
-visible outcomes, and synchronize checks through retrying assertions. Keep abrupt-exit, malformed
-persistence, and detailed failure injection in Node integration tests; browser journeys focus on
-cross-system behavior.
+Cover directory/project and account selection, conversation navigation and activity indicators,
+submit-to-stream-to-Stop, queued input preserved until explicit resumption, reload/reconnect
+preserving committed state, and core controls. Use role/label locators to assert visible outcomes,
+and synchronize checks through retrying assertions. Keep abrupt-exit, malformed persistence, and
+detailed failure injection in Node integration tests; browser journeys focus on cross-system
+behavior.
 
 Keep workspace operations in its `Justfile` and use
 [system Chromium](DECISIONS.md#adr-001-use-system-chromium-for-e2e). [README.md](README.md) owns

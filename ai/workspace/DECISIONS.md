@@ -47,3 +47,25 @@ web/mobile views without moving authoritative state into clients.
 
 Start with workspace services and one local host in a Node process. Extend to remote hosts and
 environments as membership, authority, and lifecycle policies are defined.
+
+## ADR-006: Use pi-ai with workspace-owned configuration
+
+Status: accepted direction.
+
+Use `@earendil-works/pi-ai` for model access and authentication alongside Pi Durable's conversation
+and execution lifecycle. Build feature behavior from their supported capabilities, with workspace
+services owning product policy.
+
+The workspace owns provider settings, model choices, account configuration, and server-side
+credential persistence. Its configuration schemas reflect workspace needs. Pi AI supplies maintained
+provider factories, model catalogs, and authentication behavior.
+
+This keeps workspace setup cohesive while concentrating custom code on product-specific choices and
+persistence. Provider-supported discovery supplements the catalogs shipped with the installed
+library version. [MVP.md](MVP.md#models-and-credentials) defines integration and credential-safety
+requirements.
+
+The [agreed first-release scope](VISION.md#agreed-mvp-decisions) narrows this integration to OpenAI
+login with multiple accounts used concurrently across conversations. Additional providers, custom
+endpoints, and switching an existing conversation's account remain post-MVP; the broader integration
+direction above does not make them first-release requirements.

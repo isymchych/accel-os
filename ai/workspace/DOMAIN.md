@@ -15,7 +15,9 @@ longer-term capabilities.
   project association. Its identity is independent of its title or route.
 - **Agent:** configured participant in a conversation; initially its identity and configuration
   belong to that conversation.
-- **Agent preset:** reusable model, instructions, tools, and execution configuration.
+- **Account:** workspace-managed provider login selected for a conversation, with server-side
+  credentials and refresh state isolated from other accounts.
+- **Agent preset (post-MVP):** reusable model, instructions, tools, and execution configuration.
 - **Submission:** admitted input with a durable outcome.
 - **Run:** model responses and tool calls progressing from admitted input toward a final answer.
 
@@ -57,12 +59,19 @@ a lost stream as a connection error; establish execution outcomes from runtime s
 
 ## Configuration safety
 
-Applying a preset resolves concrete configuration for the conversation. Later preset edits affect
-future applications; existing configurations retain their resolved values.
-
-Changes to model, instructions, tools, and execution context apply to subsequent work. Running work
+Changes to model, instructions, tools, and execution context apply to subsequent work. Admitted work
 keeps its resolved configuration, including during concurrent submissions and configuration changes.
 Presentation-only changes may take effect immediately.
+
+Each conversation selects an account independently; different conversations may use different
+accounts concurrently. Admitted work retains its resolved account. Post-MVP account switching
+changes the account for subsequent submissions without changing conversation identity. A new branch
+uses the currently selected account, even when branching from a point before an account switch;
+historical transcript state does not restore an earlier account selection. Switching and branching
+are not MVP interactions.
+
+When presets enter scope, applying one resolves concrete configuration for the conversation. Later
+preset edits affect future applications; existing configurations retain their resolved values.
 
 Running work retains its resolved configuration across host-default, registry, and project edits.
 Inherited execution choices resolve explicitly where needed. A conversation keeps its configured
@@ -75,8 +84,17 @@ follow-up action queued after the active run. Keep follow-up and steering as dis
 
 Closing a tab, changing routes, or disconnecting leaves work running. Stop cancels the active run
 and terminates its owned processes, including foreground commands. Work remains stopping until the
-runtime confirms idle.
+runtime confirms idle. Preserve queued input without starting it until the user explicitly resumes
+execution. This stopped state survives disconnection and server restart; automatic recovery does not
+resume user-stopped queues.
 
-After a server restart, recover eligible unfinished work independently of client connections. Show
-missing configuration or credentials as diagnostics explaining blocked progress. External effects
-may repeat during recovery; interrupted unsafe tools require review before replay.
+After a server restart, automatically recover eligible unfinished work independently of client
+connections, respecting user-stopped queues and upstream tool replay policies. Require evidence
+before declaring a tool replay-safe. Show interrupted calls and committed partial output in the
+conversation, and instruct the agent to inspect actual state before retrying uncertain side effects.
+Recovery does not require blanket human approval or a dedicated recovery dashboard.
+
+Runtime replay prevention does not prevent an agent from issuing a new equivalent command.
+Inspection instructions reduce risk but do not guarantee exactly-once external effects. Show
+actionable diagnostics when missing configuration, credentials, or other execution problems
+genuinely block progress.
