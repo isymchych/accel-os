@@ -23,6 +23,8 @@
 - pi-extensible-workflows
 - skill to eval AGENTS.md / sys? prompt / skill changes - using cheap models, prepare test data for
   evals, control group, multiple attempt
+- script/skill to draw DB diagrams i.e. in drawio? or graphviz
+- **prevent agent from inventing requirements**
 
 ? how codex @visualize skill works? ? "provide irrefutable proof that this things works"
 
@@ -41,7 +43,6 @@ add to sysprompt:
   https://github.com/code-yeongyu/pi-ast-grep/tree/main
 - LSP?
 - thinking level https://github.com/sids/pi-extensions/tree/main/prompt-thinking
-- "ai" to start llm with microvm isolation - gondolin?
 - pi tool for executing code - like context-mode has
 - security review prompt
 - ideas from https://pi.dev/packages/pi-web-access
@@ -282,8 +283,18 @@ pinpoint the root cause Makes targeted fixes based on evidence
 
 ## AI Sandboxes
 
-- <https://github.com/everruns/bashkit/tree/main>
+Why not containers:
+
+> Because containers don't use Seccomp and Landlock and check filesystem/network calls against an
+> externally applied policy along w/injecting credentials where needed as a man-in-the-middle, thus
+> keeping the secrets out of reach from the LLM
+
+- <https://github.com/everruns/bashkit>
 - <https://github.com/perplexityai/SPACE>
+- <https://github.com/anthropics/sandbox-runtime>
+- <https://github.com/lima-vm/lima>
+- <https://github.com/earendil-works/gondolin>
+- <https://github.com/NVIDIA/OpenShell>
 
 ## Design skills
 
