@@ -1,9 +1,9 @@
 ---
 name: test-design
 description:
-  Design tests that establish observable contracts with independent expectations and meaningful
-  failures. Use when writing or changing tests, adding regression coverage, removing obsolete tests,
-  or assessing whether tests establish correctness.
+  Design or review tests when choosing meaningful assertions, independent expectations, or a
+  difficult test seam requires substantive reasoning. Use for test-quality assessments, not routine
+  test maintenance or running existing checks.
 ---
 
 # Test Design
@@ -17,9 +17,11 @@ to edit files.
 Identify the observable behavior, invariant, boundary, or failure mode the test must protect.
 Inspect existing coverage and choose the narrowest test seam that can demonstrate the contract.
 
-Apply the test-selection policy in `$ACCEL_OS/ai/SYSTEM.md` before creating coverage. This skill
-guides the quality of justified tests; it does not require adding them. A test's ability to
-distinguish correct from incorrect behavior is necessary, but does not alone establish its value.
+Add coverage when requested or when it protects against a concrete, consequential regression not
+adequately covered by existing verification and its value justifies maintenance cost. Prefer
+extending existing coverage. This skill guides the quality of justified tests; it does not require
+adding them. A test's ability to distinguish correct from incorrect behavior is necessary, but does
+not alone establish its value.
 
 ## Choose Independent Expectations
 

@@ -92,5 +92,9 @@ permission does not authorize operational execution.
   No proposal or alternatives section is needed.
 - **Policy clarification:** clarify the ambiguous condition in place, preserving its force and
   exceptions. Report the material clarification, not every unchanged requirement.
+- **Internal refactor:** moving validation between private helpers without changing ownership or
+  contracts does not require an architecture update.
+- **Architectural change:** moving validation across a trust boundary or changing which component
+  owns an invariant warrants updating the affected architectural explanation.
 - **Consequential design decision:** record the constraint, choice, deciding tradeoff, and
   consequences. Link detailed contracts and verification instead of reproducing them.

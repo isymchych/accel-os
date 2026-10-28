@@ -1,9 +1,9 @@
 ---
 name: root-cause-analysis
 description:
-  Evidence-driven debugging and incident investigation. Use for debugging requests, errors, failing
-  tests, unexpected behavior, regressions, recurring failures, and explicit root cause analysis
-  (RCA).
+  Investigate unclear or recurring failures, cross-component incidents, unsuccessful fixes, and
+  explicit root cause analysis (RCA) requests. Use when the failure mechanism needs discriminating
+  evidence, not for routine defects whose cause and correction are already clear.
 ---
 
 # Root Cause Analysis
@@ -68,12 +68,13 @@ within the approved scope. If the correct boundary fix exceeds scope, propose th
 proceeding.
 
 Where feasible, demonstrate the failure before the correction and its absence afterward, and check
-affected behavior. Apply the test-selection policy in `$ACCEL_OS/ai/SYSTEM.md` when deciding whether
-to add regression coverage; a bug fix does not automatically require a new test. Load and follow
-`$ACCEL_OS/ai/skills/test-design/SKILL.md` when designing or assessing tests for independent
-expectations and meaningful failures. A passing suite alone does not establish that the reported
-failure is resolved. State what was verified and what remains untested; do not claim broader
-recurrence prevention than the evidence supports.
+affected behavior. Add regression coverage when requested or when it protects against a concrete,
+consequential recurrence risk not adequately covered by existing verification and its value
+justifies maintenance cost. Use `$ACCEL_OS/ai/skills/test-design/SKILL.md` when choosing meaningful
+assertions, independent expectations, or a difficult test seam needs substantive design or review. A
+passing suite alone does not establish that the reported failure is resolved. State what was
+verified and what remains untested; do not claim broader recurrence prevention than the evidence
+supports.
 
 ## Report Proportionally
 

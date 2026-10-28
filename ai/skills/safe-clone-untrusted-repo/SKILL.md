@@ -1,8 +1,9 @@
 ---
 name: safe-clone-untrusted-repo
 description:
-  Retrieve or reuse external Git repositories for static inspection. Cloning, fetching, and updating
-  require an explicit request or approval.
+  Retrieve external Git repositories or inspect potentially untrusted source with bounded,
+  static-only procedures. Cloning, fetching, and updating require an explicit request or approval.
+  Not needed for routine reads of an already trusted local checkout.
 ---
 
 # Safe Clone of an Untrusted Repository

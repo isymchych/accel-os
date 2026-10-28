@@ -1,14 +1,19 @@
 ---
 name: normative-documents
 description:
-  Create or edit normative documents such as specifications, policies, plans, ADRs, AGENTS.md files,
-  and other guidance that defines requirements or decision rules.
+  Preserve requirement integrity when creating or substantively revising specifications, policies,
+  agent instructions, or other normative guidance. Use when edits could change obligations,
+  permissions, scope, conditions, or exceptions, not for mechanical formatting or routine wording
+  changes.
 ---
 
 # Normative Documents
 
 Treat normative documents as sources of truth for required or recommended behavior, constraints, and
 decision rules.
+
+Check the requirements affected by the edit; do not audit the whole document unless requested.
+Routine wording changes need no formal comparison artifact or separate approval.
 
 ## Writing contract
 
@@ -52,10 +57,5 @@ intended requirement.
 
 ## Final editing pass
 
-Check each sentence:
-
-- What requirement or necessary decision context does it contribute?
-- Can it state the desired behavior directly?
-- Is its detail necessary for this document's reader?
-
-Consolidate sentences that serve the same purpose.
+Before finishing, check that the edited scope preserves intended requirements and contains no
+unsupported obligations or unnecessary repetition.

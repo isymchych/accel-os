@@ -1,9 +1,11 @@
 ---
 name: project-docs
 description:
-  Organize, write, review, and maintain project documentation for small and medium projects. Use
-  when choosing a docs layout, drafting behavioral specs or design proposals, recording ADRs,
-  documenting architecture, or reconciling documentation with implementation.
+  Organize documentation structure, clarify document authority and lifecycle, and develop
+  substantial specs or design documents. Use when the task requires choosing document boundaries,
+  resolving conflicting guidance, or structuring a substantial documentation deliverable. Routine
+  code edits, small documentation corrections, and implementation completion alone do not trigger
+  this skill.
 ---
 
 # Project Docs
@@ -139,8 +141,11 @@ toolchain.
   targets.
 - State boundaries, non-goals, failure behavior, or open questions when omitting them would cause a
   concrete misunderstanding or unsafe action.
-- Explain architecture through the responsibilities and flows needed to understand the system. Add
-  operational detail or a diagram only when it resolves a reader's question.
+- Architecture documentation explains system-level responsibilities, boundaries, dependencies, and
+  consequential constraints. Update it when a change alters that explanation or makes an existing
+  statement materially incorrect. Keep local algorithms, helper structure, incidental call
+  sequences, and implementation inventories in code unless they explain a consequential
+  architectural constraint. Use diagrams when they clarify those relationships.
 - For a consequential decision, explain the deciding tradeoff and credible alternatives, including
   no change when viable. Record operational ceilings or revisit conditions when they constrain the
   choice, not as routine sections.
@@ -168,10 +173,12 @@ chronology, or sections merely to complete a template.
 - **Guides/runbooks:** stay aligned with supported usage. State prerequisites, expected outcomes,
   relevant safety boundaries, and recovery where applicable.
 
-When implementation is completed within the authorized scope, reconcile affected living docs and
-index links, retain useful proposal history, and extract an ADR only when it independently meets the
-decision criteria above. If reconciliation requires a new scope or unresolved contract change,
-report it rather than editing.
+Update existing documentation when the change makes its guidance incorrect or changes what its
+intended readers need to know or do. Preserve the document's abstraction level; a code change alone
+does not justify expanding its coverage. Correcting an existing statement does not itself justify
+adding newly discovered implementation detail. Keep affected index links accurate, retain useful
+proposal history, and extract an ADR only when it independently meets the decision criteria above.
+If reconciliation requires a new scope or unresolved contract change, report it rather than editing.
 
 ## Check and Report
 

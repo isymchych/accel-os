@@ -1,5 +1,8 @@
 # Design principles
 
+- Enable judgment, not ritual. Give agents clear outcomes, constraints, and useful procedures
+  without overprescribing execution. Every mandatory step should protect a concrete boundary or
+  materially improve results.
 - Context before code. Gather requirements and inspect the relevant implementation before proposing
   changes.
 - Read-only by default. Investigation, review, and verification should not unexpectedly mutate code
