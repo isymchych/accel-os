@@ -7,11 +7,11 @@ describe later scope; adding them to the MVP requires an explicit decision.
 
 ## Runtime integration
 
-Expose create/reopen, state reads, in-scope configuration changes, submission with request ID, Stop,
-explicit resumption, and committed-snapshot watches through `server/runtime/`. It owns harness
+Expose create/reopen, forking, history and branch reads, in-scope configuration changes, submission
+with request ID, Stop, and committed-snapshot watches through `server/runtime/`. It owns harness
 lookup and returns application-owned results. Submission success confirms durable acceptance.
-Runtime state confirms completion and idle after cancellation. Account switching and conversation
-branching are post-MVP.
+Runtime state confirms completion and termination after cancellation. Account switching remains
+post-MVP.
 
 - Use Durable coding tools and `NodeExecutionEnv` for host files and shell execution; verify process
   termination against the Stop contract.
@@ -42,8 +42,9 @@ credentials, and cancellation preserves rotated tokens. Surface authentication a
 failures as actionable diagnostics.
 
 Changing an existing conversation's account is post-MVP. Keep account selection independent of
-conversation identity and historical transcript state so switching and branching can follow the
-domain rules when added. A browser credential-management interface is optional.
+conversation identity and historical transcript state. MVP forks use the currently selected account
+under the [configuration safety rules](DOMAIN.md#configuration-safety); future account switching
+follows those same rules. A browser credential-management interface is optional.
 
 ## Configuration and persistence
 
@@ -78,7 +79,7 @@ schemas are post-MVP.
 
 - The backend owns writes. Manual edits require a stopped server; live watching and merging remain
   later scope.
-- Validate through the canonical JSON helper. Missing files may initialize defaults; malformed or
+- Validate using the owning TypeBox schema. Missing files may initialize defaults; malformed or
   invalid files stay intact and produce actionable errors.
 - Read the version before choosing a schema. Preserve files with newer versions and report an
   unsupported-version error. Validate supported older shapes, migrate sequentially, then validate
@@ -99,50 +100,65 @@ Add routing for multiple screens, with typed parameters and validated URL search
 identify the conversation and optional project; keep navigation and reload-recovery state in the
 URL. Thin route modules compose feature screens and coordinate loading.
 
-Features own ordinary reads and loading/error state through Solid; `client/lib/api.ts` supplies Hono
-RPC. Set freshness and refresh behavior deliberately if using route loaders. Keep ordinary reads
-separate from live snapshots.
+Features own ordinary reads and loading/error state; `client/lib/api.ts` supplies Hono RPC. Set
+freshness and refresh behavior deliberately if using route loaders. Keep ordinary reads separate
+from live snapshots.
 
-Send commands through explicit feature actions. Track pending/error feedback in Solid. After
+Send commands through explicit feature actions. Track pending/error feedback in client state. After
 configuration changes, refresh affected reads while preserving drafts. Preserve drafts through
 recoverable failures. Runtime state confirms execution completion.
 
-Start with Solid state for reads and command feedback. Adopt an established query library when
-shared refreshed data, pagination, or repeated mutation/cache coordination creates concrete
+Start with framework-native state for reads and command feedback. Adopt an established query library
+when shared refreshed data, pagination, or repeated mutation/cache coordination creates concrete
 complexity.
+
+### Branching and tree navigation
+
+Include forking from conversation history and tree-based navigation under the
+[domain branching rules](DOMAIN.md#conversation-branches). Show history and branch relationships and
+the selected point or branch. Users can revisit the original continuation and continue a fork.
+Side-by-side branch comparison is post-MVP; the detailed tree interaction design remains open.
+
+Use supported Durable fork and history APIs through `server/runtime/`. Keep forked history and
+lineage durable, and restore the selected view through URL navigation state on reload. Navigation
+does not cancel running work; submission and Stop target the conversation explicitly selected for
+those actions.
 
 ### Submission
 
 1. The client creates a request ID for one logical submission.
 2. The server validates input and applies feature policy.
 3. The runtime durably admits the submission before HTTP success.
-4. The client observes committed progress through SSE.
+4. The client observes committed progress through AG-UI over HTTP/SSE.
 
 Retain the ID across ambiguous HTTP failures; define its scope and reject reuse with different
 content. Newly composed input gets a new ID. Do not indiscriminately retry non-idempotent actions.
 [Explicit follow-ups](DOMAIN.md#work-lifecycle) use Durable's inbox, which owns the queue and
 placement after the active run during normal execution. Show queued input separately from active
-execution. Stop must preserve queued input and prevent its placement until explicit resumption; see
-[recovery and cancellation](#recovery-and-cancellation) for the integration constraint.
+execution. Stop follows the selected runtime's queued-input behavior; see
+[recovery and cancellation](#recovery-and-cancellation).
 
 ### Streaming
 
-Start with complete application-owned conversation snapshots over SSE, normalized from Durable's
-committed-state watch in `server/runtime/` into the browser protocol.
+Use AG-UI over HTTP/SSE for frontend conversation synchronization. Translate application-owned
+results from Durable's committed-state watches into the protocol at the server transport boundary;
+do not expose Chord operations directly to the browser.
 
-One feature subscription owns the active conversation's snapshot and connection state and shares
-them with child components. Start with an initial snapshot and replace it with newer snapshots.
-Ordinary reads and command responses update their own state; the subscription exclusively updates
-the live snapshot.
+Initialize a subscription with `MESSAGES_SNAPSHOT` for the transcript and `STATE_SNAPSHOT` for
+application-owned live state. Carry subsequent committed changes through AG-UI message, tool,
+lifecycle, and state-update events. Preserve the distinction between durable acceptance, eventual
+execution outcome, and transport failure in the mapping.
 
-Bound pending output per connection and coalesce superseded snapshots for slow readers. Dispose
-server watches on disconnect and client subscriptions on conversation change or unmount. Reconnect
-starts a fresh stream generation; accept callbacks exclusively from that generation and show
-stale/disconnected state until a fresh snapshot arrives.
+One feature subscription owns the viewed conversation's protocol-driven live state and connection
+state and shares them with child components. Ordinary reads and command responses update their own
+state; the subscription exclusively updates live conversation state.
 
-Full snapshots favor a simple client over bandwidth efficiency. If transcript/output serialization
-materially hurts responsiveness or memory, add bounded paging or application-owned deltas with
-snapshot recovery, based on measurements.
+Bound pending output per connection. For slow readers, resynchronize with fresh snapshots rather
+than dropping incremental updates required to reconstruct current state. Dispose server watches on
+disconnect and client subscriptions on conversation change or unmount; this ends observation, not
+execution. Reconnect starts a fresh stream generation from current committed snapshots, without
+requiring replay of every missed event. Accept callbacks exclusively from that generation and show
+stale/disconnected state until fresh snapshots arrive.
 
 ### Conversation activity
 
@@ -158,6 +174,10 @@ agent-callable inspection tool should share the conversation inspection service.
 
 ### Frontend integration
 
+Follow the selected [frontend direction](ARCHITECTURE.md#frontend-design): Solid 2 with
+`@tanstack/ai-client` through a small local binding and locally owned rendering. AG-UI remains the
+conversation protocol.
+
 Accessibility work requires a separate scope decision.
 
 `client/styles/theme.css` owns semantic CSS variables and Tailwind mappings: `@theme` produces
@@ -170,7 +190,7 @@ explicit. Add providers, styling engines, and wrappers for concrete needs. Keep 
 package, use feature-owned state initially, and integrate capabilities directly.
 
 Follow [DESIGN.md](DESIGN.md) for presentation and [AGENTS.md](AGENTS.md#ui-primitives) for
-component conventions. Import Lucide directly through a Solid 2-compatible integration. Validate
+component conventions. Import Lucide directly through a frontend-compatible integration. Validate
 patterns in feature screens. Add a gallery/Storybook when feature examples need dedicated tooling.
 
 ## Recovery and cancellation
@@ -179,32 +199,30 @@ Implement the [domain lifecycle](DOMAIN.md#work-lifecycle) through Durable. Disc
 HTTP wait disposes observation while execution continues. Graceful server shutdown closes observers
 and runtime resources; user Stop follows its own cancellation contract.
 
-Stop terminates active execution and its owned processes, waits for confirmed idle, and preserves
-queued input until explicit user resumption. Persist the stopped state so neither reconnect nor
-startup recovery starts that queued input.
-
-**Unresolved integration constraint:** Durable 1.4.0's `conversation.abort()` withdraws queued
-inputs; it is not a direct implementation of this Stop contract. Design and verify queue
-preservation and explicit resumption through supported runtime APIs before enabling Stop. Preserve
-the product contract rather than adopting abort's queue-withdrawal behavior.
+Stop terminates the active run and its owned processes, and waits for confirmation that they have
+stopped. Queued-input behavior follows the selected runtime; queue preservation, explicit
+resumption, and a persisted queue-pause state are not MVP requirements.
 
 At startup, discover unfinished sessions and automatically resume eligible work once definitions and
-execution environments are ready, independently of browser connections and respecting user-stopped
-queues. An option to disable recovery remains an operational decision. Preserve upstream tool replay
-policies; require evidence for replay-safe declarations. Interrupted unsafe calls produce
-`interrupted` results with committed partial output rather than automatically rerunning the call.
-Show these in the conversation and instruct the agent to inspect actual state before retrying
-uncertain effects. The agent may issue a new equivalent command, so this is not an exactly-once
-guarantee. Show actionable diagnostics for genuinely blocked execution; do not add a dedicated
-recovery dashboard or blanket human-approval workflow.
+execution environments are ready, independently of browser connections. An option to disable
+recovery remains an operational decision. Preserve upstream tool replay policies; require evidence
+for replay-safe declarations. Interrupted unsafe calls produce `interrupted` results with committed
+partial output rather than automatically rerunning the call. Show these in the conversation and
+instruct the agent to inspect actual state before retrying uncertain effects. The agent may issue a
+new equivalent command, so this is not an exactly-once guarantee. Show actionable diagnostics for
+genuinely blocked execution; do not add a dedicated recovery dashboard or blanket human-approval
+workflow.
 
 ## Open decisions
 
 Resolve the OpenAI login setup flow, credential storage and account-configuration layout, data
 location, backup procedure, SQLite synchronization, and request/output limits before their
 corresponding capabilities enter use. Document chosen limits; escalate only when evidence requires a
-product tradeoff or architecture change. The queue-preserving Stop integration above remains
-unverified.
+product tradeoff or architecture change.
+
+Resolve the mapping of branch trees to Durable conversations and history, valid fork points, and
+forking behavior while source work is running during runtime integration. The tree interaction
+design and frontend integration details remain open within the agreed branching scope.
 
 ## Acceptance checks
 
@@ -224,11 +242,18 @@ tools, and isolated temporary state.
   configuration changes preserve admitted work's account binding. Concurrent refresh reuses fresh
   credentials for the same account; cancellation preserves rotated tokens. Authentication and
   credential-persistence failures produce actionable diagnostics.
-- **Transport:** TypeBox/canonical JSON through Hono RPC to Solid, valid/invalid inputs, error
-  narrowing, and browser bundle boundaries. A lost submission response followed by retry creates one
-  input. Check reconnect convergence, cancellation to idle, bounded slow-reader output, observer
-  cleanup, and stale callback/late response rejection. Reads and commands preserve drafts and the
-  stream-owned snapshot.
+- **Branching:** fork from a historical point, preserve the original continuation, and continue the
+  fork independently. Verify history and lineage survive close/reopen and server restart, new
+  branches use the selected account rather than a historical account binding, and tree navigation
+  identifies the selected point or branch. Reload restores the selected view. Switching views does
+  not cancel running work, and submission and Stop target the explicitly selected conversation.
+- **Transport:** TypeBox-validated JSON through Hono RPC to the client, valid/invalid inputs, error
+  narrowing, and browser bundle boundaries. Validate AG-UI events and their application-owned state
+  payloads. Verify committed-state mapping to initial snapshots and incremental updates, reconnect
+  convergence from fresh snapshots, and branch switching while other work continues. A lost
+  submission response followed by retry creates one input. Check confirmed cancellation, bounded
+  slow-reader output with snapshot resynchronization, observer cleanup, and stale callback/late
+  response rejection. Reads and commands preserve drafts and protocol-driven live state.
 - **Security and UI:** reject hostile hosts/origins, traversal, mismatched request IDs, and
   oversized input. Verify safe Markdown, error/disconnection feedback, primitive variants, control
   interactions, dismissal, and long content in both themes and narrow/wide feature screens.
@@ -237,17 +262,17 @@ tools, and isolated temporary state.
   missing-project errors. Test historical migrations when historical schemas exist.
 - **Configuration and lifecycle:** stable context during concurrent submissions/configuration
   changes, and idle guards for runtime-limited changes. Stop terminates owned processes and waits
-  for confirmed idle. Queued input remains intact without execution through Stop, reconnect, and
-  restart, and executes only after explicit resumption, without duplicate input. Startup recovery
-  runs independently of browser connections for eligible work. Verify upstream tool replay policies:
-  unsafe interrupted calls do not rerun automatically, their committed partial output is visible,
-  and the model can continue without blanket human approval. Verify recovery instructions direct the
-  agent to inspect actual state before retrying uncertain effects. Outcomes stay independent of
-  connection state; tool failures may leave runs active. Verify safe failure/blocked summaries,
-  follow-ups through the runtime inbox, conversation-list running/waiting/blocked indicators, and
-  task ownership, queued input, and blocked/interrupted reasons in conversation details.
-  Disconnected state shows the last observation; a fresh observation confirms current state. File
-  edits and shell commands execute directly under the MVP's unsandboxed host policy.
+  for confirmed termination of the cancelled run and its processes. Queued-input behavior through
+  Stop, reconnect, and restart matches the selected runtime without duplicate input. Startup
+  recovery runs independently of browser connections for eligible work. Verify upstream tool replay
+  policies: unsafe interrupted calls do not rerun automatically, their committed partial output is
+  visible, and the model can continue without blanket human approval. Verify recovery instructions
+  direct the agent to inspect actual state before retrying uncertain effects. Outcomes stay
+  independent of connection state; tool failures may leave runs active. Verify safe failure/blocked
+  summaries, follow-ups through the runtime inbox, conversation-list running/waiting/blocked
+  indicators, and task ownership, queued input, and blocked/interrupted reasons in conversation
+  details. Disconnected state shows the last observation; a fresh observation confirms current
+  state. File edits and shell commands execute directly under the MVP's unsandboxed host policy.
 
 ### Test isolation and browser coverage
 
@@ -259,17 +284,18 @@ Tests use synthetic state and fake provider credentials exclusively. Give each t
 runtime directory and clean up processes and temporary data.
 
 As runtime integration is added, browser journeys in `tests/e2e/`, configured by
-`playwright.config.ts`, exercise the real frontend, routes, SSE, and runtime with a deterministic
-fake model and isolated JSON/SQLite state. Use Playwright's local-server support and verify
-readiness of the test instance. Connect exclusively to that test instance. Use separate
+`playwright.config.ts`, exercise the real frontend, workspace routes, AG-UI stream, and runtime with
+a deterministic fake model and isolated JSON/SQLite state. Use Playwright's local-server support and
+verify readiness of the test instance. Connect exclusively to that test instance. Use separate
 ports/storage for concurrent instances or serialize the suite until isolation exists.
 
-Cover directory/project and account selection, conversation navigation and activity indicators,
-submit-to-stream-to-Stop, queued input preserved until explicit resumption, reload/reconnect
-preserving committed state, and core controls. Use role/label locators to assert visible outcomes,
-and synchronize checks through retrying assertions. Keep abrupt-exit, malformed persistence, and
-detailed failure injection in Node integration tests; browser journeys focus on cross-system
-behavior.
+Cover directory/project and account selection, conversation navigation and activity indicators, fork
+creation, tree navigation between original and forked histories, continuation on the selected
+branch, submit-to-stream-to-Stop, the selected runtime's queued-input behavior, reload/reconnect
+preserving committed state and the selected branch view, and core controls. Use role/label locators
+to assert visible outcomes, and synchronize checks through retrying assertions. Keep abrupt-exit,
+malformed persistence, and detailed failure injection in Node integration tests; browser journeys
+focus on cross-system behavior.
 
 Keep workspace operations in its `Justfile` and use
 [system Chromium](DECISIONS.md#adr-001-use-system-chromium-for-e2e). [README.md](README.md) owns

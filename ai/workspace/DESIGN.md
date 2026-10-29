@@ -90,6 +90,17 @@ treatments. No reference fonts, logos, textures, or shader assets are adopted.
 `client/styles/theme.css` owns runtime tokens and Tailwind mappings; shared styles reference those
 tokens. `client/ui/` owns domain-free primitives; features own content and state.
 
+### Interaction references
+
+Use [assistant-ui](https://github.com/assistant-ui/assistant-ui) and
+[TanStack AI UI](https://tanstack.com/ai/latest/docs/ui/react) as conversation UX references when
+designing streaming, composer behavior, tool disclosures, message actions, and error/reconnect
+feedback. Borrow patterns where they fit the workspace; do not adopt their visual identity or assume
+a conventional chat layout.
+
+These are interaction references, not selected UI dependencies or additions to feature scope.
+[ARCHITECTURE.md](ARCHITECTURE.md#frontend-design) owns the Solid 2 and TanStack client integration.
+
 ## Colors
 
 Use warm neutrals. Establish emphasis through contrast, typography, and placement before color.

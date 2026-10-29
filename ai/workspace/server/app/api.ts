@@ -1,13 +1,11 @@
-import { assertSchema } from "@accel-os/shared/json";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
+import { Value } from "typebox/value";
 
 import { DiagnosticRequestSchema } from "../../contracts/diagnostics.ts";
 
 const diagnosticValidator = validator("json", (value: unknown, context) => {
-  try {
-    assertSchema(value, DiagnosticRequestSchema, "diagnostic request");
-  } catch {
+  if (!Value.Check(DiagnosticRequestSchema, value)) {
     return context.json(
       {
         code: "invalid_request",

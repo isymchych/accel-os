@@ -5,6 +5,8 @@ server. The diagnostic screen checks browser-to-server communication.
 
 Root `../../AGENTS.md` governs this workspace. Paths below are relative to `ai/workspace/`.
 
+Keep workspace runtime code independent of repository-internal packages.
+
 ## Read before changing
 
 - [DOMAIN.md](DOMAIN.md): behavior, configuration, and lifecycle.
@@ -38,16 +40,9 @@ Button and Input forward native attributes/events; native elements own interacti
 Read reactive values through the props object. Use Solid 2 APIs and native HTML attribute names.
 Prefer platform capabilities and add primitives for distinct reusable interactions.
 
-When adding shared components, consult relevant documentation, source, and interaction tests:
-
-- [Kobalte](https://github.com/kobaltedev/kobalte): Solid patterns and primitive composition.
-- [Base UI](https://github.com/mui/base-ui): composition, interactions, and state management.
-- [React Aria](https://react-aria.adobe.com/): input interactions.
-- [Corvu](https://corvu.dev/): overlays and resizable panels.
-- [Zag](https://zagjs.com/): complex control states and transitions.
-
-Kobalte and Base UI are the primary references. Adapt behavior to Solid 2, local ownership, and
-semantic tokens; verify compatibility before reusing source.
+When adding shared components, consult relevant documentation, source, and interaction tests from
+the [frontend references](ARCHITECTURE.md#frontend-references). Follow their adaptation and
+compatibility guidance.
 
 ## Validation
 

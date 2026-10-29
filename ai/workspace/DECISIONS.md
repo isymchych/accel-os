@@ -69,3 +69,32 @@ The [agreed first-release scope](VISION.md#agreed-mvp-decisions) narrows this in
 login with multiple accounts used concurrently across conversations. Additional providers, custom
 endpoints, and switching an existing conversation's account remain post-MVP; the broader integration
 direction above does not make them first-release requirements.
+
+## ADR-007: Use AG-UI for frontend conversation synchronization
+
+Status: accepted direction.
+
+Use AG-UI over HTTP/SSE as the frontend conversation protocol. Adapt Pi Durable's committed state
+into message/state snapshots and incremental events. Initialize and reconnect from current
+snapshots; replaying every missed streaming event is not required.
+
+This selects a shared wire contract for compatible frontend clients without replacing Pi Durable's
+execution, persistence, admission, cancellation, or recovery ownership. Hono RPC remains the
+workspace API for operations such as tree/history reads, fork commands, and configuration. Branch
+navigation belongs to the application, not the protocol.
+
+The protocol choice does not select a frontend framework, client library, or component library.
+[MVP streaming requirements](MVP.md#streaming) and
+[transport acceptance checks](MVP.md#integration-checks) govern implementation correctness.
+
+## ADR-008: Use TanStack AI client with a local Solid 2 binding
+
+Status: accepted direction; client integration not yet implemented.
+
+Retain Solid 2 under [ADR-002](#adr-002-use-solid-2-with-native-controls) and use the
+framework-independent `@tanstack/ai-client` through a small local Solid 2 binding. Reuse headless
+chat state and stream processing without depending on TanStack's framework-specific bindings or UI
+packages. Keep rendering, branch navigation, and visible components application-owned.
+
+Pi Durable remains the runtime; this choice does not adopt TanStack Harness or its provider
+adapters. [Frontend architecture](ARCHITECTURE.md#frontend-design) owns the integration boundaries.

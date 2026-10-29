@@ -7,9 +7,11 @@ proposed where noted.
 
 - Loopback-only deployment, with separate client and server source in one private npm package.
 - TypeScript 7, Node, Vite, Oxlint with tsgolint, and Oxfmt.
-- Solid 2, Tailwind v4, locally owned native controls, and semantic theme tokens.
-- Hono and TypeBox, with Hono RPC for HTTP reads and commands and Solid state for live SSE
-  snapshots.
+- Solid 2 with TanStack AI's headless `@tanstack/ai-client` through a small local Solid 2 binding,
+  Tailwind v4, locally owned components, and semantic theme tokens.
+- Hono and TypeBox, with Hono RPC for workspace HTTP reads and commands.
+- AG-UI for frontend conversation synchronization over HTTP/SSE, adapted from Pi Durable's committed
+  state.
 - Pi Durable for conversations and execution, with `pi-ai` for model access and authentication,
   subject to [integration checks](MVP.md#integration-checks).
 - Durable's built-in SQLite storage for execution; versioned, TypeBox-validated JSON for application
@@ -24,9 +26,9 @@ questions, and acceptance checks.
 ## Ownership and boundaries
 
 ```text
-Browser: Solid features
-  | Hono RPC: reads and commands
-  | SSE: committed snapshots
+Browser: Solid 2 features + local binding to @tanstack/ai-client
+  | Hono RPC: workspace reads and commands
+  | AG-UI over HTTP/SSE: conversation snapshots and updates
   v
 Node: Hono routes -> feature services -> server/runtime/
                                           | Durable harnesses and storage
@@ -101,17 +103,19 @@ type-only imports and explicit relative `.ts` extensions where supported. Server
 Node's native type stripping and follows the repository's erasable-syntax settings; Vite compiles
 the browser.
 
-Define one TypeBox schema per wire shape near its feature in `contracts/` and derive types from it.
-Parse external JSON through `@accel-os/shared/json` where applicable. Preserve inferred Hono input
-types through the RPC boundary. Keep provider-owned nested data permissive for extra fields;
-application contracts are explicit. Normalize internal domain results to wire shapes where they
-differ.
+Define one TypeBox schema per application-owned wire shape near its feature in `contracts/` and
+derive types from it. Use protocol-defined schemas for AG-UI envelopes and events; application-owned
+state carried by the protocol retains its TypeBox schemas. Validate external JSON using the owning
+TypeBox schema. Preserve inferred Hono input types through the RPC boundary. Keep provider-owned
+nested data permissive for extra fields; application contracts are explicit. Normalize internal
+domain results to wire shapes where they differ.
 
 Expected route failures have explicit JSON responses and status codes. Unexpected failures use one
 sanitized envelope, with detailed diagnostics confined to local logs. Include middleware and global
 errors in RPC typing. HTTP failure, durable acceptance, and eventual run failure are distinct.
 
-Validate SSE JSON before it enters trusted client state; streams require their own validation.
+Validate AG-UI events and application-owned payloads before they enter trusted client state; stream
+validation is separate from Hono RPC typing.
 
 ## Runtime, persistence, and lifecycle
 
@@ -127,9 +131,8 @@ Validate SSE JSON before it enters trusted client state; streams require their o
   preferences. Presets and general provider configuration are post-MVP.
 - **Workspace credentials:** server-side authentication material and persistence.
 - **Harness application documents:** metadata that must commit with conversation state, including
-  resolved configuration and account selection, user-stopped execution state, and optional project
-  association. Keep the project catalog in application JSON and reference its IDs from harness
-  documents.
+  resolved configuration and account selection, and optional project association. Keep the project
+  catalog in application JSON and reference its IDs from harness documents.
 - **Client:** drafts, selected views, expanded output, connection state, and command feedback.
   Execution and submission state come from committed runtime records.
 
@@ -171,7 +174,7 @@ The [MVP runtime integration](MVP.md#runtime-integration) defines operations and
 configuration guards.
 
 Account selection is independent of conversation identity and historical transcript state. Post-MVP
-switching applies to subsequent submissions while admitted work retains its resolved account. Future
+switching applies to subsequent submissions while admitted work retains its resolved account. New
 branches use the currently selected account, not the account at the historical fork point. Keep
 these choices explicit at the application boundary rather than inheriting historical account
 selection from runtime forks.
@@ -226,18 +229,30 @@ transactions.
 
 ## Commands, snapshots, and lifecycle
 
-Hono RPC carries reads and commands; SSE carries application-owned snapshots of committed runtime
-state. Normalize runtime documents into the browser protocol. Ordinary reads, command feedback, and
-live snapshots have separate client ownership.
+AG-UI is the selected frontend conversation protocol, carried over HTTP/SSE. Adapt Durable's
+committed conversation state and changes into AG-UI message/state snapshots and incremental message,
+tool, and lifecycle events. Pi Durable remains the execution and persistence owner; AG-UI defines
+the wire contract, not a second runtime or a UI component library.
+
+Hono RPC carries workspace reads and commands, including history/tree reads, fork commands, and
+configuration. Workspace features own branch navigation and product policy. Keep protocol
+translation at the server transport boundary, consuming application-owned results from
+`server/runtime/`; provider types and Chord state remain inside the runtime boundary. Ordinary
+reads, command feedback, and protocol-driven live state have separate client ownership.
+
+Initialize and reconnect with snapshots of current committed state, then apply subsequent updates.
+Reconnection does not require replaying every missed streaming event. The
+[MVP streaming contract](MVP.md#streaming) owns client synchronization and backpressure
+requirements.
 
 The runtime owns admission, follow-up placement, cancellation, and restart recovery. Workspace
-integration enforces the Stop policy: cancel active work, preserve queued input, and prevent its
-execution until explicit resumption, including across restarts. Direct runtime abort does not
-necessarily implement that policy; the
-[MVP integration constraint](MVP.md#recovery-and-cancellation) must be resolved before Stop enters
-use. Transport disconnects dispose observation while execution continues. The
-[MVP command flows](MVP.md#commands-and-live-state) define routing, deduplication, and streaming;
-its [recovery contract](MVP.md#recovery-and-cancellation) defines shutdown and startup integration.
+integration confirms cancellation of active work and termination of its owned processes.
+Queued-input behavior follows the selected runtime under the
+[domain lifecycle](DOMAIN.md#work-lifecycle); queue preservation and explicit resumption are not
+runtime-selection constraints. Transport disconnects dispose observation while execution continues.
+The [MVP command flows](MVP.md#commands-and-live-state) define routing, deduplication, and
+streaming; its [recovery contract](MVP.md#recovery-and-cancellation) defines shutdown and startup
+integration.
 
 ### Failure presentation and inspection
 
@@ -296,9 +311,41 @@ as confined to the working directory. Sandboxing needs a separate execution-boun
 
 ## Frontend design
 
+Retain Solid 2 and use the framework-independent `@tanstack/ai-client` through a small local Solid 2
+binding. The binding bridges client state into Solid reactivity and owns subscription cleanup;
+TanStack supplies headless chat state and stream processing. Use locally owned Solid 2 components
+for message, part, and tool rendering, not TanStack's framework-specific bindings or UI packages.
+Application features own the branch tree, navigation, layout, composer, styling, and coding-specific
+tool components. Pi Durable retains backend execution ownership.
+
+The diagnostic client already uses Solid 2; the TanStack client integration is selected but not yet
+implemented. Verify the client API and AG-UI mapping against the pinned version during integration.
+
 Follow [DESIGN.md](DESIGN.md) for presentation and [AGENTS.md](AGENTS.md#ui-primitives) for
 component conventions. [MVP.md](MVP.md#frontend-integration) defines frontend integration details
 and initial tooling limits.
+
+### Frontend references
+
+Selected client dependency:
+
+- [TanStack AI client](https://tanstack.com/ai/latest/docs/api/ai-client)
+  ([source](https://github.com/tanstack/ai)): framework-independent headless chat state and
+  transport integration through the local Solid 2 binding.
+
+Implementation references, not selected dependencies:
+
+- [Kobalte](https://github.com/kobaltedev/kobalte): Solid patterns and primitive composition.
+- [Base UI](https://github.com/mui/base-ui): composition, interactions, and state management.
+- [React Aria](https://react-aria.adobe.com/): input interactions.
+- [Corvu](https://corvu.dev/): overlays and resizable panels.
+- [Zag](https://zagjs.com/): complex control states and transitions.
+- [assistant-ui](https://github.com/assistant-ui/assistant-ui): chat composition and message, part,
+  and tool rendering.
+
+Kobalte and Base UI are the primary shared-component references. Adapt behavior to Solid 2, local
+ownership, and semantic tokens; verify compatibility before reusing source. Visual inspiration and
+conversation UX references belong in [DESIGN.md](DESIGN.md#reference-and-ownership).
 
 ## Integration verification
 
@@ -320,6 +367,8 @@ Verify referenced APIs against the pinned dependency versions.
   and
   [submission/task outcomes](https://github.com/earendil-works/pi/blob/main/packages/durable/docs/spec.md).
 - [Hono RPC](https://hono.dev/docs/guides/rpc): inferred inputs/responses and global error typing.
+- [AG-UI events](https://docs.ag-ui.com/concepts/events): message and state snapshots, incremental
+  updates, tools, and run lifecycle.
 - [Oxlint type-aware linting](https://oxc.rs/docs/guide/usage/linter/type-aware): tsgolint
   integration.
 - [Solid 2](https://v2.solidjs.com/),

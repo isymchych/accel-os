@@ -67,8 +67,8 @@ Each conversation selects an account independently; different conversations may 
 accounts concurrently. Admitted work retains its resolved account. Post-MVP account switching
 changes the account for subsequent submissions without changing conversation identity. A new branch
 uses the currently selected account, even when branching from a point before an account switch;
-historical transcript state does not restore an earlier account selection. Switching and branching
-are not MVP interactions.
+historical transcript state does not restore an earlier account selection. Branching is an MVP
+interaction; switching an existing conversation's account remains post-MVP.
 
 When presets enter scope, applying one resolves concrete configuration for the conversation. Later
 preset edits affect future applications; existing configurations retain their resolved values.
@@ -77,6 +77,17 @@ Running work retains its resolved configuration across host-default, registry, a
 Inherited execution choices resolve explicitly where needed. A conversation keeps its configured
 directory when a saved project's path changes; applying another directory is explicit.
 
+## Conversation branches
+
+Forking creates an alternative continuation from a point in conversation history without losing the
+original continuation. Users navigate history and branches through a tree that shows their
+relationships and identifies the selected history point or branch.
+
+Viewing history and switching the viewed branch are navigation, not execution or cancellation
+commands. Admitted work continues independently of the viewed branch under the
+[work lifecycle](#work-lifecycle). New branches follow the
+[configuration safety rules](#configuration-safety).
+
 ## Work lifecycle
 
 Each logical submission produces at most one input, including retries. While busy, offer an explicit
@@ -84,15 +95,15 @@ follow-up action queued after the active run. Keep follow-up and steering as dis
 
 Closing a tab, changing routes, or disconnecting leaves work running. Stop cancels the active run
 and terminates its owned processes, including foreground commands. Work remains stopping until the
-runtime confirms idle. Preserve queued input without starting it until the user explicitly resumes
-execution. This stopped state survives disconnection and server restart; automatic recovery does not
-resume user-stopped queues.
+runtime confirms that the cancelled run and its owned processes have stopped. Queued-input behavior
+follows the selected runtime; preserving queued input and requiring explicit resumption, including
+across restarts, are not product requirements.
 
 After a server restart, automatically recover eligible unfinished work independently of client
-connections, respecting user-stopped queues and upstream tool replay policies. Require evidence
-before declaring a tool replay-safe. Show interrupted calls and committed partial output in the
-conversation, and instruct the agent to inspect actual state before retrying uncertain side effects.
-Recovery does not require blanket human approval or a dedicated recovery dashboard.
+connections, respecting upstream tool replay policies. Require evidence before declaring a tool
+replay-safe. Show interrupted calls and committed partial output in the conversation, and instruct
+the agent to inspect actual state before retrying uncertain side effects. Recovery does not require
+blanket human approval or a dedicated recovery dashboard.
 
 Runtime replay prevention does not prevent an agent from issuing a new equivalent command.
 Inspection instructions reduce risk but do not guarantee exactly-once external effects. Show

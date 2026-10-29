@@ -19,10 +19,11 @@ The first usable version is local interactive coding with durable execution:
 
 - Choose a working directory, directly or through an optional saved project.
 - Create or reopen a conversation; submit input and stream responses and tool activity.
+- Fork from conversation history and navigate history and branches through a tree.
 - Send explicit follow-up input while busy.
 - See running, waiting, and blocked activity through conversation-list status indicators.
 - Read and edit files and run commands under the execution policy below.
-- Stop active work while preserving queued input for explicit resumption.
+- Stop active work.
 - Reconnect to ongoing work and automatically recover eligible unfinished work after a server
   restart.
 - Log in to multiple OpenAI accounts and use different accounts in concurrent conversations.
@@ -43,14 +44,18 @@ Conversation-list status indicators suffice for MVP; there is no separate work-v
    conversation and usable concurrently. Credentials and refresh state stay isolated per account and
    server-side. Switching an existing conversation's account is post-MVP; a browser
    credential-management interface is optional.
-4. **Stop and recovery:** Stop cancels active execution and preserves queued input until explicit
-   resumption, including across server restarts. Automatic recovery follows upstream tool replay
-   policies, with interrupted calls visible and agent inspection before retrying uncertain effects.
-   Recovery requires neither a dedicated dashboard nor blanket human approval. See the
+4. **Stop and recovery:** Stop cancels active execution and terminates its owned processes.
+   Queued-input behavior follows the selected runtime; queue preservation and explicit resumption
+   are not MVP requirements. Automatic recovery follows upstream tool replay policies, with
+   interrupted calls visible and agent inspection before retrying uncertain effects. Recovery
+   requires neither a dedicated dashboard nor blanket human approval. See the
    [domain lifecycle](DOMAIN.md#work-lifecycle).
+5. **Branching:** include forking and tree-based history and branch navigation, in the spirit of
+   Pi's coding agent. Side-by-side branch comparison is post-MVP. The detailed interaction design
+   remains open.
 
 Later scope: presets (including storage and UI), account switching within an existing conversation,
-conversation branching, other providers and custom endpoints, steering, remote access,
+side-by-side branch comparison, other providers and custom endpoints, steering, remote access,
 orchestration, multi-user hosting, plugin loading, embedded terminals, and a separate memory system.
 Codemode, MCP, skills, prompt templates, custom runtime extensions, and richer session interactions
 are optional for the first version; reuse supported capabilities when they directly serve the

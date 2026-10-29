@@ -57,8 +57,6 @@
 - UI components for agents to show UI, like https://github.com/thesysdev/openui
 - animated agent image - abstract shapes, structures, circle, lines and angles, dynamically
   changing, dark gold, sun; depends on model / thinking level; avoid anthropomorphisation
-- is AG-UI https://github.com/ag-ui-protocol/ag-ui relevant?
-- tanstack ai?
 
 ## Other
 
@@ -85,6 +83,7 @@
 - live editing/live reload, even in "prod mode" (do we need "prod mode"?); live reload (of plugins,
   of web interface) shoudn't break app (easily reversible)
 - maybe through mcp?
+- telemetry - opentelemetry? langfuse?
 
 ## Ideas
 
