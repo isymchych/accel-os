@@ -54,7 +54,6 @@
 
 - UI theme - retrofuturism, cyberpunk, minimal
 - minimalist, clean, concise, humane interface like AMP
-- UI components for agents to show UI, like https://github.com/thesysdev/openui
 - animated agent image - abstract shapes, structures, circle, lines and angles, dynamically
   changing, dark gold, sun; depends on model / thinking level; avoid anthropomorphisation
 
@@ -83,13 +82,14 @@
 - live editing/live reload, even in "prod mode" (do we need "prod mode"?); live reload (of plugins,
   of web interface) shoudn't break app (easily reversible)
 - maybe through mcp?
-- telemetry - opentelemetry? langfuse?
 
 ## Ideas
 
 - approve read/write access outside the workspace - show confirmation dialog
   - with security/privacy risk review by other agent? (so agent will read the file anyway?)
   - with ability to easily preview the file myself
+- being able to iterate on a document(s) in chat - deltas should be saved right in conversation?
+  where to save / export them? keep also decisions / plans in conversation?
 
 > another important thing brain dump: my vision is that agents (pi-durable) should be distributed -
 > they could be executed (operate) on multiple servers/devices/environments (browsers, mobile, edge
@@ -104,3 +104,12 @@
 > i.e. mobile ui and web ui and i'd like to see the same info (agents, executions, sessions etc.).
 > Such client-server architecture is out of scope for now, but we should take this direction into
 > account. inspiration: something like "orbs" in AMP https://github.com/disler/durable-pi
+
+## Maybe later
+
+- telemetry - opentelemetry / langfuse / phoenix
+- UI components for agents to show UI, like https://github.com/thesysdev/openui
+
+## Inspiration
+
+- <https://github.com/githubnext/chopin>

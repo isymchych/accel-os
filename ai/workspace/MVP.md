@@ -172,6 +172,10 @@ effective-configuration inspection is future direction. Apply observation permis
 credentials and sensitive configuration; execution requires its own authority. A future
 agent-callable inspection tool should share the conversation inspection service.
 
+Use Pino-based structured local logging alongside runtime-backed inspection, following the
+[logging ownership and privacy rules](ARCHITECTURE.md#failure-presentation-and-inspection).
+OpenTelemetry, Langfuse, and other external observability platforms are outside MVP scope.
+
 ### Frontend integration
 
 Follow the selected [frontend direction](ARCHITECTURE.md#frontend-design): Solid 2 with

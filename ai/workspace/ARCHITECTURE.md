@@ -265,10 +265,19 @@ Runtime storage owns task history. The [MVP conversation activity](MVP.md#conver
 contract defines conversation-list status indicators and conversation-level inspection, without a
 separate work-view screen.
 
-Local logs cover failures outside committed runtime state: HTTP, JSON persistence, startup, and
-stream delivery. Include operation and available conversation/submission/task IDs, with sanitized
-errors. Exclude raw provider exceptions, credentials, prompts, and tool payloads from browser
-details and default logs.
+Committed runtime records remain authoritative for execution history, activity, and outcomes; logs
+explain operations rather than establish execution truth.
+
+Use Pino for server-side structured JSON logging to stdout, with one configuration owner in
+`server/lib/logger.ts`. Local logs cover operational boundaries and failures outside committed
+runtime state: HTTP, JSON persistence, startup, and stream delivery. Include event, operation,
+available conversation/submission/task IDs, relevant durations, and sanitized error codes. Avoid
+per-token, per-snapshot, and routine internal-call logging. Development may use `pino-pretty`;
+external transports, a logging service, and a generic logger abstraction are not needed initially.
+
+Select safe fields explicitly before logging; configured redaction is an additional defense, not a
+substitute. Exclude raw provider exceptions, credentials, prompts, file contents, shell arguments,
+and tool payloads from browser diagnostics and default logs.
 
 ## Future host and environment constraints
 

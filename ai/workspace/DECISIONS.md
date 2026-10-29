@@ -98,3 +98,21 @@ packages. Keep rendering, branch navigation, and visible components application-
 
 Pi Durable remains the runtime; this choice does not adopt TanStack Harness or its provider
 adapters. [Frontend architecture](ARCHITECTURE.md#frontend-design) owns the integration boundaries.
+
+## ADR-009: Use runtime inspection and Pino local logs for observability
+
+Status: accepted direction; logging integration not yet implemented.
+
+Use committed runtime inspection and history for product visibility, with Pino structured local logs
+for operational diagnostics. Runtime records remain the execution source of truth. Keep visibility
+in the existing conversation list and details rather than a separate dashboard.
+
+Pino supplies structured logging and contextual fields without maintaining a custom logger. Optional
+development-only `pino-pretty` improves local readability. This approach avoids operating a separate
+observability stack or duplicating conversation history for diagnostics.
+
+Defer OpenTelemetry, Langfuse, and other external observability platforms. Reconsider when a
+concrete need for cross-host tracing, aggregate analysis, or repeatable workflow evaluation
+justifies the additional infrastructure. The [MVP observability scope](MVP.md#conversation-activity)
+and [architecture logging rules](ARCHITECTURE.md#failure-presentation-and-inspection) define the
+implementation contract.

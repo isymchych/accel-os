@@ -1,9 +1,9 @@
 ---
 name: commit
 description:
-  Generate Conventional Commit messages, commit staged work, or improve, amend, and rename the
-  latest commit message through a safe execution helper. Use when the user asks to draft or execute
-  a commit, retry a commit, bypass hooks, or revise the latest commit message.
+  Draft commit messages, create commits from staged changes, or rewrite the latest commit message.
+  Use for commit creation and message-only amendments, including retries. Requests to change a
+  commit's code, files, or patch require a different workflow.
 ---
 
 # Commit
@@ -73,6 +73,9 @@ Preserve structured `ERR_*` helper output; treat error codes as stable interface
 concise explanation or next action.
 
 ## Intent and pending actions
+
+If "rewrite/update/amend the last commit" does not clearly mean changing only its message, clarify
+whether the user wants message changes or content changes before following the amend workflow.
 
 Execution wording such as `commit`, `amend`, `rename it to ...`, or
 `improve the last commit message` authorizes the corresponding action. Proposal wording such as
