@@ -59,8 +59,7 @@ future-proofing.
 - Preserve required error reporting and cleanup. Add retries, fallbacks, and other recovery only for
   affected contracts or evidenced operational needs; otherwise fail clearly.
 - Follow local conventions unless they conflict with correctness or explicit requirements. Build
-  around documented protocols. Use clear names and comments for non-obvious rationale or
-  constraints, not narration of the code.
+  around documented protocols.
 
 These are defaults for required work, not permission to refactor adjacent code. Before removing
 load-bearing guards, workflows, caches, retries, permissions, or compatibility behavior, look for

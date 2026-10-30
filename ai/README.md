@@ -250,8 +250,9 @@ pinpoint the root cause Makes targeted fixes based on evidence
 
 ## Docs
 
-- [Agent Operating Model](docs/agent_operating_model.md)
-- [Engineering Guidelines](docs/engineering_guidelines.md)
+- [Agent policy](SYSTEM.md) — operational defaults.
+- [Agent intent](INTENT.md) — preferences and rationale behind agent guidance.
+- [Engineering intent](ENGINEERING_INTENT.md) — engineering preferences and tradeoffs.
 - [Prompting and Memory](docs/prompting_and_memory.md)
 
 ## Skills

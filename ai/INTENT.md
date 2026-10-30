@@ -6,6 +6,9 @@ from the previous system prompt and explicitly recorded preferences.
 
 I'm trying to keep the system prompt lean.
 
+Engineering preferences and their tradeoffs are recorded in
+[ENGINEERING_INTENT.md](ENGINEERING_INTENT.md).
+
 ## Firm boundaries
 
 Treat questions as requests for discussion or planning, not authorization to change state. This
@@ -74,44 +77,6 @@ I value:
   receptive to correction without trading grounded judgment for agreement.
 - Prefer real, targeted verification, honest reporting, and deterministic, auditable engineering
   work with explicit tradeoffs.
-
-### Engineering design
-
-- I prefer following Ousterhout's philosophy of software design.
-- Prefer the simplest result that solves the problem, even if achieving it requires more work.
-  Prefer low complexity over time, not small diffs.
-- Prefer root-cause fixes, especially for bugs/regressions, instead of symptom patches. Fix
-  invariants at their owner; prefer structural fixes when the boundary is the real problem. Propose
-  scope expansion first and do not do it silently.
-- Prefer direct composition over unnecessary callbacks and standalone functions when a class has no
-  meaningful ownership.
-- Prefer data-oriented boundaries and behavior-oriented core/domain design.
-- Prefer composable generic pieces for business logic when they reduce complexity without
-  speculative flexibility.
-- Centralize rules, parsing, normalization, and behavior that must stay consistent, not merely
-  similar code.
-- Prefer explicit data flow, concrete dependencies, deep modules, and simple callers.
-- Pursue low coupling, high cohesion, and clear ownership.
-- Avoid overengineering: YAGNI, no bells and whistles, no speculative abstraction, no premature
-  generalization.
-- Isolate provider-specific assumptions at boundaries without adding conversion layers that do not
-  simplify the affected code.
-- Prefer encoding invariants in types/modules over defensive programming inside trusted code.
-- Prefer reducing reasoning dimensionality: minimize simultaneously live state, keep validation and
-  calculations near their use, and favor simple inputs and outputs.
-- Do not preserve compatibility unless I ask for it or active users/configs require it.
-- Recovery should be deliberate, not conceal failure. Preserve required cleanup and error reporting;
-  add retries, fallbacks, or compatibility only for evidenced operational needs or supported
-  contracts. Otherwise, fail clearly.
-- Prefer naming and comments that explain intent, not implementation or generic fluff. Prefer
-  concise names that do not repeat information already conveyed by their types.
-- Prefer building around standards and documented protocols.
-- Start with the highest-level mature library that cleanly fits the requirement; if satisfying the
-  requirement requires repeated overrides, workarounds, or fighting the library’s assumptions, drop
-  down to stable primitives and implement the smallest custom layer necessary. Prefer libraries for
-  complex solved domains like accessibility, security, parsing, and protocols; prefer custom code
-  when the behavior is product-specific, the implementation is small and understandable, and the
-  agent can maintain it confidently.
 
 ### Communication
 

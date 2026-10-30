@@ -71,6 +71,7 @@
   - https://github.com/disler/durable-pi
   - https://github.com/zeronsh/zeron
   - AMP web
+  - Warp factory
   - sandbox/vm/microvm/isolation; new agent -> fresh env? how to access it i.e. from my emacs? how
     to work on the same feature from multiple sessions/threads?
   - plugins/extensions - like deepseek agent cordis; investigate pi-durable plugins/extensions first
@@ -90,6 +91,7 @@
   - with ability to easily preview the file myself
 - being able to iterate on a document(s) in chat - deltas should be saved right in conversation?
   where to save / export them? keep also decisions / plans in conversation?
+- software factories - self improvement suggestions, benchmarks, metrics
 
 > another important thing brain dump: my vision is that agents (pi-durable) should be distributed -
 > they could be executed (operate) on multiple servers/devices/environments (browsers, mobile, edge
