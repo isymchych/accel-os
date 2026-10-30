@@ -30,20 +30,52 @@ Browser: Solid 2 features + local binding to @tanstack/ai-client
   | Hono RPC: workspace reads and commands
   | AG-UI over HTTP/SSE: conversation snapshots and updates
   v
-Node: Hono routes -> feature services -> server/runtime/
-                                          | Durable harnesses and storage
-                                          | pi-ai providers and authentication
-                                          | tool execution environments
+API subprocess: Hono routes + HTTP/SSE translation + built UI
+  | Narrow IPC commands, reads, and subscriptions
+  v
+Main Node process: feature services -> server/runtime/
+                                        | Durable harnesses and storage
+                                        | pi-ai providers and authentication
+                                        | tool execution environments
+                                        | Check & Reload coordination
 ```
 
-One Node process initially hosts workspace services and the local agent host. Production serves UI
-and API from one loopback origin; development uses Vite's proxy for API and stream requests. Both
-servers bind exclusively to loopback addresses. Development restarts must close the previous storage
-owner before opening another.
+This is the agreed target; the diagnostic foundation still runs in one Node process. The process
+split and Check & Reload are not yet implemented.
+
+One launcher manages a stable main process and a replaceable API subprocess, not independently
+deployed services. Serve the built UI and API from one loopback origin. The main process owns
+authoritative feature policy, configuration, credentials, admission, cancellation, and runtime
+storage. The API child owns HTTP/browser security checks and wire translation; it does not open
+runtime storage or own execution. Replacing it disposes observation, not running work. Tool
+execution must not depend on the API child's lifetime.
 
 The workspace owns presentation, user intent, configuration, credentials, host discovery, and
 transport. Local execution works directly with the selected environment. Scheduling and remote
 provisioning belong to later scope.
+
+### Build and activation
+
+Use one workflow, without a Vite development server, proxy, automatic HMR, backend source watcher,
+or separate development/production setup. Vite with Solid and Tailwind compiles the browser; Node
+runs supported backend TypeScript directly. Retain typechecking, lint, and tests.
+
+The stable main process coordinates the [Check & Reload lifecycle](DOMAIN.md#check-and-reload).
+Reuse the canonical checks and build commands in the workspace `Justfile`; do not reimplement them
+inside the product. After checks and candidate preparation succeed, every reload replaces the API
+child, installs capability definitions, and reloads the UI. Do not add change detection or selective
+reload paths. The operation survives the API/browser disconnection and exposes its outcome after
+reconnection. Main-process code changes require a full restart rather than an implicit interruption
+of execution.
+
+Use Durable's registry replacement APIs without submission-wide code-version pinning. Capability
+loading remains internal integration; this does not introduce general application plugin loading.
+Activation covers backend/capability code as well as browser assets; directly loading later edits
+from the mutable source tree must not bypass the explicit activation boundary.
+
+The current commands build browser assets and run backend source directly. A last-successful
+application candidate, reload coordination, and safe capability module loading remain implementation
+work; [README.md](README.md#run) describes the currently supported manual workflow.
 
 ### Source layout
 
@@ -309,7 +341,7 @@ as confined to the working directory. Sandboxing needs a separate execution-boun
 - Bind to explicit loopback addresses. Validate hosts and browser origins; reject unrecognized hosts
   to constrain DNS rebinding.
 - Require configured same-origin checks and JSON for browser mutations. No wildcard CORS or
-  state-changing GET routes. Keep Vite proxy behavior consistent.
+  state-changing GET routes.
 - Accept a directory or opaque saved-project ID. Validate and canonicalize paths on the backend
   before applying execution policy. Project registration is not an authorization boundary.
 - Enforce containment for application file-access endpoints, including traversal and symlinks. This

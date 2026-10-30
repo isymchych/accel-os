@@ -1,28 +1,19 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-server:
-    npm run dev:server
+start:
+    npm run start
 
-client:
-    npm run dev:client
+build:
+    npm run build
 
-dev:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    session="accel-workspace"
-    workspace_directory="{{ justfile_directory() }}"
+fmt:
+    npm run fmt
 
-    if ! tmux has-session -t "$session" 2>/dev/null; then
-      tmux new-session -d -s "$session" -c "$workspace_directory" "npm run dev:server"
-      tmux split-window -t "$session" -h -c "$workspace_directory" "npm run dev:client"
-      tmux select-layout -t "$session" even-horizontal
-    fi
-
-    if [[ -n "${TMUX:-}" ]]; then
-      exec tmux switch-client -t "$session"
-    fi
-
-    exec tmux attach-session -t "$session"
+check:
+    npm run fmt:check
+    npm run lint
+    npm run typecheck
+    npm test
 
 test-e2e:
     npm run test:e2e

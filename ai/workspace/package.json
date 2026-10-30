@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev:client": "vite",
-    "dev:server": "WORKSPACE_MODE=development node --watch server/app/main.ts",
-    "start": "node server/app/main.ts",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "start": "WORKSPACE_MODE=production node server/app/main.ts",
     "test": "node --test tests/integration/*.test.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --project contracts/tsconfig.json && tsc --project server/tsconfig.json && tsc --project client/tsconfig.json"

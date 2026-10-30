@@ -73,9 +73,31 @@ interaction; switching an existing conversation's account remains post-MVP.
 When presets enter scope, applying one resolves concrete configuration for the conversation. Later
 preset edits affect future applications; existing configurations retain their resolved values.
 
-Running work retains its resolved configuration across host-default, registry, and project edits.
-Inherited execution choices resolve explicitly where needed. A conversation keeps its configured
-directory when a saved project's path changes; applying another directory is explicit.
+Running work retains its resolved configuration across host-default and project edits. Capability
+implementation changes follow the [reload lifecycle](#check-and-reload), rather than preserving one
+code version for an entire submission. Inherited execution choices resolve explicitly where needed.
+A conversation keeps its configured directory when a saved project's path changes; applying another
+directory is explicit.
+
+## Check and Reload
+
+Check & Reload is one explicit user action: check the edited source, build a candidate, then reload
+the UI, API, and capability implementations. Editing files does not automatically activate changes.
+There are no separate development and production workflows or selective reload controls.
+
+Failed checks or builds leave the running version active. Preserve browser drafts and handle unsaved
+forms before replacing the UI. API reload may disconnect clients; execution continues independently
+and clients reconnect to current state. Report activation failures and what remains active rather
+than promising an atomic rollback across all components.
+
+Capability reload follows the runtime's native boundaries: an executing tool call finishes with its
+existing implementation; later task phases, requests, or calls may use replacements, including
+within the same run. This changes implementation code, not the admitted work's resolved account,
+directory, or other configured choices.
+
+Normal startup uses the last successful version without checking or building again. Changes to the
+stable execution owner require a full restart, distinct from reload, with recovery under the
+[work lifecycle](#work-lifecycle).
 
 ## Conversation branches
 

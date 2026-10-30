@@ -22,6 +22,16 @@ resolution. Allow configuration editing while preserving running execution conte
 limited by the pinned runtime's context-preservation capabilities, require confirmed idle and
 document the limitation.
 
+### Deployment and reload
+
+Implement the [single-application process model](ARCHITECTURE.md#ownership-and-boundaries) and
+[Check & Reload behavior](DOMAIN.md#check-and-reload). These are accepted first-release
+requirements, not implemented capabilities of the diagnostic foundation.
+
+The stable main process coordinates the existing checks and build, runtime ownership, and reload
+outcomes. Native capability replacement is an explicit exception to submission-wide implementation
+isolation; keep resolved configuration safety intact. Application plugin loading remains post-MVP.
+
 ### Models and credentials
 
 MVP supports OpenAI login through `pi-ai`, with multiple accounts available concurrently and an
@@ -224,6 +234,10 @@ location, backup procedure, SQLite synchronization, and request/output limits be
 corresponding capabilities enter use. Document chosen limits; escalate only when evidence requires a
 product tradeoff or architecture change.
 
+Choose the candidate layout and capability module-loading mechanism during reload implementation.
+They must support the explicit activation boundary and startup from the last successful version; the
+current browser build plus direct backend source startup does not establish either guarantee.
+
 Resolve the mapping of branch trees to Durable conversations and history, valid fork points, and
 forking behavior while source work is running during runtime integration. The tree interaction
 design and frontend integration details remain open within the agreed branching scope.
@@ -277,6 +291,14 @@ tools, and isolated temporary state.
   indicators, and task ownership, queued input, and blocked/interrupted reasons in conversation
   details. Disconnected state shows the last observation; a fresh observation confirms current
   state. File edits and shell commands execute directly under the MVP's unsandboxed host policy.
+- **Check & Reload:** one explicit action runs the canonical checks and build before reloading UI,
+  API, and capabilities, without selective reload or file-watch activation. Failed checks/builds
+  preserve the active version. Verify draft preservation and handling of unsaved forms, API-child
+  replacement while work continues in the same main process/harness, and reconnect to committed
+  state and the reload outcome. A running tool retains its implementation while a later phase may
+  use the replacement, without changing resolved account or execution context. Verify admission
+  deduplication across lost responses, activation-failure diagnostics, startup from the last
+  successful version without rebuilding, and explicit full restart for main-process code changes.
 
 ### Test isolation and browser coverage
 

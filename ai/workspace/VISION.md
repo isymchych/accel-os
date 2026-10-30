@@ -27,6 +27,8 @@ The first usable version is local interactive coding with durable execution:
 - Reconnect to ongoing work and automatically recover eligible unfinished work after a server
   restart.
 - Log in to multiple OpenAI accounts and use different accounts in concurrent conversations.
+- Improve the workspace itself through one explicit Check & Reload action while agent work
+  continues.
 
 Conversation-list status indicators suffice for MVP; there is no separate work-view screen.
 
@@ -53,6 +55,11 @@ Conversation-list status indicators suffice for MVP; there is no separate work-v
 5. **Branching:** include forking and tree-based history and branch navigation, in the spirit of
    Pi's coding agent. Side-by-side branch comparison is post-MVP. The detailed interaction design
    remains open.
+6. **Self-development:** use one local application with a stable execution owner and replaceable API
+   subprocess. One explicit Check & Reload action activates UI, API, and capability changes; there
+   are no separate development/production workflows or automatic source-watch activation. Follow the
+   [reload lifecycle](DOMAIN.md#check-and-reload), including native runtime replacement boundaries
+   and full restart for stable-main changes. General application plugin loading remains later scope.
 
 Later scope: presets (including storage and UI), account switching within an existing conversation,
 side-by-side branch comparison, other providers and custom endpoints, steering, remote access,

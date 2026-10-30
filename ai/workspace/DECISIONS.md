@@ -48,6 +48,10 @@ web/mobile views without moving authoritative state into clients.
 Start with workspace services and one local host in a Node process. Extend to remote hosts and
 environments as membership, authority, and lifecycle policies are defined.
 
+The single-process placement is superseded by
+[ADR-010](#adr-010-use-one-explicit-check-and-reload-workflow); host execution ownership remains
+unchanged.
+
 ## ADR-006: Use pi-ai with workspace-owned configuration
 
 Status: accepted direction.
@@ -116,3 +120,27 @@ concrete need for cross-host tracing, aggregate analysis, or repeatable workflow
 justifies the additional infrastructure. The [MVP observability scope](MVP.md#conversation-activity)
 and [architecture logging rules](ARCHITECTURE.md#failure-presentation-and-inspection) define the
 implementation contract.
+
+## ADR-010: Use one explicit Check & Reload workflow
+
+Status: accepted direction; reload and the process split are not yet implemented.
+
+The workspace should support using an agent to improve the workspace itself, with a short,
+user-controlled feedback loop. Use one local application and one Check & Reload action instead of
+separate development/production workflows, automatic watchers, or per-component reload controls.
+Keep the existing compiler and verification tools; the product orchestrates their canonical commands
+rather than replacing them.
+
+Keep Durable and authoritative application state in a stable main process, with HTTP/UI delivery in
+a replaceable API child. This supersedes the single-process placement in
+[ADR-005](#adr-005-separate-workspace-access-from-agent-execution-ownership) without introducing
+independently deployed services. API and UI reloads must not interrupt agent execution; changes to
+main-process code still require restart and recovery.
+
+Use native Durable registry replacement boundaries rather than custom submission-level version
+pinning. A running call retains its implementation, but later phases of the same run may use new
+code. This trades submission-wide implementation consistency for a simpler, tighter feedback loop;
+configured account and execution-context safety remain intact.
+
+[DOMAIN.md](DOMAIN.md#check-and-reload) owns activation behavior and failure semantics;
+[ARCHITECTURE.md](ARCHITECTURE.md#build-and-activation) owns the process and build boundaries.

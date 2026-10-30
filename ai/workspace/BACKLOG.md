@@ -5,7 +5,6 @@
 - separating where the work executes from where the developer controls it
 - the UI, agent execution engine, and synchronization layer are separate systems
 
-- deployment model? live reload (only UI? backend? what if long running tasks?)
 - review the ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
 
 > The interesting abstraction is:
@@ -95,8 +94,6 @@
   - ? https://github.com/ghuntley/overalls
   - agents should be WELL INTEGRATED INTO THEIR ENVIRONMENT
 - dynamic system prompts (pi can't do that)
-- live editing/live reload, even in "prod mode" (do we need "prod mode"?); live reload (of plugins,
-  of web interface) shoudn't break app (easily reversible)
 - maybe through mcp?
 
 ## Ideas

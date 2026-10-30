@@ -16,7 +16,7 @@ Keep workspace runtime code independent of repository-internal packages.
 - [VISION.md](VISION.md#agreed-mvp-decisions): MVP scope, execution authority, and ownership of
   configuration and credentials.
 - [DECISIONS.md](DECISIONS.md): consequential choices and rationale.
-- [README.md](README.md): development and check commands.
+- [README.md](README.md): run, build, and check commands.
 
 Read the relevant sections, including architecture security requirements before enabling execution.
 Proposals describe direction; implementation requires explicit authorization. Runtime checks must
@@ -49,6 +49,10 @@ compatibility guidance.
 Run commands from this directory. Choose focused checks, then the workspace checks in
 [README.md](README.md#checks) for integration. Keep focused tests beside code, cross-boundary Node
 tests in `tests/integration/`, and browser journeys in `tests/e2e/`.
+
+Use `just start` to run the application, `just build` to build browser assets, `just check` for
+workspace verification, and `just fmt` to format workspace files. Just recipes invoke workspace npm
+scripts; expose JavaScript tools there rather than hardcoding `node_modules/.bin` paths.
 
 `npm test` runs Node integration tests; `just test-e2e` runs browser journeys. Typechecking checks
 invalid RPC input in `client/lib/api.type-test.ts`. E2E needs compatible system Chromium and a free
