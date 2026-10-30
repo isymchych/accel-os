@@ -1,10 +1,12 @@
 ## TODO
 
 - rename "runtime" to something more interesting - i.e. "robot"/"agent"?
-- review the ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
 - company? - agentic system/organisation
 - separating where the work executes from where the developer controls it
 - the UI, agent execution engine, and synchronization layer are separate systems
+
+- deployment model? live reload (only UI? backend? what if long running tasks?)
+- review the ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
 
 > The interesting abstraction is:
 
@@ -20,10 +22,23 @@
 
 ---
 
+## Relevant later
+
+- CLI/event-driven and scheduled triggers.
+- Multi-step workflows and hierarchical subagents.
+- Reusable skills, commands, and agent presets.
+- Model-agnostic dispatch—our MVP deliberately supports only OpenAI.
+- Alternative execution environments and remote runners.
+- Per-run usage/cost visibility, where supported by runtime accounting.
+- Workflow evaluations once we have repeatable workflows to evaluate.
+- mandatory human approval gates in workflows
+
+---
+
 - personal playground
 - The Place - for intrecating with agents. it should feel like that, not like regular "chat app"
   - better operating environment for agents
-- sandboxing? microvm? devcontainer? code-first? only allow codemode?
+- sandboxing? microvm? devcontainer? code-first? isolated per-run sandboxes
 - memory system / compound engineering
 - live system introspection / repl
   - do we even need it? chat is repl, expose introspection tools there
@@ -91,6 +106,8 @@
   - with ability to easily preview the file myself
 - being able to iterate on a document(s) in chat - deltas should be saved right in conversation?
   where to save / export them? keep also decisions / plans in conversation?
+- being able to **iterate on last agent response** (so more like we should treat it as agent's plan
+  or proposal artifact) - since often i don't like/don't understand **only some part** of the answer
 - software factories - self improvement suggestions, benchmarks, metrics
 
 > another important thing brain dump: my vision is that agents (pi-durable) should be distributed -

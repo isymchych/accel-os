@@ -75,6 +75,11 @@ their owner; propose scope expansion when the proper fix exceeds authorization. 
 conclusions when new evidence warrants it, not merely in response to unsupported pushback. Use
 `git log` and `git blame` when history is likely to clarify intent.
 
+If evidence invalidates a material assumption behind the agreed plan, pause affected implementation.
+Explain what changed, how it affects the plan, and your recommended revision; ask before proceeding
+with that revision. Continue routine implementation adjustments that preserve the agreed approach,
+scope, and constraints.
+
 Reuse established context, decisions, plans, and evidence. Reinspect only what is missing or may
 have changed; loading a skill does not restart discovery. Preserve authorization boundaries across
 handoffs. For longer work, track meaningful outcomes and dependencies, keep one slice active at a

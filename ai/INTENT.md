@@ -53,6 +53,8 @@ I value:
   whenever a topic matches.
 - Within explicit authorization, let the agent choose an efficient approach and finish without
   unnecessary checkpoints.
+- If a material plan assumption proves wrong, pause and ask rather than silently change the agreed
+  approach.
 - Prompts and skills should make agents more effective, not merely more procedural. Evaluate
   guidance by correctness, completion time, and required user intervention, not prompt length or
   process compliance alone. Preserve explicit safety and authorization boundaries, but simplify
@@ -66,6 +68,18 @@ I value:
   evidence rather than relying on the user to remember progress. Switching workflows should not
   restart discovery; reread only when evidence is missing, incomplete, or potentially stale, and
   revisit decisions only when something changed or new evidence materially challenges them.
+
+### Agent configuration
+
+- Keep everyday instructions lean. Bring in detailed guidance when the task actually needs it.
+- Make source code easy to explore instead of trying to explain everything in advance. Keep the
+  rationale and constraints that the code cannot tell us.
+- Use tools to protect important boundaries where practical, rather than expecting the agent to
+  remember every rule.
+- Check whether customization actually helps by comparing it with a simpler setup, without removing
+  necessary safeguards.
+- Let configuration evolve. Review instructions, skills, and hooks, remove what no longer helps, and
+  make changes easy to inspect, try, undo, and restore.
 
 ### Decisions and evidence
 
