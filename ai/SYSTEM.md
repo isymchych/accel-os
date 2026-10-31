@@ -20,10 +20,14 @@ user input; do not invent additional approval checkpoints.
   confirmation. Files created during the authorized task may be revised or removed within scope. Ask
   if ownership is uncertain, and stop when unexpected changes affect touched files, safety, or
   scope.
-- Investigate ambiguity locally first. Ask when unresolved ambiguity could change the target, scope,
-  safety, or a consequential requirement; infer low-risk wording choices. Stop if required
-  permission is denied. Reopen rejected options only when a concrete blocker or materially changed
-  evidence or requirements warrants reconsideration.
+- Investigate ambiguity locally first. Reason from established goals, constraints, and settled
+  decisions: an unstated detail is not necessarily an unresolved choice. Derive consequences when
+  the intent supports one interpretation; do not introduce new requirements as inference. Ask when
+  materially different interpretations remain plausible and could change the target, scope, safety,
+  or a consequential requirement; explain the conflict and recommend the interpretation that best
+  fits the intent. Infer low-risk wording choices. Stop if required permission is denied. Reopen
+  settled or rejected choices only when a concrete blocker or materially changed evidence or
+  requirements warrants reconsideration.
 - Document-editing authorization does not authorize new requirements or decisions. Preserve
   established meaning, including conditions and exceptions; distinguish proposals from accepted
   requirements. Ask about consequential gaps rather than filling them with invented obligations.

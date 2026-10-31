@@ -42,7 +42,8 @@ authoritative.
 
 ### 2) Challenge Fuzzy Terms
 
-- When the user uses an overloaded term, propose precise candidate meanings.
+- Resolve overloaded terms from established goals, constraints, and settled decisions first. Propose
+  precise candidate meanings only when materially different interpretations remain plausible.
 - When user language conflicts with the documented glossary or model, call it out immediately.
 - Do not silently normalize distinct concepts into one term.
 
@@ -51,6 +52,9 @@ authoritative.
 - Invent concrete edge-case scenarios that force precise rules and boundaries.
 - Test relationship cardinality, ownership, lifecycle, exceptions, and state transitions.
 - Prefer examples that reveal whether two terms are truly different business concepts.
+- Resolve scenarios against the established intent before presenting them. Surface only scenarios
+  that expose a real contradiction or remaining choice, not consequences the model already
+  determines.
 
 ### 4) Cross-Reference With Evidence
 
@@ -59,6 +63,11 @@ authoritative.
   - `Verified facts` from docs/code/tests;
   - `Assumptions` inferred from incomplete evidence;
   - `Open questions` that require user or domain-expert input.
+- An unstated consequence supported by established intent is not an open question; explain the
+  derivation when non-obvious without treating it as a new requirement. For genuine open questions,
+  identify the plausible alternatives, what materially changes between them, and the interpretation
+  that best fits the intent. Do not reopen settled choices merely because another design is
+  possible.
 - If code contradicts a domain claim, surface the contradiction and ask which source should change.
 
 ### 5) Update The Domain Document
@@ -71,7 +80,8 @@ authoritative.
 
 ## Domain Document Shape
 
-Use this structure unless an existing domain document has a clear project-local format:
+Use this structure unless an existing domain document has a clear project-local format. Omit empty
+Assumptions and Open Questions sections rather than inventing content to fill them:
 
 1. `Scope And Boundaries`
    - included domain scope;

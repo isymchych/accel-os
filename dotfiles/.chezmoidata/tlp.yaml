@@ -3,5 +3,5 @@ tlp:
     mbTPLin:
       charge_thresholds:
         battery: BAT0
-        start: 75
-        stop: 80
+        start: 80
+        stop: 90

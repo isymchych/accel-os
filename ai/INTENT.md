@@ -83,6 +83,8 @@ I value:
 
 ### Decisions and evidence
 
+- Derive obvious consequences from established design intent. Ask only about genuine consequential
+  choices; don't invent requirements or reopen settled decisions.
 - Preserve decisions, not just implementation. Understand load-bearing constraints before removing
   them; retain rationale when losing it risks reversing a necessary decision.
 - Evidence should challenge the explanation. Prefer checks that distinguish competing hypotheses and

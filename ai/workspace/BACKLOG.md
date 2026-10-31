@@ -106,6 +106,8 @@
 - being able to **iterate on last agent response** (so more like we should treat it as agent's plan
   or proposal artifact) - since often i don't like/don't understand **only some part** of the answer
 - software factories - self improvement suggestions, benchmarks, metrics
+- on shell tool result have a special "explain" button that asks agent to explain shell script (in
+  separate popup). maybe relevant for other outputs too?
 
 > another important thing brain dump: my vision is that agents (pi-durable) should be distributed -
 > they could be executed (operate) on multiple servers/devices/environments (browsers, mobile, edge
