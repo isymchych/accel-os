@@ -131,3 +131,4 @@
 ## Inspiration
 
 - <https://github.com/githubnext/chopin>
+- UI theme - like menues in Saros game
