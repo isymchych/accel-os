@@ -59,9 +59,12 @@ a lost stream as a connection error; establish execution outcomes from runtime s
 
 ## Configuration safety
 
-Changes to model, instructions, tools, and execution context apply to subsequent work. Admitted work
-keeps its resolved configuration, including during concurrent submissions and configuration changes.
+Model, instruction, and tool-selection edits take effect at Durable's native resolution boundaries.
+Running operations retain their resolved context; later phases, requests, or calls may use updates
+within the same run, including tool-selection edits after the model requested a call.
 Presentation-only changes may take effect immediately.
+
+Changing a conversation's working directory requires confirmed idle with no pending admitted work.
 
 Each conversation selects an account independently; different conversations may use different
 accounts concurrently. Admitted work retains its resolved account. Post-MVP account switching
@@ -73,11 +76,12 @@ interaction; switching an existing conversation's account remains post-MVP.
 When presets enter scope, applying one resolves concrete configuration for the conversation. Later
 preset edits affect future applications; existing configurations retain their resolved values.
 
-Running work retains its resolved configuration across host-default and project edits. Capability
-implementation changes follow the [reload lifecycle](#check-and-reload), rather than preserving one
-code version for an entire submission. Inherited execution choices resolve explicitly where needed.
-A conversation keeps its configured directory when a saved project's path changes; applying another
-directory is explicit.
+Inherited model, instruction, and tool choices follow the same native resolution boundaries when
+host defaults or project configuration change; explicit conversation overrides remain in effect.
+Capability implementation changes follow the [reload lifecycle](#check-and-reload). A conversation
+keeps its configured directory when a saved project's path changes; applying another directory is
+explicit and follows the directory guard above. A conversation retains its selected account across
+host-default and project edits.
 
 ## Check and Reload
 
@@ -92,8 +96,8 @@ than promising an atomic rollback across all components.
 
 Capability reload follows the runtime's native boundaries: an executing tool call finishes with its
 existing implementation; later task phases, requests, or calls may use replacements, including
-within the same run. This changes implementation code, not the admitted work's resolved account,
-directory, or other configured choices.
+within the same run. Reload preserves conversation configuration; configuration edits follow
+[configuration safety](#configuration-safety).
 
 Normal startup uses the last successful version without checking or building again. Changes to the
 stable execution owner require a full restart, distinct from reload, with recovery under the

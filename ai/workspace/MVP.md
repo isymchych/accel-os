@@ -17,10 +17,8 @@ post-MVP.
   termination against the Stop contract.
 - Supply Durable's model access through a configured `pi-ai` `Models` collection.
 
-Verify configuration isolation through every runtime task phase, including agent and environment
-resolution. Allow configuration editing while preserving running execution context. For changes
-limited by the pinned runtime's context-preservation capabilities, require confirmed idle and
-document the limitation.
+Apply [configuration safety](DOMAIN.md#configuration-safety) through Durable's agent and environment
+resolution.
 
 ### Deployment and reload
 
@@ -29,8 +27,7 @@ Implement the [single-application process model](ARCHITECTURE.md#ownership-and-b
 requirements, not implemented capabilities of the diagnostic foundation.
 
 The stable main process coordinates the existing checks and build, runtime ownership, and reload
-outcomes. Native capability replacement is an explicit exception to submission-wide implementation
-isolation; keep resolved configuration safety intact. Application plugin loading remains post-MVP.
+outcomes. Application plugin loading remains post-MVP.
 
 ### Models and credentials
 
@@ -141,8 +138,8 @@ those actions.
 3. The runtime durably admits the submission before HTTP success.
 4. The client observes committed progress through AG-UI over HTTP/SSE.
 
-Retain the ID across ambiguous HTTP failures; define its scope and reject reuse with different
-content. Newly composed input gets a new ID. Do not indiscriminately retry non-idempotent actions.
+Retain the ID across ambiguous HTTP failures; define its scope. Newly composed input gets a new ID.
+Do not indiscriminately retry non-idempotent actions.
 [Explicit follow-ups](DOMAIN.md#work-lifecycle) use Durable's inbox, which owns the queue and
 placement after the active run during normal execution. Show queued input separately from active
 execution. Stop follows the selected runtime's queued-input behavior; see
@@ -272,33 +269,39 @@ tools, and isolated temporary state.
   submission response followed by retry creates one input. Check confirmed cancellation, bounded
   slow-reader output with snapshot resynchronization, observer cleanup, and stale callback/late
   response rejection. Reads and commands preserve drafts and protocol-driven live state.
-- **Security and UI:** reject hostile hosts/origins, traversal, mismatched request IDs, and
-  oversized input. Verify safe Markdown, error/disconnection feedback, primitive variants, control
-  interactions, dismissal, and long content in both themes and narrow/wide feature screens.
+- **Security and UI:** reject hostile hosts/origins, traversal, and oversized input. Verify safe
+  Markdown, error/disconnection feedback, primitive variants, control interactions, dismissal, and
+  long content in both themes and narrow/wide feature screens.
 - **Application state:** for each file, verify initialization, round trips, invalid-file
   preservation, newer-version rejection, concurrent updates, failed-save isolation, and
   missing-project errors. Test historical migrations when historical schemas exist.
-- **Configuration and lifecycle:** stable context during concurrent submissions/configuration
-  changes, and idle guards for runtime-limited changes. Stop terminates owned processes and waits
-  for confirmed termination of the cancelled run and its processes. Queued-input behavior through
-  Stop, reconnect, and restart matches the selected runtime without duplicate input. Startup
-  recovery runs independently of browser connections for eligible work. Verify upstream tool replay
-  policies: unsafe interrupted calls do not rerun automatically, their committed partial output is
-  visible, and the model can continue without blanket human approval. Verify recovery instructions
-  direct the agent to inspect actual state before retrying uncertain effects. Outcomes stay
-  independent of connection state; tool failures may leave runs active. Verify safe failure/blocked
-  summaries, follow-ups through the runtime inbox, conversation-list running/waiting/blocked
-  indicators, and task ownership, queued input, and blocked/interrupted reasons in conversation
-  details. Disconnected state shows the last observation; a fresh observation confirms current
-  state. File edits and shell commands execute directly under the MVP's unsandboxed host policy.
+- **Configuration and lifecycle:** verify [configuration safety](DOMAIN.md#configuration-safety)
+  during model, instruction, and tool-selection edits while busy: running operations retain their
+  context and later phases or calls use updates at native boundaries. Cover tool-selection edits
+  after a model requests a call, inherited host-default/project edits, account isolation, and stable
+  working directories. Exercise the directory guard with pending work and concurrent admission,
+  including agent and environment resolution. Stop terminates owned processes and waits for
+  confirmed termination of the cancelled run and its processes. Queued-input behavior through Stop,
+  reconnect, and restart matches the selected runtime without duplicate input. Startup recovery runs
+  independently of browser connections for eligible work. Verify upstream tool replay policies:
+  unsafe interrupted calls do not rerun automatically, their committed partial output is visible,
+  and the model can continue without blanket human approval. Verify recovery instructions direct the
+  agent to inspect actual state before retrying uncertain effects. Outcomes stay independent of
+  connection state; tool failures may leave runs active. Verify safe failure/blocked summaries,
+  follow-ups through the runtime inbox, conversation-list running/waiting/blocked indicators, and
+  task ownership, queued input, and blocked/interrupted reasons in conversation details.
+  Disconnected state shows the last observation; a fresh observation confirms current state. File
+  edits and shell commands execute directly under the MVP's unsandboxed host policy.
 - **Check & Reload:** one explicit action runs the canonical checks and build before reloading UI,
   API, and capabilities, without selective reload or file-watch activation. Failed checks/builds
   preserve the active version. Verify draft preservation and handling of unsaved forms, API-child
   replacement while work continues in the same main process/harness, and reconnect to committed
   state and the reload outcome. A running tool retains its implementation while a later phase may
-  use the replacement, without changing resolved account or execution context. Verify admission
-  deduplication across lost responses, activation-failure diagnostics, startup from the last
-  successful version without rebuilding, and explicit full restart for main-process code changes.
+  use the replacement. Verify conversation configuration is preserved by reload and concurrent
+  configuration edits follow [configuration safety](DOMAIN.md#configuration-safety). Verify
+  admission deduplication across lost responses, activation-failure diagnostics, startup from the
+  last successful version without rebuilding, and explicit full restart for main-process code
+  changes.
 
 ### Test isolation and browser coverage
 

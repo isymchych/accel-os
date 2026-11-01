@@ -137,10 +137,13 @@ a replaceable API child. This supersedes the single-process placement in
 independently deployed services. API and UI reloads must not interrupt agent execution; changes to
 main-process code still require restart and recovery.
 
-Use native Durable registry replacement boundaries rather than custom submission-level version
-pinning. A running call retains its implementation, but later phases of the same run may use new
-code. This trades submission-wide implementation consistency for a simpler, tighter feedback loop;
-configured account and execution-context safety remain intact.
+Use Durable's native registry replacement and configuration resolution boundaries for a short
+feedback loop with a single runtime owner. Aligning configuration edits with runtime behavior keeps
+coordination simple; mixed model, instruction, or tool choices within a run are an accepted
+tradeoff. The working-directory guard keeps relative-path calls tied to the directory under which
+the model requested them. Per-conversation account isolation supports concurrent use of different
+logins.
 
 [DOMAIN.md](DOMAIN.md#check-and-reload) owns activation behavior and failure semantics;
+[configuration safety](DOMAIN.md#configuration-safety) owns configuration-edit boundaries;
 [ARCHITECTURE.md](ARCHITECTURE.md#build-and-activation) owns the process and build boundaries.

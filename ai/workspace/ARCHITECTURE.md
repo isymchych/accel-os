@@ -163,7 +163,7 @@ validation is separate from Hono RPC typing.
   preferences. Presets and general provider configuration are post-MVP.
 - **Workspace credentials:** server-side authentication material and persistence.
 - **Harness application documents:** metadata that must commit with conversation state, including
-  resolved configuration and account selection, and optional project association. Keep the project
+  conversation configuration, account selection, and optional project association. Keep the project
   catalog in application JSON and reference its IDs from harness documents.
 - **Client:** drafts, selected views, expanded output, connection state, and command feedback.
   Execution and submission state come from committed runtime records.
@@ -199,11 +199,11 @@ server-side, out of browser storage and Vite-exposed variables.
 
 Backend feature services enforce [configuration safety](DOMAIN.md#configuration-safety). Coordinate
 configuration commits and submission admission through one per-conversation boundary in
-`server/runtime/`, so each admitted unit receives a consistent resolved configuration. Persist it in
-harness-owned application documents as resolved values.
+`server/runtime/`, enforcing the working-directory guard atomically with admission. Persist
+conversation configuration and account selection in harness-owned application documents.
 
-The [MVP runtime integration](MVP.md#runtime-integration) defines operations and runtime-limited
-configuration guards.
+The [MVP runtime integration](MVP.md#runtime-integration) defines operations and configuration
+integration checks.
 
 Account selection is independent of conversation identity and historical transcript state. Post-MVP
 switching applies to subsequent submissions while admitted work retains its resolved account. New
