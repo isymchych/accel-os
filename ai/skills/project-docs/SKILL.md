@@ -95,8 +95,11 @@ Use stable kebab-case names. Follow existing ADR numbering; for a new collection
 numbers and never renumber historical records. Split documents by cohesive capability or audience
 when that makes them independently useful, not automatically by code module or development task.
 
-Keep the index lightweight: document purpose, current entry points, and relevant relationships. If
-multiple artifacts exist, explain which are maintained contracts and which are history. Keep
+Keep indexes focused on navigation: document purpose, entry points, and authority. Update them when
+those change, not merely because linked content changed. Keep design rationale and implementation
+details in their owning documents.
+
+If multiple artifacts exist, explain which are maintained contracts and which are history. Keep
 repository commands and agent permissions in their existing canonical guidance, not repeated in
 every spec.
 
