@@ -26,6 +26,14 @@
       use-package-always-ensure t
       use-package-verbose t)
 
+(defun mb-package-preload-tramp-archive (&rest _args)
+  "Load TRAMP archive support before validating package archive paths."
+  ;; Lazy initialization misresolves TRAMP's test/resources/foo.iso/ entry
+  ;; relative to the temporary directory, making the first update fail.
+  (require 'tramp-archive))
+
+(advice-add 'package-untar-buffer :before #'mb-package-preload-tramp-archive)
+
 ;; no-littering: organize emacs temporary files
 (use-package no-littering
   :custom
