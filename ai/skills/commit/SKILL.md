@@ -154,8 +154,8 @@ requiring exact command phrases.
   prose with a blank line, start each with `- `, and order them by user impact or risk. Avoid
   bullets that repeat the prose or merely list changed files.
 - Scale detail to complexity and risk; a small change may need only two sentences. Mention
-  compatibility changes, operational limits, and verification gaps when they matter, without
-  requiring fixed headings.
+  compatibility changes, operational limits, verification gaps, deliberate omissions, and surprising
+  decisions when they matter, without requiring fixed headings.
 - Ground explanations in inspected evidence and established task context. Never invent motivation,
   verification, or guarantees.
 - Use `type(scope)!: summary` and a `BREAKING CHANGE: ...` body entry for breaking changes.

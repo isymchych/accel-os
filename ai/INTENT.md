@@ -76,6 +76,9 @@ I value:
   rationale and constraints that the code cannot tell us.
 - Use tools to protect important boundaries where practical, rather than expecting the agent to
   remember every rule.
+- Treat model-interpreted instructions as guidance, not guaranteed enforcement. Protect hard
+  boundaries with appropriate permissions, isolation, or executable checks; stronger wording alone
+  does not make a boundary reliable.
 - Check whether customization actually helps by comparing it with a simpler setup, without removing
   necessary safeguards.
 - Let configuration evolve. Review instructions, skills, and hooks, remove what no longer helps, and

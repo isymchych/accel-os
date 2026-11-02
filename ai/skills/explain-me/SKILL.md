@@ -46,6 +46,10 @@ Use prose when it is clearest. Otherwise choose a focused view:
 
 - Default to inline Markdown and small ASCII views for the terminal. Ask about format only when the
   choice materially affects usefulness.
+- Structural diffs can compare file layouts, component trees, call relationships, or pseudocode—not
+  only source text.
+- Use a diff when the existing shape is familiar and the changes are the point. Show the complete
+  relevant shape when most is new or omissions would obscure ownership or order.
 - Explain how to read the view and the central takeaway. Label arrows so dependency, ownership,
   sequence, and data transfer are not conflated.
 - Preserve consequential exceptions, boundaries, and assumptions. Simplify detail, not certainty;
