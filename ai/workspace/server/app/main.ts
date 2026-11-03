@@ -1,37 +1,53 @@
-import { startWorkspaceServer } from "./server.ts";
+import { ReloadClient } from "./reload-client.ts";
+import { startWorkspaceServer, type StartedWorkspaceServer } from "./server.ts";
 
-try {
-  const workspaceServer = startWorkspaceServer();
+const control = new ReloadClient();
+let server: StartedWorkspaceServer | undefined;
+let closing = false;
 
-  void workspaceServer.ready
-    .then(({ address, port }) => {
-      console.log(`AI workspace listening on http://${address}:${port}`);
-    })
-    .catch((error: unknown) => {
-      console.error(`AI workspace failed to start: ${formatError(error)}`);
-      process.exitCode = 1;
-    });
-
-  let shuttingDown = false;
-  const shutdown = (): void => {
-    if (shuttingDown) {
-      return;
-    }
-
-    shuttingDown = true;
-    void workspaceServer.close().catch((error: unknown) => {
-      console.error(`AI workspace failed to shut down cleanly: ${formatError(error)}`);
-      process.exitCode = 1;
-    });
-  };
-
-  process.once("SIGINT", shutdown);
-  process.once("SIGTERM", shutdown);
-} catch (error) {
-  console.error(`AI workspace failed to start: ${formatError(error)}`);
-  process.exitCode = 1;
+async function shutdown(): Promise<void> {
+  if (closing) return;
+  closing = true;
+  try {
+    await server?.close();
+  } finally {
+    if (process.connected) process.disconnect();
+  }
 }
 
-function formatError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+process.on("message", (message: unknown) => {
+  if (
+    typeof message !== "object" ||
+    message === null ||
+    !("kind" in message) ||
+    message.kind !== "listen" ||
+    server !== undefined
+  )
+    return;
+  try {
+    server = startWorkspaceServer({ control, port: Number(process.env["WORKSPACE_PORT"]) });
+    void server.ready
+      .then(({ port }) => {
+        process.send?.({ kind: "listening", port });
+      })
+      .catch((error: unknown) => {
+        console.error("API child failed to listen.", error);
+        process.exitCode = 1;
+        void shutdown();
+      });
+  } catch (error) {
+    console.error("API child failed to start.", error);
+    process.exitCode = 1;
+    void shutdown();
+  }
+});
+process.once("SIGTERM", () => {
+  void shutdown();
+});
+process.once("SIGINT", () => {
+  void shutdown();
+});
+process.once("disconnect", () => {
+  void shutdown();
+});
+process.send?.({ kind: "prepared" });

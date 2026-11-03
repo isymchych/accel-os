@@ -5,7 +5,8 @@ const chromiumExecutablePath = process.env["WORKSPACE_CHROMIUM_PATH"] ?? "/usr/b
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  // Reload replaces the shared test server; browser journeys must not race it.
+  workers: 1,
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     launchOptions: {
@@ -14,9 +15,10 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `npm run build && WORKSPACE_MODE=production WORKSPACE_PORT=${port} npm run start`,
+    command: `state=$(mktemp -d); trap 'rm -rf "$state"' EXIT; export WORKSPACE_STATE_DIR="$state"; npm run build && WORKSPACE_PORT=${port} npm run start`,
     port,
     reuseExistingServer: false,
+    gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
   },
   projects: [
     {

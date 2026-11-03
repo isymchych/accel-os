@@ -1,5 +1,6 @@
 ## TODO
 
+- Pagoda? Brama?
 - rename "runtime" to something more interesting - i.e. "robot"/"agent"?
 - company? - agentic system/organisation
 - separating where the work executes from where the developer controls it
@@ -20,6 +21,15 @@
 > Sync = optional coordination between machines
 
 ---
+
+## Tech debt
+
+- branded types, domain ids
+- network requests in ui component
+- verbose errors/stacktraces in tests
+- should run e2e tests each time?
+- switch to React
+- use pino logger
 
 ## Relevant later
 

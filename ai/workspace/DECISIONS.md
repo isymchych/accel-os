@@ -123,7 +123,7 @@ implementation contract.
 
 ## ADR-010: Use one explicit Check & Reload workflow
 
-Status: accepted direction; reload and the process split are not yet implemented.
+Status: accepted.
 
 The workspace should support using an agent to improve the workspace itself, with a short,
 user-controlled feedback loop. Use one local application and one Check & Reload action instead of
@@ -131,11 +131,18 @@ separate development/production workflows, automatic watchers, or per-component 
 Keep the existing compiler and verification tools; the product orchestrates their canonical commands
 rather than replacing them.
 
-Keep Durable and authoritative application state in a stable main process, with HTTP/UI delivery in
-a replaceable API child. This supersedes the single-process placement in
+Separate an application-specific launcher, a minimal stable executor, and a replaceable application
+backend/frontend. The launcher owns builds, artifacts, supervision, and reload outcomes. The
+executor owns Durable, admitted work, execution invariants, and runtime storage. The replaceable
+backend owns product services and configuration workflows, not just HTTP translation. Use direct
+composition within processes and explicit IPC messages between them.
+
+This supersedes the single-process placement in
 [ADR-005](#adr-005-separate-workspace-access-from-agent-execution-ownership) without introducing
-independently deployed services. API and UI reloads must not interrupt agent execution; changes to
-main-process code still require restart and recovery.
+independently deployed services. Application reloads must not interrupt agent execution; launcher
+and executor changes still require restart and recovery. The executor must retain the context and
+credential/refresh access needed by admitted work without depending on the replaceable application.
+The launcher/application split is implemented; the executor remains runtime-integration work.
 
 Use Durable's native registry replacement and configuration resolution boundaries for a short
 feedback loop with a single runtime owner. Aligning configuration edits with runtime behavior keeps

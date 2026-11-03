@@ -48,7 +48,6 @@ test("production server serves the client and keeps unknown API routes as JSON",
 
   const workspaceServer = startWorkspaceServer({
     clientDistDirectory,
-    mode: "production",
     port: 0,
   });
   context.after(async () => workspaceServer.close());
@@ -71,8 +70,11 @@ test("production server serves the client and keeps unknown API routes as JSON",
   });
 });
 
-test("graceful shutdown releases the listening port", async () => {
-  const workspaceServer = startWorkspaceServer({ mode: "development", port: 0 });
+test("graceful shutdown releases the listening port", async (context) => {
+  const clientDistDirectory = await mkdtemp(join(tmpdir(), "ai-workspace-shutdown-"));
+  await writeFile(join(clientDistDirectory, "index.html"), "<main>workspace</main>");
+  context.after(async () => rm(clientDistDirectory, { force: true, recursive: true }));
+  const workspaceServer = startWorkspaceServer({ clientDistDirectory, port: 0 });
   const address = await workspaceServer.ready;
 
   await workspaceServer.close();

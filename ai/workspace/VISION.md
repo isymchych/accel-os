@@ -55,11 +55,13 @@ Conversation-list status indicators suffice for MVP; there is no separate work-v
 5. **Branching:** include forking and tree-based history and branch navigation, in the spirit of
    Pi's coding agent. Side-by-side branch comparison is post-MVP. The detailed interaction design
    remains open.
-6. **Self-development:** use one local application with a stable execution owner and replaceable API
-   subprocess. One explicit Check & Reload action activates UI, API, and capability changes; there
-   are no separate development/production workflows or automatic source-watch activation. Follow the
+6. **Self-development:** use one local application with an application-specific launcher, a stable
+   executor, and a replaceable frontend/backend including product services. One explicit Check &
+   Reload action activates UI, API, and capability changes; there are no separate
+   development/production workflows or automatic source-watch activation. Follow the
    [reload lifecycle](DOMAIN.md#check-and-reload), including native runtime replacement boundaries
-   and full restart for stable-main changes. General application plugin loading remains later scope.
+   and full restart for launcher/executor changes. General application plugin loading remains later
+   scope.
 
 Later scope: presets (including storage and UI), account switching within an existing conversation,
 side-by-side branch comparison, other providers and custom endpoints, steering, remote access,

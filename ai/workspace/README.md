@@ -23,55 +23,66 @@ integration; its [acceptance checks](MVP.md#acceptance-checks) establish readine
 
 ## Run
 
-From this directory, build the browser assets once, then start the application:
+From this directory, build the application once, then start it:
 
 ```sh
-just build
-just start
+npm run build
+npm run start
 ```
 
-Open `http://127.0.0.1:8787`. Stop with Ctrl-C. Subsequent starts use `just start` (or simply
-`just`) without rebuilding. The npm equivalents are `npm run build` and `npm run start`.
+Open `http://127.0.0.1:8787`. Stop with Ctrl-C. Subsequent starts use `npm run start` without
+rebuilding. The workspace Justfile also provides convenience commands.
 
-There is one workflow, without a Vite development server, API proxy, automatic HMR, backend watcher,
-or tmux launcher. Vite with Solid and Tailwind remains the browser compiler; Node runs backend
-TypeScript directly.
+Use this build-and-start workflow for both development and operation. Updates take effect through
+**Check & Reload** or a full restart, as described below.
 
 ## Updating the running application
 
-The agreed target is one explicit [Check & Reload](DOMAIN.md#check-and-reload) action, coordinated
-by a stable main process with a replaceable API child. **Reload, the process split, and
-last-successful application candidates are not yet implemented.**
+Use **Check & Reload** in the browser to run `npm run check` and `npm run build`, activate the
+UI/API version, and refresh connected browsers. Checks and builds read the working tree directly;
+edits made while they run are not detected and may produce output that differs from what was
+checked.
 
-For now, stop the application, then run:
+Failed checks or builds leave the running version unchanged. Progress and outcomes remain available
+after reconnection; detailed failures appear in the launching terminal. The diagnostic message is
+saved per tab before refresh. If browser storage is unavailable, keep the tab open and copy the
+message.
+
+Launcher code, cross-process protocol, and dependency changes require a full build and restart.
+After stopping the application, run:
 
 ```sh
-just check
-just build
-just start
+npm run check
+npm run build
+npm run start
 ```
 
-The current server serves browser assets from `dist/` and runs backend source from the checkout. It
-does not isolate a last-successful backend/capability version. Do not treat this manual restart as
-the future execution-preserving reload.
+Run standalone `npm run build` only while the application is stopped; it prepares the application
+for the next start. Use the browser action to update a running application.
+
+Check & Reload currently covers the UI and API. Capability replacement and execution continuity
+require the stable executor's agent-runtime integration and verification. The launcher supervises
+the replaceable backend; product services belong in that backend, not the launcher.
+
+After updating from the previous owner/API layout, stop the application and run the full
+check/build/start sequence above once. Saved slot names and the `current` pointer are retained, but
+the compiled launcher and application entrypoints have moved.
 
 ## Configuration
 
 - `WORKSPACE_PORT` sets the backend port (default `8787`).
+- `WORKSPACE_STATE_DIR` overrides the saved-application directory (default `.workspace/` here).
 - `WORKSPACE_CHROMIUM_PATH` selects the system Chromium executable for E2E; it defaults to
   `/usr/bin/chromium`.
-
-The existing server still accepts `WORKSPACE_MODE` and reads `WORKSPACE_VITE_PORT`; those legacy
-code paths have not been removed. The start command fixes `WORKSPACE_MODE=production` to serve the
-built UI; users do not select a development/production mode.
 
 ## Checks
 
 ```sh
-just check
-just test-e2e
+npm run check
+npm run test:e2e
 ```
 
-`just check` runs workspace formatting, lint, typechecking, and Node integration tests.
-`just test-e2e` builds the browser and starts its own test server. E2E requires a compatible system
-Chromium; see [ADR-001](DECISIONS.md#adr-001-use-system-chromium-for-e2e).
+`npm run check` runs workspace formatting, lint, typechecking, and Node integration tests.
+`npm run test:e2e` builds and starts its own application with temporary saved state, including a
+Check & Reload journey. E2E requires a compatible system Chromium; see
+[ADR-001](DECISIONS.md#adr-001-use-system-chromium-for-e2e).

@@ -48,28 +48,35 @@ input.
 
 ## Steps and Checks
 
-- Organize work around coherent, separately deliverable outcomes where practical. Each slice should
-  produce a useful result that can be verified and handed off; it may depend on earlier slices and
-  need not be separately deployed. Fold setup, configuration, and documentation into the outcome
-  that needs them rather than creating mechanical microsteps or artificially small slices.
+- Organize work around coherent, separately deliverable outcomes. Each delivery slice must have a
+  completion condition that can be implemented and verified using the existing system plus completed
+  earlier slices, without implementing later slices. Independence means completion in sequence, not
+  parallel execution or separate deployment. Fold setup, configuration, and documentation into the
+  outcome that needs them rather than creating mechanical microsteps or artificially small slices.
 - Prefer slices that leave the affected system coherent and usable. When an intermediate slice
-  cannot do so, identify the transitional state and what subsequent work resolves it.
+  cannot do so, identify the transitional state and what subsequent work resolves it; this does not
+  excuse a completion condition that requires later slices.
 - Use hierarchical decomposition when it clarifies complexity, uncertainty, or dependencies: start
   with deliverable slices and break down only those that need it. Detail the next slice enough to
   begin safely; keep later slices at the outcome-and-dependency level until execution provides more
   context. Do not require a fixed number of levels.
-- For feature work, prefer thin end-to-end slices of observable behavior over completing technical
-  layers separately. Include only the prerequisites each slice needs; use separately verifiable
-  prerequisite steps when necessary. For other work, slice by preserved invariants or operational
-  outcomes.
-- Make ordering dependencies and decision checkpoints explicit. Prefer steps that can be completed
-  and checked independently where practical.
+- For feature work, slice through the technical layers needed for observable behavior; treat
+  layer-specific work as tasks within that slice. Include only the prerequisites each slice needs.
+  Necessary prerequisite work may remain separate, but label it as a prerequisite and state its
+  independently verifiable result, not as delivered feature behavior. For other work, slice by
+  preserved invariants or operational outcomes.
+- Make ordering dependencies and decision checkpoints explicit. Nested tasks may depend on other
+  tasks within their slice; the slice's completion condition must not depend on later slices.
 - Order work to resolve consequential uncertainty early, within dependency constraints.
 - Give each slice observable acceptance conditions. Detail focused checks for near-term work,
   including runnable commands when known and useful, and integration checks when needed. Verify
   intended behavior, not merely successful execution of a command.
 - Before presenting the plan, check that it covers the requested outcome and constraints, that
-  dependencies agree, and that material risks and failure modes have a check or mitigation.
+  dependencies agree, and that material risks and failure modes have a check or mitigation. Check
+  each slice's completion condition against the existing system and completed earlier slices. If its
+  claimed result requires later work, merge or redraw the slices rather than merely documenting the
+  dependency. Apply the same check when a boundary is challenged; ordering alone does not justify
+  it.
 - When ordering or verification across chosen boundaries is unclear, trace a representative
   operation from entrypoint to observable outcome. Include failure or alternate paths when they
   affect dependencies or checks. Use this to verify that slices respect established ownership and

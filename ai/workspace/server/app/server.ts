@@ -5,24 +5,23 @@ import { resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 
-import { api } from "./api.ts";
+import type { ReloadControl } from "../../contracts/reload.ts";
+import { createApi } from "./api.ts";
 
 const defaultHostname = "127.0.0.1";
 const defaultPort = 8787;
-const defaultVitePort = 5173;
 const defaultClientDistDirectory = resolve(import.meta.dirname, "../../dist");
-
-export type WorkspaceServerMode = "development" | "production";
 
 export type WorkspaceApplicationOptions = {
   hostname?: string;
   allowedOrigins?: readonly string[];
   clientDistDirectory?: string;
+  control?: ReloadControl;
 };
 
 export type StartWorkspaceServerOptions = WorkspaceApplicationOptions & {
-  mode?: WorkspaceServerMode;
   port?: number;
 };
 
@@ -35,6 +34,9 @@ export function createWorkspaceApplication(options: WorkspaceApplicationOptions 
   const hostname = options.hostname ?? defaultHostname;
   const allowedOrigins = new Set(options.allowedOrigins ?? []);
   const app = new Hono();
+  app.onError((_error, context) =>
+    context.json({ code: "internal_error", message: "The request could not be completed." }, 500),
+  );
 
   app.use("*", async (context, next): Promise<Response> => {
     if (!hasExpectedHost(context.req.header("host"), hostname)) {
@@ -52,7 +54,11 @@ export function createWorkspaceApplication(options: WorkspaceApplicationOptions 
     }
 
     const origin = context.req.header("origin");
-    if (origin !== undefined && !allowedOrigins.has(origin)) {
+    if (
+      origin !== undefined &&
+      !allowedOrigins.has(origin) &&
+      origin !== new URL(context.req.url).origin
+    ) {
       return context.json(
         { code: "invalid_origin", message: "Request origin is not allowed." },
         403,
@@ -71,7 +77,12 @@ export function createWorkspaceApplication(options: WorkspaceApplicationOptions 
     return context.res;
   });
 
-  app.route("/", api);
+  app.use("/api/*", bodyLimit({ maxSize: 4096 }));
+  app.use("*", async (context, next) => {
+    await next();
+    context.header("Cache-Control", "no-store");
+  });
+  app.route("/", createApi(options.control));
 
   if (options.clientDistDirectory !== undefined) {
     const serveClientFiles = serveStatic({ root: options.clientDistDirectory });
@@ -101,24 +112,18 @@ export function createWorkspaceApplication(options: WorkspaceApplicationOptions 
 export function startWorkspaceServer(
   options: StartWorkspaceServerOptions = {},
 ): StartedWorkspaceServer {
-  const mode = options.mode ?? readMode(process.env["WORKSPACE_MODE"]);
   const hostname = options.hostname ?? defaultHostname;
   const port =
     options.port ?? readPort(process.env["WORKSPACE_PORT"], defaultPort, "WORKSPACE_PORT");
-  const clientOrigin = `http://${hostname}:${readPort(
-    process.env["WORKSPACE_VITE_PORT"],
-    defaultVitePort,
-    "WORKSPACE_VITE_PORT",
-  )}`;
-  const clientDistDirectory =
-    mode === "production"
-      ? requireClientDistDirectory(options.clientDistDirectory ?? defaultClientDistDirectory)
-      : undefined;
-  const allowedOrigins = options.allowedOrigins ?? [clientOrigin, `http://${hostname}:${port}`];
+  const clientDistDirectory = requireClientDistDirectory(
+    options.clientDistDirectory ??
+      process.env["WORKSPACE_CLIENT_DIST"] ??
+      defaultClientDistDirectory,
+  );
+  const allowedOrigins = options.allowedOrigins ?? [];
   const appOptions: WorkspaceApplicationOptions = { hostname, allowedOrigins };
-  if (clientDistDirectory !== undefined) {
-    appOptions.clientDistDirectory = clientDistDirectory;
-  }
+  appOptions.clientDistDirectory = clientDistDirectory;
+  if (options.control !== undefined) appOptions.control = options.control;
 
   const app = createWorkspaceApplication(appOptions);
 
@@ -169,18 +174,6 @@ function isApiPath(path: string): boolean {
 
 function isMutation(method: string): boolean {
   return method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
-}
-
-function readMode(value: string | undefined): WorkspaceServerMode {
-  if (value === undefined || value === "production") {
-    return "production";
-  }
-
-  if (value === "development") {
-    return "development";
-  }
-
-  throw new Error("WORKSPACE_MODE must be either development or production.");
 }
 
 function readPort(value: string | undefined, fallback: number, name: string): number {

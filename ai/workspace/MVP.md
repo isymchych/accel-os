@@ -8,10 +8,11 @@ describe later scope; adding them to the MVP requires an explicit decision.
 ## Runtime integration
 
 Expose create/reopen, forking, history and branch reads, in-scope configuration changes, submission
-with request ID, Stop, and committed-snapshot watches through `server/runtime/`. It owns harness
-lookup and returns application-owned results. Submission success confirms durable acceptance.
-Runtime state confirms completion and termination after cancellation. Account switching remains
-post-MVP.
+with request ID, Stop, and committed-snapshot watches through `server/runtime/`, the backend's
+executor client and result-mapping boundary. The stable executor owns harness lookup and runtime
+storage; the backend receives application-owned results. Submission success confirms durable
+acceptance. Runtime state confirms completion and termination after cancellation. Account switching
+remains post-MVP.
 
 - Use Durable coding tools and `NodeExecutionEnv` for host files and shell execution; verify process
   termination against the Stop contract.
@@ -23,11 +24,13 @@ resolution.
 ### Deployment and reload
 
 Implement the [single-application process model](ARCHITECTURE.md#ownership-and-boundaries) and
-[Check & Reload behavior](DOMAIN.md#check-and-reload). These are accepted first-release
-requirements, not implemented capabilities of the diagnostic foundation.
+[Check & Reload behavior](DOMAIN.md#check-and-reload), including capability replacement and
+continuity of executing work.
 
-The stable main process coordinates the existing checks and build, runtime ownership, and reload
-outcomes. Application plugin loading remains post-MVP.
+The launcher coordinates the existing checks/build, application replacement, capability activation,
+and reload outcomes. The stable executor owns running work; the replaceable backend owns product
+services. The launcher/application split is implemented; add the executor with runtime integration,
+not as an empty process. Application plugin loading remains post-MVP.
 
 ### Models and credentials
 
@@ -226,14 +229,15 @@ workflow.
 
 ## Open decisions
 
-Resolve the OpenAI login setup flow, credential storage and account-configuration layout, data
-location, backup procedure, SQLite synchronization, and request/output limits before their
-corresponding capabilities enter use. Document chosen limits; escalate only when evidence requires a
-product tradeoff or architecture change.
+Resolve credential access/refresh ownership across executor and application replacement, the OpenAI
+login setup flow, credential storage and account-configuration layout, data location, backup
+procedure, SQLite synchronization, and request/output limits before their corresponding capabilities
+enter use. Document chosen limits; escalate only when evidence requires a product tradeoff or
+architecture change.
 
-Choose the candidate layout and capability module-loading mechanism during reload implementation.
-They must support the explicit activation boundary and startup from the last successful version; the
-current browser build plus direct backend source startup does not establish either guarantee.
+Choose the capability module-loading mechanism during agent-runtime integration. It must preserve
+the [explicit activation boundary](ARCHITECTURE.md#build-and-activation) and startup from the last
+successful version.
 
 Resolve the mapping of branch trees to Durable conversations and history, valid fork points, and
 forking behavior while source work is running during runtime integration. The tree interaction
@@ -295,12 +299,12 @@ tools, and isolated temporary state.
 - **Check & Reload:** one explicit action runs the canonical checks and build before reloading UI,
   API, and capabilities, without selective reload or file-watch activation. Failed checks/builds
   preserve the active version. Verify draft preservation and handling of unsaved forms, API-child
-  replacement while work continues in the same main process/harness, and reconnect to committed
+  replacement while work continues in the same executor process/harness, and reconnect to committed
   state and the reload outcome. A running tool retains its implementation while a later phase may
   use the replacement. Verify conversation configuration is preserved by reload and concurrent
   configuration edits follow [configuration safety](DOMAIN.md#configuration-safety). Verify
   admission deduplication across lost responses, activation-failure diagnostics, startup from the
-  last successful version without rebuilding, and explicit full restart for main-process code
+  last successful version without rebuilding, and explicit full restart for launcher/executor code
   changes.
 
 ### Test isolation and browser coverage

@@ -50,13 +50,14 @@ Run commands from this directory. Choose focused checks, then the workspace chec
 [README.md](README.md#checks) for integration. Keep focused tests beside code, cross-boundary Node
 tests in `tests/integration/`, and browser journeys in `tests/e2e/`.
 
-Use `just start` to run the application, `just build` to build browser assets, `just check` for
-workspace verification, and `just fmt` to format workspace files. Just recipes invoke workspace npm
-scripts; expose JavaScript tools there rather than hardcoding `node_modules/.bin` paths.
+Use `npm run start` to run the application, `npm run build` to build browser assets, `npm run check`
+for workspace verification, and `npm run fmt` to format workspace files. Just recipes are optional
+convenience wrappers. Expose JavaScript tools through npm rather than hardcoding `node_modules/.bin`
+paths.
 
-`npm test` runs Node integration tests; `just test-e2e` runs browser journeys. Typechecking checks
-invalid RPC input in `client/lib/api.type-test.ts`. E2E needs compatible system Chromium and a free
-port; rerun after Chromium or Playwright updates.
+`npm test` runs Node integration tests; `npm run test:e2e` runs browser journeys. Typechecking
+checks invalid RPC input in `client/lib/api.type-test.ts`. E2E needs compatible system Chromium and
+a free port; rerun after Chromium or Playwright updates.
 
 Root lint/formatting includes this workspace. Run the browser build and E2E alongside root
 `just check`; root `just fmt` also formats Emacs files. Report missing prerequisites and

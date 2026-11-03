@@ -8,7 +8,7 @@
     "suspicious": "error"
   },
   "plugins": ["typescript"],
-  "ignorePatterns": ["ai/workspace/dist/**"],
+  "ignorePatterns": ["ai/workspace/dist/**", "ai/workspace/.workspace/**"],
   "env": {
     "node": true
   },
@@ -55,7 +55,11 @@
         "browser": true,
         "node": false
       },
+      "globals": {
+        "__BUILD_ID__": "readonly"
+      },
       "rules": {
+        "no-underscore-dangle": ["error", { "allow": ["__BUILD_ID__"] }],
         "no-restricted-imports": [
           "error",
           {
@@ -65,9 +69,9 @@
                 "message": "client code must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+server/",
+                "regex": "^(?:\\.\\./)+(?:server|launcher)/",
                 "allowTypeImports": true,
-                "message": "client code must not import server code"
+                "message": "client code must not import server or launcher code"
               }
             ]
           }
@@ -90,7 +94,7 @@
                 "message": "contracts must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+(?:client|server)/",
+                "regex": "^(?:\\.\\./)+(?:client|server|launcher)/",
                 "message": "contracts must not import application code"
               }
             ]
@@ -108,6 +112,26 @@
               {
                 "regex": "^(?:\\.\\./)+client/",
                 "message": "server code must not import client code"
+              },
+              {
+                "regex": "^(?:\\.\\./)+launcher/",
+                "message": "application code must use launcher contracts, not launcher implementation"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["ai/workspace/launcher/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^(?:\\.\\./)+(?:client|server)/",
+                "message": "launcher code must not import application implementation"
               }
             ]
           }

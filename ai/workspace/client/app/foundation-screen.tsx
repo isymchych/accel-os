@@ -2,6 +2,8 @@ import { Send } from "@lucide/solid";
 import type { JSX } from "@solidjs/web";
 import { createSignal, Show } from "solid-js";
 
+import { preserveDraft, readDraft } from "../features/diagnostics/draft.ts";
+import { ReloadControl } from "../features/reload/reload-control.tsx";
 import { api } from "../lib/api.ts";
 import { Button } from "../ui/button.tsx";
 import { Input } from "../ui/input.tsx";
@@ -12,7 +14,7 @@ const defaultMessage = "Verify the workspace connection.";
 const connectionErrorMessage = "The connection check could not be completed. Try again.";
 
 export function FoundationScreen(): JSX.Element {
-  const [message, setMessage] = createSignal(defaultMessage);
+  const [message, setMessage] = createSignal(readDraft(defaultMessage));
   const [feedback, setFeedback] = createSignal<Feedback | null>(null);
   const [isPending, setIsPending] = createSignal(false);
 
@@ -80,7 +82,11 @@ export function FoundationScreen(): JSX.Element {
                 aria-describedby={feedback() === null ? undefined : feedbackId}
                 id="diagnostic-message"
                 maxlength={200}
-                onInput={(event) => setMessage(event.currentTarget.value)}
+                onInput={(event) => {
+                  const value = event.currentTarget.value;
+                  setMessage(value);
+                  preserveDraft(value);
+                }}
                 readonly={isPending()}
                 required
                 value={message()}
@@ -108,6 +114,7 @@ export function FoundationScreen(): JSX.Element {
             )}
           </Show>
         </form>
+        <ReloadControl preserveDraft={() => preserveDraft(message())} />
       </section>
     </main>
   );

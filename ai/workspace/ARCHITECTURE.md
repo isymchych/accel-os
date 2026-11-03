@@ -30,25 +30,37 @@ Browser: Solid 2 features + local binding to @tanstack/ai-client
   | Hono RPC: workspace reads and commands
   | AG-UI over HTTP/SSE: conversation snapshots and updates
   v
-API subprocess: Hono routes + HTTP/SSE translation + built UI
-  | Narrow IPC commands, reads, and subscriptions
+Replaceable application: feature services + Hono HTTP/SSE + built UI
+  | Narrow executor commands, reads, and subscriptions
   v
-Main Node process: feature services -> server/runtime/
-                                        | Durable harnesses and storage
-                                        | pi-ai providers and authentication
-                                        | tool execution environments
-                                        | Check & Reload coordination
+Stable executor: Durable harnesses and storage
+                 | configured pi-ai model access
+                 | admitted work and tool execution environments
+
+Launcher: checks/builds, saved artifacts, process supervision, reload outcomes
+  | Supervises the executor and replaceable application
+  | Coordinates application and capability activation
 ```
 
-This is the agreed target; the diagnostic foundation still runs in one Node process. The process
-split and Check & Reload are not yet implemented.
+This is the agreed target. The diagnostic foundation implements the launcher and replaceable
+application; the executor and capability activation remain runtime-integration work.
 
-One launcher manages a stable main process and a replaceable API subprocess, not independently
-deployed services. Serve the built UI and API from one loopback origin. The main process owns
-authoritative feature policy, configuration, credentials, admission, cancellation, and runtime
-storage. The API child owns HTTP/browser security checks and wire translation; it does not open
-runtime storage or own execution. Replacing it disposes observation, not running work. Tool
-execution must not depend on the API child's lifetime.
+One application-specific launcher supervises the processes; these are not independently deployed
+services. Serve the built UI and API from one loopback origin. The replaceable backend owns product
+services, configuration workflows, account-selection policy, HTTP/browser security checks, and wire
+translation. It does not open runtime storage or own executing tools.
+
+The executor owns Durable, runtime storage, admission, cancellation, and execution-critical
+invariants. It retains the resolved context and account binding needed by admitted work. Credential
+access and refresh must continue while the application is unavailable; choose their concrete
+ownership during runtime integration while preserving server-side, per-account isolation. Replacing
+the application disposes observation, not execution. An executing tool must not depend on the
+replaceable backend's lifetime or callbacks into its services.
+
+The launcher owns repository/build conventions, artifact layout, child-process lifecycle, and reload
+outcomes, not product policy or runtime storage. Use direct composition within each process and
+explicit commands, responses, and events between processes. Keep callbacks local to event-driven
+APIs rather than injecting lifecycle policy through callback bundles.
 
 The workspace owns presentation, user intent, configuration, credentials, host discovery, and
 transport. Local execution works directly with the selected environment. Scheduling and remote
@@ -56,26 +68,32 @@ provisioning belong to later scope.
 
 ### Build and activation
 
-Use one workflow, without a Vite development server, proxy, automatic HMR, backend source watcher,
-or separate development/production setup. Vite with Solid and Tailwind compiles the browser; Node
-runs supported backend TypeScript directly. Retain typechecking, lint, and tests.
+Use one build-and-start workflow for development and operation, serving built UI assets and the API
+from the same origin. Source changes take effect through explicit Check & Reload. Vite with Solid
+and Tailwind compiles the browser; TypeScript emits runnable backend JavaScript. Retain
+typechecking, lint, and tests.
 
-The stable main process coordinates the [Check & Reload lifecycle](DOMAIN.md#check-and-reload).
-Reuse the canonical checks and build commands in the workspace `Justfile`; do not reimplement them
-inside the product. After checks and candidate preparation succeed, every reload replaces the API
-child, installs capability definitions, and reloads the UI. Do not add change detection or selective
-reload paths. The operation survives the API/browser disconnection and exposes its outcome after
-reconnection. Main-process code changes require a full restart rather than an implicit interruption
-of execution.
+The launcher coordinates the [Check & Reload lifecycle](DOMAIN.md#check-and-reload). Reuse the
+workspace npm check and build commands; do not reimplement them inside the product. After checks and
+candidate preparation succeed, every reload replaces the API child, installs capability definitions,
+and reloads the UI, regardless of which components changed. The operation survives the API/browser
+disconnection and exposes its outcome after reconnection. Launcher and executor code changes require
+a full restart.
 
 Use Durable's registry replacement APIs without submission-wide code-version pinning. Capability
 loading remains internal integration; this does not introduce general application plugin loading.
 Activation covers backend/capability code as well as browser assets; directly loading later edits
 from the mutable source tree must not bypass the explicit activation boundary.
 
-The current commands build browser assets and run backend source directly. A last-successful
-application candidate, reload coordination, and safe capability module loading remain implementation
-work; [README.md](README.md#run) describes the currently supported manual workflow.
+Prepare candidates separately from the running application. Startup uses the last successfully
+activated version without checking or building again. Failed checks or builds leave the running
+version unchanged; activation failures report what remains saved and serving.
+
+Built launcher and executor code stays active across reloads. Launcher/executor code, cross-process
+protocols, and installed dependency changes require a full build and restart. Build-time setup wires
+saved output to the checkout's installed dependencies; candidates isolate application code, not
+dependencies. [README.md](README.md#updating-the-running-application) describes reload and restart
+procedures.
 
 ### Source layout
 
@@ -89,10 +107,12 @@ client/
   ui/                     # Domain-free primitives
   lib/                    # Browser infrastructure and API client
   styles/theme.css        # Semantic tokens and Tailwind mapping
+launcher/                 # Startup, builds, artifacts, supervision, reload coordination
+executor/                 # Stable execution owner; added during runtime integration
 server/
   app/                    # Startup, API composition, shutdown
   features/               # Product routes and services
-  runtime/                # Harnesses, persistence, environments
+  runtime/                # Executor client and application-owned result mapping
   lib/                    # Server infrastructure
 contracts/                # Environment-neutral wire schemas and derived types
 tests/integration/        # Cross-boundary Node checks
@@ -107,8 +127,9 @@ and barrel exports when concrete needs justify them.
 ### Dependency rules
 
 ```text
-client -> contracts <- server
-                       features -> runtime
+client -> contracts <- server/features -> server/runtime (executor client)
+launcher -> contracts
+executor -> contracts  (executor added during runtime integration)
 ```
 
 Each `app/` composes its environment. Features own product policy; `lib/` and `ui/` stay
@@ -117,8 +138,9 @@ in `app/` when its responsibility lies beyond either individual feature.
 
 Client code must not import server implementation values or Node-only modules; server code must not
 import client code. Contracts contain environment-neutral wire schemas and depend on schema code.
-Keep domain behavior in features and provider types and Chord state inside `server/runtime/`,
-returning application-owned results.
+Keep product behavior in features, executor access behind `server/runtime/`, and provider types and
+Chord state inside the executor, returning application-owned results. The launcher and application
+must not import each other's implementation; share wire schemas through `contracts/`.
 
 The sole Hono RPC type-only edge is `client/lib/api.ts` importing the composed API type from
 `server/app/api.ts`. Features use the client module. That import may pull server dependencies into
@@ -131,9 +153,9 @@ Enforce import boundaries with installed lint tooling or a focused repository ch
 ### Types and validation
 
 Use strict TypeScript configurations for browser, Node, and environment-neutral contracts. Prefer
-type-only imports and explicit relative `.ts` extensions where supported. Server code runs through
-Node's native type stripping and follows the repository's erasable-syntax settings; Vite compiles
-the browser.
+type-only imports and explicit relative `.ts` extensions where supported. Server source follows the
+repository's erasable-syntax settings; the backend build emits JavaScript and Vite compiles the
+browser. The launcher and build script use Node's native type stripping.
 
 Define one TypeBox schema per application-owned wire shape near its feature in `contracts/` and
 derive types from it. Use protocol-defined schemas for AG-UI envelopes and events; application-owned
@@ -153,8 +175,8 @@ validation is separate from Hono RPC typing.
 
 ### Proposed ownership
 
-- **Runtime integration:** harness startup/shutdown, lookup, storage, watches, registries, and
-  execution environments, plus configured `pi-ai` model access.
+- **Executor:** harness startup/shutdown, lookup, storage, watches, registries, and execution
+  environments, plus configured `pi-ai` model access.
 - **Feature services:** user-selected context, configuration permissions, submission policy, and
   execution authority. Access Durable tools, hooks, and tasks through `server/runtime/`.
 - **Durable storage:** single store for transcripts, run status, task scheduling, execution
@@ -195,12 +217,36 @@ active-login switch.
 Apply these choices within the [agreed MVP scope](VISION.md#agreed-mvp-decisions). Keep credentials
 server-side, out of browser storage and Vite-exposed variables.
 
+#### p2 implementation reference
+
+p2 is Pi's agent application, combining a browser UI, shared server services, and per-session
+Durable workers. Its public source snapshot provides examples of integrating Durable into
+application features. The
+[snapshot README](https://github.com/earendil-works/bundled-ui/blob/679ee9e49d2561f8bf0dcdc931695ace39af1bb1/ui/README.md)
+explains its provenance and source layout.
+
+The
+[plugin tutorial](https://github.com/earendil-works/bundled-ui/blob/679ee9e49d2561f8bf0dcdc931695ace39af1bb1/ui/docs/p2-plugin-tutorial.md)
+walks through a complete chat feature. Particularly useful sections cover:
+
+- **Durable documents and entries:** conversation-owned settings, transactional updates, and keeping
+  displayed state synchronized with committed data.
+- **Submission routing:** passing request IDs and busy-input choices through the existing
+  conversation submission path.
+- **Reloading:** preserving state and migrating plugin contracts across code replacement. These
+  examples use Chord's reload mechanisms; our capability replacement follows Durable's registry
+  APIs.
+
+Adapt these examples through our `server/runtime/` boundary and application-owned contracts. Verify
+API details against the pinned Durable version and behavior against the
+[MVP acceptance checks](MVP.md#acceptance-checks).
+
 ### Runtime operations and configuration
 
 Backend feature services enforce [configuration safety](DOMAIN.md#configuration-safety). Coordinate
-configuration commits and submission admission through one per-conversation boundary in
-`server/runtime/`, enforcing the working-directory guard atomically with admission. Persist
-conversation configuration and account selection in harness-owned application documents.
+configuration commits and submission admission through one per-conversation executor boundary,
+accessed through `server/runtime/`, enforcing the working-directory guard atomically with admission.
+Persist conversation configuration and account selection in harness-owned application documents.
 
 The [MVP runtime integration](MVP.md#runtime-integration) defines operations and configuration
 integration checks.
@@ -269,8 +315,8 @@ the wire contract, not a second runtime or a UI component library.
 Hono RPC carries workspace reads and commands, including history/tree reads, fork commands, and
 configuration. Workspace features own branch navigation and product policy. Keep protocol
 translation at the server transport boundary, consuming application-owned results from
-`server/runtime/`; provider types and Chord state remain inside the runtime boundary. Ordinary
-reads, command feedback, and protocol-driven live state have separate client ownership.
+`server/runtime/`; provider types and Chord state remain inside the executor. Ordinary reads,
+command feedback, and protocol-driven live state have separate client ownership.
 
 Initialize and reconnect with snapshots of current committed state, then apply subsequent updates.
 Reconnection does not require replaying every missed streaming event. The
