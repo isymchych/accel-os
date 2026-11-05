@@ -1,0 +1,13 @@
+{{ if eq .chezmoi.os "linux" }}
+# Retired desktop files: remove only known paths, not whole directories or user state.
+.config/waybar/config
+.config/waybar/style.css
+.config/waybar/pi_agents.sh
+.config/waybar/systemd_failed_units.sh
+.config/waybar/pomodoro_timer.sh
+.config/mako/config
+.config/swayosd/config.toml
+.config/swayosd/style.css
+.config/systemd/user/mako.service.d/sway-session.conf
+.config/systemd/user/swayosd.service
+{{ end }}

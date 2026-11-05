@@ -1,0 +1,18 @@
+id = "accel-os/desktop-status"
+name = "Desktop status"
+version = "1.0.0"
+plugin_api = 24
+description = "Pi agent activity, failed systemd units, and the current Sway binding mode."
+dependencies = ["systemctl", "swaymsg"]
+
+[[widget]]
+id = "pi-agents"
+entry = "pi-agents.luau"
+
+[[widget]]
+id = "failed-units"
+entry = "failed-units.luau"
+
+[[widget]]
+id = "sway-mode"
+entry = "sway-mode.luau"

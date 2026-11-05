@@ -10,6 +10,9 @@
 #   - xterm open [--cwd DIR] [--class CLASS]
 #   - xterm run [--cwd DIR] [--class CLASS] -- CMD [ARG...]
 #   - xterm help
+# - Compatibility forms (not full xterm option compatibility):
+#   - xterm                 -> xterm open
+#   - xterm -e CMD [ARG...]  -> xterm run -- CMD [ARG...]
 # - Parsing is strict:
 #   - unknown options fail
 #   - `run` requires `--` before command
@@ -33,6 +36,8 @@ Usage:
   xterm open [--cwd DIR] [--class CLASS]
   xterm run [--cwd DIR] [--class CLASS] -- CMD [ARG...]
   xterm help
+  xterm
+  xterm -e CMD [ARG...]
 EOF
 }
 
@@ -54,7 +59,11 @@ contains_backend() {
 }
 
 if [[ $# -eq 0 ]]; then
-    fail "missing command"
+    set -- open
+elif [[ "$1" == "-e" ]]; then
+    shift
+    [[ $# -gt 0 ]] || fail "-e requires a command"
+    set -- run -- "$@"
 fi
 
 if [[ "$1" == "help" || "$1" == "--help" || "$1" == "-h" ]]; then

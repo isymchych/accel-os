@@ -1,0 +1,14 @@
+[Unit]
+Description=Noctalia desktop shell for Sway
+PartOf=sway-session.target
+After=sway-session.target graphical-session.target
+Conflicts=mako.service swayosd.service
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+# Keep Mako installed for rollback without allocating its BusName to a second user unit.
+Type=exec
+ExecStart=/usr/bin/noctalia
+Environment=TERMINAL=xterm
+Restart=on-failure
+RestartSec=2

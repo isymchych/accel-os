@@ -1,0 +1,194 @@
+# Native Noctalia 5.4.1. App-managed settings.toml overrides this file.
+[shell]
+font_family = "JetBrains Mono Nerd Font"
+setup_wizard_enabled = false
+telemetry_enabled = false
+offline_mode = true
+external_ip_enabled = false
+screen_time_enabled = false
+polkit_agent = false
+clipboard_enabled = false
+clipboard_keep_from_closed_apps = false
+launch_apps_as_systemd_services = true
+
+[theme]
+mode = "dark"
+shell_mode = "dark"
+sync_color_scheme = false
+
+[theme.templates]
+enable_builtin_templates = false
+enable_community_templates = false
+
+# Sway, darkman, wlsunset, swayidle, and swaylock retain these responsibilities.
+[wallpaper]
+enabled = false
+
+[dock]
+enabled = false
+
+[desktop_widgets]
+enabled = false
+
+[nightlight]
+enabled = false
+
+[weather]
+enabled = false
+
+[lockscreen]
+enabled = false
+
+[idle.behavior.lock]
+enabled = false
+
+[idle.behavior.screen-off]
+enabled = false
+
+[brightness]
+enable_ddcutil = true
+minimum_brightness = 0.05
+
+[notification]
+enable_daemon = true
+keep_dismissed_in_history = true
+max_visible = 7
+position = "top_center"
+
+[osd]
+enabled = true
+follow_focused_output = true
+
+# Route shell-owned session entry points through the existing confirmation/locking menu too.
+[[shell.session.actions]]
+action = "command"
+label = "Session actions"
+glyph = "power"
+command = "mb-exit"
+
+[bar]
+order = ["default"]
+
+[bar.default]
+position = "right"
+thickness = 76
+margin_ends = 0
+padding = 6
+widget_spacing = 6
+start = ["launcher", "clock", "workspaces", "sway-mode"]
+center = ["playback", "microphone", "bluetooth", "power_profile", "tray", "keyboard_layout", "caffeine"]
+end = ["pi-agents", "failed-units", "cpu", "memory", "temperature", "disk", "brightness", "battery", "session-menu"]
+
+[widget.clock]
+type = "clock"
+vertical_format = "{:%H:%M}\n{:%b %d}\n{:%a}"
+
+[widget.clock.actions]
+left = "exec gsimplecal"
+
+[widget.workspaces]
+type = "workspaces"
+show_all_outputs = true
+
+[widget.workspaces.actions]
+scroll_up = "none"
+scroll_down = "none"
+
+[widget.sway-mode]
+type = "accel-os/desktop-status:sway-mode"
+
+[widget.playback]
+type = "volume"
+device = "output"
+
+[widget.playback.actions]
+left = "exec pavucontrol"
+
+[widget.microphone]
+type = "volume"
+device = "input"
+show_label = false
+hide_when_inactive = false
+
+[widget.microphone.actions]
+left = "exec pavucontrol -t 4"
+scroll_up = "none"
+scroll_down = "none"
+
+[widget.bluetooth.actions]
+left = "exec xterm run --class=bluetui -- bluetui"
+
+[widget.pi-agents]
+type = "accel-os/desktop-status:pi-agents"
+
+[widget.failed-units]
+type = "accel-os/desktop-status:failed-units"
+show_tooltip = false
+color = "error"
+
+[widget.failed-units.actions]
+left = "exec xterm run --class=systemd-manager -- systemctl-tui --scope all --no-log --limit-units '*'"
+right = "none"
+middle = "none"
+
+[widget.cpu]
+type = "sysmon"
+stat = "cpu_usage"
+visualization = "none"
+
+[widget.cpu.actions]
+left = "exec xterm run -- htop --sort-key=PERCENT_CPU"
+
+[widget.memory]
+type = "sysmon"
+stat = "ram_pct"
+visualization = "none"
+
+[widget.memory.actions]
+left = "exec xterm run -- htop --sort-key=PERCENT_MEM"
+
+[widget.temperature]
+type = "sysmon"
+stat = "cpu_temp"
+visualization = "none"
+
+[widget.disk]
+type = "sysmon"
+stat = "disk_used_pct"
+path = "/home"
+visualization = "none"
+
+[widget.disk.actions]
+left = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
+
+[widget.session-menu]
+type = "custom_button"
+glyph = "power"
+tooltip = "Session actions"
+
+[widget.session-menu.actions]
+left = "exec mb-exit"
+
+[system.monitor]
+cpu_poll_seconds = 3
+memory_poll_seconds = 3
+disk_poll_seconds = 30
+cpu_temp_sensor_path = "/sys/class/hwmon/hwmon1/temp1_input"
+cpu_usage_activity_threshold = 60
+cpu_usage_critical_threshold = 95
+ram_pct_activity_threshold = 60
+ram_pct_critical_threshold = 90
+cpu_temp_activity_threshold = 55
+cpu_temp_critical_threshold = 70
+disk_used_pct_activity_threshold = 75
+disk_used_pct_critical_threshold = 95
+
+[plugins]
+enabled = ["accel-os/desktop-status"]
+auto_update = "none"
+
+[[plugins.source]]
+name = "accel-os"
+kind = "path"
+location = "~/.config/noctalia/plugins"
+enabled = true

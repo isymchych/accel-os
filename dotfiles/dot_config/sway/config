@@ -175,12 +175,8 @@ bindsym --to-code $mod+Ctrl+j resize grow height 5 ppt
 bindsym --to-code $mod+Ctrl+k resize shrink height 5 ppt
 bindsym --to-code $mod+Ctrl+l resize grow width 5 ppt
 
-# toggle waybar
-bindsym --to-code $mod+grave exec killall -SIGUSR1 waybar
-
-bar {
-    swaybar_command waybar
-}
+# toggle the session-managed shell bar
+bindsym --to-code $mod+grave exec noctalia msg bar-toggle
 
 focus_follows_mouse            no
 popup_during_fullscreen        smart
@@ -327,38 +323,38 @@ for_window [app_id="bluetui"] floating enable, resize set width 60 ppt height 60
 # KEYBINDINGS
 
 # control currently active player
-bindsym --locked XF86AudioPlay exec swayosd-client --playerctl play-pause
-bindsym --locked XF86AudioPause exec swayosd-client --playerctl play-pause
-bindsym --locked XF86AudioNext exec swayosd-client --playerctl next
-bindsym --locked XF86AudioPrev exec swayosd-client --playerctl prev
-bindsym --locked XF86AudioStop exec swayosd-client --playerctl stop
+bindsym --locked XF86AudioPlay exec noctalia msg media toggle
+bindsym --locked XF86AudioPause exec noctalia msg media toggle
+bindsym --locked XF86AudioNext exec noctalia msg media next
+bindsym --locked XF86AudioPrev exec noctalia msg media previous
+bindsym --locked XF86AudioStop exec noctalia msg media stop
 
 # Increase volume
-bindsym --locked XF86AudioRaiseVolume exec swayosd-client --output-volume raise
-bindsym $mod+Prior exec swayosd-client --output-volume raise # win-pageup
+bindsym --locked XF86AudioRaiseVolume exec noctalia msg volume-up
+bindsym $mod+Prior exec noctalia msg volume-up # win-pageup
 
 # Decrease volume
-bindsym --locked XF86AudioLowerVolume exec swayosd-client --output-volume lower
-bindsym $mod+Next exec swayosd-client --output-volume lower # win-pagedown
+bindsym --locked XF86AudioLowerVolume exec noctalia msg volume-down
+bindsym $mod+Next exec noctalia msg volume-down # win-pagedown
 
 # Toggle mute
-bindsym --locked XF86AudioMute exec swayosd-client --output-volume mute-toggle
+bindsym --locked XF86AudioMute exec noctalia msg volume-mute
 
 # Toggle mute microphone
-bindsym Shift+XF86AudioMute exec mb-audio -n mic toggle
-bindsym XF86AudioMicMute exec mb-audio -n mic toggle
+bindsym Shift+XF86AudioMute exec noctalia msg mic-mute
+bindsym XF86AudioMicMute exec noctalia msg mic-mute
 
 # Toggle touchpad
 bindsym XF86TouchpadToggle exec mb-touchpad -n toggle
 bindsym $mod+F9 exec mb-touchpad -n toggle
 
 # increase backlight
-bindsym XF86MonBrightnessUp exec swayosd-client --brightness raise
-bindsym $mod+F8 exec swayosd-client --brightness raise
+bindsym XF86MonBrightnessUp exec noctalia msg brightness-up
+bindsym $mod+F8 exec noctalia msg brightness-up
 
 # decrease backlight
-bindsym XF86MonBrightnessDown exec swayosd-client --brightness lower
-bindsym $mod+F7 exec swayosd-client --brightness lower
+bindsym XF86MonBrightnessDown exec noctalia msg brightness-down
+bindsym $mod+F7 exec noctalia msg brightness-down
 
 # terminal
 bindsym $mod+Return exec xterm open
@@ -368,9 +364,9 @@ bindsym --to-code $mod+Shift+p exec mb-run-app
 bindsym --to-code $mod+p exec mb-run-app
 bindsym XF86Launch1 exec mb-run-app
 
-# Mako - notification daemon
-bindsym $mod+Escape exec makoctl dismiss --all
-bindsym $mod+Shift+Escape exec makoctl restore
+# Dismiss current toasts; open retained history instead of replaying a toast.
+bindsym $mod+Escape exec noctalia msg notification-clear-active
+bindsym $mod+Shift+Escape exec noctalia msg panel-open control-center notifications
 
 set $mode_screenshot screenshot
 mode "$mode_screenshot" {
@@ -417,10 +413,11 @@ exec udiskie --appindicator
 
 # https://github.com/swaywm/sway/wiki#gtk-applications-take-20-seconds-to-start
 # XDG_CURRENT_DESKTOP is necessary for WebRTC screen sharing work on wayland (through xdg-desktop-portal wlr & gtk)
-exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP ACCEL_OS
-exec hash dbus-update-activation-environment 2>/dev/null && \
-     dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP ACCEL_OS
-exec systemctl --user start sway-session.target
+# Keep import and session startup in one shell job: separate execs race each other.
+exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP PATH ACCEL_OS && \
+     ( ! command -v dbus-update-activation-environment >/dev/null 2>&1 || \
+       dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP PATH ACCEL_OS ) && \
+     systemctl --user start sway-session.target
 exec swaymsg -t subscribe '["shutdown"]' && systemctl --user stop sway-session.target
 
 

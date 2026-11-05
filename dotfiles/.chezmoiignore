@@ -38,14 +38,12 @@ bin/completions/_mb-touchpad
 .config/fuzzel/**
 .config/gtk-3.0/**
 .config/kanshi/**
-.config/mako/**
 .config/mb-clipboard/**
+.config/noctalia/**
 .config/mimeapps.list
 .config/spotify-flags.conf
-.config/swayosd/**
 .config/systemd/**
 .config/sway/**
-.config/waybar/**
 .config/xdg-desktop-portal/**
 .config/zathura/**
 .local/share/applications/**
