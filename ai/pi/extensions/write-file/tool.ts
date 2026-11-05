@@ -1,4 +1,3 @@
-import { StringEnum } from "@earendil-works/pi-ai";
 import { type Static, Type } from "typebox";
 
 import { resolvePatchPath } from "../apply-patch/parser.ts";
@@ -15,7 +14,8 @@ export const writeFileSchema = Type.Object(
     content: Type.String({
       description: "Full desired file contents.",
     }),
-    mode: StringEnum(["create", "replace"] as const, {
+    mode: Type.Enum(["create", "replace"] as const, {
+      type: "string",
       description: "Whether to create a new file or replace an existing one.",
     }),
   },

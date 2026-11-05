@@ -187,7 +187,7 @@ test("executeSrcwalkCommand forwards cwd and reports warnings", async () => {
     async (_command, args, options) => {
       assert.deepEqual(args, ["overview"]);
       observedCwd = options?.cwd;
-      return { code: 0, stdout: "one\ntwo\n", stderr: "", killed: false };
+      return { code: 0, stdout: "one\ntwo\n", stderr: "", killed: false, truncated: false };
     },
     { args: ["overview"], warnings: ["clamped"] },
     "/repo",
@@ -206,6 +206,7 @@ test("executeSrcwalkCommand throws with stderr on unsuccessful exit", async () =
         stdout: "",
         stderr: "invalid target",
         killed: false,
+        truncated: false,
       }),
       { args: ["show", "missing"], warnings: [] },
       "/repo",

@@ -2,7 +2,6 @@ import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { StringEnum } from "@earendil-works/pi-ai";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -75,12 +74,14 @@ export const srcwalkDiscoverSchema = Type.Object(
         "Symbol, 2-5 comma-separated symbols, field/member, text, path fragment, or file glob.",
     }),
     kind: Type.Optional(
-      StringEnum(["symbol", "file", "text", "access"] as const, {
+      Type.Enum(["symbol", "file", "text", "access"] as const, {
+        type: "string",
         description: "Force symbol, file, text, or field/member-access discovery.",
       }),
     ),
     match: Type.Optional(
-      StringEnum(["any", "all"] as const, {
+      Type.Enum(["any", "all"] as const, {
+        type: "string",
         description:
           "Match any comma-separated term or require same-file co-occurrence of all terms.",
       }),
@@ -142,7 +143,8 @@ export const srcwalkCallersSchema = Type.Object(
       Type.String({ description: "Filter direct call sites using field:value qualifiers." }),
     ),
     count_by: Type.Optional(
-      StringEnum(["args", "caller", "receiver", "path", "file"] as const, {
+      Type.Enum(["args", "caller", "receiver", "path", "file"] as const, {
+        type: "string",
         description: "Count direct call sites by field.",
       }),
     ),

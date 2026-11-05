@@ -1,7 +1,6 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExecOptions, ExecResult } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 
@@ -67,7 +66,8 @@ export const tilthSearchSchema = Type.Object(
         "Symbol, concept, exact text, or regex to search for. Callers mode accepts up to five comma-separated symbols.",
     }),
     mode: Type.Optional(
-      StringEnum(["auto", "literal", "regex", "callers"] as const, {
+      Type.Enum(["auto", "literal", "regex", "callers"] as const, {
+        type: "string",
         description:
           "Search mode. auto lets Tilth classify the query, literal forces exact text search, regex forces regex search, callers finds call sites for one symbol or up to five comma-separated symbols.",
       }),

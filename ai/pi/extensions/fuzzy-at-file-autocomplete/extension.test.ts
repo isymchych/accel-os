@@ -37,6 +37,7 @@ function createExecApi(): Pick<ExtensionAPI, "exec"> {
         stderr: "",
         code: 0,
         killed: false,
+        truncated: false,
       };
     },
   };

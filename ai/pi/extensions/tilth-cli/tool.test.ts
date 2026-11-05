@@ -195,7 +195,7 @@ test("executeTilthDiff runs in an explicit repository and keeps scope relative",
     async (_command, args, options) => {
       observedArgs = args;
       observedCwd = options?.cwd;
-      return { code: 0, stdout: "", stderr: "", killed: false };
+      return { code: 0, stdout: "", stderr: "", killed: false, truncated: false };
     },
     { repository: "/tmp/clone", scope: "src" },
     "/repo",
@@ -246,6 +246,7 @@ test("executeTilthCommand throws when Tilth exits unsuccessfully", async () => {
         stdout: "",
         stderr: "invalid query",
         killed: false,
+        truncated: false,
       }),
       ["query"],
       "/repo",
@@ -266,6 +267,7 @@ test("executeTilthDiff rejects an invalid git ref before invoking Tilth", async 
           stdout: "",
           stderr: "fatal: bad revision 'definitely-not-a-ref'",
           killed: false,
+          truncated: false,
         };
       },
       { source: "definitely-not-a-ref" },
