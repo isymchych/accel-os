@@ -3,6 +3,9 @@ export ACCEL_OS="${ACCEL_OS:-$HOME/accel-os}"
 export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-$ACCEL_OS/ai/pi}"
 export PI_CACHE_RETENTION="${PI_CACHE_RETENTION:-long}"
 export DFT_BACKGROUND="${DFT_BACKGROUND:-light}"
+if [[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/difftastic/theme.zsh" ]]; then
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/difftastic/theme.zsh"
+fi
 
 typeset -gU path
 path=(

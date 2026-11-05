@@ -1,0 +1,25 @@
+# Select existing palettes; built-in and community color generation stays disabled.
+[theme.templates.user.alacritty]
+input_path_modes = { dark = "$XDG_CONFIG_HOME/alacritty/solarized_dark.toml", light = "$XDG_CONFIG_HOME/alacritty/solarized_light.toml" }
+output_path = "$XDG_CONFIG_HOME/alacritty/theme.toml"
+
+[theme.templates.user.fuzzel]
+input_path_modes = { dark = "$XDG_CONFIG_HOME/fuzzel/dark-theme.ini", light = "$XDG_CONFIG_HOME/fuzzel/light-theme.ini" }
+output_path = "$XDG_CONFIG_HOME/fuzzel/theme.ini"
+
+[theme.templates.user.newsboat]
+input_path_modes = { dark = "/usr/share/doc/newsboat/contrib/colorschemes/solarized-dark", light = "/usr/share/doc/newsboat/contrib/colorschemes/solarized-light" }
+output_path = "$XDG_CONFIG_HOME/newsboat/theme"
+
+[theme.templates.user.zathura]
+input_path_modes = { dark = "$XDG_CONFIG_HOME/zathura/nord-dark-theme", light = "$XDG_CONFIG_HOME/zathura/solarized-light-theme" }
+output_path = "$XDG_CONFIG_HOME/zathura/theme"
+
+[theme.templates.user.difftastic]
+input_path = "templates/difftastic.zsh"
+output_path = "$XDG_CONFIG_HOME/difftastic/theme.zsh"
+
+[theme.templates.user.gtk]
+input_path = "templates/gtk-settings.ini"
+output_path = "$XDG_CONFIG_HOME/gtk-3.0/settings.ini"
+post_hook = 'gsettings set org.gnome.desktop.interface gtk-theme "{{ mode | replace: "dark", "Adwaita-dark" | replace: "light", "Adwaita" }}"'

@@ -65,16 +65,19 @@
   used only by repository scripts to the private root package. Keep shared development tooling at
   the root workspace.
 
-## Theme Switching Scripts
+## Desktop Appearance
 
-- Pair every app-specific theme toggle with matching scripts in
-  `dotfiles/dot_local/share/dark-mode.d/` and `dotfiles/dot_local/share/light-mode.d/`, named
-  `executable_<app>-theme.sh`.
-- Keep scripts minimal: shebang, blank line, then a single command that swaps the light and dark
-  tokens (typically a `sed -i --follow-symlinks` substitution mirroring the rest of the repo).
-- Keep the literal theme tokens in sync with their tracked dotfiles (e.g.
-  `dotfiles/dot_config/alacritty/alacritty.toml`) so the sed substitutions match what chezmoi
-  installs.
+- Noctalia owns Linux light/dark switching. Configure native user templates in
+  `dotfiles/dot_config/noctalia/templates.toml` rather than paired toggle scripts or a custom
+  dispatcher.
+- Preserve the existing application palettes; keep built-in and community recoloring disabled.
+- Edit tracked palette files and template inputs, not generated outputs. See
+  [desktop appearance](docs/linux/README.md#desktop-appearance) for output ownership and reload
+  behavior.
+- Keep custom hooks minimal and use them only for behavior that native templates or system
+  appearance preferences cannot handle.
+- For native theme changes, run `node --test scripts/noctalia-theme.test.ts` from the repository
+  root on Linux with Noctalia installed; the test skips otherwise.
 
 ## Testing Guidelines
 

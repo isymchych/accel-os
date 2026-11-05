@@ -33,7 +33,6 @@ bin/completions/_mb-touchpad
 # Linux desktop configuration
 .Xdefaults
 .config/chromium-flags.conf
-.config/darkman/**
 .config/discord/**
 .config/fuzzel/**
 .config/gtk-3.0/**
@@ -47,9 +46,7 @@ bin/completions/_mb-touchpad
 .config/xdg-desktop-portal/**
 .config/zathura/**
 .local/share/applications/**
-.local/share/dark-mode.d/**
 .local/share/dbus-1/**
-.local/share/light-mode.d/**
 .local/share/sounds/**
 .run-sway
 {{ end }}

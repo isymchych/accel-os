@@ -2,7 +2,8 @@
 Description=Noctalia desktop shell for Sway
 PartOf=sway-session.target
 After=sway-session.target graphical-session.target
-Conflicts=mako.service swayosd.service
+After=wlsunset.service polkit-gnome-authentication-agent.service
+Conflicts=mako.service swayosd.service wlsunset.service polkit-gnome-authentication-agent.service
 ConditionEnvironment=WAYLAND_DISPLAY
 
 [Service]

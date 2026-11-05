@@ -1,6 +1,10 @@
 [general]
 import = [
+{{ if eq .chezmoi.os "linux" }}
+    "~/.config/alacritty/theme.toml"
+{{ else }}
     "~/.config/alacritty/solarized_light.toml"
+{{ end }}
 ]
 
 [env]

@@ -6,21 +6,24 @@ telemetry_enabled = false
 offline_mode = true
 external_ip_enabled = false
 screen_time_enabled = false
-polkit_agent = false
+polkit_agent = true
 clipboard_enabled = false
 clipboard_keep_from_closed_apps = false
 launch_apps_as_systemd_services = true
 
 [theme]
-mode = "dark"
-shell_mode = "dark"
-sync_color_scheme = false
+mode = "auto"
+shell_mode = "follow"
+sync_color_scheme = true
 
 [theme.templates]
 enable_builtin_templates = false
 enable_community_templates = false
 
-# Sway, darkman, wlsunset, swayidle, and swaylock retain these responsibilities.
+[hooks]
+theme_mode_changed = 'notify-send --app-name=Noctalia --urgency=low "switching to $NOCTALIA_THEME_MODE mode"'
+
+# Sway, swayidle, and swaylock retain these responsibilities.
 [wallpaper]
 enabled = false
 
@@ -30,8 +33,18 @@ enabled = false
 [desktop_widgets]
 enabled = false
 
+[location]
+auto_locate = false
+address = ""
+latitude = 50.470666901477415
+longitude = 30.514520179219673
+custom_schedule = false
+
 [nightlight]
-enabled = false
+enabled = true
+force = false
+temperature_day = 6500
+temperature_night = 4000
 
 [weather]
 enabled = false
@@ -76,7 +89,7 @@ margin_ends = 0
 padding = 6
 widget_spacing = 6
 start = ["launcher", "clock", "workspaces", "sway-mode"]
-center = ["playback", "microphone", "bluetooth", "power_profile", "tray", "keyboard_layout", "caffeine"]
+center = ["playback", "microphone", "network", "bluetooth", "power_profile", "tray", "keyboard_layout", "caffeine"]
 end = ["pi-agents", "failed-units", "cpu", "memory", "temperature", "disk", "brightness", "battery", "session-menu"]
 
 [widget.clock]
@@ -117,6 +130,11 @@ scroll_down = "none"
 
 [widget.bluetooth.actions]
 left = "exec xterm run --class=bluetui -- bluetui"
+
+[widget.network]
+type = "network"
+show_label = false
+vpn_status = "both"
 
 [widget.pi-agents]
 type = "accel-os/desktop-status:pi-agents"
@@ -173,7 +191,7 @@ left = "exec mb-exit"
 cpu_poll_seconds = 3
 memory_poll_seconds = 3
 disk_poll_seconds = 30
-cpu_temp_sensor_path = "/sys/class/hwmon/hwmon1/temp1_input"
+cpu_temp_sensor_path = "" # Auto-detect the CPU sensor; hwmon numbers change between boots.
 cpu_usage_activity_threshold = 60
 cpu_usage_critical_threshold = 95
 ram_pct_activity_threshold = 60

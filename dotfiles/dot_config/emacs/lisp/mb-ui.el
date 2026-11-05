@@ -38,18 +38,21 @@
 
 
 
-;; Auto dark mode on Linux https://darkman.grtcdr.tn/
-(use-package darkman
+;; Follow the appearance portal on Linux, without requiring an Emacs server.
+(use-package auto-dark
   :if mb-is-linux
-
+  :diminish auto-dark-mode
   :config
-  (setq darkman-themes (list :light mb-light-theme :dark mb-dark-theme))
+  (setq auto-dark-themes (list (list mb-dark-theme) (list mb-light-theme)))
   (if (getenv "DBUS_SESSION_BUS_ADDRESS")
       (condition-case err
-	  (darkman-mode)
+	  (progn
+            (setq auto-dark-detection-method 'dbus)
+            (auto-dark-mode 1))
 	(dbus-error
-         (message "Skipping darkman-mode: %s" (error-message-string err))))
-    (message "Skipping darkman-mode: DBUS_SESSION_BUS_ADDRESS is unset")))
+         (setq auto-dark-mode nil)
+         (message "Skipping auto-dark-mode: %s" (error-message-string err))))
+    (message "Skipping auto-dark-mode: DBUS_SESSION_BUS_ADDRESS is unset")))
 
 
 

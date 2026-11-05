@@ -10,4 +10,23 @@
 .config/swayosd/style.css
 .config/systemd/user/mako.service.d/sway-session.conf
 .config/systemd/user/swayosd.service
+.config/systemd/user/wlsunset.service
+.config/systemd/user/polkit-gnome-authentication-agent.service
+.config/darkman/config.yaml
+.local/share/light-mode.d/alacritty-theme.sh
+.local/share/dark-mode.d/alacritty-theme.sh
+.local/share/light-mode.d/fuzzel-theme.sh
+.local/share/dark-mode.d/fuzzel-theme.sh
+.local/share/light-mode.d/newsboat-colorscheme.sh
+.local/share/dark-mode.d/newsboat-colorscheme.sh
+.local/share/light-mode.d/zathura-theme.sh
+.local/share/dark-mode.d/zathura-theme.sh
+.local/share/light-mode.d/difftastic-theme.sh
+.local/share/dark-mode.d/difftastic-theme.sh
+.local/share/light-mode.d/gemini-theme.sh
+.local/share/dark-mode.d/gemini-theme.sh
+.local/share/light-mode.d/gtk-color-scheme.sh
+.local/share/dark-mode.d/gtk-color-scheme.sh
+.local/share/light-mode.d/desktop-notification.sh
+.local/share/dark-mode.d/desktop-notification.sh
 {{ end }}
