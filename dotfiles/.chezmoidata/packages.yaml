@@ -164,7 +164,6 @@ packages:
               - slurp # Select a region in a Wayland compositor
               - wev # Inspect Wayland input events
               - wtype # Generate keyboard input on Wayland
-              - satty # Modern screenshot annotation tool, inspired by Swappy and Flameshot
               - ddcutil # External-monitor brightness control through Noctalia
               - wf-recorder # Screen recorder for wlroots-based compositors such as sway
               - imagemagick # An image viewing/manipulation program

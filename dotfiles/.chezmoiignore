@@ -18,7 +18,6 @@ bin/mb-lock-screen
 bin/mb-preview
 bin/mb-record
 bin/mb-run-app
-bin/mb-screenshot
 bin/mb-spotify
 bin/mb-touchpad
 bin/completions/_mb-audio
@@ -26,7 +25,6 @@ bin/completions/_mb-file-manager
 bin/completions/_mb-no-args
 bin/completions/_mb-preview
 bin/completions/_mb-record
-bin/completions/_mb-screenshot
 bin/completions/_mb-spotify
 bin/completions/_mb-touchpad
 

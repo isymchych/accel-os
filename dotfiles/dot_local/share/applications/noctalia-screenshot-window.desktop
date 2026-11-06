@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Take window screenshot
+TryExec=noctalia
+Exec=noctalia msg screenshot-window
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=screenshot;capture;window;focused;

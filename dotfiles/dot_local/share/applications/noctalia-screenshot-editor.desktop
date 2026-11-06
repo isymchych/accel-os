@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Open screenshot editor
+TryExec=noctalia
+Exec=noctalia msg screenshot-annotate
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=screenshot;capture;editor;annotate;annotation;draw;

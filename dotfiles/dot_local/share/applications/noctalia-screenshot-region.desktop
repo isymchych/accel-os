@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Take region screenshot
+TryExec=noctalia
+Exec=noctalia msg screenshot-region
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=screenshot;capture;region;selection;snip;

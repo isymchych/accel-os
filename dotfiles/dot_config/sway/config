@@ -368,20 +368,10 @@ bindsym XF86Launch1 exec mb-run-app
 bindsym $mod+Escape exec noctalia msg notification-clear-active
 bindsym $mod+Shift+Escape exec noctalia msg panel-open control-center notifications
 
-set $mode_screenshot screenshot
-mode "$mode_screenshot" {
-     bindsym --to-code s exec mb-screenshot screen; mode "default"
-     bindsym --to-code w exec mb-screenshot window; mode "default"
-     bindsym --to-code r exec mb-screenshot region; mode "default"
-     bindsym --to-code Shift+s exec mb-screenshot screen 4; mode "default"
-     bindsym --to-code Shift+w exec mb-screenshot window 4; mode "default"
-     bindsym --to-code Shift+r exec mb-screenshot region 4; mode "default"
-     bindsym Return mode "default"
-     bindsym Escape mode "default"
-}
-
-# screenshot
-bindsym Print exec notify-send --app-name=sway-mode "screenshot" "[s]creen [w]indow [r]egion [S/W/R] +4s"; mode "$mode_screenshot"
+# Native screenshot UI; region captures await Enter before opening the editor.
+bindsym Print exec noctalia msg screenshot-region
+bindsym Mod1+Print exec noctalia msg screenshot-window
+bindsym Shift+Print exec noctalia msg screenshot-fullscreen pick
 
 # file manager
 bindsym --to-code $mod+n exec mb-file-manager open

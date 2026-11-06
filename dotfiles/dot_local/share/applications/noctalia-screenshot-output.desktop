@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Take output screenshot
+TryExec=noctalia
+Exec=noctalia msg screenshot-fullscreen pick
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=screenshot;capture;output;monitor;display;screen;fullscreen;

@@ -127,8 +127,9 @@
 - When inspecting installed Pi package APIs in this repo, start from root-level
   `node_modules/@earendil-works/*/dist/*.d.ts` and exclude `*.map` from code searches because
   workspace dependencies are hoisted and sourcemaps make compiled output noisy.
-- Declare tools required by dotfiles in the canonical package inventory. Update platform docs when
-  users need manual setup or operational guidance beyond the managed configuration.
+- Declare tools required by dotfiles in the canonical package inventory. Update platform setup
+  guides when manual setup or maintenance steps change, or existing instructions become incorrect.
+  Managed configuration changes alone do not justify adding documentation.
 - Before formatting files, inspect the repository's declared formatter and scripts, then use that
   formatter directly; do not invoke an undeclared formatter through `npx` because it can produce
   incompatible output or download untracked tooling.
@@ -137,8 +138,9 @@
 
 ## Intent Ledger
 
-- Preserve personal operational and application preferences in platform setup guides; this
-  repository is a personal workstation runbook, not a general-purpose distribution guide.
+- Preserve personal setup choices and rationale already recorded in platform guides; this does not
+  require documenting every application preference. This repository is a personal workstation
+  runbook, not a general-purpose distribution guide.
 - For Sway session daemons, prefer user systemd units pulled by `sway-session.target`; keep
   `dotfiles/dot_config/sway/config` focused on compositor settings and keybindings.
 - For terminal-backed GUI launches in dotfiles, prefer the `xterm` shim over hardcoded terminal
@@ -156,7 +158,9 @@
   them together.
 - Treat `dotfiles/.chezmoidata/packages.yaml` as the source of truth for packages required by
   tracked Linux desktop configuration; keep `docs/linux/README.md` focused on bootstrap, manual,
-  hardware-specific, and optional setup instead of duplicating that inventory.
+  hardware-specific, and optional setup instead of duplicating that inventory. It is not a reference
+  for keybindings, managed defaults, or application workflows; keep those details in their owning
+  configuration unless usage documentation is explicitly requested.
 - Keep baseline environment for repo-managed commands in `dotfiles/dot_zshenv_tools`; reserve
   `dot_zshrc_tools` for interactive shell behavior and `dot_run-sway` for graphical-session
   configuration.

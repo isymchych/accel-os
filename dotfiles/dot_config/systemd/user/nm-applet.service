@@ -1,0 +1,11 @@
+[Unit]
+Description=NetworkManager applet for Sway VPN authentication
+PartOf=sway-session.target
+After=sway-session.target graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/nm-applet --indicator
+Restart=on-failure
+RestartSec=2

@@ -11,6 +11,13 @@ clipboard_enabled = false
 clipboard_keep_from_closed_apps = false
 launch_apps_as_systemd_services = true
 
+[shell.screenshot]
+annotate = true
+# Automatic region completion closes without opening the editor on this host.
+confirm_region = true
+copy_on_close = false
+directory = "~/temp/screenshots"
+
 [theme]
 mode = "auto"
 shell_mode = "follow"
