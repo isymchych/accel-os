@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-# zsh-completion: completions/_mb-no-args
-
-set -euo pipefail
-
-exec noctalia msg panel-toggle launcher

@@ -1,0 +1,15 @@
+id = "accel-os/clipboard-actions"
+name = "Clipboard actions"
+version = "1.0.0"
+plugin_api = 24
+description = "Preview a frozen clipboard item and choose a contextual action."
+dependencies = ["mb-clipboard-actions"]
+
+[[panel]]
+id = "actions"
+entry = "panel.luau"
+width = 540
+height = 680
+placement = "floating"
+position = "center"
+keyboard_focus = "exclusive"

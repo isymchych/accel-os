@@ -10,6 +10,7 @@ macos-defaults.sh
 {{ if ne .chezmoi.os "linux" }}
 # Linux desktop commands and completions
 bin/mb-audio
+bin/mb-clipboard-actions
 bin/mb-template
 bin/mb-colorpicker
 bin/mb-exit
@@ -17,7 +18,6 @@ bin/mb-file-manager
 bin/mb-lock-screen
 bin/mb-preview
 bin/mb-record
-bin/mb-run-app
 bin/mb-spotify
 bin/mb-touchpad
 bin/completions/_mb-audio

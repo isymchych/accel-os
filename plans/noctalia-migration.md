@@ -7,9 +7,9 @@ complete by the user. Obsolete package and configuration cleanup is complete. No
 or cleanup is open for those integrations.
 
 VPN remains postponed pending a stable release with native VPN secret handling. Native clipboard
-history, launcher emoji/templates, and native bar clicks are approved and implemented; interactive
-acceptance remains pending. Locking, idle, and session replacement remain outside implementation
-scope.
+history and contextual actions, launcher emoji/templates, and native bar clicks are approved and
+implemented. Automated checks pass; interactive acceptance remains pending. Locking, idle, and
+session replacement remain outside implementation scope.
 
 ## Deferred: production VPN
 
@@ -51,10 +51,15 @@ Use Noctalia's native clipboard history from `Mod+i`, bound directly to
 keep existing cliphist data untouched, but retire both cliphist watchers so history is not collected
 twice. Keep copy-only activation for history and launcher results; automatic paste stays disabled.
 
+`Mod+Shift+i` runs `mb-clipboard-actions`, opening the separate native
+`accel-os/clipboard-actions:actions` panel. It previews the current clipboard text or image and
+offers contextual actions: Save As, text editing, image annotation, URL opening, YouTube downloads
+through `mb-ydl`, and JSON formatting. Preview and execution use the same frozen snapshot. Save As
+belongs in this actions panel, not inside native clipboard history.
+
 Emoji belongs in the launcher's `/emo` provider. Tracked template files remain canonical and are
 available through `/tpl`, backed by the small `mb-template list` and `mb-template copy <name>`
-commands. The old three-mode picker, custom mode keys, and generic Save As action are not carried
-over.
+commands. The old three-mode picker and custom mode keys are not carried over.
 
 Clock, speaker/microphone, Bluetooth, and system-monitor left-clicks use native Control Center tabs.
 Right-click opens `bluetui` on Bluetooth, `pavucontrol` on the speaker, its recording tab on the
@@ -66,7 +71,8 @@ Translation integration is declined. Keep offline mode enabled and do not enable
 plugin.
 
 Verify history search, image previews, copy/paste, pinning/deletion, persistence after relogin,
-`/emo`, `/tpl`, and native panel clicks interactively before accepting this integration.
+clipboard action previews, keyboard navigation and dismissal, `/emo`, `/tpl`, and native panel
+clicks interactively before accepting this integration.
 
 ## Optional later integrations
 

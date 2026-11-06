@@ -1,4 +1,4 @@
-#compdef mb-colorpicker mb-exit mb-lock-screen mb-run-app
+#compdef mb-clipboard-actions mb-colorpicker mb-exit mb-lock-screen
 
 _mb-no-args() {
   _nothing

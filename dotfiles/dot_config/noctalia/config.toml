@@ -225,7 +225,7 @@ disk_used_pct_activity_threshold = 75
 disk_used_pct_critical_threshold = 95
 
 [plugins]
-enabled = ["accel-os/desktop-status"]
+enabled = ["accel-os/desktop-status", "accel-os/clipboard-actions"]
 auto_update = "none"
 
 [[plugins.source]]

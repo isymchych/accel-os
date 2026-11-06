@@ -359,8 +359,8 @@ bindsym $mod+F7 exec noctalia msg brightness-down
 bindsym $mod+Return exec xterm open
 
 # app runner
-bindsym --to-code $mod+p exec mb-run-app
-bindsym XF86Launch1 exec mb-run-app
+bindsym --to-code $mod+p exec noctalia msg panel-toggle launcher
+bindsym XF86Launch1 exec noctalia msg panel-toggle launcher
 
 # Dismiss current toasts; open retained history instead of replaying a toast.
 bindsym $mod+Escape exec noctalia msg notification-clear-active
@@ -379,6 +379,7 @@ bindsym --to-code $mod+t exec xterm run --class="FLOAT" -- trans -shell
 
 # clipboard manager
 bindsym --to-code $mod+i exec noctalia msg panel-toggle clipboard
+bindsym --to-code $mod+Shift+i exec mb-clipboard-actions
 
 # editor
 bindsym --to-code $mod+e exec gtk-launch emacs

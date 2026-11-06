@@ -85,6 +85,13 @@
 - Execute `chezmoi diff` and `chezmoi apply --dry-run` on macOS and Linux when touching
   OS-conditional templates.
 - For Node shims, invoke the wrapped tool (`npm run lint`, etc.) to confirm path resolution.
+- For Noctalia plugin changes, run `just check-noctalia` from the repository root on Linux.
+- Keep plugin test harnesses and assertions in `scripts/fixtures/noctalia/*.luau`; use
+  `scripts/noctalia-plugins.test.ts` only for orchestration. Execute actual plugin source against
+  fake native APIs rather than copying its logic.
+- Control asynchronous callbacks explicitly in Noctalia plugin tests rather than using sleeps. These
+  tests verify plugin logic, not native rendering or API compatibility; verify those changes in a
+  live Noctalia session.
 - Store Emacs ERT tests in `dotfiles/dot_config/emacs/tests/`, name them `*-test.el`, and run
   syntax, Checkdoc, and ERT validation with `./scripts/check-emacs`.
 - Name startup integration tests `*-startup-test.el`. The runner loads development configuration in

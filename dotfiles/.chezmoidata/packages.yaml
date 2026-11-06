@@ -52,6 +52,7 @@ packages:
               - go # Core compiler tools for the Go programming language
               - kdiff3 # A file comparator/merge tool
               - lld # Linker from the LLVM project
+              - luau # Analyzer and native VM for Noctalia plugin checks
               - neovim # Fork of Vim aiming to improve user experience, plugins, and GUIs
               # - rust-analyzer # Rust compiler front-end for IDEs
               - rustup # The Rust toolchain installer
