@@ -43,7 +43,7 @@ enable_community_templates = false
 [hooks]
 theme_mode_changed = 'notify-send --app-name=Noctalia --urgency=low "switching to $NOCTALIA_THEME_MODE mode"'
 
-# Sway, swayidle, and swaylock retain these responsibilities.
+# Sway retains the desktop background.
 [wallpaper]
 enabled = false
 
@@ -70,13 +70,19 @@ temperature_night = 4000
 enabled = false
 
 [lockscreen]
-enabled = false
+enabled = true
+lock_before_suspend = true
+grace_period_seconds = 4
 
 [idle.behavior.lock]
-enabled = false
+enabled = true
+action = "lock"
+timeout = 140
 
 [idle.behavior.screen-off]
-enabled = false
+enabled = true
+action = "screen_off"
+timeout = 120
 
 [brightness]
 enable_ddcutil = true
@@ -88,16 +94,36 @@ keep_dismissed_in_history = true
 max_visible = 7
 position = "top_center"
 
+[control_center.calendar]
+show_events_card = false
+
 [osd]
 enabled = true
 follow_focused_output = true
 
-# Route shell-owned session entry points through the existing confirmation/locking menu too.
 [[shell.session.actions]]
-action = "command"
-label = "Session actions"
-glyph = "power"
-command = "mb-exit"
+action = "lock"
+shortcut = "1"
+
+[[shell.session.actions]]
+action = "logout"
+shortcut = "2"
+countdown_seconds = 5
+
+[[shell.session.actions]]
+action = "lock_and_suspend"
+shortcut = "3"
+countdown_seconds = 5
+
+[[shell.session.actions]]
+action = "reboot"
+shortcut = "4"
+countdown_seconds = 5
+
+[[shell.session.actions]]
+action = "shutdown"
+shortcut = "5"
+countdown_seconds = 5
 
 [bar]
 order = ["default"]
@@ -108,8 +134,8 @@ thickness = 76
 margin_ends = 0
 padding = 6
 widget_spacing = 6
-start = ["launcher", "clock", "workspaces", "sway-mode"]
-center = ["playback", "microphone", "network", "bluetooth", "power_profile", "tray", "keyboard_layout", "caffeine"]
+start = ["launcher", "clock", "notifications", "workspaces", "sway-mode"]
+center = ["playback", "microphone", "privacy", "network", "bluetooth", "power_profile", "tray", "keyboard_layout", "caffeine", "nightlight"]
 end = ["pi-agents", "failed-units", "cpu", "memory", "temperature", "disk", "brightness", "battery", "session-menu"]
 
 [widget.clock]
@@ -118,6 +144,11 @@ vertical_format = "{:%H:%M}\n{:%b %d}\n{:%a}"
 
 [widget.clock.actions]
 right = "none"
+
+[widget.notifications]
+type = "notifications"
+# Keep the native right-click DND toggle available even with no unread notifications.
+hide_when_no_unread = false
 
 [widget.workspaces]
 type = "workspaces"
@@ -147,6 +178,10 @@ hide_when_inactive = false
 right = "exec pavucontrol -t 4"
 scroll_up = "none"
 scroll_down = "none"
+
+[widget.privacy]
+type = "privacy"
+hide_inactive = true
 
 [widget.bluetooth.actions]
 right = "exec xterm run --class=bluetui -- bluetui"
@@ -203,12 +238,8 @@ visualization = "none"
 right = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
 
 [widget.session-menu]
-type = "custom_button"
+type = "session"
 glyph = "power"
-tooltip = "Session actions"
-
-[widget.session-menu.actions]
-left = "exec mb-exit"
 
 [system.monitor]
 cpu_poll_seconds = 3

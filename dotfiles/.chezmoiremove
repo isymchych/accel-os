@@ -1,5 +1,12 @@
 {{ if eq .chezmoi.os "linux" }}
 # Retired desktop files: remove only known paths, not whole directories or user state.
+bin/mb-exit
+bin/mb-lock-screen
+.config/systemd/user/swayidle.service
+.config/fuzzel/fuzzel.ini
+.config/fuzzel/dark-theme.ini
+.config/fuzzel/light-theme.ini
+.config/fuzzel/theme.ini
 bin/mb-run-app
 bin/mb-clipboard
 bin/completions/_mb-clipboard

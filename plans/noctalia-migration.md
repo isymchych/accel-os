@@ -2,111 +2,78 @@
 
 ## Status
 
-Migration, night light, polkit dialogs, unified appearance, and native screenshots are accepted as
-complete by the user. Obsolete package and configuration cleanup is complete. No further acceptance
-or cleanup is open for those integrations.
+The desktop migration, interactive acceptance, and obsolete-stack cleanup are complete, including
+native locking, idle behavior, and session actions. Do not reopen completed acceptance or cleanup.
+Only native production VPN remains deferred.
 
-VPN remains postponed pending a stable release with native VPN secret handling. Native clipboard
-history and contextual actions, launcher emoji/templates, and native bar clicks are approved and
-implemented. Automated checks pass; interactive acceptance remains pending. Locking, idle, and
-session replacement remain outside implementation scope.
+## Remaining work: production VPN
 
-## Deferred: production VPN
+Resume only after confirming an installed stable release includes VPN secret handling from upstream
+PR #5076; do not substitute an unreleased build. Keep nm-applet autostarting through
+`sway-session.target` and retain `network-manager-applet` until native acceptance passes without the
+applet running.
 
-Noctalia's native networking UI is deployed, but installed version 5.4.1 lacks VPN secret handling.
-Wait for a stable release containing upstream PR #5076; do not substitute an unreleased build. Keep
-nm-applet autostarting through `sway-session.target` and `network-manager-applet` installed until
-the native workflow passes acceptance without nm-applet running.
+When resuming:
 
-When VPN work resumes:
-
-- Confirm the installed stable release includes PR #5076 before retrying the native workflow.
 - Investigate the secrets failure before changing credential storage. Saved connections,
-  credentials, and authentication-storage settings must remain unchanged unless separately
-  authorized; system-wide password storage is not approved.
+  credentials, and authentication-storage settings require separate authorization to change;
+  system-wide password storage is not approved.
 - Use native Noctalia controls for production VPN, not a terminal wrapper. Preserve the independent
   development OpenVPN/TOTP script.
-- Verify production connect/disconnect, credentials, and cancellation without nm-applet running.
-  Also check needed Wi-Fi/wired workflows, advanced editing through `nm-connection-editor`, no
-  duplicate network UI after fresh login, and the unchanged development script.
-- Remove the retained applet package only after acceptance and explicit removal authorization.
+- Verify connect/disconnect, credentials, and cancellation without nm-applet; needed Wi-Fi/wired
+  workflows; advanced editing through `nm-connection-editor`; no duplicate network UI after fresh
+  login; and the unchanged development script.
+- Remove the applet package only after acceptance and explicit removal authorization. Retain
+  NetworkManager, `networkmanager-openvpn`, `nm-connection-editor`, and the keyring.
 
-Keep NetworkManager, `networkmanager-openvpn`, `nm-connection-editor`, and the keyring; this is a UI
-replacement, not an infrastructure replacement.
+After VPN acceptance and removal authorization, remove
+`dotfiles/dot_config/systemd/user/nm-applet.service`, its `Wants=` entry in
+`dotfiles/dot_config/systemd/user/sway-session.target`, and the `network-manager-applet` package
+declaration and installed package. Add `.config/systemd/user/nm-applet.service` to the Linux
+retired-file list, stop the applet, apply the scoped removal, reload user systemd, and verify a
+fresh login has no duplicate network UI.
 
-## Native screenshots
+## Retained constraints
 
-Noctalia owns capture and annotation. `Print` starts region selection before annotation, `Alt+Print`
-captures the focused window, and `Shift+Print` opens the native output picker (immediate capture on
-one output). These are direct shortcuts, not a Sway mode or a custom chooser.
+- **Ownership:** Sway owns the compositor and graphical session; Noctalia supplies desktop UI, not
+  the session launcher. Noctalia owns locking, idle behavior, and session-action UI. Keep kanshi and
+  udiskie. Do not reinstate the retired locking/session stack as a parallel fallback.
+- **Locking and session:** keep native fingerprint support and animations, unchanged PAM,
+  authenticated unlocking without a grace period, and lock-before-sleep. Do not add idle suspend.
+  Use native cancellable countdowns rather than yes/no prompts; omit hibernate from the menu without
+  changing system hibernation support. Timings and shortcuts live in the configuration.
+- **Infrastructure:** retain polkit, portals, PipeWire, the keyring, and NetworkManager. Replacing
+  UI does not authorize removing infrastructure. Keep external tools used by bar right-clicks, and
+  grim/slurp for the color picker and recording.
+- **Status:** preserve Pi working/waiting status, stale/non-agent filtering, and combined
+  system/user failed-unit reporting. Leave the Pi activity producer/protocol unchanged.
+- **Appearance and privacy:** Noctalia is the single appearance authority. Preserve curated
+  palettes, native user templates, disabled built-in/community recoloring, manual location with
+  online lookup disabled, and night-light temperature independent of application appearance. Keep
+  offline mode enabled; translation integration is declined.
+- **Clipboard and launcher:** retain native encrypted, keyring-backed history without duplicate
+  cliphist watchers or deleting existing cliphist data. Keep history/launcher activation copy-only,
+  with automatic paste disabled. Clipboard actions must preview and execute the same frozen
+  snapshot; Save As belongs in the separate actions panel, not history. Keep tracked templates
+  canonical and `mb-template` as the launcher helper.
+- **Accepted interaction choices:** preserve screenshot region confirmation, explicit copy rather
+  than copy-on-close, `~/temp/screenshots` saves, and live copy/paste independent of history. Keep
+  microphone/workspace scrolling and clock/temperature right-clicks disabled. Shortcut and widget
+  details live in the linked configuration rather than this plan.
+- **Configuration and rollback:** manage through Git/chezmoi. Reconcile conflicting Noctalia state
+  overrides explicitly without deleting unrelated state. Roll back with scoped changes plus process
+  reconciliation or relogin, not a parallel fallback stack; files alone do not restore running
+  processes.
 
-Keep region confirmation enabled: select a region, press Enter, then annotate. Saves retain
-`~/temp/screenshots`, and closing the editor does not implicitly copy. Live copy/paste remains
-available independently of clipboard history. Keep grim/slurp for the color picker and recording.
+**Fingerprint caveat:** Noctalia's independent fprintd reader does not use the existing PAM rule
+that skips fingerprint authentication with the lid closed. Native fingerprint support remains
+enabled by choice; investigate only if closed-lid use causes a practical problem.
 
-## Clipboard, launcher, and bar clicks
-
-Use Noctalia's native clipboard history from `Mod+i`, bound directly to
-`noctalia msg panel-toggle clipboard`. History uses Noctalia's encrypted, keyring-backed storage;
-keep existing cliphist data untouched, but retire both cliphist watchers so history is not collected
-twice. Keep copy-only activation for history and launcher results; automatic paste stays disabled.
-
-`Mod+Shift+i` runs `mb-clipboard-actions`, opening the separate native
-`accel-os/clipboard-actions:actions` panel. It previews the current clipboard text or image and
-offers contextual actions: Save As, text editing, image annotation, URL opening, YouTube downloads
-through `mb-ydl`, and JSON formatting. Preview and execution use the same frozen snapshot. Save As
-belongs in this actions panel, not inside native clipboard history.
-
-Emoji belongs in the launcher's `/emo` provider. Tracked template files remain canonical and are
-available through `/tpl`, backed by the small `mb-template list` and `mb-template copy <name>`
-commands. The old three-mode picker and custom mode keys are not carried over.
-
-Clock, speaker/microphone, Bluetooth, and system-monitor left-clicks use native Control Center tabs.
-Right-click opens `bluetui` on Bluetooth, `pavucontrol` on the speaker, its recording tab on the
-microphone, `dust` for `/home` on the disk indicator, and `htop` sorted by CPU or memory on the
-corresponding indicators. Clock and temperature right-clicks remain disabled. Preserve disabled
-microphone and workspace scrolling. Keep the external tools used by these right-click actions.
-
-Translation integration is declined. Keep offline mode enabled and do not enable a translation
-plugin.
-
-Verify history search, image previews, copy/paste, pinning/deletion, persistence after relogin,
-clipboard action previews, keyboard navigation and dismissal, `/emo`, `/tpl`, and native panel
-clicks interactively before accepting this integration.
-
-## Optional later integrations
-
-Keep the existing workflows unless a separate replacement is agreed:
-
-- **Locking, idle, and session actions:** consider these together, last. Agree on
-  authentication/PAM, lock-before-sleep, idle timeouts, output power/wake, confirmations, and
-  shell-failure behavior before replacing existing owners. Preserve security and suspend/resume
-  behavior; visual consistency alone is not a reason to weaken them.
-
-## Retained boundaries
-
-- Sway owns the compositor and graphical session. Noctalia supplies desktop UI inside that session;
-  it does not launch Sway or replace the session launcher.
-- Preserve Pi working/waiting status, stale/non-agent filtering, and the combined system/user
-  failed-unit indicator. Leave the Pi activity producer and protocol unchanged.
-- Keep `mb-template` as the launcher template helper. Keep `mb-lock-screen`, `mb-exit`, Fuzzel,
-  swaylock, swayidle, kanshi, and udiskie while their workflows remain. Native locking and idle
-  management stay disabled; session actions retain the existing confirmation/lock flow.
-- Keep polkit itself, portals, PipeWire, the keyring, and NetworkManager. Consolidating their UI
-  does not authorize removing the underlying infrastructure.
-- Noctalia is the single appearance authority. Preserve curated application palettes, native user
-  templates, disabled built-in/community recoloring, and the confirmed manual location with online
-  lookup disabled. Night-light temperature remains independent of application appearance.
-- Manage configuration through Git and chezmoi. Reconcile conflicting Noctalia state overrides
-  explicitly without deleting unrelated state. Rollback uses scoped Git/chezmoi changes and process
-  reconciliation or relogin, not a parallel fallback stack; restoring files alone does not restore
-  running processes.
-
-## Current configuration
+## Configuration
 
 - [Noctalia settings and templates](../dotfiles/dot_config/noctalia/)
 - [Sway configuration](../dotfiles/dot_config/sway/config) and
   [session services](../dotfiles/dot_config/systemd/user/)
 - [Package inventory](../dotfiles/.chezmoidata/packages.yaml) and
-  [exact retired-file list](../dotfiles/.chezmoiremove)
+  [retired-file list](../dotfiles/.chezmoiremove)
 - [Linux setup guide](../docs/linux/README.md)

@@ -139,7 +139,7 @@ bindsym --to-code $mod+Shift+x move workspace to output right
 
 # reload the configuration file and reapply display profile
 bindsym --to-code $mod+Shift+r reload; exec systemctl --user reload kanshi.service
-bindsym --to-code $mod+Shift+q exec mb-exit
+bindsym --to-code $mod+Shift+q exec noctalia msg panel-toggle session
 
 # go to prev workspace
 bindsym $mod+Tab workspace back_and_forth
@@ -402,9 +402,9 @@ exec udiskie --appindicator
 # https://github.com/swaywm/sway/wiki#gtk-applications-take-20-seconds-to-start
 # XDG_CURRENT_DESKTOP is necessary for WebRTC screen sharing work on wayland (through xdg-desktop-portal wlr & gtk)
 # Keep import and session startup in one shell job: separate execs race each other.
-exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP PATH ACCEL_OS && \
+exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_ID PATH ACCEL_OS && \
      ( ! command -v dbus-update-activation-environment >/dev/null 2>&1 || \
-       dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP PATH ACCEL_OS ) && \
+       dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_ID PATH ACCEL_OS ) && \
      systemctl --user start sway-session.target
 exec swaymsg -t subscribe '["shutdown"]' && systemctl --user stop sway-session.target
 

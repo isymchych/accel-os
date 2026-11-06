@@ -3,10 +3,6 @@
 input_path_modes = { dark = "$XDG_CONFIG_HOME/alacritty/solarized_dark.toml", light = "$XDG_CONFIG_HOME/alacritty/solarized_light.toml" }
 output_path = "$XDG_CONFIG_HOME/alacritty/theme.toml"
 
-[theme.templates.user.fuzzel]
-input_path_modes = { dark = "$XDG_CONFIG_HOME/fuzzel/dark-theme.ini", light = "$XDG_CONFIG_HOME/fuzzel/light-theme.ini" }
-output_path = "$XDG_CONFIG_HOME/fuzzel/theme.ini"
-
 [theme.templates.user.newsboat]
 input_path_modes = { dark = "/usr/share/doc/newsboat/contrib/colorschemes/solarized-dark", light = "/usr/share/doc/newsboat/contrib/colorschemes/solarized-light" }
 output_path = "$XDG_CONFIG_HOME/newsboat/theme"

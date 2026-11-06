@@ -133,13 +133,10 @@ packages:
               - xorg-xwayland # run X clients under wayland
               - xorg-xhost # Control X server access for tracked root GUI support
               - noctalia # Native desktop shell: bar, launcher, notifications, OSD, night light, and polkit agent
-              - swaylock # Screen locker for Wayland
-              - swayidle # Idle management daemon for Wayland
               - kanshi # Dynamic output configuration for Wayland WMs
               - xorg-xrdb # X server resource database utility
               - wmname # A utility to set the name of your window manager
               - kitty # A modern, hackable, featureful, OpenGL-based terminal emulator
-              - fuzzel # Application launcher for wlroots based Wayland compositors
               - libnotify # Library for sending desktop notifications
 
             desktop_integration:

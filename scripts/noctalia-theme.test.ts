@@ -20,7 +20,7 @@ test(
     const bin = join(home, "bin");
     mkdirSync(config);
     mkdirSync(bin);
-    for (const app of ["noctalia", "alacritty", "fuzzel", "newsboat", "zathura"]) {
+    for (const app of ["noctalia", "alacritty", "newsboat", "zathura"]) {
       cpSync(join(root, "dotfiles/dot_config", app), join(config, app), { recursive: true });
     }
     writeFileSync(
@@ -91,7 +91,6 @@ test(
       const dark = mode === "dark";
       for (const [output, source] of [
         ["alacritty/theme.toml", `alacritty/solarized_${mode}.toml`],
-        ["fuzzel/theme.ini", `fuzzel/${mode}-theme.ini`],
         ["newsboat/theme", `/usr/share/doc/newsboat/contrib/colorschemes/solarized-${mode}`],
         ["zathura/theme", `zathura/${dark ? "nord-dark-theme" : "solarized-light-theme"}`],
       ] as const) {

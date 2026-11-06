@@ -173,22 +173,6 @@ needed.
 Keep the user in the `video` group for backlight control. Consult the ArchWiki Backlight page for
 hardware-specific configuration.
 
-### Fingerprint scanner
-
-Add the `fingerprint` host feature and run `chezmoi apply` to install `fprintd` and the lid-state
-helper. Keep a recovery shell open and back up the PAM files.
-
-In `/etc/pam.d/system-local-login`, replace the direct `pam_fprintd.so` rule with:
-
-```text
-auth [success=1 default=ignore] pam_exec.so quiet /usr/local/libexec/accel-os/laptop-lid-closed
-auth sufficient pam_fprintd.so
-```
-
-Remove direct `pam_unix.so` and `pam_fprintd.so` rules from `/etc/pam.d/swaylock`, leaving
-`auth include login`. Test fingerprint and password authentication with the lid open, then confirm
-the closed-lid path skips the fingerprint reader.
-
 ### Hibernation
 
 1. Create a swap file.

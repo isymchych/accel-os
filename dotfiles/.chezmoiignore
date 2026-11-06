@@ -13,9 +13,7 @@ bin/mb-audio
 bin/mb-clipboard-actions
 bin/mb-template
 bin/mb-colorpicker
-bin/mb-exit
 bin/mb-file-manager
-bin/mb-lock-screen
 bin/mb-preview
 bin/mb-record
 bin/mb-spotify
@@ -33,7 +31,6 @@ bin/completions/_mb-touchpad
 .Xdefaults
 .config/chromium-flags.conf
 .config/discord/**
-.config/fuzzel/**
 .config/gtk-3.0/**
 .config/kanshi/**
 .config/noctalia/**
