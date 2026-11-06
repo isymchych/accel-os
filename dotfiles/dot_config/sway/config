@@ -337,19 +337,19 @@ bindsym $mod+Next exec noctalia msg volume-down # win-pagedown
 bindsym --locked XF86AudioMute exec noctalia msg volume-mute
 
 # Toggle mute microphone
-bindsym Shift+XF86AudioMute exec noctalia msg mic-mute
-bindsym XF86AudioMicMute exec noctalia msg mic-mute
+bindsym --locked Shift+XF86AudioMute exec noctalia msg mic-mute
+bindsym --locked XF86AudioMicMute exec noctalia msg mic-mute
 
 # Toggle touchpad
 bindsym XF86TouchpadToggle exec mb-touchpad -n toggle
 bindsym $mod+F9 exec mb-touchpad -n toggle
 
 # increase backlight
-bindsym XF86MonBrightnessUp exec noctalia msg brightness-up
+bindsym --locked XF86MonBrightnessUp exec noctalia msg brightness-up
 bindsym $mod+F8 exec noctalia msg brightness-up
 
 # decrease backlight
-bindsym XF86MonBrightnessDown exec noctalia msg brightness-down
+bindsym --locked XF86MonBrightnessDown exec noctalia msg brightness-down
 bindsym $mod+F7 exec noctalia msg brightness-down
 
 # terminal

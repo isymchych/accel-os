@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Color Picker
+Comment=Pick a screen color and copy it to the clipboard
+Exec=mb-colorpicker
+Icon=color-picker
+Terminal=false
+Categories=Utility;
+Keywords=color;picker;eyedropper;mb-colorpicker;

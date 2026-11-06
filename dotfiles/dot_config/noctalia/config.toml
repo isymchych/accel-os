@@ -1,4 +1,7 @@
 # Native Noctalia 5.4.1. App-managed settings.toml overrides this file.
+[accessibility]
+ui_scale = 1.15
+
 [shell]
 font_family = "JetBrains Mono Nerd Font"
 setup_wizard_enabled = false
@@ -11,6 +14,10 @@ clipboard_enabled = true
 clipboard_keep_from_closed_apps = false
 clipboard_auto_paste = "off"
 launch_apps_as_systemd_services = true
+
+[shell.animation]
+enabled = true
+speed = 1.5
 
 [shell.launcher]
 auto_paste = "off"
@@ -78,6 +85,20 @@ enabled = false
 enabled = true
 lock_before_suspend = true
 grace_period_seconds = 4
+transition = ["fade"]
+transition_duration = 600
+
+[lockscreen_widgets.widget."lockscreen-login-box@DP-3"]
+type = "login_box"
+
+[lockscreen_widgets.widget."lockscreen-login-box@DP-3".settings]
+show_media = false
+
+[lockscreen_widgets.widget."lockscreen-login-box@eDP-1"]
+type = "login_box"
+
+[lockscreen_widgets.widget."lockscreen-login-box@eDP-1".settings]
+show_media = false
 
 [idle.behavior.lock]
 enabled = true
@@ -102,7 +123,10 @@ minimum_brightness = 0.05
 enable_daemon = true
 keep_dismissed_in_history = true
 max_visible = 7
-position = "top_center"
+position = "top_right"
+width = 500
+offset_y = 25
+background_opacity = 0.82
 
 [control_center]
 width = 1000
@@ -156,8 +180,13 @@ scale = 1.25
 padding = 8
 widget_spacing = 8
 start = ["launcher", "clock", "date", "workspaces", "sway-mode"]
-center = ["notifications", "playback", "privacy", "audio-gap", "network", "bluetooth", "power_profile", "tray", "connectivity-gap", "keyboard_layout", "caffeine", "nightlight"]
-end = ["pi-agents", "failed-units", "status-gap", "cpu", "memory", "disk", "metrics-gap", "brightness", "battery", "session-menu"]
+center = ["notifications", "playback", "privacy", "audio-gap", "network", "bluetooth", "power_profile", "tray", "connectivity-gap", "keyboard_layout", "caffeine", "center-balance-gap"]
+end = ["pi-agents", "failed-units", "status-gap", "cpu", "memory", "disk", "metrics-gap", "brightness", "battery"]
+
+# Shift the visible center section upward without moving the start/end sections.
+[widget.center-balance-gap]
+type = "spacer"
+length = 64
 
 [widget.audio-gap]
 type = "spacer"
@@ -199,12 +228,12 @@ hide_when_no_unread = false
 type = "workspaces"
 font_scale = 1.1
 show_all_outputs = true
-style = "regular"
+style = "minimal"
 active_pill_size = 1.0
 inactive_pill_size = 1.0
 focused_color = "primary"
-occupied_color = "surface"
-empty_color = "surface"
+occupied_color = "on_surface"
+empty_color = "on_surface_variant"
 change_color_on_hover = false
 
 [widget.workspaces.actions]
@@ -284,10 +313,6 @@ font_scale = 0.88
 
 [widget.battery]
 font_scale = 0.88
-
-[widget.session-menu]
-type = "session"
-glyph = "power"
 
 [system.monitor]
 cpu_poll_seconds = 3
