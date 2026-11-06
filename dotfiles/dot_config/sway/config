@@ -48,9 +48,6 @@ input type:mouse {
 }
 
 
-# Output configuration
-output * background #002B36 solid_color
-
 xwayland enable
 
 # Cursor in xwayland
@@ -175,8 +172,8 @@ bindsym --to-code $mod+Ctrl+j resize grow height 5 ppt
 bindsym --to-code $mod+Ctrl+k resize shrink height 5 ppt
 bindsym --to-code $mod+Ctrl+l resize grow width 5 ppt
 
-# toggle the session-managed shell bar
-bindsym --to-code $mod+grave exec noctalia msg bar-toggle
+# toggle the shell bar between always visible and auto-hide
+bindsym --to-code $mod+grave exec mb-noctalia-bar
 
 focus_follows_mouse            no
 popup_during_fullscreen        smart

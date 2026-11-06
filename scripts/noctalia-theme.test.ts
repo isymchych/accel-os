@@ -65,6 +65,12 @@ test(
       assert.ok(!mac.includes("~/.config/alacritty/theme.toml"));
     }
     run("noctalia", ["config", "validate"]);
+    const themeConfig = run("noctalia", ["config", "export", "full"])
+      .split("\n[theme]\n")[1]
+      ?.split("\n[")[0];
+    assert.ok(themeConfig, "native config exports theme settings");
+    assert.match(themeConfig, /^mode = "auto"$/m, "applications retain automatic appearance");
+    assert.match(themeConfig, /^shell_mode = "dark"$/m, "only Noctalia is pinned dark");
     // The offline CLI uses [templates.*]; the shell uses [theme.templates.user.*].
     const cliConfig = join(config, "noctalia/offline-templates.txt");
     writeFileSync(
@@ -74,8 +80,7 @@ test(
         "[templates.",
       ),
     );
-    const palette = join(home, "palette.json");
-    writeFileSync(palette, '{"dark":{"primary":"#000000"},"light":{"primary":"#ffffff"}}\n');
+    const palette = join(config, "noctalia/palettes/Solarized.json");
     for (const mode of ["dark", "light", "light", "dark"]) {
       run("noctalia", [
         "theme",

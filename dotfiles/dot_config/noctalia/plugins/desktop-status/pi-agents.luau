@@ -71,7 +71,7 @@ end
 
 local refresh = poll.create(query, 3000, function(state)
   barWidget.setText(string.format("%d/%d", state.working, state.waiting))
-  barWidget.setColor(state.working > 0 and "#ebcb8b" or "#90b1b1")
+  barWidget.setColor(state.working > 0 and "primary" or "on_surface_variant")
   barWidget.setTooltip(string.format("%d working, %d waiting", state.working, state.waiting))
   barWidget.setVisible(state.working + state.waiting > 0)
   return true

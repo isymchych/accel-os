@@ -22,14 +22,14 @@ completeRead("/proc/5/cmdline", pi)
 completeRead("/proc/6/cmdline", pi)
 completeRead("/proc/7/cmdline", pi)
 assert(#reads == 0 and widget.text == "1/1" and widget.visible)
-assert(widget.tooltip == "1 working, 1 waiting" and widget.color == "#ebcb8b")
+assert(widget.tooltip == "1 working, 1 waiting" and widget.color == "primary")
 assert(#logs == 0)
 
 files[stateDir .. "/1.state"] = "idle\n"
 directories[stateDir] = { "1.state" }
 update()
 completeRead("/proc/1/cmdline", pi)
-assert(widget.text == "0/1" and widget.visible and widget.color == "#90b1b1")
+assert(widget.text == "0/1" and widget.visible and widget.color == "on_surface_variant")
 assert(widget.tooltip == "0 working, 1 waiting")
 directories[stateDir] = {}
 update()

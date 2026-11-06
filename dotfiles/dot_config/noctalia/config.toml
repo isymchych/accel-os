@@ -32,8 +32,11 @@ copy_on_close = false
 directory = "~/temp/screenshots"
 
 [theme]
+# Application templates and desktop color-scheme keep following the day/night schedule.
 mode = "auto"
-shell_mode = "follow"
+shell_mode = "dark"
+source = "custom"
+custom_palette = "Solarized"
 sync_color_scheme = true
 
 [theme.templates]
@@ -43,9 +46,11 @@ enable_community_templates = false
 [hooks]
 theme_mode_changed = 'notify-send --app-name=Noctalia --urgency=low "switching to $NOCTALIA_THEME_MODE mode"'
 
-# Sway retains the desktop background.
 [wallpaper]
-enabled = false
+enabled = true
+
+[wallpaper.default]
+path = "color:#002B36"
 
 [dock]
 enabled = false
@@ -84,6 +89,11 @@ enabled = true
 action = "screen_off"
 timeout = 120
 
+[idle.behavior.suspend]
+enabled = true
+action = "suspend"
+timeout = 300
+
 [brightness]
 enable_ddcutil = true
 minimum_brightness = 0.05
@@ -94,12 +104,18 @@ keep_dismissed_in_history = true
 max_visible = 7
 position = "top_center"
 
+[control_center]
+width = 1000
+
 [control_center.calendar]
 show_events_card = false
 
 [osd]
 enabled = true
 follow_focused_output = true
+
+[osd.kinds]
+lock_keys = false
 
 [[shell.session.actions]]
 action = "lock"
@@ -130,19 +146,48 @@ order = ["default"]
 
 [bar.default]
 position = "right"
-thickness = 76
+thickness = 60
 margin_ends = 0
-padding = 6
-widget_spacing = 6
-start = ["launcher", "clock", "notifications", "workspaces", "sway-mode"]
-center = ["playback", "microphone", "privacy", "network", "bluetooth", "power_profile", "tray", "keyboard_layout", "caffeine", "nightlight"]
-end = ["pi-agents", "failed-units", "cpu", "memory", "temperature", "disk", "brightness", "battery", "session-menu"]
+radius = 0
+concave_edge_corners = false
+shadow = false
+capsule_radius = 0
+scale = 1.25
+padding = 8
+widget_spacing = 8
+start = ["launcher", "clock", "date", "workspaces", "sway-mode"]
+center = ["notifications", "playback", "privacy", "audio-gap", "network", "bluetooth", "power_profile", "tray", "connectivity-gap", "keyboard_layout", "caffeine", "nightlight"]
+end = ["pi-agents", "failed-units", "status-gap", "cpu", "memory", "disk", "metrics-gap", "brightness", "battery", "session-menu"]
+
+[widget.audio-gap]
+type = "spacer"
+length = 8
+
+[widget.connectivity-gap]
+type = "spacer"
+length = 8
+
+[widget.status-gap]
+type = "spacer"
+length = 8
+
+[widget.metrics-gap]
+type = "spacer"
+length = 8
 
 [widget.clock]
 type = "clock"
-vertical_format = "{:%H:%M}\n{:%b %d}\n{:%a}"
+vertical_format = "{:%H:%M}"
 
 [widget.clock.actions]
+right = "none"
+
+[widget.date]
+type = "clock"
+font_scale = 0.8
+vertical_format = "{:%b %d}\n{:%a}"
+
+[widget.date.actions]
 right = "none"
 
 [widget.notifications]
@@ -152,7 +197,15 @@ hide_when_no_unread = false
 
 [widget.workspaces]
 type = "workspaces"
+font_scale = 1.1
 show_all_outputs = true
+style = "regular"
+active_pill_size = 1.0
+inactive_pill_size = 1.0
+focused_color = "primary"
+occupied_color = "surface"
+empty_color = "surface"
+change_color_on_hover = false
 
 [widget.workspaces.actions]
 scroll_up = "none"
@@ -164,20 +217,11 @@ type = "accel-os/desktop-status:sway-mode"
 [widget.playback]
 type = "volume"
 device = "output"
+show_label = false
+mute_color = "on_surface_variant"
 
 [widget.playback.actions]
 right = "exec pavucontrol"
-
-[widget.microphone]
-type = "volume"
-device = "input"
-show_label = false
-hide_when_inactive = false
-
-[widget.microphone.actions]
-right = "exec pavucontrol -t 4"
-scroll_up = "none"
-scroll_down = "none"
 
 [widget.privacy]
 type = "privacy"
@@ -190,6 +234,9 @@ right = "exec xterm run --class=bluetui -- bluetui"
 type = "network"
 show_label = false
 vpn_status = "both"
+
+[widget.keyboard_layout]
+show_glyph = false
 
 [widget.pi-agents]
 type = "accel-os/desktop-status:pi-agents"
@@ -206,6 +253,7 @@ middle = "none"
 
 [widget.cpu]
 type = "sysmon"
+font_scale = 0.88
 stat = "cpu_usage"
 visualization = "none"
 
@@ -214,28 +262,28 @@ right = "exec xterm run -- htop --sort-key=PERCENT_CPU"
 
 [widget.memory]
 type = "sysmon"
+font_scale = 0.88
 stat = "ram_pct"
 visualization = "none"
 
 [widget.memory.actions]
 right = "exec xterm run -- htop --sort-key=PERCENT_MEM"
 
-[widget.temperature]
-type = "sysmon"
-stat = "cpu_temp"
-visualization = "none"
-
-[widget.temperature.actions]
-right = "none"
-
 [widget.disk]
 type = "sysmon"
+font_scale = 0.88
 stat = "disk_used_pct"
 path = "/home"
 visualization = "none"
 
 [widget.disk.actions]
 right = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
+
+[widget.brightness]
+font_scale = 0.88
+
+[widget.battery]
+font_scale = 0.88
 
 [widget.session-menu]
 type = "session"

@@ -1,4 +1,4 @@
-#compdef mb-clipboard-actions mb-colorpicker
+#compdef mb-clipboard-actions mb-colorpicker mb-noctalia-bar
 
 _mb-no-args() {
   _nothing
