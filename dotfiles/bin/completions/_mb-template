@@ -1,0 +1,16 @@
+#compdef mb-template
+
+_mb-template() {
+  local context state state_descr line
+  local -a templates
+  typeset -A opt_args
+
+  _arguments -C \
+    '1:action:(list copy)' \
+    '2:template:->template'
+
+  if [[ $state == template && ${words[2]} == copy ]]; then
+    templates=("${(@f)$(mb-template list)}")
+    _describe 'template' templates
+  fi
+}

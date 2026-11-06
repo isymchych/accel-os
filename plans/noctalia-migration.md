@@ -6,8 +6,10 @@ Migration, night light, polkit dialogs, unified appearance, and native screensho
 complete by the user. Obsolete package and configuration cleanup is complete. No further acceptance
 or cleanup is open for those integrations.
 
-VPN remains postponed pending a stable release with native VPN secret handling. The optional later
-integrations remain outside approved implementation scope.
+VPN remains postponed pending a stable release with native VPN secret handling. Native clipboard
+history, launcher emoji/templates, and native bar clicks are approved and implemented; interactive
+acceptance remains pending. Locking, idle, and session replacement remain outside implementation
+scope.
 
 ## Deferred: production VPN
 
@@ -40,16 +42,36 @@ one output). These are direct shortcuts, not a Sway mode or a custom chooser.
 
 Keep region confirmation enabled: select a region, press Enter, then annotate. Saves retain
 `~/temp/screenshots`, and closing the editor does not implicitly copy. Live copy/paste remains
-available with native clipboard history disabled. Keep grim/slurp for the color picker and
-recording.
+available independently of clipboard history. Keep grim/slurp for the color picker and recording.
+
+## Clipboard, launcher, and bar clicks
+
+Use Noctalia's native clipboard history from `Mod+i`, bound directly to
+`noctalia msg panel-toggle clipboard`. History uses Noctalia's encrypted, keyring-backed storage;
+keep existing cliphist data untouched, but retire both cliphist watchers so history is not collected
+twice. Keep copy-only activation for history and launcher results; automatic paste stays disabled.
+
+Emoji belongs in the launcher's `/emo` provider. Tracked template files remain canonical and are
+available through `/tpl`, backed by the small `mb-template list` and `mb-template copy <name>`
+commands. The old three-mode picker, custom mode keys, and generic Save As action are not carried
+over.
+
+Clock, speaker/microphone, Bluetooth, and system-monitor left-clicks use native Control Center tabs.
+Right-click opens `bluetui` on Bluetooth, `pavucontrol` on the speaker, its recording tab on the
+microphone, `dust` for `/home` on the disk indicator, and `htop` sorted by CPU or memory on the
+corresponding indicators. Clock and temperature right-clicks remain disabled. Preserve disabled
+microphone and workspace scrolling. Keep the external tools used by these right-click actions.
+
+Translation integration is declined. Keep offline mode enabled and do not enable a translation
+plugin.
+
+Verify history search, image previews, copy/paste, pinning/deletion, persistence after relogin,
+`/emo`, `/tpl`, and native panel clicks interactively before accepting this integration.
 
 ## Optional later integrations
 
 Keep the existing workflows unless a separate replacement is agreed:
 
-- **Clipboard:** preserve templates, emoji search, saving, thumbnails, custom keys, and shortcuts.
-  Evaluate keyring-backed persistence; retire cliphist watchers together with any replacement rather
-  than collecting history twice.
 - **Locking, idle, and session actions:** consider these together, last. Agree on
   authentication/PAM, lock-before-sleep, idle timeouts, output power/wake, confirmations, and
   shell-failure behavior before replacing existing owners. Preserve security and suspend/resume
@@ -61,9 +83,9 @@ Keep the existing workflows unless a separate replacement is agreed:
   it does not launch Sway or replace the session launcher.
 - Preserve Pi working/waiting status, stale/non-agent filtering, and the combined system/user
   failed-unit indicator. Leave the Pi activity producer and protocol unchanged.
-- Keep `mb-clipboard`, `mb-lock-screen`, `mb-exit`, Fuzzel, cliphist, swaylock, swayidle, kanshi,
-  and udiskie while their workflows remain. Native clipboard history, locking, and idle management
-  stay disabled; session actions retain the existing confirmation/lock flow.
+- Keep `mb-template` as the launcher template helper. Keep `mb-lock-screen`, `mb-exit`, Fuzzel,
+  swaylock, swayidle, kanshi, and udiskie while their workflows remain. Native locking and idle
+  management stay disabled; session actions retain the existing confirmation/lock flow.
 - Keep polkit itself, portals, PipeWire, the keyring, and NetworkManager. Consolidating their UI
   does not authorize removing the underlying infrastructure.
 - Noctalia is the single appearance authority. Preserve curated application palettes, native user

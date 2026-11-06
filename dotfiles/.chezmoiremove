@@ -1,5 +1,10 @@
 {{ if eq .chezmoi.os "linux" }}
 # Retired desktop files: remove only known paths, not whole directories or user state.
+bin/mb-clipboard
+bin/completions/_mb-clipboard
+.config/mb-clipboard/fuzzel.ini
+.config/systemd/user/cliphist-image.service
+.config/systemd/user/cliphist.service.d/sway-session.conf
 bin/mb-screenshot
 bin/completions/_mb-screenshot
 .config/waybar/config
@@ -15,6 +20,7 @@ bin/completions/_mb-screenshot
 .config/systemd/user/wlsunset.service
 .config/systemd/user/polkit-gnome-authentication-agent.service
 .config/darkman/config.yaml
+.config/systemd/user/darkman.service.d/sway-session.conf
 .local/share/light-mode.d/alacritty-theme.sh
 .local/share/dark-mode.d/alacritty-theme.sh
 .local/share/light-mode.d/fuzzel-theme.sh

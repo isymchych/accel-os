@@ -10,7 +10,7 @@ macos-defaults.sh
 {{ if ne .chezmoi.os "linux" }}
 # Linux desktop commands and completions
 bin/mb-audio
-bin/mb-clipboard
+bin/mb-template
 bin/mb-colorpicker
 bin/mb-exit
 bin/mb-file-manager
@@ -21,6 +21,7 @@ bin/mb-run-app
 bin/mb-spotify
 bin/mb-touchpad
 bin/completions/_mb-audio
+bin/completions/_mb-template
 bin/completions/_mb-file-manager
 bin/completions/_mb-no-args
 bin/completions/_mb-preview
@@ -35,7 +36,6 @@ bin/completions/_mb-touchpad
 .config/fuzzel/**
 .config/gtk-3.0/**
 .config/kanshi/**
-.config/mb-clipboard/**
 .config/noctalia/**
 .config/mimeapps.list
 .config/spotify-flags.conf

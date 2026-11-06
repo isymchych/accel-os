@@ -7,9 +7,22 @@ offline_mode = true
 external_ip_enabled = false
 screen_time_enabled = false
 polkit_agent = true
-clipboard_enabled = false
+clipboard_enabled = true
 clipboard_keep_from_closed_apps = false
+clipboard_auto_paste = "off"
 launch_apps_as_systemd_services = true
+
+[shell.launcher]
+auto_paste = "off"
+
+[shell.launcher.dmenu.entry.templates]
+command = "mb-template list"
+label = "Templates"
+prefix = "tpl"
+glyph = "clipboard-text"
+global = false
+freeform = false
+exec = "mb-template copy '{selection}'"
 
 [shell.screenshot]
 annotate = true
@@ -104,7 +117,7 @@ type = "clock"
 vertical_format = "{:%H:%M}\n{:%b %d}\n{:%a}"
 
 [widget.clock.actions]
-left = "exec gsimplecal"
+right = "none"
 
 [widget.workspaces]
 type = "workspaces"
@@ -122,7 +135,7 @@ type = "volume"
 device = "output"
 
 [widget.playback.actions]
-left = "exec pavucontrol"
+right = "exec pavucontrol"
 
 [widget.microphone]
 type = "volume"
@@ -131,12 +144,12 @@ show_label = false
 hide_when_inactive = false
 
 [widget.microphone.actions]
-left = "exec pavucontrol -t 4"
+right = "exec pavucontrol -t 4"
 scroll_up = "none"
 scroll_down = "none"
 
 [widget.bluetooth.actions]
-left = "exec xterm run --class=bluetui -- bluetui"
+right = "exec xterm run --class=bluetui -- bluetui"
 
 [widget.network]
 type = "network"
@@ -162,7 +175,7 @@ stat = "cpu_usage"
 visualization = "none"
 
 [widget.cpu.actions]
-left = "exec xterm run -- htop --sort-key=PERCENT_CPU"
+right = "exec xterm run -- htop --sort-key=PERCENT_CPU"
 
 [widget.memory]
 type = "sysmon"
@@ -170,12 +183,15 @@ stat = "ram_pct"
 visualization = "none"
 
 [widget.memory.actions]
-left = "exec xterm run -- htop --sort-key=PERCENT_MEM"
+right = "exec xterm run -- htop --sort-key=PERCENT_MEM"
 
 [widget.temperature]
 type = "sysmon"
 stat = "cpu_temp"
 visualization = "none"
+
+[widget.temperature.actions]
+right = "none"
 
 [widget.disk]
 type = "sysmon"
@@ -184,7 +200,7 @@ path = "/home"
 visualization = "none"
 
 [widget.disk.actions]
-left = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
+right = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
 
 [widget.session-menu]
 type = "custom_button"

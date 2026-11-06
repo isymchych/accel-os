@@ -163,19 +163,15 @@ packages:
               - grim # Screenshot utility for Wayland
               - slurp # Select a region in a Wayland compositor
               - wev # Inspect Wayland input events
-              - wtype # Generate keyboard input on Wayland
               - ddcutil # External-monitor brightness control through Noctalia
               - wf-recorder # Screen recorder for wlroots-based compositors such as sway
               - imagemagick # An image viewing/manipulation program
               - jq # Command-line JSON processor
               - translate-shell # A command-line interface and interactive shell for Google Translate
-              - gsimplecal # Simple and lightweight GTK calendar
-              - htop # System monitor used by desktop status click handlers
-              - playerctl # mpris media player controller and lib for spotify, vlc, audacious, bmp, xmms2, and others
+              - htop # Interactive system monitor
               - trash-cli # Command line trashcan (recycle bin) interface
 
             clipboard:
-              - cliphist # wayland clipboard manager
               - wl-clipboard # Command-line copy/paste utilities for Wayland
               - zenity # Display graphical dialog boxes from shell scripts
               - file # File type identification utility

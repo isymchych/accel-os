@@ -281,7 +281,6 @@ for_window [class="^jetbrains-studio"]   border pixel $border
 for_window [app_id="^jetbrains-studio"]   border pixel $border
 
 for_window [app_id="liferea"]   border pixel $border
-for_window [app_id="gsimplecal"] border pixel $border
 for_window [app_id="org.pwmt.zathura"] border pixel $border
 for_window [app_id="pavucontrol"] floating enable
 for_window [app_id="blueman-manager"] floating enable
@@ -360,7 +359,6 @@ bindsym $mod+F7 exec noctalia msg brightness-down
 bindsym $mod+Return exec xterm open
 
 # app runner
-bindsym --to-code $mod+Shift+p exec mb-run-app
 bindsym --to-code $mod+p exec mb-run-app
 bindsym XF86Launch1 exec mb-run-app
 
@@ -380,7 +378,7 @@ bindsym --to-code $mod+n exec mb-file-manager open
 bindsym --to-code $mod+t exec xterm run --class="FLOAT" -- trans -shell
 
 # clipboard manager
-bindsym --to-code $mod+i exec mb-clipboard
+bindsym --to-code $mod+i exec noctalia msg panel-toggle clipboard
 
 # editor
 bindsym --to-code $mod+e exec gtk-launch emacs
