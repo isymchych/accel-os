@@ -36,6 +36,8 @@ bin/completions/_mb-touchpad
 .config/gtk-3.0/**
 .config/kanshi/**
 .config/noctalia/**
+.config/qt5ct/**
+.config/qt6ct/**
 .config/mimeapps.list
 .config/spotify-flags.conf
 .config/systemd/**

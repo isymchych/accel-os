@@ -1,0 +1,10 @@
+{{- /* Preserve raw QSettings escapes: fromIni/toIni rewrites @ByteArray state. */ -}}
+{{- $appearance := regexFind "(?m)^\\[Appearance\\][ \\t]*(?:\\r?\\n|$)(?:[^\\[\\r\\n][^\\r\\n]*(?:\\r?\\n|$)|\\r?\\n)*" .chezmoi.stdin -}}
+{{- $palette := joinPath .chezmoi.destDir ".config" .qtct "colors/noctalia.conf" -}}
+{{- $settings := printf "[Appearance]\ncolor_scheme_path=%s\ncustom_palette=true\nstyle=Fusion\n" $palette -}}
+{{- if $appearance -}}
+{{- $other := $appearance | replaceAllRegex "(?m)^(?:\\[Appearance\\][ \\t]*|[ \\t]*(?:color_scheme_path|custom_palette|style)[ \\t]*=[^\\r\\n]*)(?:\\r?\\n|$)" "" -}}
+{{- .chezmoi.stdin | replace $appearance (print $settings $other) -}}
+{{- else -}}
+{{- print (.chezmoi.stdin | trimSuffix "\n") "\n" $settings -}}
+{{- end -}}

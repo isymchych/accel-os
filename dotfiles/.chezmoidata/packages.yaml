@@ -144,6 +144,7 @@ packages:
               - network-manager-applet # Applet for managing network connections
               - networkmanager-openvpn # OpenVPN support for NetworkManager
               - papirus-icon-theme # Light/dark icon themes selected by Noctalia
+              - adw-gtk-theme # GTK3 base theme for Noctalia's GTK color templates
               - udiskie # Removable disk automounter using udisks
               - pipewire # Low-latency audio/video router and processor
               - pipewire-pulse # Low-latency audio/video router and processor - PulseAudio replacement
@@ -156,6 +157,7 @@ packages:
               - libsecret # Library for storing and retrieving passwords and other secrets
               - seahorse # GNOME application for managing PGP keys
               - qt5ct # Qt5 Configuration Utility
+              - qt6ct # Qt6 platform theme and configuration for Noctalia palettes
 
             desktop_features:
               - grim # Screenshot utility for Wayland

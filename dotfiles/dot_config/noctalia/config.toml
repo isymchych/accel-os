@@ -44,7 +44,7 @@ copy_on_close = false
 directory = "~/temp/screenshots"
 
 [theme]
-# Noctalia and applications follow the day/night schedule; app palettes stay unchanged.
+# Follow the day/night schedule; only GTK, Qt, and Sway use built-in recoloring.
 mode = "auto"
 shell_mode = "follow"
 source = "custom"
@@ -52,11 +52,20 @@ custom_palette = "Solarized-Nord"
 sync_color_scheme = true
 
 [theme.templates]
-enable_builtin_templates = false
+enable_builtin_templates = true
+builtin_ids = ["gtk3", "gtk4", "sway", "qt"]
 enable_community_templates = false
 
 [hooks]
-theme_mode_changed = 'notify-send --app-name=Noctalia --urgency=low "switching to $NOCTALIA_THEME_MODE mode"'
+# The shipped Sway hook adds the include but does not reload the compositor.
+# colors_changed runs after template rendering and hooks have finished.
+colors_changed = 'if [ -n "${SWAYSOCK:-}" ]; then swaymsg reload; fi'
+# Switching variants does not change the full palette in Noctalia 5.4.1.
+# Force application so colors_changed reloads Sway after the new files are ready.
+theme_mode_changed = [
+  'notify-send --app-name=Noctalia --urgency=low "switching to $NOCTALIA_THEME_MODE mode"',
+  'noctalia msg templates-apply',
+]
 
 [wallpaper]
 enabled = true

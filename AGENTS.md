@@ -67,10 +67,11 @@
 
 ## Desktop Appearance
 
-- Noctalia owns Linux light/dark switching. Configure native user templates in
-  `dotfiles/dot_config/noctalia/templates.toml` rather than paired toggle scripts or a custom
-  dispatcher.
-- Preserve the existing application palettes; keep built-in and community recoloring disabled.
+- Noctalia owns Linux light/dark switching. Use its built-in GTK3, GTK4, Qt, and Sway templates;
+  configure native user templates in `dotfiles/dot_config/noctalia/templates.toml` for other
+  applications rather than paired toggle scripts or a custom dispatcher.
+- Preserve other application palettes. Keep built-in recoloring limited to `gtk3`, `gtk4`, `qt`, and
+  `sway`, and keep community recoloring disabled.
 - Edit tracked palette files and template inputs, not generated outputs. See
   [desktop appearance](docs/linux/README.md#desktop-appearance) for output ownership and reload
   behavior.
