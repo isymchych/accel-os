@@ -143,7 +143,7 @@ packages:
               - nm-connection-editor # Graphical NetworkManager connection editor
               - network-manager-applet # Applet for managing network connections
               - networkmanager-openvpn # OpenVPN support for NetworkManager
-              - papirus-icon-theme # Icon theme selected by the Sway session
+              - papirus-icon-theme # Light/dark icon themes selected by Noctalia
               - udiskie # Removable disk automounter using udisks
               - pipewire # Low-latency audio/video router and processor
               - pipewire-pulse # Low-latency audio/video router and processor - PulseAudio replacement

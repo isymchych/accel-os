@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Toggle dark/light theme
+Comment=Switch between dark and light appearance
+TryExec=noctalia
+Exec=noctalia msg theme-mode-toggle
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Settings;
+Keywords=theme;appearance;dark;light;toggle;noctalia;

@@ -18,4 +18,4 @@ output_path = "$XDG_CONFIG_HOME/difftastic/theme.zsh"
 [theme.templates.user.gtk]
 input_path = "templates/gtk-settings.ini"
 output_path = "$XDG_CONFIG_HOME/gtk-3.0/settings.ini"
-post_hook = 'gsettings set org.gnome.desktop.interface gtk-theme "{{ mode | replace: "dark", "Adwaita-dark" | replace: "light", "Adwaita" }}"'
+post_hook = 'gsettings set org.gnome.desktop.interface gtk-theme "{{ mode | replace: "dark", "Adwaita-dark" | replace: "light", "Adwaita" }}" && gsettings set org.gnome.desktop.interface icon-theme "{{ mode | replace: "dark", "Papirus-Dark" | replace: "light", "Papirus-Light" }}"'

@@ -1,0 +1,11 @@
+[Unit]
+Description=Removable disk automounter for Sway
+PartOf=sway-session.target
+After=sway-session.target graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/udiskie --appindicator
+Restart=on-failure
+RestartSec=2

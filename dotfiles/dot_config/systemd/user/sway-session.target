@@ -6,5 +6,7 @@ Wants=graphical-session-pre.target
 Wants=noctalia.service
 Wants=kanshi.service
 Wants=nm-applet.service
+Wants=desktop-settings.service
+Wants=udiskie.service
 After=graphical-session-pre.target
 Before=graphical-session.target

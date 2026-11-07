@@ -70,7 +70,8 @@ test(
       ?.split("\n[")[0];
     assert.ok(themeConfig, "native config exports theme settings");
     assert.match(themeConfig, /^mode = "auto"$/m, "applications retain automatic appearance");
-    assert.match(themeConfig, /^shell_mode = "dark"$/m, "only Noctalia is pinned dark");
+    assert.match(themeConfig, /^shell_mode = "follow"$/m, "Noctalia follows automatic appearance");
+    assert.match(themeConfig, /^custom_palette = "Solarized-Nord"$/m);
     // The offline CLI uses [templates.*]; the shell uses [theme.templates.user.*].
     const cliConfig = join(config, "noctalia/offline-templates.txt");
     writeFileSync(
@@ -80,7 +81,7 @@ test(
         "[templates.",
       ),
     );
-    const palette = join(config, "noctalia/palettes/Solarized.json");
+    const palette = join(config, "noctalia/palettes/Solarized-Nord.json");
     for (const mode of ["dark", "light", "light", "dark"]) {
       run("noctalia", [
         "theme",
@@ -106,6 +107,10 @@ test(
       }
       const gtk = readFileSync(join(config, "gtk-3.0/settings.ini"), "utf8");
       assert.ok(gtk.includes(`gtk-application-prefer-dark-theme=${dark ? 1 : 0}`), gtk);
+      assert.ok(
+        gtk.includes(`gtk-icon-theme-name=${dark ? "Papirus-Dark" : "Papirus-Light"}`),
+        gtk,
+      );
       assert.ok(gtk.includes("gtk-font-name=Noto Sans 14"));
       assert.equal(
         run("zsh", [
@@ -117,8 +122,17 @@ test(
     }
     assert.equal(
       readFileSync(join(home, "gsettings.log"), "utf8"),
-      ["Adwaita-dark", "Adwaita", "Adwaita", "Adwaita-dark"]
-        .map((theme) => `set org.gnome.desktop.interface gtk-theme ${theme}\n`)
+      [
+        ["Adwaita-dark", "Papirus-Dark"],
+        ["Adwaita", "Papirus-Light"],
+        ["Adwaita", "Papirus-Light"],
+        ["Adwaita-dark", "Papirus-Dark"],
+      ]
+        .map(
+          ([theme, icons]) =>
+            `set org.gnome.desktop.interface gtk-theme ${theme}\n` +
+            `set org.gnome.desktop.interface icon-theme ${icons}\n`,
+        )
         .join(""),
     );
   },

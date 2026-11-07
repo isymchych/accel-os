@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# zsh-completion: completions/_mb-bar-layout
+
+set -euo pipefail
+
+usage() {
+  printf '%s\n' 'Usage: mb-bar-layout <top|right|toggle>'
+}
+
+if [[ $# == 1 && ( "$1" == --help || "$1" == -h ) ]]; then
+  usage
+  exit 0
+fi
+if [[ $# != 1 ]]; then
+  usage >&2
+  exit 1
+fi
+
+layout="$1"
+case "$layout" in
+  top|right) ;;
+  toggle)
+    enabled=$(noctalia msg config-get bar.right.enabled)
+    case "$enabled" in
+      true) layout=top ;;
+      false) layout=right ;;
+      *) printf 'Unexpected bar.right.enabled value: %s\n' "$enabled" >&2; exit 1 ;;
+    esac
+    ;;
+  *) usage >&2; exit 1 ;;
+esac
+
+if [[ "$layout" == top ]]; then
+  selected=default
+  other=right
+else
+  selected=right
+  other=default
+fi
+
+# Enable the destination first so a failed IPC call cannot leave both bars disabled.
+noctalia msg config-set "bar.$selected.enabled" true
+# Config reloads reset temporary auto-hide/reservation overrides, so discard the
+# matching shortcut bookkeeping too.
+if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+  rm -f -- "$XDG_RUNTIME_DIR/mb-noctalia-bar-mode" "$XDG_RUNTIME_DIR/mb-noctalia-bar-mode-right"
+fi
+noctalia msg config-set "bar.$other.enabled" false

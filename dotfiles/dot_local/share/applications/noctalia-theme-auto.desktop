@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Theme: automatic
+Comment=Return to the automatic day/night appearance schedule
+TryExec=noctalia
+Exec=noctalia msg theme-mode-set auto
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Settings;
+Keywords=theme;appearance;dark;light;automatic;auto;schedule;noctalia;

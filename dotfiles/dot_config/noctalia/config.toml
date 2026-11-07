@@ -6,7 +6,7 @@ ui_scale = 1.15
 font_family = "JetBrains Mono Nerd Font"
 setup_wizard_enabled = false
 telemetry_enabled = false
-offline_mode = true
+offline_mode = false
 external_ip_enabled = false
 screen_time_enabled = false
 polkit_agent = true
@@ -15,12 +15,17 @@ clipboard_keep_from_closed_apps = false
 clipboard_auto_paste = "off"
 launch_apps_as_systemd_services = true
 
+[shell.keyboard_layout.custom_labels]
+"English (US)" = "🇺🇸"
+"Ukrainian" = "🇺🇦"
+
 [shell.animation]
 enabled = true
 speed = 1.5
 
 [shell.launcher]
 auto_paste = "off"
+fetch_exchange_rates = false
 
 [shell.launcher.dmenu.entry.templates]
 command = "mb-template list"
@@ -39,11 +44,11 @@ copy_on_close = false
 directory = "~/temp/screenshots"
 
 [theme]
-# Application templates and desktop color-scheme keep following the day/night schedule.
+# Noctalia and applications follow the day/night schedule; app palettes stay unchanged.
 mode = "auto"
-shell_mode = "dark"
+shell_mode = "follow"
 source = "custom"
-custom_palette = "Solarized"
+custom_palette = "Solarized-Nord"
 sync_color_scheme = true
 
 [theme.templates]
@@ -55,9 +60,17 @@ theme_mode_changed = 'notify-send --app-name=Noctalia --urgency=low "switching t
 
 [wallpaper]
 enabled = true
+directory = "~/Pictures/wallpapers"
+per_monitor_directories = false
 
 [wallpaper.default]
 path = "color:#002B36"
+
+[wallpaper.automation]
+enabled = true
+interval_seconds = 3600
+order = "random"
+recursive = false
 
 [dock]
 enabled = false
@@ -121,12 +134,18 @@ minimum_brightness = 0.05
 
 [notification]
 enable_daemon = true
+filter_order = ["default-timeout"]
 keep_dismissed_in_history = true
 max_visible = 7
 position = "top_right"
 width = 500
 offset_y = 25
 background_opacity = 0.82
+
+[notification.filter.default-timeout]
+enabled = true
+match_content = ".*"
+override_duration = 3700
 
 [control_center]
 width = 1000
@@ -166,61 +185,158 @@ shortcut = "5"
 countdown_seconds = 5
 
 [bar]
-order = ["default"]
+order = ["default", "right"]
 
+# The top layout keeps its original name for existing app-managed overrides.
 [bar.default]
-position = "right"
-thickness = 60
+enabled = true
+position = "top"
+thickness = 40
+auto_hide = false
+reserve_space = true
 margin_ends = 0
 radius = 0
 concave_edge_corners = false
 shadow = false
 capsule_radius = 0
-scale = 1.25
+scale = 1.1
+font_scale = 1.15
+padding = 14
+widget_spacing = 10
+start = ["launcher", "launcher-gap", "clock", "date", "clock-gap", "workspaces", "sway-mode", "media-gap", "media"]
+center = []
+end = ["notifications", "notifications-gap", "pi-agents", "agents-gap", "cpu", "cpu-gap", "memory", "memory-gap", "disk", "disk-gap", "brightness", "brightness-gap", "battery", "metrics-gap", "network", "bluetooth", "playback", "caffeine", "keyboard_layout", "tray", "failed-units", "privacy"]
+
+# mb-bar-layout persists which layout is enabled through native config-set.
+[bar.right]
+enabled = false
+position = "right"
+thickness = 60
+auto_hide = false
+reserve_space = true
+margin_ends = 0
+radius = 0
+concave_edge_corners = false
+shadow = false
+capsule_radius = 0
+# Shared status widgets already have their own 1.25 scale.
+scale = 1.0
+font_scale = 1.1
 padding = 8
 widget_spacing = 8
-start = ["launcher", "clock", "date", "workspaces", "sway-mode"]
-center = ["notifications", "playback", "privacy", "audio-gap", "network", "bluetooth", "power_profile", "tray", "connectivity-gap", "keyboard_layout", "caffeine", "center-balance-gap"]
-end = ["pi-agents", "failed-units", "status-gap", "cpu", "memory", "disk", "metrics-gap", "brightness", "battery"]
+start = ["launcher", "right-clock", "right-date", "right-date-gap", "workspaces", "sway-mode"]
+center = ["notifications", "playback", "privacy", "right-audio-gap", "network", "bluetooth", "tray", "right-connectivity-gap", "keyboard_layout", "caffeine", "right-center-balance-gap"]
+end = ["pi-agents", "failed-units", "right-status-gap", "cpu", "memory", "disk", "right-metrics-gap", "brightness", "battery"]
+
+[widget.right-date-gap]
+type = "spacer"
+length = 12
 
 # Shift the visible center section upward without moving the start/end sections.
-[widget.center-balance-gap]
+[widget.right-center-balance-gap]
 type = "spacer"
 length = 64
 
-[widget.audio-gap]
+[widget.right-audio-gap]
 type = "spacer"
 length = 8
 
-[widget.connectivity-gap]
+[widget.right-connectivity-gap]
 type = "spacer"
 length = 8
 
-[widget.status-gap]
+[widget.right-status-gap]
 type = "spacer"
 length = 8
+
+[widget.right-metrics-gap]
+type = "spacer"
+length = 8
+
+[widget.launcher-gap]
+type = "spacer"
+length = 32
+
+[widget.clock-gap]
+type = "spacer"
+length = 32
+
+[widget.media-gap]
+type = "spacer"
+length = 32
+
+[widget.media]
+type = "media"
+max_length = 500
+hide_when_no_media = true
 
 [widget.metrics-gap]
 type = "spacer"
-length = 8
+length = 36
+
+[widget.agents-gap]
+type = "spacer"
+length = 16
+
+[widget.notifications-gap]
+type = "spacer"
+length = 32
+
+[widget.cpu-gap]
+type = "spacer"
+length = 16
+
+[widget.memory-gap]
+type = "spacer"
+length = 16
+
+[widget.disk-gap]
+type = "spacer"
+length = 16
+
+[widget.brightness-gap]
+type = "spacer"
+length = 16
 
 [widget.clock]
 type = "clock"
-vertical_format = "{:%H:%M}"
+format = "{:%H:%M}"
+color = "primary"
+tooltip_format = "{:%A, %B %d, %Y}"
 
 [widget.clock.actions]
 right = "none"
 
 [widget.date]
 type = "clock"
-font_scale = 0.8
-vertical_format = "{:%b %d}\n{:%a}"
+format = "{:%a %b %d}"
+tooltip_format = "{:%A, %B %d, %Y}"
 
 [widget.date.actions]
 right = "none"
 
+[widget.right-clock]
+type = "clock"
+vertical_format = "{:%H:%M}"
+font_scale = 1.2
+color = "primary"
+tooltip_format = "{:%A, %B %d, %Y}"
+
+[widget.right-clock.actions]
+right = "none"
+
+[widget.right-date]
+type = "clock"
+vertical_format = "{:%b %d}\n{:%a}"
+font_scale = 0.8
+tooltip_format = "{:%A, %B %d, %Y}"
+
+[widget.right-date.actions]
+right = "none"
+
 [widget.notifications]
 type = "notifications"
+scale = 1.25
 # Keep the native right-click DND toggle available even with no unread notifications.
 hide_when_no_unread = false
 
@@ -245,6 +361,7 @@ type = "accel-os/desktop-status:sway-mode"
 
 [widget.playback]
 type = "volume"
+scale = 1.25
 device = "output"
 show_label = false
 mute_color = "on_surface_variant"
@@ -254,18 +371,32 @@ right = "exec pavucontrol"
 
 [widget.privacy]
 type = "privacy"
+scale = 1.25
 hide_inactive = true
+
+[widget.network]
+type = "network"
+scale = 1.25
+show_label = false
+vpn_status = "both"
+
+[widget.bluetooth]
+scale = 1.25
 
 [widget.bluetooth.actions]
 right = "exec xterm run --class=bluetui -- bluetui"
 
-[widget.network]
-type = "network"
-show_label = false
-vpn_status = "both"
+[widget.tray]
+drawer = false
+scale = 1.25
+
+[widget.caffeine]
+scale = 1.25
 
 [widget.keyboard_layout]
 show_glyph = false
+show_label = true
+font_scale = 1.0
 
 [widget.pi-agents]
 type = "accel-os/desktop-status:pi-agents"
@@ -282,7 +413,6 @@ middle = "none"
 
 [widget.cpu]
 type = "sysmon"
-font_scale = 0.88
 stat = "cpu_usage"
 visualization = "none"
 
@@ -291,7 +421,6 @@ right = "exec xterm run -- htop --sort-key=PERCENT_CPU"
 
 [widget.memory]
 type = "sysmon"
-font_scale = 0.88
 stat = "ram_pct"
 visualization = "none"
 
@@ -300,7 +429,6 @@ right = "exec xterm run -- htop --sort-key=PERCENT_MEM"
 
 [widget.disk]
 type = "sysmon"
-font_scale = 0.88
 stat = "disk_used_pct"
 path = "/home"
 visualization = "none"
@@ -309,10 +437,13 @@ visualization = "none"
 right = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
 
 [widget.brightness]
-font_scale = 0.88
+show_label = true
+
+[battery]
+warning_threshold = 20
 
 [widget.battery]
-font_scale = 0.88
+warning_color = "error"
 
 [system.monitor]
 cpu_poll_seconds = 3
