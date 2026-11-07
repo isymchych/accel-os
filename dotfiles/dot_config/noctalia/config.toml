@@ -159,6 +159,7 @@ follow_focused_output = true
 
 [osd.kinds]
 lock_keys = false
+media = false
 
 [[shell.session.actions]]
 action = "lock"
@@ -203,8 +204,8 @@ scale = 1.1
 font_scale = 1.15
 padding = 14
 widget_spacing = 10
-start = ["launcher", "launcher-gap", "clock", "date", "clock-gap", "workspaces", "sway-mode", "media-gap", "media"]
-center = []
+start = ["launcher", "launcher-gap", "clock", "date", "clock-gap", "workspaces", "sway-mode"]
+center = ["media-art", "media-title-gap", "media"]
 end = ["notifications", "notifications-gap", "pi-agents", "agents-gap", "cpu", "cpu-gap", "memory", "memory-gap", "disk", "disk-gap", "brightness", "brightness-gap", "battery", "metrics-gap", "network", "bluetooth", "playback", "caffeine", "keyboard_layout", "tray", "failed-units", "privacy"]
 
 # mb-bar-layout persists which layout is enabled through native config-set.
@@ -261,12 +262,19 @@ length = 32
 type = "spacer"
 length = 32
 
-[widget.media-gap]
+[widget.media-art]
+type = "media"
+album_art_only = true
+art_size = 32
+hide_when_no_media = true
+
+[widget.media-title-gap]
 type = "spacer"
-length = 32
+length = 16
 
 [widget.media]
 type = "media"
+hide_album_art = true
 max_length = 500
 hide_when_no_media = true
 
