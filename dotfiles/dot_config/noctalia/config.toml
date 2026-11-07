@@ -213,9 +213,9 @@ scale = 1.1
 font_scale = 1.15
 padding = 14
 widget_spacing = 10
-start = ["launcher", "launcher-gap", "clock", "date", "clock-gap", "workspaces", "sway-mode"]
+start = ["launcher", "launcher-gap", "cpu", "cpu-gap", "memory", "memory-gap", "disk", "disk-gap", "brightness", "brightness-gap", "battery", "metrics-gap", "workspaces", "sway-mode"]
 center = ["media-art", "media-title-gap", "media"]
-end = ["notifications", "notifications-gap", "pi-agents", "agents-gap", "cpu", "cpu-gap", "memory", "memory-gap", "disk", "disk-gap", "brightness", "brightness-gap", "battery", "metrics-gap", "network", "bluetooth", "playback", "caffeine", "keyboard_layout", "tray", "failed-units", "privacy"]
+end = ["notifications", "notifications-gap", "pi-agents", "agents-gap", "network", "bluetooth", "playback", "caffeine", "keyboard_layout", "failed-units", "privacy", "tray", "clock-gap", "date", "clock"]
 
 # mb-bar-layout persists which layout is enabled through native config-set.
 [bar.right]
@@ -289,7 +289,7 @@ hide_when_no_media = true
 
 [widget.metrics-gap]
 type = "spacer"
-length = 36
+length = 32
 
 [widget.agents-gap]
 type = "spacer"
@@ -432,6 +432,8 @@ middle = "none"
 type = "sysmon"
 stat = "cpu_usage"
 visualization = "none"
+# Reserve a two-digit percentage at the top bar's font scale.
+label_min_width = 30
 
 [widget.cpu.actions]
 right = "exec xterm run -- htop --sort-key=PERCENT_CPU"
@@ -440,6 +442,7 @@ right = "exec xterm run -- htop --sort-key=PERCENT_CPU"
 type = "sysmon"
 stat = "ram_pct"
 visualization = "none"
+label_min_width = 30
 
 [widget.memory.actions]
 right = "exec xterm run -- htop --sort-key=PERCENT_MEM"
@@ -449,6 +452,7 @@ type = "sysmon"
 stat = "disk_used_pct"
 path = "/home"
 visualization = "none"
+label_min_width = 30
 
 [widget.disk.actions]
 right = "exec xterm run --class=disk-usage -- sh -c 'dust --depth 3 --number-of-lines 30 --reverse --limit-filesystem --print-errors /home; printf \"\\nPress Enter to close.\"; read -r _'"
