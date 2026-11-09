@@ -1,5 +1,11 @@
 {{ if eq .chezmoi.os "linux" }}
 # Retired desktop files: remove only known paths, not whole directories or user state.
+bin/mb-audio
+bin/completions/_mb-audio
+bin/mb-noctalia-bar
+bin/mb-bar-layout
+bin/completions/_mb-bar-layout
+bin/mb-clipboard-actions
 bin/mb-exit
 bin/mb-lock-screen
 .config/systemd/user/swayidle.service

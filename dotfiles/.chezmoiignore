@@ -1,3 +1,12 @@
+# Repository-only npm workspace tooling
+package.json
+package-lock.json
+tsconfig.json
+node_modules
+node_modules/**
+scripts/**
+tests/**
+
 {{ if ne .chezmoi.os "darwin" }}
 Library/**
 .config/com.googlecode.iterm2.plist
@@ -9,9 +18,6 @@ macos-defaults.sh
 
 {{ if ne .chezmoi.os "linux" }}
 # Linux desktop commands and completions
-bin/mb-audio
-bin/mb-bar-layout
-bin/mb-clipboard-actions
 bin/mb-template
 bin/mb-colorpicker
 bin/mb-file-manager
@@ -19,8 +25,6 @@ bin/mb-preview
 bin/mb-record
 bin/mb-spotify
 bin/mb-touchpad
-bin/completions/_mb-audio
-bin/completions/_mb-bar-layout
 bin/completions/_mb-template
 bin/completions/_mb-file-manager
 bin/completions/_mb-no-args

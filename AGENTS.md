@@ -5,7 +5,7 @@
 - `firefox/` holds `user.js` prefs; outside chezmoi because profile IDs vary.
 - `docs/` contains platform notes (`docs/linux`, `docs/mac`); keep secrets out and reference
   `.chezmoidata` instead.
-- `scripts/` holds repository checks, formatting helpers, and host verification.
+- `dotfiles/scripts/` holds dotfiles checks, formatting helpers, and host verification.
 - `packages/commands/` is the private npm workspace for installed Node TypeScript `mb-*` commands.
 - `ai/` holds skills and automation for coding agents (Codex, Pi).
 
@@ -48,12 +48,13 @@
 
 ## Repository Scripts and Node Commands
 
-- Store repository automation in `scripts/`; keep its cohesive shared modules in `scripts/lib/`.
+- Store dotfiles automation in `dotfiles/scripts/`; keep its cohesive shared modules in
+  `dotfiles/scripts/lib/`.
 - Store installed Node command entry points in `packages/commands/bin/` and command-only shared
   modules in `packages/commands/lib/`.
 - Run scripts directly with Node's native TypeScript type stripping; do not add a build step unless
   explicitly needed.
-- Keep `scripts/tsconfig.json` and `packages/commands/tsconfig.json` aligned with Node type
+- Keep `dotfiles/tsconfig.json` and `packages/commands/tsconfig.json` aligned with Node type
   stripping: `erasableSyntaxOnly`, `verbatimModuleSyntax`, `allowImportingTsExtensions`, and
   `rewriteRelativeImportExtensions` stay enabled.
 - Avoid TypeScript syntax that Node cannot erase, including enums, parameter properties, runtime
@@ -62,8 +63,8 @@
 - Wrap each installed CLI with `dotfiles/bin/executable_mb-<name>`; wrappers run
   `packages/commands/bin/<entrypoint>.ts` through `accel-node`.
 - Add installed-command runtime dependencies to `packages/commands/package.json`. Add dependencies
-  used only by repository scripts to the private root package. Keep shared development tooling at
-  the root workspace.
+  used only by dotfiles tooling to `dotfiles/package.json`. Keep shared development tooling at the
+  root workspace.
 
 ## Desktop Appearance
 
@@ -77,8 +78,8 @@
   behavior.
 - Keep custom hooks minimal and use them only for behavior that native templates or system
   appearance preferences cannot handle.
-- For native theme changes, run `node --test scripts/noctalia-theme.test.ts` from the repository
-  root on Linux with Noctalia installed; the test skips otherwise.
+- For native theme changes, run `node --test dotfiles/tests/noctalia/theme.test.ts` from the
+  repository root on Linux with Noctalia installed; the test skips otherwise.
 
 ## Testing Guidelines
 
@@ -87,18 +88,17 @@
   OS-conditional templates.
 - For Node shims, invoke the wrapped tool (`npm run lint`, etc.) to confirm path resolution.
 - For Noctalia plugin changes, run `just check-noctalia` from the repository root on Linux.
-- Keep plugin test harnesses and assertions in `scripts/fixtures/noctalia/*.luau`; use
-  `scripts/noctalia-plugins.test.ts` only for orchestration. Execute actual plugin source against
-  fake native APIs rather than copying its logic.
+- Keep plugin test harnesses and assertions in `dotfiles/tests/noctalia/fixtures/*.luau`; use
+  `dotfiles/tests/noctalia/plugins.test.ts` only for orchestration. Execute actual plugin source
+  against fake native APIs rather than copying its logic.
 - Control asynchronous callbacks explicitly in Noctalia plugin tests rather than using sleeps. These
   tests verify plugin logic, not native rendering or API compatibility; verify those changes in a
   live Noctalia session.
 - Store Emacs ERT tests in `dotfiles/dot_config/emacs/tests/`, name them `*-test.el`, and run
-  syntax, Checkdoc, and ERT validation with `./scripts/check-emacs`.
+  syntax, Checkdoc, and ERT validation with `just check-emacs`.
 - Name startup integration tests `*-startup-test.el`. The runner loads development configuration in
   a separate Emacs process with temporary state and already-installed packages.
-- Format Emacs Lisp with `./scripts/format-emacs`; use `./scripts/format-emacs --check` for
-  non-mutating verification.
+- Format Emacs Lisp with `just fmt`; use `just fmt-check` for non-mutating verification.
 - Emacs tests must load actual configuration modules, not copy definitions or extract selected
   forms. For load-order-sensitive integrations, use a fresh batch Emacs process that reproduces the
   supported startup and compilation order.
@@ -120,6 +120,9 @@
 
 ## Best Practices
 
+- Keep private integration helpers with the component that owns them. Use Node/TypeScript when its
+  native APIs simplify process management; don't expose helpers as `mb-*` commands unless they need
+  a user-facing CLI.
 - When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria
   because internal jargon and negative unsupported-argument framing make model tool selection less
   reliable.

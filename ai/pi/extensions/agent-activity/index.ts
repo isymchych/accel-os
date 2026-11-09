@@ -1,11 +1,11 @@
 /**
- * Owns each Pi process' activity state, Waybar reporting, and suspend inhibition.
+ * Publishes each Pi process' activity state for desktop status integrations.
  *
  * The extension writes one small per-process state file under XDG_RUNTIME_DIR so
  * external status bars can count agents that are actively running an agent turn,
  * compaction, or branch summary without scraping terminal UI or guessing from
- * process names. On Linux, work also holds a sleep-only inhibitor; screen
- * locking, display power management, and lid handling remain unchanged.
+ * process names. Noctalia consumes this state and owns idle inhibition; the Pi
+ * extension does not manage desktop power policy.
  */
 import { mkdir, rm, writeFile, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -13,8 +13,6 @@ import path from "node:path";
 import process from "node:process";
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-
-import { createSuspendInhibitor, type SuspendInhibitor } from "./suspend-inhibitor.ts";
 
 type AgentState = "idle" | "working";
 
@@ -54,14 +52,7 @@ async function removeState(): Promise<void> {
   await rm(getStateFile(), { force: true });
 }
 
-type AgentActivityOptions = {
-  inhibitor?: SuspendInhibitor;
-};
-
-export default function agentActivityExtension(
-  pi: ExtensionAPI,
-  { inhibitor = createSuspendInhibitor() }: AgentActivityOptions = {},
-): void {
+export default function agentActivityExtension(pi: ExtensionAPI): void {
   let state: AgentState | undefined;
   let idleCheck: ReturnType<typeof setInterval> | undefined;
   let pendingWrite = Promise.resolve();
@@ -87,11 +78,7 @@ export default function agentActivityExtension(
     }
     state = next;
 
-    let acquisition = Promise.resolve();
     if (next === "working") {
-      acquisition = inhibitor.acquire((message) =>
-        warn(ctx, `suspend inhibition failed: ${message}`),
-      );
       // Pi has no terminal event for failed/cancelled branch summaries or run
       // preparation failures. Poll only during work, using Pi's canonical idle
       // state, rather than guessing whether a summary or continuation is done.
@@ -101,17 +88,15 @@ export default function agentActivityExtension(
       idleCheck.unref();
     } else {
       stopIdleCheck();
-      inhibitor.release();
     }
 
     // Serialize status writes so an earlier working write cannot overwrite idle.
-    // Inhibitor management never waits for the status file to succeed.
     pendingWrite = pendingWrite
       .then(async () => writeState(next, ctx))
       .catch((error: unknown) => {
-        warn(ctx, `could not publish Waybar state: ${String(error)}`);
+        warn(ctx, `could not publish activity state: ${String(error)}`);
       });
-    await Promise.all([acquisition, pendingWrite]);
+    await pendingWrite;
   }
 
   async function reconcileIdle(ctx: ExtensionContext): Promise<void> {
@@ -151,7 +136,6 @@ export default function agentActivityExtension(
   pi.on("session_shutdown", async () => {
     closed = true;
     stopIdleCheck();
-    inhibitor.release();
     await pendingWrite;
     await removeState();
   });

@@ -173,9 +173,9 @@ bindsym --to-code $mod+Ctrl+k resize shrink height 5 ppt
 bindsym --to-code $mod+Ctrl+l resize grow width 5 ppt
 
 # toggle the shell bar between always visible and auto-hide
-bindsym --to-code $mod+grave exec mb-noctalia-bar
+bindsym --to-code $mod+grave exec "${XDG_CONFIG_HOME:-$HOME/.config}/noctalia/scripts/bar-toggle"
 # switch between the top and right bar layouts
-bindsym --to-code $mod+Shift+grave exec mb-bar-layout toggle
+bindsym --to-code $mod+Shift+grave exec "${XDG_CONFIG_HOME:-$HOME/.config}/noctalia/scripts/bar-layout" toggle
 
 focus_follows_mouse            no
 popup_during_fullscreen        smart
@@ -385,7 +385,7 @@ bindsym --to-code $mod+t exec xterm run --class="FLOAT" -- trans -shell
 
 # clipboard manager
 bindsym --to-code $mod+i exec noctalia msg panel-toggle clipboard
-bindsym --to-code $mod+Shift+i exec mb-clipboard-actions
+bindsym --to-code $mod+Shift+i exec "${XDG_CONFIG_HOME:-$HOME/.config}/noctalia/plugins/clipboard-actions/actions"
 
 # editor
 bindsym --to-code $mod+e exec gtk-launch emacs

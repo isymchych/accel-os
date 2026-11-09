@@ -1,7 +1,0 @@
-#compdef mb-bar-layout
-
-_mb-bar-layout() {
-  _arguments \
-    '(-h --help)'{-h,--help}'[show help]' \
-    '1:layout:(top right toggle)'
-}

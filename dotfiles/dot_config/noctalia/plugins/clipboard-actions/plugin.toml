@@ -3,7 +3,7 @@ name = "Clipboard actions"
 version = "1.0.0"
 plugin_api = 24
 description = "Preview a frozen clipboard item and choose a contextual action."
-dependencies = ["mb-clipboard-actions"]
+dependencies = ["accel-node", "jq", "notify-send", "wl-copy", "wl-paste", "xdg-open", "xterm", "zenity"]
 
 [[panel]]
 id = "actions"

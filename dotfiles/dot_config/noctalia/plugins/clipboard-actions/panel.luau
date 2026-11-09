@@ -3,6 +3,7 @@
 -- Presentation only: the helper owns matching and execution. Closing releases
 -- the snapshot; a successfully launched action takes ownership until it finishes.
 local snapshot = nil
+local helper = noctalia.pluginDir() .. "/actions"
 
 local function notify(message)
   noctalia.notify("Clipboard actions", message)
@@ -12,7 +13,7 @@ local function release()
   local previous = snapshot
   snapshot = nil
   if previous ~= nil then
-    if not noctalia.runAsync({ "mb-clipboard-actions", "discard", previous.directory }) then
+    if not noctalia.runAsync({ helper, "discard", previous.directory }) then
       notify("Could not discard the clipboard snapshot.")
     end
   end
@@ -22,7 +23,7 @@ local function activate(expected, id)
   if snapshot ~= expected then
     return
   end
-  if not noctalia.runAsync({ "mb-clipboard-actions", "run", expected.directory, id }) then
+  if not noctalia.runAsync({ helper, "run", expected.directory, id }) then
     notify("Could not start the clipboard action.")
     return
   end
@@ -90,7 +91,7 @@ function onOpen(context)
   if type(data) ~= "table" or type(data.actions) ~= "table"
       or type(data.description) ~= "string"
       or (type(data.text) ~= "string" and type(data.imagePath) ~= "string") then
-    noctalia.runAsync({ "mb-clipboard-actions", "discard", context })
+    noctalia.runAsync({ helper, "discard", context })
     notify(err or "Could not read the clipboard snapshot.")
     panel.close()
     return

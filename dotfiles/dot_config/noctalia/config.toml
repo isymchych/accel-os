@@ -217,7 +217,7 @@ start = ["launcher", "launcher-gap", "cpu", "cpu-gap", "memory", "memory-gap", "
 center = ["media-art", "media-title-gap", "media"]
 end = ["notifications", "notifications-gap", "pi-agents", "agents-gap", "network", "bluetooth", "playback", "caffeine", "keyboard_layout", "failed-units", "privacy", "tray", "clock-gap", "date", "clock"]
 
-# mb-bar-layout persists which layout is enabled through native config-set.
+# scripts/bar-layout persists which layout is enabled through native config-set.
 [bar.right]
 enabled = false
 position = "right"
@@ -235,12 +235,22 @@ font_scale = 1.1
 padding = 8
 widget_spacing = 8
 start = ["launcher", "right-clock", "right-date", "right-date-gap", "workspaces", "sway-mode"]
-center = ["notifications", "playback", "privacy", "right-audio-gap", "network", "bluetooth", "tray", "right-connectivity-gap", "keyboard_layout", "caffeine", "right-center-balance-gap"]
+center = ["right-media-art", "right-media-gap", "notifications", "playback", "privacy", "right-audio-gap", "network", "bluetooth", "tray", "right-connectivity-gap", "keyboard_layout", "caffeine", "right-center-balance-gap"]
 end = ["pi-agents", "failed-units", "right-status-gap", "cpu", "memory", "disk", "right-metrics-gap", "brightness", "battery"]
 
 [widget.right-date-gap]
 type = "spacer"
 length = 12
+
+[widget.right-media-art]
+type = "media"
+album_art_only = true
+art_size = 48
+hide_when_no_media = true
+
+[widget.right-media-gap]
+type = "spacer"
+length = 32
 
 # Shift the visible center section upward without moving the start/end sections.
 [widget.right-center-balance-gap]

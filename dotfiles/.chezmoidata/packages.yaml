@@ -128,6 +128,9 @@ packages:
 
           sway:
             sway_session:
+              - bash # Shell for accel-node, used by Noctalia's Pi activity helper
+              - coreutils # cat binds Pi idle inhibition to the helper's stdin pipe
+              - systemd # logind idle inhibition through systemd-inhibit
               - sway # Tiling Wayland compositor and replacement for the i3 window manager
               - greetd # Generic greeter daemon
               - xorg-xwayland # run X clients under wayland

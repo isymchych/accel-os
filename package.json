@@ -7,6 +7,7 @@
     "ai/pi",
     "ai/skills",
     "ai/workspace",
+    "dotfiles",
     "packages/commands",
     "packages/shared"
   ],
@@ -18,21 +19,15 @@
     "protobufjs": false
   },
   "scripts": {
-    "fmt": "oxfmt ai/pi ai/skills ai/workspace packages scripts '**/*.md'",
-    "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages scripts '**/*.md'",
+    "fmt": "oxfmt ai/pi ai/skills ai/workspace packages 'dotfiles/**/*.ts' '**/*.md'",
+    "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages 'dotfiles/**/*.ts' '**/*.md'",
     "fmt:check:ai": "oxfmt --check ai",
     "fmt:check:commands": "oxfmt --check packages/commands",
-    "fmt:check:dotfiles": "oxfmt --check 'dotfiles/**/*.md'",
-    "lint": "oxlint ai/pi ai/skills ai/workspace packages scripts",
+    "lint": "oxlint ai/pi ai/skills ai/workspace packages dotfiles",
     "lint:ai": "oxlint ai",
     "lint:commands": "oxlint packages/commands",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
-  },
-  "dependencies": {
-    "@accel-os/shared": "0.0.0",
-    "typebox": "^1.1.36",
-    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

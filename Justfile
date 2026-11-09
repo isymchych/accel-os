@@ -8,32 +8,30 @@ default:
   @just --list
 
 fmt:
-  ./scripts/format-emacs
+  ./dotfiles/scripts/emacs/format-emacs
   npm run fmt
 
 fmt-check:
-  ./scripts/format-emacs --check
+  ./dotfiles/scripts/emacs/format-emacs --check
   npm run fmt:check
 
 typecheck:
-  ./node_modules/.bin/tsc --project scripts/tsconfig.json --noEmit
   npm run typecheck
 
 lint:
   npm run lint
 
 test:
-  node --test scripts/*.test.ts
   npm run test
 
 check-completions:
-  node scripts/check-completions.ts
+  node dotfiles/scripts/check-completions.ts
 
 check-host-config:
-  node scripts/check-host-config.ts
+  node dotfiles/scripts/check-host-config.ts
 
 check-emacs:
-  ./scripts/check-emacs
+  node dotfiles/scripts/emacs/check-emacs.ts
 
 # Static Noctalia checks are separate so the full gate runs behavior tests only once.
 [private]
@@ -48,10 +46,10 @@ check-noctalia-static:
   luau-analyze dotfiles/dot_config/noctalia/plugins/*/*.luau
 
 check-noctalia: check-noctalia-static
-  node --test scripts/noctalia-plugins.test.ts
+  npm run test:noctalia --workspace dotfiles
 
 doctor:
-  node scripts/doctor.ts
+  node dotfiles/scripts/doctor.ts
 
 # Check all AI workspaces without running commands or dotfiles checks.
 check-ai:
@@ -67,10 +65,13 @@ check-commands: check-completions
   npm run typecheck --workspace packages/commands
   npm run test --workspace packages/commands
 
-# Check host configuration, completions, Emacs, Noctalia, and dotfiles Markdown.
-check-dotfiles: check-host-config check-completions check-emacs check-noctalia
-  ./scripts/format-emacs --check
-  npm run fmt:check:dotfiles
+# Check host configuration, completions, Emacs, Noctalia, and dotfiles tooling.
+check-dotfiles: check-host-config check-completions check-emacs check-noctalia-static
+  ./dotfiles/scripts/emacs/format-emacs --check
+  npm run fmt:check --workspace dotfiles
+  npm run lint --workspace dotfiles
+  npm run typecheck --workspace dotfiles
+  npm test --workspace dotfiles
 
-# Full gate, including shared code, repository tooling, and global formatting.
+# Full gate, including shared code and global formatting.
 check: check-completions check-host-config check-emacs check-noctalia-static fmt-check lint typecheck test

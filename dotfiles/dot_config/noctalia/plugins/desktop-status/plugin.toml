@@ -3,7 +3,11 @@ name = "Desktop status"
 version = "1.0.0"
 plugin_api = 24
 description = "Pi agent activity, failed systemd units, and the current Sway binding mode."
-dependencies = ["systemctl", "swaymsg"]
+dependencies = ["accel-node", "cat", "systemctl", "systemd-inhibit", "swaymsg"]
+
+[[service]]
+id = "pi-activity"
+entry = "pi-activity.luau"
 
 [[widget]]
 id = "pi-agents"

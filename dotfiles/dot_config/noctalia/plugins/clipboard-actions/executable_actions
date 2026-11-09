@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run the repository source so Node can resolve its workspace dependencies.
+: "${ACCEL_OS:?ACCEL_OS must point at repo root}"
+exec "$HOME/bin/accel-node" "$ACCEL_OS/dotfiles/dot_config/noctalia/plugins/clipboard-actions/actions.ts" "$@"

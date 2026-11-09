@@ -169,6 +169,7 @@
   (treesit-font-lock-level 4)
   :config
   (add-to-list 'auto-mode-alist '("\\.html\\'" . html-ts-mode))
+  (add-to-list 'auto-mode-alist '("\\.luau\\'" . lua-ts-mode))
   (add-to-list 'auto-mode-alist '("\\.mts\\'" . typescript-ts-mode)))
 
 
