@@ -397,12 +397,15 @@ Otherwise resolve DEPENDENCY through ORIG-FN."
 
 
 
-;; Eat: terminal emulator
-(use-package eat
-  :hook (eshell-load . eat-eshell-mode)
-  :bind ("C-c e" . eat)
+;; Ghostel: terminal emulator
+(use-package ghostel
+  :bind ("C-c e" . ghostel)
   :config
-  (setq eat-kill-buffer-on-exit t))
+  (setq ghostel-kill-buffer-on-exit t))
+
+(use-package ghostel-eshell
+  :ensure nil
+  :hook (eshell-load . ghostel-eshell-visual-command-mode))
 
 
 

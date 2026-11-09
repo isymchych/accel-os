@@ -161,6 +161,10 @@
 		   (kbd "C-.") nil
 		   (kbd "C-,") nil))
 
+(use-package evil-ghostel
+  :after (ghostel evil)
+  :hook (ghostel-mode . evil-ghostel-mode))
+
 ;; integration of evil with various packages
 (use-package evil-collection
   :after evil
