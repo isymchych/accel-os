@@ -240,7 +240,33 @@ test("restart uses saved compiled UI/API and launcher despite invalid source edi
 });
 
 for (const failure of ["check", "build", "child-import", "listen", "publish"] as const) {
-  test(`failed ${failure} preserves a usable current artifact and removes candidate`, async (context) => {
+  const testName = `failed ${failure} preserves a usable current artifact and removes candidate`;
+  test(testName, async (context) => {
+    if (process.env["WORKSPACE_RELOAD_FAILURE_TEST"] !== failure) {
+      // Isolate inherited child-process output without changing the launcher's real logging.
+      try {
+        const env: NodeJS.ProcessEnv = { ...process.env, WORKSPACE_RELOAD_FAILURE_TEST: failure };
+        delete env["NODE_TEST_CONTEXT"];
+        await execute(
+          process.execPath,
+          ["--test", "--test-name-pattern", `^${testName}$`, import.meta.filename],
+          {
+            env,
+          },
+        );
+      } catch (error) {
+        if (error instanceof Error && "stdout" in error && "stderr" in error) {
+          throw new Error(
+            `Isolated reload test failed:\n${String(error.stdout)}\n${String(error.stderr)}`,
+            {
+              cause: error,
+            },
+          );
+        }
+        throw error;
+      }
+      return;
+    }
     const setup = await fixture(context);
     await writeFile(join(setup.state, "scenario"), failure);
     const supervisor = await WorkspaceSupervisor.start({ ...setup, port: 0 });

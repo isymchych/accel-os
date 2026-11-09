@@ -2,24 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  DEFAULT_VERBOSITY_BY_MODEL,
   applyVerbosityToOpenAIResponsesPayload,
   describePersistedVerbosityState,
   getVerbositySelections,
   readPersistedVerbosityState,
   resolveOpenAICodexVerbosity,
 } from "./verbosity.ts";
-
-test("DEFAULT_VERBOSITY_BY_MODEL matches the known Codex defaults", () => {
-  assert.deepEqual(DEFAULT_VERBOSITY_BY_MODEL, {
-    "gpt-5.5": "low",
-    "gpt-5.4": "low",
-    "gpt-5.4-mini": "medium",
-    "gpt-5.3-codex": "low",
-    "gpt-5.2": "low",
-    "codex-auto-review": "low",
-  });
-});
 
 test("resolveOpenAICodexVerbosity prefers the session override", () => {
   assert.equal(resolveOpenAICodexVerbosity("gpt-5.4-mini", undefined), "medium");

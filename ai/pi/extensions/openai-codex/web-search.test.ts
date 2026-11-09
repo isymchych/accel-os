@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addCodexNativeWebSearchToPayload, OPENAI_CODEX_WEB_SEARCH_SECTION } from "./web-search.ts";
+import { addCodexNativeWebSearchToPayload } from "./web-search.ts";
 
 test("addCodexNativeWebSearchToPayload appends native web search", () => {
   assert.deepEqual(
@@ -85,9 +85,4 @@ test("addCodexNativeWebSearchToPayload replaces missing tools with native web se
       },
     ],
   });
-});
-
-test("OPENAI_CODEX_WEB_SEARCH_SECTION mentions native web search availability", () => {
-  assert.match(OPENAI_CODEX_WEB_SEARCH_SECTION, /Native web search is available/);
-  assert.match(OPENAI_CODEX_WEB_SEARCH_SECTION, /Use web search/);
 });

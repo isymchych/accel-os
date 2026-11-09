@@ -50,20 +50,71 @@ test("srcwalk navigation and review commands work against a temporary repository
     await run("git", ["add", "."], root);
     await run("git", ["commit", "--quiet", "-m", "fixture"], root);
 
-    const probes: string[][] = [
-      ["show", "src/main.ts:run", "--budget", "1000"],
-      ["discover", "run", "--as", "symbol", "--scope", "src", "--expand=1", "--budget", "1000"],
-      ["context", "src/main.ts:run", "--scope", ".", "--budget", "1000"],
-      ["trace", "callers", "helper", "--scope", "src", "--budget", "1000"],
-      ["trace", "callees", "run", "--detailed", "--scope", "src", "--budget", "1000"],
-      ["deps", "src/main.ts", "--scope", ".", "--budget", "1000"],
-      ["overview", "--scope", "src"],
-      ["assess", "helper", "--scope", "src", "--budget", "1000"],
-      ["compare", "src/main.ts:run", "src/helper.ts:helper", "--scope", ".", "--budget", "1000"],
+    const probes: { args: string[]; evidence: RegExp[] }[] = [
+      {
+        args: ["show", "src/main.ts:run", "--budget", "1000"],
+        evidence: [/export function run\(\)/, /return helper\(\)/],
+      },
+      {
+        args: [
+          "discover",
+          "run",
+          "--as",
+          "symbol",
+          "--scope",
+          "src",
+          "--expand=1",
+          "--budget",
+          "1000",
+        ],
+        evidence: [/\[fn\]\s+run\s+src\/main\.ts/, /return helper\(\)/],
+      },
+      {
+        args: ["context", "src/main.ts:run", "--scope", ".", "--budget", "1000"],
+        evidence: [/src\/main\.ts:\d+-\d+ run/, /return helper\(\)/],
+      },
+      {
+        args: ["trace", "callers", "helper", "--scope", "src", "--budget", "1000"],
+        evidence: [/\[fn\]\s+run\s+src\/main\.ts:4/],
+      },
+      {
+        args: ["trace", "callees", "run", "--detailed", "--scope", "src", "--budget", "1000"],
+        evidence: [/helper\(\)/, /\[fn\]\s+helper\s+src\/(?:\.\/)?helper\.ts/],
+      },
+      {
+        args: ["deps", "src/main.ts", "--scope", ".", "--budget", "1000"],
+        evidence: [/helper\.ts\s+helper/],
+      },
+      {
+        args: ["overview", "--scope", "src"],
+        evidence: [/main\.ts/, /helper\.ts/],
+      },
+      {
+        args: ["assess", "helper", "--scope", "src", "--budget", "1000"],
+        evidence: [/\[def\]\s+src\/helper\.ts:\d+-\d+ export function helper/, /\[fn\]\s+run:4/],
+      },
+      {
+        args: [
+          "compare",
+          "src/main.ts:run",
+          "src/helper.ts:helper",
+          "--scope",
+          ".",
+          "--budget",
+          "1000",
+        ],
+        evidence: [/return helper\(\)/, /return "ok"/],
+      },
     ];
-    for (const args of probes) {
+    for (const { args, evidence } of probes) {
       const { stdout } = await run(binary, args, root);
-      assert.notEqual(stdout.trim(), "", `${args.join(" ")} returned no output`);
+      for (const expected of evidence) {
+        assert.match(
+          stdout,
+          expected,
+          `${args.join(" ")} did not return expected fixture evidence`,
+        );
+      }
     }
 
     await writeFile(
@@ -71,7 +122,8 @@ test("srcwalk navigation and review commands work against a temporary repository
       ["export function helper(): string {", '  return "changed";', "}", ""].join("\n"),
     );
     const { stdout: reviewOutput } = await run(binary, ["review", "--budget", "1000"], root);
-    assert.match(reviewOutput, /helper/);
+    assert.match(reviewOutput, /src\/helper\.ts/);
+    assert.match(reviewOutput, /return "changed"/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

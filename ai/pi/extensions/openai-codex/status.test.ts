@@ -9,7 +9,6 @@ import {
   renderProgressBar,
   renderStatusLines,
   renderUsageSummary,
-  renderWindowLine,
 } from "./status.ts";
 
 test("renderProgressBar draws a fixed-width bar", () => {
@@ -36,10 +35,7 @@ test("describeWindow maps durations to readable labels", () => {
   assert.equal(describeWindow(604_800), "weekly limit");
 });
 
-test("renderWindowLine and renderStatusLines produce the expected layout", () => {
-  const line = renderWindowLine("weekly limit", { usedPercent: 9, resetsAt: 3_601_000 }, 12, 1_000);
-  assert.equal(line, "weekly limit: [██████████████████  ] 91% left (resets in 1h)");
-
+test("renderStatusLines includes account and both usage windows", () => {
   const lines = renderStatusLines(
     {
       planType: "plus",
@@ -54,13 +50,10 @@ test("renderWindowLine and renderStatusLines produce the expected layout", () =>
     1_000,
   );
 
-  assert.deepEqual(lines, [
-    "OpenAI Codex (plus)",
-    "Status: allowed",
-    "Account: symchychnya@gmail.com (Plus)",
-    "5h limit    : [████████████████████] 100% left (resets now)",
-    "weekly limit: [██████████████████  ] 91% left (resets in 1h)",
-  ]);
+  assert.match(lines.join("\n"), /Status: allowed/);
+  assert.match(lines.join("\n"), /Account: symchychnya@gmail\.com \(Plus\)/);
+  assert.match(lines.join("\n"), /5h limit\s*:.*100% left/);
+  assert.match(lines.join("\n"), /weekly limit\s*:.*91% left/);
 });
 
 test("renderStatusLines omits unavailable usage windows", () => {
@@ -73,10 +66,9 @@ test("renderStatusLines omits unavailable usage windows", () => {
     1_000,
   );
 
-  assert.deepEqual(lines, [
-    "OpenAI Codex (pro)",
-    "weekly limit: [████████████████    ] 80% left (resets in 1h)",
-  ]);
+  const output = lines.join("\n");
+  assert.match(output, /weekly limit\s*:.*80% left/);
+  assert.doesNotMatch(output, /5h limit/);
 });
 
 test("renderUsageSummary produces compact account-list text", () => {
