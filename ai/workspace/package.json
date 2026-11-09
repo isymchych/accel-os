@@ -3,9 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "onFail": "error"
+    }
+  },
   "scripts": {
     "build": "node scripts/build.ts",
-    "check": "npm run fmt:check && npm run lint && npm run typecheck && npm test",
+    "check": "pnpm run fmt:check && pnpm run lint && pnpm run typecheck && pnpm test",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
@@ -21,7 +27,7 @@
     "@solidjs/web": "^2.0.0-rc.20",
     "hono": "^4.13.13",
     "solid-js": "^2.0.0-rc.20",
-    "typebox": "^1.1.36"
+    "typebox": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

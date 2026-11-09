@@ -6,7 +6,7 @@
 - `docs/` contains platform notes (`docs/linux`, `docs/mac`); keep secrets out and reference
   `.chezmoidata` instead.
 - `dotfiles/scripts/` holds dotfiles checks, formatting helpers, and host verification.
-- `packages/commands/` is the private npm workspace for installed Node TypeScript `mb-*` commands.
+- `packages/commands/` is the private pnpm workspace for installed Node TypeScript `mb-*` commands.
 - `ai/` holds skills and automation for coding agents (Codex, Pi).
 
 ### dotfiles/
@@ -23,6 +23,8 @@
 
 ## Build, Test, and Development Commands
 
+- Use pnpm for repository dependencies and JavaScript tooling; use `pnpm exec` for direct tool
+  invocations.
 - `chezmoi diff` — review pending changes before every apply.
 - `chezmoi apply --dry-run --verbose` — render templates without touching the host.
 - `chezmoi apply` — sync confirmed updates; pair with `--include`/`--exclude` to scope risky runs.
@@ -34,9 +36,11 @@
 - `just fmt` / `just fmt-check` — format or verify all supported source formats.
 - `just lint`, `just typecheck`, and `just test` — run targeted repository checks.
 - `just doctor` — verify the declared Arch host configuration.
-- `npm run typecheck --workspace @accel-os/commands` — verify installed Node command implementations
+- `pnpm --filter @accel-os/commands run typecheck` — verify installed Node command implementations
   before changing wrappers.
-- `npm test --workspace @accel-os/commands` — run installed command tests.
+- `pnpm --filter @accel-os/commands test` — run installed command tests.
+- `pnpm install --frozen-lockfile` — install locked dependencies and the Node runtime pinned in root
+  `package.json`; use `pnpm exec node` for direct repository scripts outside `just`.
 
 ## Coding Style & Naming Conventions
 
@@ -78,15 +82,15 @@
   behavior.
 - Keep custom hooks minimal and use them only for behavior that native templates or system
   appearance preferences cannot handle.
-- For native theme changes, run `node --test dotfiles/tests/noctalia/theme.test.ts` from the
-  repository root on Linux with Noctalia installed; the test skips otherwise.
+- For native theme changes, run `pnpm exec node --test dotfiles/tests/noctalia/theme.test.ts` from
+  the repository root on Linux with Noctalia installed; the test skips otherwise.
 
 ## Testing Guidelines
 
 - Run `shellcheck bin/<script>` (or `bash -n`) before committing shell changes.
 - Execute `chezmoi diff` and `chezmoi apply --dry-run` on macOS and Linux when touching
   OS-conditional templates.
-- For Node shims, invoke the wrapped tool (`npm run lint`, etc.) to confirm path resolution.
+- For Node shims, invoke the wrapped tool (`pnpm run lint`, etc.) to confirm path resolution.
 - For Noctalia plugin changes, run `just check-noctalia` from the repository root on Linux.
 - Keep plugin test harnesses and assertions in `dotfiles/tests/noctalia/fixtures/*.luau`; use
   `dotfiles/tests/noctalia/plugins.test.ts` only for orchestration. Execute actual plugin source
@@ -135,15 +139,15 @@
   can add or return undocumented metadata.
 - Prefer named domain/result types over nested utility types such as
   `Promise<Awaited<ReturnType<typeof fn>>>`; explicit types keep public helper contracts readable.
-- When inspecting installed Pi package APIs in this repo, start from root-level
-  `node_modules/@earendil-works/*/dist/*.d.ts` and exclude `*.map` from code searches because
-  workspace dependencies are hoisted and sourcemaps make compiled output noisy.
+- When inspecting installed Pi package APIs in this repo, start from the owning workspace's
+  `node_modules/@earendil-works/*/dist/*.d.ts` (`ai/pi` for Pi configuration, `ai/workspace` for
+  Durable). Dependencies are linked per workspace; exclude `*.map` because sourcemaps make compiled
+  output noisy.
 - Declare tools required by dotfiles in the canonical package inventory. Update platform setup
   guides when manual setup or maintenance steps change, or existing instructions become incorrect.
   Managed configuration changes alone do not justify adding documentation.
 - Before formatting files, inspect the repository's declared formatter and scripts, then use that
-  formatter directly; do not invoke an undeclared formatter through `npx` because it can produce
-  incompatible output or download untracked tooling.
+  formatter through its existing scripts or `pnpm exec`. Do not download undeclared formatters.
 - When debugging behavior in a live Emacs session, suggest running `M-x server-start` so
   `emacsclient` can inspect the actual buffers, windows, modes, and effective keybindings.
 
@@ -159,8 +163,9 @@
 - When runtime helpers are needed by multiple workspaces, put them in an explicit workspace package
   such as `packages/shared` rather than a root-level `lib/`, so dependency ownership and imports
   remain clear.
-- For local npm workspace dependencies, use the package's declared version such as `"0.0.0"`; do not
-  use the `workspace:` protocol because npm does not support it.
+- For local workspace dependencies, use `"workspace:*"` so pnpm requires the local package. Keep
+  shared dependency versions in `pnpm-workspace.yaml` catalogs only where they are intentionally
+  coordinated; preserve one-off and intentionally different versions in their owning manifests.
 - For Pi constrained tool sampling, enable strict JSON-schema sampling only on schemas compatible
   with provider strict mode; OpenAI strict tools require every declared property to be listed in
   `required`, so TypeBox optional properties need nullable-normalization or must remain non-strict.
@@ -179,7 +184,7 @@
   `dotfiles/.chezmoitemplates/resolved-host-state`; provisioning templates and `just doctor` must
   consume that canonical resolved state instead of independently interpreting `.chezmoidata`.
 - Keep `Justfile` as the canonical interface for repository checks, formatting, tests, and host
-  verification; npm scripts expose JavaScript workspace tooling rather than cross-runtime
+  verification; pnpm scripts expose JavaScript workspace tooling rather than cross-runtime
   orchestration.
 
 ## Pi Configuration
@@ -197,10 +202,10 @@
 - Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
 - On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshenv_tools` defaults
   `PI_CODING_AGENT_DIR` to that path.
-- For local MCP servers in `ai/pi/mcp.json`, prefer repo-local package binaries over `npx`; use the
-  package's public bin name, set `cwd` to `${ACCEL_OS}/ai/pi`, and extend `PATH` with
-  `${ACCEL_OS}/ai/pi/node_modules/.bin` so the config stays reproducible without wrapper scripts or
-  internal package paths.
+- For local MCP servers in `ai/pi/mcp.json`, prefer repo-local package binaries over `pnpm dlx`; use
+  the package's public bin name, set `cwd` to `${ACCEL_OS}/ai/pi`, and extend `PATH` with
+  `${ACCEL_OS}/ai/pi/node_modules/.bin` and `${ACCEL_OS}/node_modules/.bin` so the server and pinned
+  Node runtime resolve without wrapper scripts or internal package paths.
 
 * When adding new Pi extension - don't forget to add high-level tsdoc to it
 

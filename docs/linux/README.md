@@ -62,7 +62,7 @@ installed checksum; unchanged pins do not trigger automatic repair of missing or
   passwd <username>
   ```
 
-  - Install `base-devel`, `git`, `chezmoi`, `fnm`, `just`, `zsh`, and an AUR helper such as `yay`.
+  - Install `base-devel`, `git`, `chezmoi`, `pnpm`, `just`, `zsh`, and an AUR helper such as `yay`.
 
 - NetworkManager owns networking and DNS; do not run a standalone `dnsmasq` service.
 - Create a swap file when the host needs swap or hibernation.
@@ -94,7 +94,7 @@ alongside it. Per-host charge thresholds live in `dotfiles/.chezmoidata/tlp.yaml
 
 ## Bootstrap the repository
 
-Install `fnm`, set Zsh as the login shell, then follow the canonical
+Install `pnpm`, set Zsh as the login shell, then follow the canonical
 [repository bootstrap](../../README.md#bootstrap):
 
 ```bash

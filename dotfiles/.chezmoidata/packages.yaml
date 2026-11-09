@@ -9,11 +9,9 @@ packages:
           bootstrap:
             - base-devel # Basic tools to build Arch Linux packages
             - chezmoi # Manage your dotfiles across multiple machines
-            - fnm # Install and select the repo-pinned Node runtime
             - git # the fast distributed version control system
             - just # Canonical repository task runner
-            - nodejs # Runtime for repo-managed TypeScript commands
-            - npm # Install dependencies for repo-managed TypeScript commands
+            - pnpm # Manage repository dependencies and the pinned Node runtime
             - openssh # SSH protocol implementation for remote login, command execution and file transfer
             - wget # HTTP(S) downloads for verified external-tool installation
             - zsh # A very advanced and programmable command interpreter (shell) for UNIX
@@ -48,12 +46,15 @@ packages:
               - android-udev # Udev rules to connect Android devices to your linux box
               - cargo-outdated # A cargo subcommand for displaying when Rust dependencies are out of date
               # - cargo-release # Cargo subcommand "release": everything about releasing a rust crate
+              - fnm # Select compatible Node runtimes in interactive shells
               - github-cli # The GitHub CLI
               - go # Core compiler tools for the Go programming language
               - kdiff3 # A file comparator/merge tool
               - lld # Linker from the LLVM project
               - luau # Analyzer and native VM for Noctalia plugin checks
               - neovim # Fork of Vim aiming to improve user experience, plugins, and GUIs
+              - nodejs # Runtime for system language servers and unrelated Node tools
+              - npm # Install manually managed global language servers
               # - rust-analyzer # Rust compiler front-end for IDEs
               - rustup # The Rust toolchain installer
               - sccache # Shared compilation cache

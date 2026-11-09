@@ -42,7 +42,7 @@ export async function prepareArtifact(state: string, id: string = randomUUID()):
 
 export async function readArtifact(state: string): Promise<Artifact> {
   const slot = await currentSlot(state);
-  if (slot === undefined) throw new Error("No built application. Run npm run build first.");
+  if (slot === undefined) throw new Error("No built application. Run pnpm run build first.");
   const directory = join(state, slot);
   const id = (await readFile(join(directory, "version"), "utf8")).trim();
   const paths = applicationPaths(directory);

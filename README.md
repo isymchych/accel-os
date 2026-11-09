@@ -20,8 +20,8 @@ packages and services, host verification, and the Sway desktop configuration.
 
 ## Bootstrap
 
-Install `git`, `chezmoi`, `fnm`, and `zsh` using the platform guide, then clone this repository at
-the path used by the default `ACCEL_OS` value:
+Install `git`, `chezmoi`, `pnpm`, `just`, and `zsh` using the platform guide, then clone this
+repository at the path used by the default `ACCEL_OS` value:
 
 ```bash
 git clone <repository-url> "$HOME/accel-os"
@@ -39,6 +39,10 @@ exec zsh -l
 
 `./bootstrap --apply` installs repository dependencies with the pinned Node runtime, runs
 `chezmoi doctor` and `just check`, and runs `just doctor` on Arch Linux.
+
+pnpm and Node versions are pinned in root `package.json`. Run `pnpm install --frozen-lockfile` after
+dependency or runtime changes. `just`, pnpm scripts, and `accel-node` use the locally installed Node
+runtime; plain `node` uses your shell's runtime.
 
 The bootstrap derives `ACCEL_OS` from its repository location for the duration of the run. The shell
 configuration defaults it to `$HOME/accel-os`; configure the environment before starting Zsh if the

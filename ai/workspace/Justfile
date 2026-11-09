@@ -1,16 +1,16 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 start:
-    npm run start
+    pnpm run start
 
 build:
-    npm run build
+    pnpm run build
 
 fmt:
-    npm run fmt
+    pnpm run fmt
 
 check:
-    npm run check
+    pnpm run check
 
 test-e2e:
-    npm run test:e2e
+    pnpm run test:e2e

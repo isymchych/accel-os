@@ -2,13 +2,21 @@
   "name": "accel-os-pi-config",
   "private": true,
   "type": "module",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "onFail": "error"
+    }
+  },
   "scripts": {
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "tilth": "tilth",
     "test": "node --test $(find extensions runtime shared -name '*.test.ts' -print | sort)",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@accel-os/shared": "0.0.0",
+    "@accel-os/shared": "workspace:*",
     "@earendil-works/pi-agent-core": "^1.0",
     "@earendil-works/pi-ai": "^1.0",
     "@earendil-works/pi-coding-agent": "^1.00",
@@ -17,6 +25,6 @@
     "diff": "^9.0.0",
     "srcwalk": "1.8.1",
     "tilth": "0.12.0",
-    "typebox": "^1.1.36"
+    "typebox": "catalog:"
   }
 }

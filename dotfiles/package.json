@@ -2,7 +2,17 @@
   "name": "@accel-os/dotfiles",
   "private": true,
   "type": "module",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "onFail": "error"
+    }
+  },
   "scripts": {
+    "check:completions": "node scripts/check-completions.ts",
+    "check:emacs": "node scripts/emacs/check-emacs.ts",
+    "check:host-config": "node scripts/check-host-config.ts",
+    "doctor": "node scripts/doctor.ts",
     "fmt": "oxfmt '**/*.ts' '**/*.md'",
     "fmt:check": "oxfmt --check '**/*.ts' '**/*.md'",
     "lint": "oxlint .",
@@ -11,8 +21,8 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@accel-os/shared": "0.0.0",
-    "typebox": "^1.1.36",
+    "@accel-os/shared": "workspace:*",
+    "typebox": "catalog:",
     "yaml": "^2.9.0"
   }
 }

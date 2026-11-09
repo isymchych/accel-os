@@ -3,4 +3,7 @@ alias j=just
 alias cz=chezmoi
 alias p=pnpm
 
-eval "$(fnm env --use-on-cd --resolve-engines --shell zsh)"
+# Preserve runtime switching for other projects without requiring fnm for this repo.
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env --use-on-cd --resolve-engines --shell zsh)"
+fi

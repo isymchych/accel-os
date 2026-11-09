@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  readlink,
+  rm,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -64,6 +75,7 @@ async function fixture(context: test.TestContext): Promise<{
     join(source, "tests/reload-command.ts"),
   );
   await symlink(resolve(workspace, "../../node_modules"), join(root, "node_modules"), "dir");
+  await symlink(resolve(workspace, "node_modules"), join(source, "node_modules"), "dir");
   await initializeState(source, state);
   async function compile(config: string, output: string): Promise<void> {
     await execute(resolve(workspace, "../../node_modules/.bin/tsc"), [
@@ -96,6 +108,17 @@ async function waitForCheck(state: string): Promise<number> {
   }
   return assert.fail("The check command must start.");
 }
+
+test("a full build refreshes the saved workspace dependency link", async (context) => {
+  const setup = await fixture(context);
+  const dependencies = join(setup.state, "node_modules");
+  await unlink(dependencies);
+  await symlink(resolve(workspace, "../../node_modules"), dependencies, "dir");
+  await initializeState(setup.source, setup.state);
+  assert.equal(await readlink(dependencies), join(setup.source, "node_modules"));
+  await initializeState(setup.source, setup.state);
+  assert.equal(await readlink(dependencies), join(setup.source, "node_modules"));
+});
 
 test("startup rejects invalid ports", async (context) => {
   const setup = await fixture(context);
@@ -338,12 +361,12 @@ test("overlapping requests do not interrupt current while checks run", async (co
   assert.equal(supervisor.status().phase, "succeeded");
 });
 
-test("shutdown terminates the npm check subprocess", async (context) => {
+test("shutdown terminates the pnpm check subprocess", async (context) => {
   const setup = await fixture(context);
   const bin = resolve(setup.source, "../../tools");
   await mkdir(bin);
   await writeFile(
-    join(bin, "npm"),
+    join(bin, "pnpm"),
     `#!${process.execPath}
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";

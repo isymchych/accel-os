@@ -2,32 +2,31 @@
   "name": "accel-os",
   "private": true,
   "type": "module",
-  "packageManager": "npm@11.16.0",
-  "workspaces": [
-    "ai/pi",
-    "ai/skills",
-    "ai/workspace",
-    "dotfiles",
-    "packages/commands",
-    "packages/shared"
-  ],
-  "allowScripts": {
-    "koffi@2.16.2": true,
-    "srcwalk@1.8.1": true,
-    "tilth@0.12.0": true,
-    "@google/genai": false,
-    "protobufjs": false
+  "packageManager": "pnpm@12.17.0",
+  "engines": {
+    "node": "24.x"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "onFail": "error"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "24.18.0",
+      "onFail": "download"
+    }
   },
   "scripts": {
-    "fmt": "oxfmt ai/pi ai/skills ai/workspace packages 'dotfiles/**/*.ts' '**/*.md'",
-    "fmt:check": "oxfmt --check ai/pi ai/skills ai/workspace packages 'dotfiles/**/*.ts' '**/*.md'",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "fmt:check:ai": "oxfmt --check ai",
     "fmt:check:commands": "oxfmt --check packages/commands",
     "lint": "oxlint ai/pi ai/skills ai/workspace packages dotfiles",
     "lint:ai": "oxlint ai",
     "lint:commands": "oxlint packages/commands",
-    "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "test": "pnpm -r --if-present run test",
+    "typecheck": "pnpm -r --if-present run typecheck"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

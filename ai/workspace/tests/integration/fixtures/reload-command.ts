@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
-// Copied into an isolated checkout as its npm check/build commands.
+// Copied into an isolated checkout as its pnpm check/build commands.
 const source = process.cwd();
 const state = process.env["WORKSPACE_STATE_DIR"];
 if (state === undefined) throw new Error("The fixture requires isolated saved state.");

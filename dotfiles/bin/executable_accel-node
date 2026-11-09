@@ -4,16 +4,13 @@ set -euo pipefail
 
 : "${ACCEL_OS:?ACCEL_OS must point at repo root}"
 
-readonly version_file="$ACCEL_OS/.node-version"
+readonly node="$ACCEL_OS/node_modules/.bin/node"
 
-[[ -r "$version_file" ]] || {
-  printf 'accel-node: missing Node version file: %s\n' "$version_file" >&2
+[[ -x "$node" ]] || {
+  printf 'accel-node: missing repo-managed Node; run pnpm install --frozen-lockfile in %s\n' "$ACCEL_OS" >&2
   exit 1
 }
 
-command -v fnm >/dev/null 2>&1 || {
-  printf 'accel-node: fnm is required to run repo-managed Node commands\n' >&2
-  exit 1
-}
-
-exec fnm exec --using="$version_file" node "$@"
+# Keep the caller's cwd and process identity, and use the pinned runtime in children.
+export PATH="$ACCEL_OS/node_modules/.bin:$PATH"
+exec "$node" "$@"

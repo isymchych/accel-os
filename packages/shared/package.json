@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "onFail": "error"
+    }
+  },
   "exports": {
     "./guards": "./src/guards.ts",
     "./http": "./src/http.ts",
@@ -10,9 +16,11 @@
     "./process": "./src/process.ts"
   },
   "scripts": {
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "typebox": "^1.1.36"
+    "typebox": "catalog:"
   }
 }

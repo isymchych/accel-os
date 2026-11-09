@@ -195,7 +195,7 @@ function readPort(value: string | undefined, fallback: number, name: string): nu
 
 function requireClientDistDirectory(directory: string): string {
   if (!existsSync(resolve(directory, "index.html"))) {
-    throw new Error(`Client assets are missing from ${directory}. Run npm run build first.`);
+    throw new Error(`Client assets are missing from ${directory}. Run pnpm run build first.`);
   }
 
   return directory;

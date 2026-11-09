@@ -1,6 +1,6 @@
-# Repository-only npm workspace tooling
+# Repository-only pnpm workspace tooling
 package.json
-package-lock.json
+pnpm-lock.yaml
 tsconfig.json
 node_modules
 node_modules/**

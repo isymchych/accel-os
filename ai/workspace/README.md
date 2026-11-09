@@ -26,11 +26,11 @@ integration; its [acceptance checks](MVP.md#acceptance-checks) establish readine
 From this directory, build the application once, then start it:
 
 ```sh
-npm run build
-npm run start
+pnpm run build
+pnpm run start
 ```
 
-Open `http://127.0.0.1:8787`. Stop with Ctrl-C. Subsequent starts use `npm run start` without
+Open `http://127.0.0.1:8787`. Stop with Ctrl-C. Subsequent starts use `pnpm run start` without
 rebuilding. The workspace Justfile also provides convenience commands.
 
 Use this build-and-start workflow for both development and operation. Updates take effect through
@@ -38,7 +38,7 @@ Use this build-and-start workflow for both development and operation. Updates ta
 
 ## Updating the running application
 
-Use **Check & Reload** in the browser to run `npm run check` and `npm run build`, activate the
+Use **Check & Reload** in the browser to run `pnpm run check` and `pnpm run build`, activate the
 UI/API version, and refresh connected browsers. Checks and builds read the working tree directly;
 edits made while they run are not detected and may produce output that differs from what was
 checked.
@@ -48,16 +48,20 @@ after reconnection; detailed failures appear in the launching terminal. The diag
 saved per tab before refresh. If browser storage is unavailable, keep the tab open and copy the
 message.
 
-Launcher code, cross-process protocol, and dependency changes require a full build and restart.
-After stopping the application, run:
+Launcher code, cross-process protocol, and dependency changes require a full build and restart. For
+dependency changes, first run `pnpm install --frozen-lockfile` at the repository root. After
+stopping the application, run:
 
 ```sh
-npm run check
-npm run build
-npm run start
+pnpm run check
+pnpm run build
+pnpm run start
 ```
 
-Run standalone `npm run build` only while the application is stopped; it prepares the application
+The full build refreshes saved output's dependency link to this workspace's `node_modules`; Check &
+Reload alone does not update it.
+
+Run standalone `pnpm run build` only while the application is stopped; it prepares the application
 for the next start. Use the browser action to update a running application.
 
 Check & Reload currently covers the UI and API. Capability replacement and execution continuity
@@ -78,11 +82,11 @@ the compiled launcher and application entrypoints have moved.
 ## Checks
 
 ```sh
-npm run check
-npm run test:e2e
+pnpm run check
+pnpm run test:e2e
 ```
 
-`npm run check` runs workspace formatting, lint, typechecking, and Node integration tests.
-`npm run test:e2e` builds and starts its own application with temporary saved state, including a
+`pnpm run check` runs workspace formatting, lint, typechecking, and Node integration tests.
+`pnpm run test:e2e` builds and starts its own application with temporary saved state, including a
 Check & Reload journey. E2E requires a compatible system Chromium; see
 [ADR-001](DECISIONS.md#adr-001-use-system-chromium-for-e2e).

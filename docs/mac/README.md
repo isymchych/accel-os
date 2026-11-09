@@ -20,7 +20,7 @@ eval "$(/usr/local/bin/brew shellenv)"
 Install the portable prerequisites:
 
 ```bash
-brew install git chezmoi fnm just zsh
+brew install git chezmoi pnpm just zsh
 ```
 
 Follow the canonical [repository bootstrap](../../README.md#bootstrap), then set Zsh as the login
@@ -90,6 +90,7 @@ here.
 
 ### Other development tools
 
+- `brew install fnm` for automatic Node version switching in interactive shells.
 - `brew install ms-jpq/sad/sad`
 - Install a Git credential manager when passwordless HTTPS authentication is needed.
 
@@ -103,6 +104,6 @@ here.
 ## Language servers
 
 ```bash
-brew install yaml-language-server
+brew install node yaml-language-server
 npm install --global typescript-language-server vscode-langservers-extracted
 ```

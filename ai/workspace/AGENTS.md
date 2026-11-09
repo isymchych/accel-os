@@ -1,6 +1,6 @@
 # AI workspace agent guide
 
-Private npm workspace `@accel-os/workspace`: a loopback-only Solid 2/Vite client and Hono/Node
+Private pnpm workspace `@accel-os/workspace`: a loopback-only Solid 2/Vite client and Hono/Node
 server. The diagnostic screen checks browser-to-server communication.
 
 Root `../../AGENTS.md` governs this workspace. Paths below are relative to `ai/workspace/`.
@@ -50,12 +50,12 @@ Run commands from this directory. Choose focused checks, then the workspace chec
 [README.md](README.md#checks) for integration. Keep focused tests beside code, cross-boundary Node
 tests in `tests/integration/`, and browser journeys in `tests/e2e/`.
 
-Use `npm run start` to run the application, `npm run build` to build browser assets, `npm run check`
-for workspace verification, and `npm run fmt` to format workspace files. Just recipes are optional
-convenience wrappers. Expose JavaScript tools through npm rather than hardcoding `node_modules/.bin`
-paths.
+Use `pnpm run start` to run the application, `pnpm run build` to build browser assets,
+`pnpm run check` for workspace verification, and `pnpm run fmt` to format workspace files. Just
+recipes are optional convenience wrappers. Expose JavaScript tools through pnpm rather than
+hardcoding `node_modules/.bin` paths.
 
-`npm test` runs Node integration tests; `npm run test:e2e` runs browser journeys. Typechecking
+`pnpm test` runs Node integration tests; `pnpm run test:e2e` runs browser journeys. Typechecking
 checks invalid RPC input in `client/lib/api.type-test.ts`. E2E needs compatible system Chromium and
 a free port; rerun after Chromium or Playwright updates.
 

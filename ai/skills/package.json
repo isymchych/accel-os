@@ -2,6 +2,12 @@
   "name": "accel-os-ai-skills",
   "private": true,
   "type": "module",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "onFail": "error"
+    }
+  },
   "scripts": {
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
@@ -10,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@accel-os/shared": "0.0.0",
-    "typebox": "^1.1.36"
+    "@accel-os/shared": "workspace:*",
+    "typebox": "catalog:"
   }
 }

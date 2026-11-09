@@ -15,7 +15,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `state=$(mktemp -d); trap 'rm -rf "$state"' EXIT; export WORKSPACE_STATE_DIR="$state"; npm run build && WORKSPACE_PORT=${port} npm run start`,
+    command: `state=$(mktemp -d); trap 'rm -rf "$state"' EXIT; export WORKSPACE_STATE_DIR="$state"; pnpm run build && WORKSPACE_PORT=${port} pnpm run start`,
     port,
     reuseExistingServer: false,
     gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },

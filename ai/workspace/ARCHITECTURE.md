@@ -5,7 +5,7 @@ proposed where noted.
 
 ## Technical direction
 
-- Loopback-only deployment, with separate client and server source in one private npm package.
+- Loopback-only deployment, with separate client and server source in one private pnpm workspace.
 - TypeScript 7, Node, Vite, Oxlint with tsgolint, and Oxfmt.
 - Solid 2 with TanStack AI's headless `@tanstack/ai-client` through a small local Solid 2 binding,
   Tailwind v4, locally owned components, and semantic theme tokens.
@@ -74,11 +74,11 @@ and Tailwind compiles the browser; TypeScript emits runnable backend JavaScript.
 typechecking, lint, and tests.
 
 The launcher coordinates the [Check & Reload lifecycle](DOMAIN.md#check-and-reload). Reuse the
-workspace npm check and build commands; do not reimplement them inside the product. After checks and
-candidate preparation succeed, every reload replaces the API child, installs capability definitions,
-and reloads the UI, regardless of which components changed. The operation survives the API/browser
-disconnection and exposes its outcome after reconnection. Launcher and executor code changes require
-a full restart.
+workspace pnpm check and build commands; do not reimplement them inside the product. After checks
+and candidate preparation succeed, every reload replaces the API child, installs capability
+definitions, and reloads the UI, regardless of which components changed. The operation survives the
+API/browser disconnection and exposes its outcome after reconnection. Launcher and executor code
+changes require a full restart.
 
 Use Durable's registry replacement APIs without submission-wide code-version pinning. Capability
 loading remains internal integration; this does not introduce general application plugin loading.

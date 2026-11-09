@@ -1,0 +1,21 @@
+packages:
+  - ai/pi
+  - ai/skills
+  - ai/workspace
+  - dotfiles
+  - packages/commands
+  - packages/shared
+
+catalog:
+  typebox: ^1.1.36
+
+# Minimum dependency release age, in minutes.
+minimumReleaseAge: 1440
+
+# Version-scoped dependency build approvals.
+allowBuilds:
+  koffi@2.16.2: true
+  srcwalk@1.8.1: true
+  tilth@0.12.0: true
+  "@google/genai": false
+  protobufjs: false

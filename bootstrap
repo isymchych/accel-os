@@ -45,7 +45,6 @@ esac
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 readonly repository_root
 readonly dotfiles_source="$repository_root/dotfiles"
-readonly node_version_file="$repository_root/.node-version"
 
 export ACCEL_OS="$repository_root"
 export PATH="$HOME/bin:$PATH"
@@ -54,13 +53,8 @@ export PATH="$HOME/bin:$PATH"
   printf 'bootstrap: missing Chezmoi source: %s\n' "$dotfiles_source" >&2
   exit 1
 }
-[[ -r "$node_version_file" ]] || {
-  printf 'bootstrap: missing Node version file: %s\n' "$node_version_file" >&2
-  exit 1
-}
-
 require_command chezmoi
-require_command fnm
+require_command pnpm
 require_command just
 require_command zsh
 
@@ -84,7 +78,7 @@ chezmoi apply
 printf '\n==> Installing repository dependencies\n'
 (
   cd "$repository_root"
-  fnm exec --using="$node_version_file" npm install --ignore-scripts
+  pnpm install --frozen-lockfile
 )
 
 printf '\n==> Verifying portable configuration\n'
@@ -92,7 +86,7 @@ chezmoi doctor
 "$HOME/bin/accel-node" --version
 (
   cd "$repository_root"
-  fnm exec --using="$node_version_file" just check
+  just check
 )
 "$HOME/bin/ai" help >/dev/null
 
@@ -103,7 +97,7 @@ if [[ "$(uname -s)" == "Linux" && -r /etc/os-release ]]; then
     printf '\n==> Verifying Arch workstation configuration\n'
     (
       cd "$repository_root"
-      fnm exec --using="$node_version_file" just doctor
+      just doctor
     )
   fi
 fi

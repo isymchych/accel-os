@@ -12,28 +12,28 @@ export class BuildRunner {
   }
 
   public async check(signal: AbortSignal): Promise<void> {
-    await runNpm(this.source, this.state, ["run", "check"], signal);
+    await runPnpm(this.source, this.state, ["run", "check"], signal);
   }
 
   public async build(candidate: Artifact, signal: AbortSignal): Promise<void> {
-    await runNpm(
+    await runPnpm(
       this.source,
       this.state,
-      ["run", "build", "--", "--candidate", candidate.directory, candidate.id],
+      ["run", "build", "--candidate", candidate.directory, candidate.id],
       signal,
     );
   }
 }
 
 // Shutdown also terminates the command's subprocesses.
-async function runNpm(
+async function runPnpm(
   source: string,
   state: string,
   args: string[],
   signal: AbortSignal,
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const command = spawn("npm", args, {
+    const command = spawn("pnpm", args, {
       cwd: source,
       env: { ...process.env, WORKSPACE_STATE_DIR: state },
       stdio: "inherit",
@@ -62,7 +62,7 @@ async function runNpm(
       if (signal.aborted) kill("SIGKILL");
       if (signal.aborted) reject(signal.reason);
       else if (code === 0) resolve();
-      else reject(new Error(`npm run ${args[1]} failed.`));
+      else reject(new Error(`pnpm run ${args[1]} failed.`));
     });
     function cleanup(): void {
       signal.removeEventListener("abort", stop);
