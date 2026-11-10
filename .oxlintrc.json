@@ -8,7 +8,7 @@
     "suspicious": "error"
   },
   "plugins": ["typescript"],
-  "ignorePatterns": ["ai/workspace/dist/**", "ai/workspace/.workspace/**"],
+  "ignorePatterns": ["ai/workspace/dist/**"],
   "env": {
     "node": true
   },

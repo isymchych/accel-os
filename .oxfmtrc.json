@@ -10,7 +10,6 @@
   "ignorePatterns": [
     "*.json",
     "ai/workspace/dist/**",
-    "ai/workspace/.workspace/**",
     "ai/skills/frontend-design/references/design-md/spec.md",
     "ai/skills/frontend-design/references/design-md/LICENSE"
   ]

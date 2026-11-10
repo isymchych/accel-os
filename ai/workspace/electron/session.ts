@@ -180,7 +180,7 @@ export class DesktopSession {
     if (["select", "confirm", "input", "editor"].includes(record.method)) {
       // Until graphical dialogs exist, cancel explicitly; never silently approve or hang.
       this.update({
-        notice: `Pi requested a ${record.method} dialog. This foundation cancels unsupported dialogs.`,
+        notice: `Pi requested a ${record.method} dialog. It was cancelled because this dialog is not yet supported.`,
       });
       void this.rpc.cancelDialog(record.id).catch(() => {
         this.update({ error: "Could not cancel the unsupported Pi dialog." });

@@ -95,7 +95,10 @@ test("shutdown closes stdin and cleans up active child work", async (t) => {
 test("unsupported dialogs are explicitly cancelled and do not hang command acceptance", async (t) => {
   const { session } = await fixture(t);
   await session.prompt("/dialog");
-  assert.match(session.snapshot().notice ?? "", /cancels unsupported dialogs/);
+  assert.equal(
+    session.snapshot().notice,
+    "Pi requested a confirm dialog. It was cancelled because this dialog is not yet supported.",
+  );
   assert.equal(session.snapshot().execution, "idle");
 });
 

@@ -15,9 +15,7 @@ function SessionHeader({ snapshot }: { snapshot: SessionSnapshot | null }): Reac
   return (
     <header className="border-b border-border pb-5">
       <h1 className="text-2xl font-semibold">Pi workspace</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Local Electron foundation · your existing Pi configuration
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">Your existing Pi configuration</p>
       <p className="mt-3 break-all text-sm">{snapshot?.cwd ?? "Opening working directory…"}</p>
       <p className="mt-2 text-sm" role="status">
         Connection: {snapshot?.connection ?? "starting"} · Execution:{" "}
@@ -53,7 +51,7 @@ function Transcript({ snapshot }: { snapshot: SessionSnapshot | null }): ReactEl
   );
 }
 
-export function FoundationScreen(): ReactElement {
+export function SessionScreen(): ReactElement {
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
   const [message, setMessage] = useState(savedDraft);
   const [pending, setPending] = useState(false);

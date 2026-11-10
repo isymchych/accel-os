@@ -1,10 +1,12 @@
-# Historical ideas and backlog
+# Historical ideas
 
 These notes retain earlier brainstorming, including the superseded distributed/Durable direction.
 They are not requirements or a commitment to future compatibility. [VISION.md](VISION.md) owns the
-current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-release work.
+current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-release work. All
+sections below are historical notes, not an actionable backlog. Capability claims and suggested
+tasks reflect the earlier direction and have not been revalidated against the current setup.
 
-## TODO
+## Early direction notes
 
 - Pagoda? Brama?
 - rename "runtime" to something more interesting - i.e. "robot"/"agent"?
@@ -12,7 +14,8 @@ current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-r
 - separating where the work executes from where the developer controls it
 - the UI, agent execution engine, and synchronization layer are separate systems
 
-- review the ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
+- Earlier architecture review task (superseded by the local desktop pivot): review the
+  ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
 
 > The interesting abstraction is:
 
@@ -28,7 +31,7 @@ current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-r
 
 ---
 
-## Tech debt
+## Earlier tech-debt candidates
 
 - branded types, domain ids
 - network requests in ui component
@@ -36,12 +39,12 @@ current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-r
 - should run e2e tests each time?
 - use pino logger
 
-## Relevant later
+## Earlier deferred ideas
 
 - CLI/event-driven and scheduled triggers.
 - Multi-step workflows and hierarchical subagents.
 - Reusable skills, commands, and agent presets.
-- Model-agnostic dispatch—our MVP deliberately supports only OpenAI.
+- Model-agnostic dispatch—the earlier MVP assumed OpenAI-only support, not a current constraint.
 - Alternative execution environments and remote runners.
 - Per-run usage/cost visibility, where supported by runtime accounting.
 - Workflow evaluations once we have repeatable workflows to evaluate.

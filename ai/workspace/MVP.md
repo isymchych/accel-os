@@ -15,9 +15,16 @@ apply to the complete release.
 - [ ] **Manage conversations:** choose directories; browse, create, and reopen native sessions; read
       history and navigate or fork branches without losing original history.
 - [ ] **Work across sessions:** navigate between sessions without interrupting other active work.
+      Keep each session's draft and activity independent. Switching views must not stop or retarget
+      execution; commands remain bound to their intended session even if selection changes while
+      they are pending.
 - [ ] **Follow agent work:** read transcripts, streaming text, meaningful tool activity/results,
       connection/execution state, errors, and unsupported-interaction notices, including long
       content.
+- [ ] **Keep long conversations responsive:** avoid cloning and sending the entire transcript over
+      IPC on every streaming delta. `DesktopSession.update()` currently clones full snapshots for
+      listeners, which main forwards to the renderer. Consider coalesced notifications before a more
+      complex state protocol.
 - [ ] **Direct the agent:** submit input and explicit follow-ups distinct from steering; choose
       models and thinking levels through Pi's existing configuration/runtime.
 - [ ] **Complete graphical interactions:** adapt required extension interactions to React,
@@ -62,6 +69,14 @@ and display prerequisites.
 Verify directory/session selection, sequential CLI/GUI handoff, persisted-history reopening,
 branch/fork preservation, explicit follow-ups, model/thinking controls, independent session
 activity, and graphical extension interactions.
+
+- Run work in session A, switch to B and submit there, then return to A. Verify work continues
+  independently and histories and drafts remain separate.
+- Verify Stop targets only the intended session, including when selection changes while the request
+  is pending.
+- Reopening an already active session reuses its execution owner rather than creating a second
+  writer.
+- Forking preserves the source session's history and active work.
 
 A lost command response remains an uncertain submission, not permission to resend automatically.
 Stop success requires Pi confirmation; verify real tool process termination against the actual
