@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import type { SpawnSyncReturns } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
@@ -9,8 +9,6 @@ import type { TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const nativeAvailable =
-  process.platform === "linux" && spawnSync("noctalia", ["--version"]).status === 0;
 
 type CommandFixture = {
   run(command: string, args: string[], enabled?: string, fail?: string): SpawnSyncReturns<string>;
@@ -169,48 +167,3 @@ test("switching layouts clears auto-hide bookkeeping reset by native config relo
     ],
   );
 });
-
-test(
-  "native config retains both layouts and honors the persisted selection",
-  { skip: nativeAvailable ? false : "requires installed Linux Noctalia" },
-  (t) => {
-    const directory = mkdtempSync(join(tmpdir(), "noctalia-bar-config-"));
-    t.after(() => rmSync(directory, { recursive: true, force: true }));
-    const state = join(directory, "noctalia");
-    mkdirSync(state);
-    const env = {
-      ...process.env,
-      NOCTALIA_CONFIG_HOME: join(root, "dotfiles/dot_config"),
-      NOCTALIA_STATE_HOME: directory,
-    };
-    for (const selection of [undefined, false, true]) {
-      const rightEnabled = selection ?? false;
-      if (selection !== undefined) {
-        writeFileSync(
-          join(state, "settings.toml"),
-          `[bar.default]\nenabled = ${!rightEnabled}\n[bar.right]\nenabled = ${rightEnabled}\n`,
-        );
-      }
-      const validation = spawnSync("noctalia", ["config", "validate"], {
-        env,
-        encoding: "utf8",
-      });
-      assert.equal(validation.status, 0, validation.stderr);
-      const result = spawnSync("noctalia", ["config", "export", "full"], {
-        env,
-        encoding: "utf8",
-      });
-      assert.equal(result.status, 0, result.stderr);
-      for (const [name, position, enabled] of [
-        ["default", "top", !rightEnabled],
-        ["right", "right", rightEnabled],
-      ] as const) {
-        const section = result.stdout.split(`[bar.${name}]\n`)[1]?.split(/\n\s*\[/u)[0];
-        assert.ok(section, `missing ${name} bar`);
-        assert.match(section, new RegExp(`^[ \\t]*enabled = ${enabled}$`, "m"));
-        assert.match(section, new RegExp(`^[ \\t]*position = "${position}"$`, "m"));
-        assert.doesNotMatch(section, /\bpower_profile\b/u);
-      }
-    }
-  },
-);

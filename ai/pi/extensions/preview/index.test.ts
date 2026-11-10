@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 
@@ -14,8 +15,6 @@ import {
 
 type AssistantMessage = Extract<SessionMessageEntry["message"], { role: "assistant" }>;
 type AssistantContent = AssistantMessage["content"];
-type ErrorListener = (error: Error) => void;
-type CloseListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
 const usage = {
   input: 0,
@@ -26,44 +25,10 @@ const usage = {
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
 
-function isErrorListener(
-  event: "error" | "close",
-  _listener: ErrorListener | CloseListener,
-): _listener is ErrorListener {
-  return event === "error";
-}
-
-function isCloseListener(
-  event: "error" | "close",
-  _listener: ErrorListener | CloseListener,
-): _listener is CloseListener {
-  return event === "close";
-}
-
-class FakePreviewChild implements PreviewChild {
+class FakePreviewChild extends EventEmitter implements PreviewChild {
   public readonly stdin = new PassThrough();
   public readonly stdout = new PassThrough();
   public readonly stderr = new PassThrough();
-
-  private readonly errorListeners: ErrorListener[] = [];
-  private readonly closeListeners: CloseListener[] = [];
-
-  public once(event: "error", listener: ErrorListener): this;
-  public once(event: "close", listener: CloseListener): this;
-  public once(event: "error" | "close", listener: ErrorListener | CloseListener): this {
-    if (isErrorListener(event, listener)) {
-      this.errorListeners.push(listener);
-    } else if (isCloseListener(event, listener)) {
-      this.closeListeners.push(listener);
-    }
-    return this;
-  }
-
-  public emitClose(code: number | null, signal: NodeJS.Signals | null): void {
-    for (const listener of this.closeListeners) {
-      listener(code, signal);
-    }
-  }
 }
 
 function assistantEntry(id: string, content: AssistantContent): SessionMessageEntry {
@@ -148,7 +113,7 @@ test("runMbPreview spawns mb-preview and writes markdown to stdin", async () => 
       calls.push({ command, args, cwd: options.cwd, stdin });
       child.stdout.end("/tmp/preview.html\n");
       child.stderr.end();
-      queueMicrotask(() => child.emitClose(0, null));
+      queueMicrotask(() => child.emit("close", 0, null));
     });
     return child;
   };
@@ -170,7 +135,7 @@ test("runMbPreview rejects non-zero mb-preview exits with stderr", async () => {
     const child = new FakePreviewChild();
     child.stdin.on("finish", () => {
       child.stderr.end("boom\n");
-      queueMicrotask(() => child.emitClose(1, null));
+      queueMicrotask(() => child.emit("close", 1, null));
     });
     return child;
   };

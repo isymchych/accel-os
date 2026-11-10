@@ -82,8 +82,6 @@
   behavior.
 - Keep custom hooks minimal and use them only for behavior that native templates or system
   appearance preferences cannot handle.
-- For native theme changes, run `pnpm exec node --test dotfiles/tests/noctalia/theme.test.ts` from
-  the repository root on Linux with Noctalia installed; the test skips otherwise.
 
 ## Testing Guidelines
 

@@ -31,6 +31,17 @@ import { initializeState } from "../../scripts/setup-state.ts";
 const workspace = resolve(import.meta.dirname, "../..");
 const execute = promisify(execFile);
 
+async function sourceFixture(
+  context: test.TestContext,
+): Promise<{ source: string; state: string }> {
+  const directory = await mkdtemp(join(tmpdir(), "workspace-reload-"));
+  const source = join(directory, "source/ai/workspace");
+  const state = join(directory, "state");
+  await mkdir(source, { recursive: true });
+  context.after(async () => rm(directory, { recursive: true, force: true }));
+  return { source, state };
+}
+
 async function fixture(context: test.TestContext): Promise<{
   source: string;
   state: string;
@@ -38,12 +49,8 @@ async function fixture(context: test.TestContext): Promise<{
   compile: (config: string, output: string) => Promise<void>;
   emit: (candidate: Artifact, label?: string) => Promise<void>;
 }> {
-  const directory = await mkdtemp(join(tmpdir(), "workspace-reload-"));
-  const root = join(directory, "source");
-  const source = join(root, "ai/workspace");
-  const state = join(directory, "state");
-  await mkdir(source, { recursive: true });
-  context.after(async () => rm(directory, { recursive: true, force: true }));
+  const { source, state } = await sourceFixture(context);
+  const root = resolve(source, "../..");
   for (const path of ["server", "launcher", "contracts", "scripts"]) {
     await cp(join(workspace, path), join(source, path), { recursive: true });
   }
@@ -110,7 +117,9 @@ async function waitForCheck(state: string): Promise<number> {
 }
 
 test("a full build refreshes the saved workspace dependency link", async (context) => {
-  const setup = await fixture(context);
+  const setup = await sourceFixture(context);
+  await mkdir(join(setup.source, "node_modules"));
+  await initializeState(setup.source, setup.state);
   const dependencies = join(setup.state, "node_modules");
   await unlink(dependencies);
   await symlink(resolve(workspace, "../../node_modules"), dependencies, "dir");
@@ -263,33 +272,7 @@ test("restart uses saved compiled UI/API and launcher despite invalid source edi
 });
 
 for (const failure of ["check", "build", "child-import", "listen", "publish"] as const) {
-  const testName = `failed ${failure} preserves a usable current artifact and removes candidate`;
-  test(testName, async (context) => {
-    if (process.env["WORKSPACE_RELOAD_FAILURE_TEST"] !== failure) {
-      // Isolate inherited child-process output without changing the launcher's real logging.
-      try {
-        const env: NodeJS.ProcessEnv = { ...process.env, WORKSPACE_RELOAD_FAILURE_TEST: failure };
-        delete env["NODE_TEST_CONTEXT"];
-        await execute(
-          process.execPath,
-          ["--test", "--test-name-pattern", `^${testName}$`, import.meta.filename],
-          {
-            env,
-          },
-        );
-      } catch (error) {
-        if (error instanceof Error && "stdout" in error && "stderr" in error) {
-          throw new Error(
-            `Isolated reload test failed:\n${String(error.stdout)}\n${String(error.stderr)}`,
-            {
-              cause: error,
-            },
-          );
-        }
-        throw error;
-      }
-      return;
-    }
+  test(`failed ${failure} preserves a usable current artifact and removes candidate`, async (context) => {
     const setup = await fixture(context);
     await writeFile(join(setup.state, "scenario"), failure);
     const supervisor = await WorkspaceSupervisor.start({ ...setup, port: 0 });
