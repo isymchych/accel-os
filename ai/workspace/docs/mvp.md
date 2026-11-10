@@ -27,19 +27,19 @@ apply to the complete release.
       complex state protocol.
 - [ ] **Direct the agent:** submit input and explicit follow-ups distinct from steering; choose
       models and thinking levels through Pi's existing configuration/runtime.
-- [ ] **Complete graphical interactions:** adapt required extension interactions to React,
-      especially `ask_user_question`; explicitly cancel unsupported dialogs with a visible notice.
 - [x] **Handle uncertainty safely:** retain drafts after rejected or uncertain submission and
       require Pi confirmation for Stop.
 - [x] **Preserve the execution lifetime:** renderer refresh reattaches to current state without
       stopping work; application quit closes children and active work.
 
 [README.md](../README.md) describes currently supported usage. Unchecked outcomes remain missing or
-partial; graphical profile selection and credential management are deferred.
+partial; graphical extension interactions (including `ask_user_question`), graphical profile
+selection, and credential management are deferred. Unsupported RPC dialogs must still receive
+explicit cancellation with a visible notice.
 
 Existing Node integration and Electron E2E tests cover parts of the foundation. A configured-Pi test
 exercises actual extensions with a local fake model, a harmless read, and native persistence; it
-does not establish compatibility for all configured tools or required graphical interactions.
+does not establish compatibility for all configured tools.
 
 ## Acceptance checks
 
@@ -68,7 +68,7 @@ commands and display prerequisites.
 
 Verify directory/session selection, sequential CLI/GUI handoff, persisted-history reopening,
 branch/fork preservation, explicit follow-ups, model/thinking controls, independent session
-activity, and graphical extension interactions.
+activity.
 
 - Run work in session A, switch to B and submit there, then return to A. Verify work continues
   independently and histories and drafts remain separate.

@@ -25,10 +25,11 @@ Standalone-browser access, saved projects, remote hosts, orchestration, multi-us
 background execution, automatic crash recovery, an application-owned plugin platform, and
 uninterrupted main-process upgrades are outside scope.
 
-A graphical selector for existing account profiles, credential-management screens, a rich graphical
-history tree, an embedded terminal, a file explorer/editor, installers, and distribution packaging
-are deferred. A future profile selector would use the existing Pi profile system. Additional Pi
-capabilities enter UI scope through an explicit product decision.
+Graphical extension interactions (including `ask_user_question`), a graphical selector for existing
+account profiles, credential-management screens, a rich graphical history tree, an embedded
+terminal, a file explorer/editor, installers, and distribution packaging are deferred. A future
+profile selector would use the existing Pi profile system. Additional Pi capabilities enter UI scope
+through an explicit product decision.
 
 [DOMAIN.md](domain.md) defines session behavior; [ARCHITECTURE.md](architecture.md) defines
 integration and execution authority. [IDEAS.md](ideas.md) retains nonbinding brainstorming.

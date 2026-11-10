@@ -50,9 +50,9 @@ Share configuration and session formats with the terminal launcher, not terminal
 take effect at Pi's native boundaries or the next child launch as appropriate. Do not change
 process-global directory or profile environment to retarget another running session.
 
-React renders graphical controls for Pi interactions. Cancel unsupported RPC dialogs explicitly and
-display a notice; never silently approve them. Custom terminal UI and tools that disable themselves
-outside TUI mode require graphical adaptation.
+When supported, graphical controls for Pi interactions use React. Cancel unsupported RPC dialogs
+explicitly and display a notice; never silently approve them. Supporting custom terminal UI and
+tools that disable themselves outside TUI mode requires graphical adaptation.
 
 ## Execution authority
 
