@@ -1,14 +1,11 @@
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { access } from "node:fs/promises";
+import path from "node:path";
 
-const source = resolve(import.meta.dirname, "..");
-const state = resolve(process.env["WORKSPACE_STATE_DIR"] ?? resolve(source, ".workspace"));
-process.chdir(source);
-process.env["WORKSPACE_STATE_DIR"] = state;
+import { launchElectron, source } from "./process.ts";
 
 try {
-  await import(pathToFileURL(resolve(state, "owner/launcher/main.js")).href);
-} catch (error) {
-  console.error("Could not load the built workspace. Run pnpm run build first.", error);
-  process.exitCode = 1;
+  await access(path.join(source, "dist/main/electron/main.js"));
+} catch {
+  throw new Error('Build the desktop app first: pnpm --dir "$ACCEL_OS/ai/workspace" run build');
 }
+await launchElectron();

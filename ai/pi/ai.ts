@@ -6,13 +6,15 @@ import { selectAccountProfile } from "./runtime/account-switcher.ts";
 import { resolveAccountProfile } from "./runtime/accounts.ts";
 import { parseLauncherArgs } from "./runtime/launcher-args.ts";
 import { launchPi } from "./runtime/pi-launcher.ts";
+import { launchUi } from "./runtime/ui-launcher.ts";
 
-const usage = `ai [account] [tilth|srcwalk] [-- <pi args...>]
+const usage = `ai [account|ui] [tilth|srcwalk] [-- <pi args...>]
 
 Examples:
   ai
   ai tilth
   ai account
+  ai ui
   ai -- --help
 
 Notes:
@@ -25,6 +27,8 @@ Notes:
   - ai excludes built-in tools superseded by this configuration: write, grep, find, and ls.
   - \`account\` selects an isolated OpenAI Codex credential profile and then opens Pi.
   - Each profile has its own auth.json, so changing accounts does not affect existing chats.
+  - \`ui\` opens the local Electron app with the selected profile and current working directory.
+  - Build the app first with \`pnpm --dir "$ACCEL_OS/ai/workspace" run build\`.
   - Use \`ai -- --help\` to show Pi CLI docs.`;
 
 function requireAccelOs(): string {
@@ -36,7 +40,7 @@ function requireAccelOs(): string {
 }
 
 async function main(): Promise<void> {
-  const { codeNavigation, passthrough, showHelp, useAccountSwitcher } = parseLauncherArgs(
+  const { codeNavigation, passthrough, showHelp, useAccountSwitcher, useUi } = parseLauncherArgs(
     process.argv.slice(2),
   );
   if (showHelp) {
@@ -49,7 +53,11 @@ async function main(): Promise<void> {
   const profile = useAccountSwitcher
     ? await selectAccountProfile(configDir)
     : await resolveAccountProfile(configDir);
-  await launchPi(accelOs, profile, passthrough, codeNavigation);
+  if (useUi) {
+    await launchUi(accelOs, profile, codeNavigation);
+  } else {
+    await launchPi(accelOs, profile, passthrough, codeNavigation);
+  }
 }
 
 try {

@@ -5,6 +5,7 @@ export interface LauncherArgs {
   passthrough: string[];
   showHelp: boolean;
   useAccountSwitcher: boolean;
+  useUi: boolean;
 }
 
 export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
@@ -12,6 +13,7 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
   let codeNavigationWasSelected = false;
   let showHelp = false;
   let useAccountSwitcher = false;
+  let useUi = false;
   let modifierCount = 0;
 
   for (const arg of args) {
@@ -25,10 +27,19 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
       showHelp = true;
     } else if (arg === "account") {
       useAccountSwitcher = true;
+    } else if (arg === "ui") {
+      useUi = true;
     } else {
       break;
     }
     modifierCount += 1;
+  }
+
+  if (useUi && useAccountSwitcher) {
+    throw new Error("select an account with `ai account` before opening `ai ui`");
+  }
+  if (useUi && args.length > modifierCount) {
+    throw new Error("`ai ui` does not accept Pi arguments yet");
   }
 
   return {
@@ -36,5 +47,6 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
     passthrough: args.slice(modifierCount),
     showHelp,
     useAccountSwitcher,
+    useUi,
   };
 }

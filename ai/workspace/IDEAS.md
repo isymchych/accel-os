@@ -1,3 +1,9 @@
+# Historical ideas and backlog
+
+These notes retain earlier brainstorming, including the superseded distributed/Durable direction.
+They are not requirements or a commitment to future compatibility. [VISION.md](VISION.md) owns the
+current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-release work.
+
 ## TODO
 
 - Pagoda? Brama?
@@ -28,7 +34,6 @@
 - network requests in ui component
 - verbose errors/stacktraces in tests
 - should run e2e tests each time?
-- switch to React
 - use pino logger
 
 ## Relevant later

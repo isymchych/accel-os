@@ -55,11 +55,7 @@
         "browser": true,
         "node": false
       },
-      "globals": {
-        "__BUILD_ID__": "readonly"
-      },
       "rules": {
-        "no-underscore-dangle": ["error", { "allow": ["__BUILD_ID__"] }],
         "no-restricted-imports": [
           "error",
           {
@@ -69,9 +65,8 @@
                 "message": "client code must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+(?:server|launcher)/",
-                "allowTypeImports": true,
-                "message": "client code must not import server or launcher code"
+                "regex": "^(?:\\.\\./)+(?:electron|scripts)/",
+                "message": "client code must use desktop contracts, not privileged implementation"
               }
             ]
           }
@@ -94,7 +89,7 @@
                 "message": "contracts must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+(?:client|server|launcher)/",
+                "regex": "^(?:\\.\\./)+(?:client|electron|scripts)/",
                 "message": "contracts must not import application code"
               }
             ]
@@ -103,7 +98,7 @@
       }
     },
     {
-      "files": ["ai/workspace/server/**/*.ts"],
+      "files": ["ai/workspace/electron/**/*.ts", "ai/workspace/electron/**/*.cts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -111,11 +106,7 @@
             "patterns": [
               {
                 "regex": "^(?:\\.\\./)+client/",
-                "message": "server code must not import client code"
-              },
-              {
-                "regex": "^(?:\\.\\./)+launcher/",
-                "message": "application code must use launcher contracts, not launcher implementation"
+                "message": "Electron code must not import client implementation"
               }
             ]
           }
@@ -123,15 +114,15 @@
       }
     },
     {
-      "files": ["ai/workspace/launcher/**/*.ts"],
+      "files": ["ai/workspace/scripts/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "regex": "^(?:\\.\\./)+(?:client|server)/",
-                "message": "launcher code must not import application implementation"
+                "regex": "^(?:\\.\\./)+(?:client|electron)/",
+                "message": "development scripts must launch the app, not import its implementation"
               }
             ]
           }

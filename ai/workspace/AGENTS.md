@@ -1,70 +1,34 @@
-# AI workspace agent guide
+# Pi workspace agent guide
 
-Private pnpm workspace `@accel-os/workspace`: a loopback-only Solid 2/Vite client and Hono/Node
-server. The diagnostic screen checks browser-to-server communication.
-
-Root `../../AGENTS.md` governs this workspace. Paths below are relative to `ai/workspace/`.
-
-Keep workspace runtime code independent of repository-internal packages.
+Local-only Electron/React app in private pnpm workspace `@accel-os/workspace`. Root
+`../../AGENTS.md` governs this workspace.
 
 ## Read before changing
 
-- [DOMAIN.md](DOMAIN.md): behavior, configuration, and lifecycle.
-- [ARCHITECTURE.md](ARCHITECTURE.md): source ownership, imports, APIs, runtime, and security.
-- [MVP.md](MVP.md): first-release integration requirements and acceptance checks.
-- [DESIGN.md](DESIGN.md): presentation and interaction.
-- [VISION.md](VISION.md#agreed-mvp-decisions): MVP scope, execution authority, and ownership of
-  configuration and credentials.
-- [DECISIONS.md](DECISIONS.md): consequential choices and rationale.
-- [README.md](README.md): run, build, and check commands.
+- For behavior changes, read [DOMAIN.md](DOMAIN.md) and the [release outcomes](MVP.md).
+- For integration changes, read [ARCHITECTURE.md](ARCHITECTURE.md): it owns process, import, IPC,
+  and security boundaries, including reuse of the `ai/pi/` RPC entry rather than private imports.
+- Before expanding scope, read [VISION.md](VISION.md); [DECISIONS.md](DECISIONS.md) explains the
+  consequential tradeoffs.
+- Before visual work, read [DESIGN.md](DESIGN.md). It is a proposal, not authorization to redesign
+  unrelated UI.
 
-Read the relevant sections, including architecture security requirements before enabling execution.
-Proposals describe direction; implementation requires explicit authorization. Runtime checks must
-use fake providers, harmless tools, and isolated temporary state.
+## UI and validation
 
-Consult Pi Durable's examples when useful for feature design and runtime integration. Adapt patterns
-to the workspace's agreed requirements and verify APIs against the pinned dependency version.
+Use React and native controls, forwarding native attributes/events. Shared controls stay
+domain-free; features own labels, values, state, and feedback. Preserve existing semantic theme
+tokens.
 
-## Code ownership
+Run commands from this directory: `pnpm run dev`, `pnpm run build`, `pnpm run start`,
+`pnpm run check`, and `pnpm run test:e2e`. Plain Vite owns renderer hot updates; main/preload
+changes require explicit restart.
 
-Follow the [source layout and dependency rules](ARCHITECTURE.md#source-layout). Features own product
-policy; `lib/` and `ui/` stay domain-free. Add feature subdivisions for distinct responsibilities.
-Keep server syntax erasable for Node; Vite compiles the browser.
+Use Node's test runner for focused/integration checks and Playwright's Electron support for full
+renderer/preload/main journeys. Follow [MVP acceptance checks](MVP.md#acceptance-checks) for
+isolated, credential-free execution and the distinction between fake RPC wiring and real Pi
+compatibility.
 
-## UI primitives
-
-Use small, locally owned Solid components over native HTML controls, styled through semantic
-`client/styles/theme.css` tokens. Features own labels, values, state, feedback, and terminology.
-Button and Input forward native attributes/events; native elements own interaction behavior.
-
-Read reactive values through the props object. Use Solid 2 APIs and native HTML attribute names.
-Prefer platform capabilities and add primitives for distinct reusable interactions.
-
-When adding shared components, consult relevant documentation, source, and interaction tests from
-the [frontend references](ARCHITECTURE.md#frontend-references). Follow their adaptation and
-compatibility guidance.
-
-## Validation
-
-Run commands from this directory. Choose focused checks, then the workspace checks in
-[README.md](README.md#checks) for integration. Keep focused tests beside code, cross-boundary Node
-tests in `tests/integration/`, and browser journeys in `tests/e2e/`.
-
-Use `pnpm run start` to run the application, `pnpm run build` to build browser assets,
-`pnpm run check` for workspace verification, and `pnpm run fmt` to format workspace files. Just
-recipes are optional convenience wrappers. Expose JavaScript tools through pnpm rather than
-hardcoding `node_modules/.bin` paths.
-
-`pnpm test` runs Node integration tests; `pnpm run test:e2e` runs browser journeys. Typechecking
-checks invalid RPC input in `client/lib/api.type-test.ts`. E2E needs compatible system Chromium and
-a free port; rerun after Chromium or Playwright updates.
-
-Root lint/formatting includes this workspace. Run the browser build and E2E alongside root
-`just check`; root `just fmt` also formats Emacs files. Report missing prerequisites and
-verification gaps.
-
-## Maintaining guidance
-
-Correct guidance only within authorized scope. Treat user corrections as candidates for lasting
-rules that need evaluation before becoming general policy. Keep lasting guidance in its narrowest
-existing owner, with authorization covering that destination.
+Run the desktop build and Electron E2E alongside root `just check`; disclose missing display or
+Electron prerequisites. Follow [README display prerequisites](README.md#checks) before GUI checks;
+do not open unexpected windows. pnpm scripts own workspace tooling; Just recipes are convenience
+wrappers.

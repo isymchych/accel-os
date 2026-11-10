@@ -1,3 +1,9 @@
 /// <reference types="vite/client" />
 
-declare const __BUILD_ID__: string;
+import type { DesktopApi } from "../contracts/desktop.ts";
+
+declare global {
+  interface Window {
+    pi: DesktopApi;
+  }
+}

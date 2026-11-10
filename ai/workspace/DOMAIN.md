@@ -1,137 +1,61 @@
-# AI workspace domain
+# Pi workspace domain
 
-Draft domain model describing agreed target behavior. [VISION.md](VISION.md) defines MVP scope and
-longer-term capabilities.
+## Concepts and ownership
 
-## Core concepts
+- **Session:** a native Pi conversation, its history tree, active branch, and persisted
+  configuration.
+- **Working directory:** the local starting context for project resources and tools.
+- **Account profile:** an existing `ai/pi/` profile with isolated credentials and shared resources.
+- **Desktop session:** an app-owned Pi RPC child and its current observable state.
+- **Renderer:** the React view; it observes sessions and sends explicit commands.
 
-- **Workspace:** personal control center for agents and their workflows.
-- **Client:** web, mobile, or terminal interface that observes state and issues commands.
-- **Agent host:** service owning durable conversations and their execution. One machine may host
-  several.
-- **Execution environment:** filesystem and process context in which tools run.
-- **Project:** optional saved working context; initially a canonical local directory.
-- **Conversation:** durable transcript and associated configuration, execution context, and optional
-  project association. Its identity is independent of its title or route.
-- **Agent:** configured participant in a conversation; initially its identity and configuration
-  belong to that conversation.
-- **Account:** workspace-managed provider login selected for a conversation, with server-side
-  credentials and refresh state isolated from other accounts.
-- **Agent preset (post-MVP):** reusable model, instructions, tools, and execution configuration.
-- **Submission:** admitted input with a durable outcome.
-- **Run:** model responses and tool calls progressing from admitted input toward a final answer.
-
-Projects and presets belong to the application; the runtime owns conversations, submissions, and
-runs. [ARCHITECTURE.md](ARCHITECTURE.md#runtime-terms-and-state) maps these concepts to runtime
-records.
-
-## Ownership and execution context
-
-Hosts own conversations and execution; clients observe and issue commands. Admitted work continues
-under host execution policy across client disconnections. Observation, execution, and administration
-each require explicit authority. The [MVP execution policy](VISION.md#agreed-mvp-decisions) defines
-unsandboxed access.
-
-Users choose directories directly or through projects. Paths resolve in their owning execution
-environment. Conversations may run concurrently in the same project or directory; users coordinate
-overlapping work themselves.
-
-Execution requires explicit authority independently of capability selection.
+Pi owns tools, model access, context management, retries, compaction, queues, history, and session
+files. The desktop owns process lifecycle, navigation, drafts, and graphical presentation. `ai/pi/`
+remains the source of truth for agent configuration and credentials.
 
 ## Activity, outcomes, and connection
 
-Execution, submission outcome, and client connection are independent:
+Connection and execution are separate. Disconnection does not establish success, failure, or
+cancellation; displayed execution becomes unknown until fresh state confirms it.
 
-- **Execution:** idle or running, with blocked work distinguished from normal progress.
-- **Submission:** pending until answered or unanswered, with a reason for unanswered input.
-  Cancellation has its own reason within unanswered outcomes, distinct from provider failure.
-- **Connection:** connecting, connected, or disconnected. While disconnected, execution state is
-  last-observed information; a fresh observation confirms current state.
+Prompt acceptance is not completion. A Pi response can mean started, queued, or handled by an
+extension. `agent_end` may precede retries or queued work; `agent_settled` marks the end of
+automatic continuation. A tool error does not necessarily end the run.
 
-Runs may finish while clients are disconnected. Command completion requires confirmation from the
-execution owner.
+Display command rejection, provider/tool errors, extension failures, and child-process exit
+distinctly where the runtime exposes them. Preserve drafts on failed or uncertain submission; do not
+automatically retry potentially accepted input.
 
-Distinguish provider failure, tool failure, interrupted execution, unavailable or invalid
-configuration, and client transport failure. A tool may fail while its run continues. Provide
-readily visible explanations for unanswered input and blocked work. Preserve failures and useful
-explanations for unknown reasons. Report success after confirmation from the execution owner. Treat
-a lost stream as a connection error; establish execution outcomes from runtime state.
+## Lifecycle
 
-## Configuration safety
+Renderer refresh, hot updates, and view changes end observation, not execution. Reattach using
+current main-process state and ignore stale observations. Stop requests Pi cancellation and stays
+stopping until Pi confirms it; unknown cancellation is not success.
 
-Model, instruction, and tool-selection edits take effect at Durable's native resolution boundaries.
-Running operations retain their resolved context; later phases, requests, or calls may use updates
-within the same run, including tool-selection edits after the model requested a call.
-Presentation-only changes may take effect immediately.
+Quitting the desktop closes its RPC children and their active work. There is no background daemon or
+automatic replay/resumption after an app or machine crash. Existing session history remains
+reopenable through Pi; reopening history is not recovery of unfinished execution.
 
-Changing a conversation's working directory requires confirmed idle with no pending admitted work.
+Each active session has one execution owner. CLI/GUI handoff is sequential; never open the same
+session for concurrent writes. A profile is fixed for the child lifetime; changing the selected
+profile for later launches does not retarget existing work.
 
-Each conversation selects an account independently; different conversations may use different
-accounts concurrently. Admitted work retains its resolved account. Post-MVP account switching
-changes the account for subsequent submissions without changing conversation identity. A new branch
-uses the currently selected account, even when branching from a point before an account switch;
-historical transcript state does not restore an earlier account selection. Branching is an MVP
-interaction; switching an existing conversation's account remains post-MVP.
+Session navigation and native Pi branching must preserve original history and target commands to the
+explicitly selected session. Follow-up and steering remain distinct, using Pi's native semantics
+rather than an application queue.
 
-When presets enter scope, applying one resolves concrete configuration for the conversation. Later
-preset edits affect future applications; existing configurations retain their resolved values.
+## Configuration and interaction compatibility
 
-Inherited model, instruction, and tool choices follow the same native resolution boundaries when
-host defaults or project configuration change; explicit conversation overrides remain in effect.
-Capability implementation changes follow the [reload lifecycle](#check-and-reload). A conversation
-keeps its configured directory when a saved project's path changes; applying another directory is
-explicit and follows the directory guard above. A conversation retains its selected account across
-host-default and project edits.
+Share configuration and session formats with the terminal launcher, not terminal widgets. Changes
+take effect at Pi's native boundaries or the next child launch as appropriate. Do not change
+process-global directory or profile environment to retarget another running session.
 
-## Check and Reload
+React renders graphical controls for Pi interactions. Cancel unsupported RPC dialogs explicitly and
+display a notice; never silently approve them. Custom terminal UI and tools that disable themselves
+outside TUI mode require graphical adaptation.
 
-Check & Reload is one explicit user action: check the edited source, build a candidate, then reload
-the UI, API, and capability implementations. Editing files does not automatically activate changes.
-There are no separate development and production workflows or selective reload controls.
+## Execution authority
 
-Failed checks or builds leave the running version active. Preserve browser drafts and handle unsaved
-forms before replacing the UI. API reload may disconnect clients; execution continues independently
-and clients reconnect to current state. Report activation failures and what remains active rather
-than promising an atomic rollback across all components.
-
-Capability reload follows the runtime's native boundaries: an executing tool call finishes with its
-existing implementation; later task phases, requests, or calls may use replacements, including
-within the same run. Reload preserves conversation configuration; configuration edits follow
-[configuration safety](#configuration-safety).
-
-Normal startup uses the last successful version without checking or building again. Changes to the
-stable execution owner require a full restart, distinct from reload, with recovery under the
-[work lifecycle](#work-lifecycle).
-
-## Conversation branches
-
-Forking creates an alternative continuation from a point in conversation history without losing the
-original continuation. Users navigate history and branches through a tree that shows their
-relationships and identifies the selected history point or branch.
-
-Viewing history and switching the viewed branch are navigation, not execution or cancellation
-commands. Admitted work continues independently of the viewed branch under the
-[work lifecycle](#work-lifecycle). New branches follow the
-[configuration safety rules](#configuration-safety).
-
-## Work lifecycle
-
-Each logical submission produces at most one input, including retries. While busy, offer an explicit
-follow-up action queued after the active run. Keep follow-up and steering as distinct actions.
-
-Closing a tab, changing routes, or disconnecting leaves work running. Stop cancels the active run
-and terminates its owned processes, including foreground commands. Work remains stopping until the
-runtime confirms that the cancelled run and its owned processes have stopped. Queued-input behavior
-follows the selected runtime; preserving queued input and requiring explicit resumption, including
-across restarts, are not product requirements.
-
-After a server restart, automatically recover eligible unfinished work independently of client
-connections, respecting upstream tool replay policies. Require evidence before declaring a tool
-replay-safe. Show interrupted calls and committed partial output in the conversation, and instruct
-the agent to inspect actual state before retrying uncertain side effects. Recovery does not require
-blanket human approval or a dedicated recovery dashboard.
-
-Runtime replay prevention does not prevent an agent from issuing a new equivalent command.
-Inspection instructions reduce risk but do not guarantee exactly-once external effects. Show
-actionable diagnostics when missing configuration, credentials, or other execution problems
-genuinely block progress.
+Tools run unsandboxed on the host under the user's permissions, without approval gates. The working
+directory is not a filesystem boundary. [Architecture](ARCHITECTURE.md#security-and-execution)
+defines how the desktop protects the renderer and credentials without restricting tool authority.

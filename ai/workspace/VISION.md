@@ -1,82 +1,34 @@
-# AI workspace vision
+# Pi workspace vision
 
-Draft vision. The product direction and MVP decisions below are agreed; later capabilities remain
-future scope.
+A local desktop workspace for interacting with the existing Pi coding-agent setup. It provides a
+graphical way to follow agent work, manage conversations, and explore history without creating a
+second agent configuration or execution system.
 
-## Purpose
+## Product direction
 
-A personal control center for independently running agents and their workflows. Users choose what
-runs, where, and when, and coordinate overlapping work themselves. Execution stays observable,
-controllable, and recoverable across client disconnections.
+- **One Pi setup, two interfaces.** Terminal and desktop use the same profiles, resources, and
+  native sessions. Moving between them should not require maintaining parallel settings.
+- **A workspace for agent work.** Make ongoing activity, results, and failures understandable, with
+  direct controls for input, cancellation, and conversation navigation.
+- **Local and app-owned.** Serve one local user on the host machine. Execution belongs to the
+  desktop application's lifetime, not a background service.
 
-Interactive coding begins a broader set of agent workflows. Conversations provide one interface to
-agent work. Favor clear ownership, useful types, low cognitive load, and long-term maintainability
-for humans and coding agents.
+## First release
 
-## Initial scope
+The first release makes local Pi conversations usable graphically, from choosing a session to
+directing and reviewing its work. [MVP.md](MVP.md) defines the committed workflows and acceptance
+checks; [README.md](README.md) describes what works now.
 
-The first usable version is local interactive coding with durable execution:
+## Scope boundaries
 
-- Choose a working directory, directly or through an optional saved project.
-- Create or reopen a conversation; submit input and stream responses and tool activity.
-- Fork from conversation history and navigate history and branches through a tree.
-- Send explicit follow-up input while busy.
-- See running, waiting, and blocked activity through conversation-list status indicators.
-- Read and edit files and run commands under the execution policy below.
-- Stop active work.
-- Reconnect to ongoing work and automatically recover eligible unfinished work after a server
-  restart.
-- Log in to multiple OpenAI accounts and use different accounts in concurrent conversations.
-- Improve the workspace itself through one explicit Check & Reload action while agent work
-  continues.
+Standalone-browser access, saved projects, remote hosts, orchestration, multi-user services,
+background execution, automatic crash recovery, an application-owned plugin platform, and
+uninterrupted main-process upgrades are outside scope.
 
-Conversation-list status indicators suffice for MVP; there is no separate work-view screen.
+A graphical selector for existing account profiles, credential-management screens, a rich graphical
+history tree, an embedded terminal, a file explorer/editor, installers, and distribution packaging
+are deferred. A future profile selector would use the existing Pi profile system. Additional Pi
+capabilities enter UI scope through an explicit product decision.
 
-## Agreed MVP decisions
-
-1. **Scope:** start with the [initial interactions](#initial-scope). Project deletion, reassignment,
-   and additional interactions require an explicit scope decision. Before adding deletion or
-   reassignment, define how existing conversation references stay valid.
-2. **Execution authority:** agents may read and edit host files and execute shell commands without
-   approvals. They run directly on the host, unsandboxed, with the host process's permissions. The
-   user-provided working directory is a starting context, not a filesystem boundary; localhost
-   provides no isolation.
-3. **Configuration and credentials:** the workspace owns model choices, account selection, and
-   credential configuration. MVP supports OpenAI login with multiple accounts, selected per
-   conversation and usable concurrently. Credentials and refresh state stay isolated per account and
-   server-side. Switching an existing conversation's account is post-MVP; a browser
-   credential-management interface is optional.
-4. **Stop and recovery:** Stop cancels active execution and terminates its owned processes.
-   Queued-input behavior follows the selected runtime; queue preservation and explicit resumption
-   are not MVP requirements. Automatic recovery follows upstream tool replay policies, with
-   interrupted calls visible and agent inspection before retrying uncertain effects. Recovery
-   requires neither a dedicated dashboard nor blanket human approval. See the
-   [domain lifecycle](DOMAIN.md#work-lifecycle).
-5. **Branching:** include forking and tree-based history and branch navigation, in the spirit of
-   Pi's coding agent. Side-by-side branch comparison is post-MVP. The detailed interaction design
-   remains open.
-6. **Self-development:** use one local application with an application-specific launcher, a stable
-   executor, and a replaceable frontend/backend including product services. One explicit Check &
-   Reload action activates UI, API, and capability changes; there are no separate
-   development/production workflows or automatic source-watch activation. Follow the
-   [reload lifecycle](DOMAIN.md#check-and-reload), including native runtime replacement boundaries
-   and full restart for launcher/executor changes. General application plugin loading remains later
-   scope.
-
-Later scope: presets (including storage and UI), account switching within an existing conversation,
-side-by-side branch comparison, other providers and custom endpoints, steering, remote access,
-orchestration, multi-user hosting, plugin loading, embedded terminals, and a separate memory system.
-Codemode, MCP, skills, prompt templates, custom runtime extensions, and richer session interactions
-are optional for the first version; reuse supported capabilities when they directly serve the
-initial scope.
-
-## Longer-term direction
-
-Start locally, with a path to multiple hosts and web, mobile, and terminal clients. Registered hosts
-form a constellation showing hosts, agents, conversations, and runs, including independently started
-hosts joined from another workspace instance.
-
-Support workflows beyond interactive coding and execution in local or remote environments. Autonomy,
-membership, synchronization, provisioning, and networking policies await future decisions.
-[ARCHITECTURE.md](ARCHITECTURE.md#future-host-and-environment-constraints) preserves the technical
-constraints for that direction; [DOMAIN.md](DOMAIN.md) defines behavioral rules.
+[DOMAIN.md](DOMAIN.md) defines session behavior; [ARCHITECTURE.md](ARCHITECTURE.md) defines
+integration and execution authority. [IDEAS.md](IDEAS.md) retains nonbinding brainstorming.

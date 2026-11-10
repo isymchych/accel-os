@@ -1,121 +1,166 @@
-import { Send } from "@lucide/solid";
-import type { JSX } from "@solidjs/web";
-import { createSignal, Show } from "solid-js";
+import { useEffect, useState, type FormEvent, type ReactElement } from "react";
 
-import { preserveDraft, readDraft } from "../features/diagnostics/draft.ts";
-import { ReloadControl } from "../features/reload/reload-control.tsx";
-import { api } from "../lib/api.ts";
+import type { SessionSnapshot } from "../../contracts/desktop.ts";
 import { Button } from "../ui/button.tsx";
-import { Input } from "../ui/input.tsx";
 
-type Feedback = { kind: "success"; message: string } | { kind: "error"; message: string };
-
-const defaultMessage = "Verify the workspace connection.";
-const connectionErrorMessage = "The connection check could not be completed. Try again.";
-
-export function FoundationScreen(): JSX.Element {
-  const [message, setMessage] = createSignal(readDraft(defaultMessage));
-  const [feedback, setFeedback] = createSignal<Feedback | null>(null);
-  const [isPending, setIsPending] = createSignal(false);
-
-  function handleSubmit(event: SubmitEvent): void {
-    event.preventDefault();
-    void submitDiagnostic();
+function savedDraft(): string {
+  try {
+    return sessionStorage.getItem("pi-composer") ?? "";
+  } catch {
+    return "";
   }
+}
 
-  async function submitDiagnostic(): Promise<void> {
-    setFeedback(null);
-    setIsPending(true);
+function SessionHeader({ snapshot }: { snapshot: SessionSnapshot | null }): ReactElement {
+  return (
+    <header className="border-b border-border pb-5">
+      <h1 className="text-2xl font-semibold">Pi workspace</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Local Electron foundation · your existing Pi configuration
+      </p>
+      <p className="mt-3 break-all text-sm">{snapshot?.cwd ?? "Opening working directory…"}</p>
+      <p className="mt-2 text-sm" role="status">
+        Connection: {snapshot?.connection ?? "starting"} · Execution:{" "}
+        {snapshot?.execution ?? "unknown"}
+      </p>
+      {snapshot?.activity && <p className="mt-2 text-sm">{snapshot.activity}</p>}
+    </header>
+  );
+}
 
-    try {
-      const response = await api.api.diagnostic.$post({ json: { message: message() } });
-      if (!response.ok) {
-        setFeedback({
-          kind: "error",
-          message: connectionErrorMessage,
-        });
-        return;
-      }
+function Transcript({ snapshot }: { snapshot: SessionSnapshot | null }): ReactElement {
+  return (
+    <section aria-label="Conversation" className="space-y-5 py-6">
+      {snapshot?.messages
+        .filter((item) => item.text.length > 0)
+        .map((item, index) => (
+          <article aria-label={`${item.role} message`} key={index}>
+            <h2 className="mb-2 text-sm font-semibold">{item.role}</h2>
+            <pre
+              className={`whitespace-pre-wrap break-words font-sans ${item.isError ? "text-destructive" : ""}`}
+            >
+              {item.text}
+            </pre>
+          </article>
+        ))}
+      {snapshot?.streaming && (
+        <article aria-label="Streaming response">
+          <h2 className="mb-2 text-sm font-semibold">assistant</h2>
+          <pre className="whitespace-pre-wrap break-words font-sans">{snapshot.streaming}</pre>
+        </article>
+      )}
+    </section>
+  );
+}
 
-      const { echo } = await response.json();
-      setFeedback({ kind: "success", message: `Server response: ${echo}` });
-    } catch {
-      setFeedback({
-        kind: "error",
-        message: connectionErrorMessage,
+export function FoundationScreen(): ReactElement {
+  const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
+  const [message, setMessage] = useState(savedDraft);
+  const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const receive = (next: SessionSnapshot): void => {
+      if (active)
+        setSnapshot((current) => (!current || next.revision >= current.revision ? next : current));
+    };
+    const unsubscribe = window.pi.subscribe(receive);
+    void window.pi
+      .snapshot()
+      .then(receive)
+      .catch(() => {
+        if (active) setFeedback("Could not connect to the desktop process. Reopen the app.");
       });
+    return (): void => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("pi-composer", message);
+    } catch {
+      /* Keep the in-memory draft if browser storage is unavailable. */
+    }
+  }, [message]);
+
+  async function submit(): Promise<void> {
+    setPending(true);
+    setFeedback(null);
+    try {
+      await window.pi.prompt({ message });
+      setMessage("");
+    } catch (error) {
+      setFeedback(
+        error instanceof Error ? error.message : "Could not submit input. Your draft is preserved.",
+      );
     } finally {
-      setIsPending(false);
+      setPending(false);
     }
   }
 
-  const feedbackId = "connection-check-feedback";
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    void submit();
+  }
+
+  const ready = snapshot?.connection === "connected";
+  const busy = snapshot?.execution === "running" || snapshot?.execution === "stopping";
 
   return (
-    <main class="mx-auto flex min-h-dvh w-full max-w-2xl items-center px-5 py-10 sm:px-8">
-      <section
-        aria-labelledby="workspace-title"
-        class="w-full rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8"
-      >
-        <p class="text-sm font-medium text-muted-foreground">AI workspace</p>
-        <h1
-          class="mt-2 text-3xl font-semibold tracking-tight text-card-foreground"
-          id="workspace-title"
-        >
-          Local workspace foundation
-        </h1>
-        <p class="mt-3 max-w-prose text-base leading-7 text-muted-foreground">
-          Verify browser-to-server communication before the first product slice.
+    <main className="mx-auto w-full max-w-4xl px-6 py-8">
+      <SessionHeader snapshot={snapshot} />
+      <Transcript snapshot={snapshot} />
+
+      <form onSubmit={handleSubmit}>
+        <label className="mb-2 block text-sm font-medium" htmlFor="message">
+          Message
+        </label>
+        <textarea
+          className="min-h-28 w-full resize-y rounded-sm border border-input bg-card p-3"
+          id="message"
+          maxLength={100_000}
+          onChange={(event) => {
+            setMessage(event.currentTarget.value);
+          }}
+          readOnly={pending}
+          required
+          value={message}
+        />
+        <div className="mt-3 flex gap-3">
+          <Button disabled={!ready || busy || pending || message.trim().length === 0} type="submit">
+            {pending ? "Sending…" : "Send"}
+          </Button>
+          <Button
+            disabled={!ready || !busy || snapshot.execution === "stopping"}
+            onClick={() => {
+              void window.pi.stop().catch(() => {
+                setFeedback("Pi has not confirmed cancellation.");
+              });
+            }}
+            type="button"
+          >
+            {snapshot?.execution === "stopping" ? "Stopping…" : "Stop"}
+          </Button>
+        </div>
+      </form>
+
+      {(feedback ?? snapshot?.error) && (
+        <p className="mt-4 text-destructive" role="alert">
+          {feedback ?? snapshot?.error}
         </p>
-
-        <form class="mt-8 border-t border-border pt-6" onSubmit={handleSubmit}>
-          <fieldset class="space-y-5">
-            <legend class="text-lg font-semibold text-card-foreground">Connection check</legend>
-            <p class="text-sm leading-6 text-muted-foreground">
-              Send a message to verify the browser can reach the local server.
-            </p>
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-card-foreground" for="diagnostic-message">
-                Message
-              </label>
-              <Input
-                aria-describedby={feedback() === null ? undefined : feedbackId}
-                id="diagnostic-message"
-                maxlength={200}
-                onInput={(event) => {
-                  const value = event.currentTarget.value;
-                  setMessage(value);
-                  preserveDraft(value);
-                }}
-                readonly={isPending()}
-                required
-                value={message()}
-              />
-            </div>
-            <Button class="w-full sm:w-auto" disabled={isPending()} type="submit">
-              <Send aria-hidden="true" class="size-4 shrink-0" />
-              {isPending() ? "Checking connection..." : "Send test message"}
-            </Button>
-          </fieldset>
-
-          <Show when={feedback()}>
-            {(result) => (
-              <p
-                class={`mt-5 break-words rounded-lg border px-4 py-3 text-sm ${
-                  result().kind === "error"
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : "border-border bg-muted text-foreground"
-                }`}
-                id={feedbackId}
-                role={result().kind === "error" ? "alert" : "status"}
-              >
-                {result().message}
-              </p>
-            )}
-          </Show>
-        </form>
-        <ReloadControl preserveDraft={() => preserveDraft(message())} />
-      </section>
+      )}
+      {snapshot?.notice && (
+        <p className="mt-4" role="status">
+          {snapshot.notice}
+        </p>
+      )}
+      <p className="mt-6 text-sm text-muted-foreground">
+        Pi tools run on your host without a sandbox. Terminal-only extensions and graphical dialogs
+        are not yet supported. Refreshing this view keeps Pi running; quitting the app stops it.
+      </p>
     </main>
   );
 }

@@ -1,12 +1,13 @@
-import { render } from "@solidjs/web";
-
-import { FoundationScreen } from "./foundation-screen.tsx";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 
 import "../styles/theme.css";
+import { FoundationScreen } from "./foundation-screen.tsx";
 
-const rootElement = document.getElementById("root");
-if (rootElement === null) {
-  throw new Error("Missing application root element.");
-}
-
-render(() => <FoundationScreen />, rootElement);
+const root = document.getElementById("root");
+if (!root) throw new Error("Missing application root");
+createRoot(root).render(
+  <StrictMode>
+    <FoundationScreen />
+  </StrictMode>,
+);

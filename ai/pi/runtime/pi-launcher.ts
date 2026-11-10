@@ -83,7 +83,7 @@ export function configurePiEnvironment(configDir: string, profileDirectory: stri
 
 export async function launchPi(
   accelOs: string,
-  profile: AccountProfile,
+  profile: Pick<AccountProfile, "directory">,
   passthrough: readonly string[],
   codeNavigation: CodeNavigationBackend,
 ): Promise<void> {

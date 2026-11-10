@@ -137,10 +137,10 @@
   can add or return undocumented metadata.
 - Prefer named domain/result types over nested utility types such as
   `Promise<Awaited<ReturnType<typeof fn>>>`; explicit types keep public helper contracts readable.
-- When inspecting installed Pi package APIs in this repo, start from the owning workspace's
-  `node_modules/@earendil-works/*/dist/*.d.ts` (`ai/pi` for Pi configuration, `ai/workspace` for
-  Durable). Dependencies are linked per workspace; exclude `*.map` because sourcemaps make compiled
-  output noisy.
+- When inspecting installed Pi package APIs in this repo, start from
+  `ai/pi/node_modules/@earendil-works/*/dist/*.d.ts`. The desktop app integrates through the
+  `ai/pi/` RPC entry point. Dependencies are linked per workspace; exclude `*.map` because
+  sourcemaps make compiled output noisy.
 - Declare tools required by dotfiles in the canonical package inventory. Update platform setup
   guides when manual setup or maintenance steps change, or existing instructions become incorrect.
   Managed configuration changes alone do not justify adding documentation.

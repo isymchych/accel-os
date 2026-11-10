@@ -79,13 +79,12 @@ feels inviting; controls feel direct. Clarity wins over atmosphere.
 ## Reference and ownership
 
 Inspired by
-[Earendil's website source](https://github.com/earendil-works/website/tree/3bbe3f2b0a50df2dd2f68ea76f1e3743b80eb375),
-especially `_static/styles.css`, its fonts, and `_static/script.js`: serif/mono typography,
-day/night neutrals, spacious framing, dotted links, and a grain-treated ocean scene.
+[Earendil's website source](https://github.com/earendil-works/website/tree/3bbe3f2b0a50df2dd2f68ea76f1e3743b80eb375):
+serif/mono typography, day/night neutrals, spacious framing, dotted links, and a grain-treated ocean
+scene.
 
-This is an adaptation, not a copy of its identity or layout. The front matter proposes local
-baseline values, including system fonts, supporting colors, compact framing, and component
-treatments. No reference fonts, logos, textures, or shader assets are adopted.
+The front matter proposes local baseline values, not a copy of the reference's identity or layout.
+No reference fonts, logos, textures, or shader assets are adopted.
 
 `client/styles/theme.css` owns runtime tokens and Tailwind mappings; shared styles reference those
 tokens. `client/ui/` owns domain-free primitives; features own content and state.
@@ -95,30 +94,22 @@ tokens. `client/ui/` owns domain-free primitives; features own content and state
 Use [assistant-ui](https://github.com/assistant-ui/assistant-ui) and
 [TanStack AI UI](https://tanstack.com/ai/latest/docs/ui/react) as conversation UX references when
 designing streaming, composer behavior, tool disclosures, message actions, and error/reconnect
-feedback. Borrow patterns where they fit the workspace; do not adopt their visual identity or assume
-a conventional chat layout.
-
-These are interaction references, not selected UI dependencies or additions to feature scope.
-[ARCHITECTURE.md](ARCHITECTURE.md#frontend-design) owns the Solid 2 and TanStack client integration.
+feedback. These and the [Pi UI references](ARCHITECTURE.md#integration-references) are references,
+not selected dependencies, layout prescriptions, or additions to feature scope. Borrow fitting
+patterns, not their visual identity; do not assume a conventional chat layout.
 
 ## Colors
 
 Use warm neutrals. Establish emphasis through contrast, typography, and placement before color.
 
-| Role              | Light / dark tokens                           | Use                            |
-| ----------------- | --------------------------------------------- | ------------------------------ |
-| Canvas            | `background` / `night-background`             | Main surface                   |
-| Ink               | `foreground` / `night-foreground`             | Text and icons                 |
-| Secondary surface | `surface` / `night-surface`                   | Controls, menus, code          |
-| Secondary ink     | `muted-foreground` / `night-muted-foreground` | Supporting text                |
-| Separator         | `border` / `night-border`                     | Nonessential dividers          |
-| Control edge      | `control-border` / `night-control-border`     | Required boundaries            |
-| Danger            | `destructive` / `night-destructive`           | Destructive actions and errors |
+Use the front matter's `background` for canvas, `foreground` for ink, `surface` for controls/menus/
+code, and `muted-foreground` for supporting text. Use `border` for nonessential separators,
+`control-border` for required boundaries, and `destructive` for errors and destructive actions. The
+`night-*` counterparts supply dark mode.
 
-Map the active palette to existing semantic tokens such as `--background`, `--foreground`,
-`--primary`, `--primary-foreground`, `--muted-foreground`, `--border`, `--input`, `--destructive`,
-and `--ring`. These light/night pairs are not another theme system. Default to the system
-preference.
+Map these roles to the existing semantic tokens in `theme.css`, including `--primary`,
+`--primary-foreground`, `--input`, and `--ring`, rather than introducing another theme system.
+Default to the system preference.
 
 Primary actions use ink with canvas-colored text, inverted in dark mode. Hover and pressed states
 strengthen borders or underlines without shifting layout. Selection combines a secondary surface
@@ -187,7 +178,7 @@ use visible outlines; tertiary actions remain recognizable controls.
 Fields need explicit labels, opaque surfaces, and control-edge borders. Placeholders supplement
 labels. Associate help and errors with the field; preserve input through recoverable failures.
 
-Document each primitive's label, event, and controlled-state ownership. Cover applicable loading,
+Document each primitive's label, event, and controlled-state ownership, covering applicable loading,
 empty, error, disabled, permission, success, and overflow states.
 
 ### Reading and activity

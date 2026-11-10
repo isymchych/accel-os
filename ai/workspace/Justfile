@@ -3,6 +3,9 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 start:
     pnpm run start
 
+dev:
+    pnpm run dev
+
 build:
     pnpm run build
 
