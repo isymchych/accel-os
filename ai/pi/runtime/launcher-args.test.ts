@@ -60,7 +60,7 @@ test("accepts an explicit tilth backend", () => {
 test("rejects conflicting code navigation backends", () => {
   assert.throws(
     () => parseLauncherArgs(["tilth", "srcwalk"]),
-    /choose only one code navigation backend/,
+    /choose only one code navigation backend/u,
   );
 });
 
@@ -72,6 +72,9 @@ test("routes ui to the desktop without invoking account selection", () => {
     useAccountSwitcher: false,
     useUi: true,
   });
-  assert.throws(() => parseLauncherArgs(["ui", "account"]), /select an account/);
-  assert.throws(() => parseLauncherArgs(["ui", "--model", "test"]), /does not accept Pi arguments/);
+  assert.throws(() => parseLauncherArgs(["ui", "account"]), /select an account/u);
+  assert.throws(
+    () => parseLauncherArgs(["ui", "--model", "test"]),
+    /does not accept Pi arguments/u,
+  );
 });

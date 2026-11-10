@@ -123,7 +123,9 @@ test("validateFolderName allows only direct child names", () => {
       throw new Error(`process.exit ${String(code)}`);
     };
     console.error = (): void => {};
-    assert.throws(() => validateFolderName("../Book"), /process\.exit 64/);
+    assert.throws(() => {
+      validateFolderName("../Book");
+    }, /process\.exit 64/u);
   } finally {
     process.exit = originalExit;
     console.error = originalError;

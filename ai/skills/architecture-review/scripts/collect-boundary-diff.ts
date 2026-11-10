@@ -14,7 +14,7 @@ const result = await runGit(diffArgs);
 
 if (!result.success) {
   const errorText = result.stderr || result.stdout || `git exited with status ${result.code}`;
-  if (/not a git repository/i.test(errorText)) {
+  if (/not a git repository/iu.test(errorText)) {
     console.error(`ERR_NOT_REPO: ${errorText}`);
     process.exit(65);
   }
@@ -88,17 +88,17 @@ function collectBoundaryFindings(diffText: string): BoundaryFinding[] {
 }
 
 function isBoundaryExport(content: string): boolean {
-  if (/^export\s+/.test(content)) return true;
-  if (/^export\s*\{/.test(content)) return true;
-  if (/^module\.exports\s*=/.test(content)) return true;
-  if (/^exports\.[A-Za-z0-9_$]+\s*=/.test(content)) return true;
-  if (/^pub(\([^)]*\))?\s+/.test(content)) return true;
+  if (/^export\s+/u.test(content)) return true;
+  if (/^export\s*\{/u.test(content)) return true;
+  if (/^module\.exports\s*=/u.test(content)) return true;
+  if (/^exports\.[A-Za-z0-9_$]+\s*=/u.test(content)) return true;
+  if (/^pub(\([^)]*\))?\s+/u.test(content)) return true;
   return false;
 }
 
 function isEntrypointChange(file: string, content: string): boolean {
   if (file.endsWith("package.json")) {
-    return /"(exports|main|module|types)"\s*:/.test(content);
+    return /"(exports|main|module|types)"\s*:/u.test(content);
   }
 
   const entrypointSuffixes = [

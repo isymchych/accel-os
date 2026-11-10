@@ -1,7 +1,7 @@
 const SHELL_DISCOVERY_COMMAND_PATTERN =
-  /(^|[;&|]\s*|\n\s*|\bxargs\s+)(rg|grep|cat|head|tail|find|fd|ls|tree)\b/gm;
+  /(^|[;&|]\s*|\n\s*|\bxargs\s+)(rg|grep|cat|head|tail|find|fd|ls|tree)\b/gmu;
 const GIT_COMMAND_PATTERN =
-  /(^|[;&|]\s*|\n\s*|\bxargs\s+)git\s+(?:-\S+(?:\s+\S+)?\s+)*(grep|ls-files|diff)\b/gm;
+  /(^|[;&|]\s*|\n\s*|\bxargs\s+)git\s+(?:-\S+(?:\s+\S+)?\s+)*(grep|ls-files|diff)\b/gmu;
 
 function collectShellCommands(command: string): Set<string> {
   const matches = new Set<string>();

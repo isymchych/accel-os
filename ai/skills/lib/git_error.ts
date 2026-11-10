@@ -78,7 +78,7 @@ export function sanitizeGitErrorDetails(stderr: string, stdout = ""): string[] {
   if (output === "") return [];
 
   return output
-    .split(/\r?\n/)
+    .split(/\r?\n/u)
     .map((line) => line.trimEnd())
     .filter(Boolean);
 }

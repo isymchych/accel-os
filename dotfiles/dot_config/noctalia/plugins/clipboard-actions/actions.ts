@@ -117,6 +117,7 @@ function clipboardFromBytes(mime: string, bytes: Buffer): Clipboard {
 }
 
 function snapshotRoot(): string {
+  // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- An empty runtime directory must use the temporary-directory fallback.
   return path.resolve(process.env["XDG_RUNTIME_DIR"] || tmpdir());
 }
 
@@ -248,7 +249,13 @@ function actionsFor(clipboard: Clipboard, file: string): Action[] {
       },
     });
   }
-  actions.push({ id: "save", label: "Save as…", run: () => saveAs(clipboard) });
+  actions.push({
+    id: "save",
+    label: "Save as…",
+    run: () => {
+      saveAs(clipboard);
+    },
+  });
   return actions;
 }
 

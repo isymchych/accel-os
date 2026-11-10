@@ -14,9 +14,9 @@ mock.module("node:child_process", {
       console.log(`root:${options.env["ACCEL_OS"]}`);
       console.log(`run-as-node:${options.env["ELECTRON_RUN_AS_NODE"] ?? ""}`);
       const child = Object.assign(new EventEmitter(), { kill: () => true });
-      queueMicrotask(() =>
-        child.emit("exit", Number(process.env["TEST_ELECTRON_EXIT"] ?? 0), null),
-      );
+      queueMicrotask(() => {
+        child.emit("exit", Number(process.env["TEST_ELECTRON_EXIT"] ?? 0), null);
+      });
       return child;
     },
   },

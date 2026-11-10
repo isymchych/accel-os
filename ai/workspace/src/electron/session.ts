@@ -53,7 +53,9 @@ export class DesktopSession {
       error: null,
       notice: null,
     };
-    this.rpc.subscribe((record) => this.receive(record));
+    this.rpc.subscribe((record) => {
+      this.receive(record);
+    });
     this.rpc.onExit((error) => {
       this.update({ connection: "disconnected", execution: "unknown", error: error.message });
     });

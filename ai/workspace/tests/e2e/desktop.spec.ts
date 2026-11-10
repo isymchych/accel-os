@@ -92,7 +92,7 @@ test("the preset follows system appearance and uses system fonts", async ({
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
   const body = page.locator("body");
   await expect(body).toHaveCSS("background-color", "oklch(1 0 0)");
-  await expect(body).toHaveCSS("font-family", /^ui-sans-serif, system-ui,/);
+  await expect(body).toHaveCSS("font-family", /^ui-sans-serif, system-ui,/u);
   const message = page.getByLabel("Message", { exact: true });
   await message.fill("Keep this draft while appearance changes");
   expect(
@@ -160,7 +160,9 @@ test("a delayed initial snapshot cannot overwrite newer streaming state", async 
   await application.evaluate(({ ipcMain }, snapshot) => {
     let requested = false;
     const released = new Promise<void>((resolve) => {
-      ipcMain.once("test:release-snapshot", () => resolve());
+      ipcMain.once("test:release-snapshot", () => {
+        resolve();
+      });
     });
     ipcMain.on("test:await-snapshot", (_event, resolve: () => void) => {
       if (requested) resolve();
@@ -190,9 +192,11 @@ test("a delayed initial snapshot cannot overwrite newer streaming state", async 
     await globalThis.window.pi.snapshot();
     // Let React render after the delayed IPC response, rather than asserting before delivery.
     await new Promise<void>((resolve) => {
-      globalThis.window.requestAnimationFrame(() =>
-        globalThis.window.requestAnimationFrame(() => resolve()),
-      );
+      globalThis.window.requestAnimationFrame(() => {
+        globalThis.window.requestAnimationFrame(() => {
+          resolve();
+        });
+      });
     });
   });
   await expect(page.getByRole("status").first()).toContainText("running");

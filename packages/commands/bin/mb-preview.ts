@@ -172,14 +172,14 @@ function resolveImageBaseDirectory(
 
 async function readInput(inputPath: string | null): Promise<string> {
   if (inputPath !== null) {
-    return await readFile(inputPath, "utf8");
+    return readFile(inputPath, "utf8");
   }
 
   if (!hasReadableStdin()) {
     throw new Error(`Missing input file or piped stdin.\n\n${usage}`);
   }
 
-  return await readStream(process.stdin);
+  return readStream(process.stdin);
 }
 
 function hasReadableStdin(): boolean {
@@ -196,7 +196,7 @@ async function readStream(stream: NodeJS.ReadableStream): Promise<string> {
 
   let data = "";
   for await (const chunk of stream) {
-    data += chunk;
+    data += String(chunk);
   }
   return data;
 }
@@ -350,7 +350,8 @@ function decodeImageHrefReferences(href: string): string {
       if (digits === undefined) {
         return reference;
       }
-      const codePoint = Number.parseInt(digits, decimal === undefined ? 16 : 10);
+      const codePoint =
+        decimal === undefined ? Number.parseInt(digits, 16) : Number.parseInt(digits, 10);
       if (codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
         return reference;
       }
@@ -456,7 +457,7 @@ function parseFenceOpening(line: string): FenceOpening | null {
   }
 
   const info = rawInfo.trim();
-  const [language] = info.split(/\s+/, 1);
+  const [language] = info.split(/\s+/u, 1);
   return {
     indent,
     fence,
@@ -505,7 +506,7 @@ export async function renderGraphvizToSvg(
     return { ok: false, error: `Graphviz input exceeds ${formatBytes(graphvizInputMaxBytes)}.` };
   }
 
-  return await new Promise<GraphvizRenderResult>((resolve) => {
+  return new Promise<GraphvizRenderResult>((resolve) => {
     let settled = false;
     let outputBytes = 0;
     let stderr = "";
@@ -1390,7 +1391,7 @@ function htmlBaseName(sourceName: string): string {
   const safeName = basename
     .normalize("NFC")
     .replaceAll(/[^\p{L}\p{M}\p{N}._-]+/gu, "-")
-    .replaceAll(/^-+|-+$/g, "");
+    .replaceAll(/^-+|-+$/gu, "");
   return safeName === "" ? "preview" : safeName;
 }
 

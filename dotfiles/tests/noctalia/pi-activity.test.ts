@@ -66,17 +66,22 @@ function fixture(): MonitorFixture {
   let error: Error | undefined;
   const statuses: ActivityStatus[] = [];
   const children: FakeInhibitor[] = [];
-  const monitor = new ActivityMonitor((status) => statuses.push(status), {
-    collect: async (): Promise<AgentCounts> => {
-      if (error !== undefined) throw error;
-      return counts;
+  const monitor = new ActivityMonitor(
+    (status) => {
+      statuses.push(status);
     },
-    startInhibitor: (): ChildProcessWithoutNullStreams => {
-      const child = fakeInhibitor();
-      children.push(child);
-      return child as unknown as ChildProcessWithoutNullStreams;
+    {
+      collect: async (): Promise<AgentCounts> => {
+        if (error !== undefined) throw error;
+        return counts;
+      },
+      startInhibitor: (): ChildProcessWithoutNullStreams => {
+        const child = fakeInhibitor();
+        children.push(child);
+        return child as unknown as ChildProcessWithoutNullStreams;
+      },
     },
-  });
+  );
   return {
     monitor,
     children,
@@ -137,7 +142,9 @@ test("Pi collector counts only live Pi agents with complete, recognized state re
 
 test("Pi monitor keeps one pipe-owned inhibitor until all working agents stop", async (t) => {
   const f = fixture();
-  t.after(() => f.monitor.stop());
+  t.after(() => {
+    f.monitor.stop();
+  });
   await f.monitor.refresh();
   assert.deepEqual(f.status(), { working: 2, waiting: 0, inhibited: false });
   const child = f.child(0);
@@ -176,7 +183,9 @@ test("Pi monitor keeps one pipe-owned inhibitor until all working agents stop", 
 
 test("Pi monitor reports inhibitor exit/errors and retries even if collection is unavailable", async (t) => {
   const f = fixture();
-  t.after(() => f.monitor.stop());
+  t.after(() => {
+    f.monitor.stop();
+  });
   await f.monitor.refresh();
   const child = f.child(0);
   child.stderr.write("Failed to inhibit: Access denied");
@@ -206,7 +215,9 @@ test("Pi monitor reports inhibitor exit/errors and retries even if collection is
 test("Pi monitor cancels timed-out and no-longer-needed acquisition", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const f = fixture();
-  t.after(() => f.monitor.stop());
+  t.after(() => {
+    f.monitor.stop();
+  });
   await f.monitor.refresh();
   t.mock.timers.tick(5000);
   assert.match(f.status()?.error ?? "", /within 5 seconds/u);
@@ -280,7 +291,9 @@ for (const signal of ["SIGTERM", "SIGKILL"] as const) {
             resolve();
           }
         });
-        t.after(() => watcher.close());
+        t.after(() => {
+          watcher.close();
+        });
       });
       const helper = spawn(process.execPath, [HELPER], {
         detached: true,

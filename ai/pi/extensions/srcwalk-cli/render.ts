@@ -41,7 +41,7 @@ function setText(component: unknown, content: string): Text {
 }
 
 function lineCount(text: string): number {
-  const normalized = text.replace(/\r/g, "").replace(/\n+$/g, "");
+  const normalized = text.replace(/\r/gu, "").replace(/\n+$/gu, "");
   return normalized.length === 0 ? 0 : normalized.split("\n").length;
 }
 

@@ -28,14 +28,14 @@ function createBuiltInRead(cwd: string): BuiltInRead {
   return async (target) => {
     const content = await readFile(resolve(cwd, target.path), "utf-8");
     const lines = content.split("\n");
-    const start = target.offset !== undefined ? target.offset - 1 : 0;
+    const start = target.offset === undefined ? 0 : target.offset - 1;
     if (start >= lines.length) {
       throw new Error(
         `Offset ${target.offset} is beyond end of file (${lines.length} lines total)`,
       );
     }
     const end =
-      target.limit !== undefined ? Math.min(start + target.limit, lines.length) : lines.length;
+      target.limit === undefined ? lines.length : Math.min(start + target.limit, lines.length);
     const details: ReadToolDetails | undefined = undefined;
     return {
       content: [{ type: "text", text: lines.slice(start, end).join("\n") }],
@@ -83,8 +83,8 @@ test("reads multiple files in target order", async (t) => {
   );
   const fairOutput = textOutput(fairResult);
 
-  assert.match(fairOutput, /[=][=]> large-a\.txt <==\nline-1/);
-  assert.match(fairOutput, /[=][=]> large-b\.txt <==\nline-1/);
+  assert.match(fairOutput, /[=][=]> large-a\.txt <==\nline-1/u);
+  assert.match(fairOutput, /[=][=]> large-b\.txt <==\nline-1/u);
   assert.equal(fairResult.details.targets[0]?.truncated, true);
   assert.equal(fairResult.details.targets[1]?.truncated, true);
   assert.ok(fairOutput.split("\n").length <= 2000);
@@ -105,11 +105,11 @@ test("lists directory entries with details without recursing by default", async 
   );
   const output = textOutput(result);
 
-  assert.match(output, /^==> src <==/);
-  assert.match(output, /symlink\s+-\s+current\.ts -> index\.ts/);
-  assert.match(output, /file\s+\d+B\s+index\.ts/);
-  assert.match(output, /directory\s+-\s+lib\//);
-  assert.doesNotMatch(output, /lib\/helper\.ts/);
+  assert.match(output, /^==> src <==/u);
+  assert.match(output, /symlink\s+-\s+current\.ts -> index\.ts/u);
+  assert.match(output, /file\s+\d+B\s+index\.ts/u);
+  assert.match(output, /directory\s+-\s+lib\//u);
+  assert.doesNotMatch(output, /lib\/helper\.ts/u);
   assert.equal(result.details.targets[0]?.entryCount, 3);
 });
 
@@ -123,8 +123,8 @@ test("recursively lists directories up to max_depth", async (t) => {
     undefined,
     createBuiltInRead(cwd),
   );
-  assert.match(textOutput(shallow), /lib\/deep\//);
-  assert.doesNotMatch(textOutput(shallow), /helper\.ts/);
+  assert.match(textOutput(shallow), /lib\/deep\//u);
+  assert.doesNotMatch(textOutput(shallow), /helper\.ts/u);
 
   const deep = await executeReadTool(
     { targets: [{ path: "src" }], recursive: true, max_depth: 3 },
@@ -132,7 +132,7 @@ test("recursively lists directories up to max_depth", async (t) => {
     undefined,
     createBuiltInRead(cwd),
   );
-  assert.match(textOutput(deep), /lib\/deep\/helper\.ts/);
+  assert.match(textOutput(deep), /lib\/deep\/helper\.ts/u);
 });
 
 test("numbers selected file lines and preserves absolute line numbers", async (t) => {
@@ -183,9 +183,9 @@ test("numbered reads preserve exact output-budget continuation offsets", async (
   );
   const output = textOutput(result);
 
-  assert.match(output, /^\s*==> large\.txt <==/);
-  assert.match(output, /^2007\tline-2007/m);
-  assert.match(output, /Use offset=2008 to continue\./);
+  assert.match(output, /^\s*==> large\.txt <==/u);
+  assert.match(output, /^2007\tline-2007/mu);
+  assert.match(output, /Use offset=2008 to continue\./u);
   assert.equal(output.split("\n").length, 2000);
   assert.equal(result.details.targets[0]?.lineCount, 1997);
   assert.equal(result.details.targets[0].truncated, true);
@@ -223,10 +223,10 @@ test("numbered reads report a first line that exceeds the byte limit", async (t)
   );
 
   const output = textOutput(result);
-  assert.match(output, /\[Line 2 is (?:at least )?60\.0KB, exceeds 50\.0KB limit\./);
-  assert.match(output, /nl -ba -- '.*huge'"'"'s\.txt'/);
-  assert.match(output, /sed -n '2p'/);
-  assert.match(output, /head -c 51200\]/);
+  assert.match(output, /\[Line 2 is (?:at least )?60\.0KB, exceeds 50\.0KB limit\./u);
+  assert.match(output, /nl -ba -- '.*huge'"'"'s\.txt'/u);
+  assert.match(output, /sed -n '2p'/u);
+  assert.match(output, /head -c 51200\]/u);
   assert.equal(result.details.targets[0]?.truncated, true);
 });
 
@@ -241,8 +241,8 @@ test("reports target errors without dropping successful targets", async (t) => {
     createBuiltInRead(cwd),
   );
 
-  assert.match(textOutput(result), /[=][=]> missing\.txt <[=][=]\nerror: /);
-  assert.match(textOutput(result), /[=][=]> ok\.txt <[=][=]\nok/);
+  assert.match(textOutput(result), /[=][=]> missing\.txt <[=][=]\nerror: /u);
+  assert.match(textOutput(result), /[=][=]> ok\.txt <[=][=]\nok/u);
   assert.equal(result.details.targets[0]?.kind, "error");
   assert.equal(result.details.targets[1]?.kind, "file");
 });

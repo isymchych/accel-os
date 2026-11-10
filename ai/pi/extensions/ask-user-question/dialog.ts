@@ -65,7 +65,9 @@ export class QuestionnaireDialog {
       },
     };
     const editor = new Editor(this.tui, editorTheme);
-    editor.onChange = (): void => this.trackEditorText();
+    editor.onChange = (): void => {
+      this.trackEditorText();
+    };
     editor.onSubmit = (): void => {
       // Pi clears the editor before onSubmit. trackEditorText retains the expanded
       // pre-clear value through this synchronous callback, after Pi has consumed a
@@ -190,8 +192,9 @@ export class QuestionnaireDialog {
 
   public render(width: number): string[] {
     const renderWidth = Math.max(1, width);
-    const add = (lines: string[], text: string, prefix = ""): void =>
+    const add = (lines: string[], text: string, prefix = ""): void => {
       this.addWrapped(lines, renderWidth, text, prefix);
+    };
     const header: string[] = [this.theme.fg("accent", "-".repeat(renderWidth))];
     if (this.state.isGrouped) {
       const tabs = this.state.questions.map((question, index) => {
@@ -249,7 +252,9 @@ export class QuestionnaireDialog {
       visibleHeader = rows > 1 ? title.slice(0, 1) : [];
     }
     const viewportHeight = Math.max(1, rows - visibleHeader.length - visibleFooter.length);
-    this.reviewScroll.updateLayout(content.length, viewportHeight, () => this.tui.requestRender());
+    this.reviewScroll.updateLayout(content.length, viewportHeight, () => {
+      this.tui.requestRender();
+    });
     // This dialog renders flat lines rather than exposing ScrollView's layout node.
     const viewport = content.slice(
       this.reviewScroll.scrollTop,

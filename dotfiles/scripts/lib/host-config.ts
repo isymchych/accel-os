@@ -434,6 +434,7 @@ function parseResolvedRecord(
     case "tlp":
       parseTlpRecord(state, fields, location);
       break;
+    case undefined:
     default:
       throw new Error(`${location} has unknown record type ${JSON.stringify(fields[0])}`);
   }

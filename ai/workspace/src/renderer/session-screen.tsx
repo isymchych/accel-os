@@ -1,5 +1,5 @@
 import { SendIcon, SquareIcon } from "lucide-react";
-import { useEffect, useState, type FormEvent, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement, type SubmitEvent } from "react";
 
 import type { SessionSnapshot } from "../desktop-api.ts";
 import { Button } from "./components/ui/button.tsx";
@@ -19,10 +19,10 @@ function SessionHeader({ snapshot }: { snapshot: SessionSnapshot | null }): Reac
       <h1 className="text-2xl font-semibold">Pi workspace</h1>
       <p className="mt-2 text-sm text-muted-foreground">Your existing Pi configuration</p>
       <p className="mt-3 break-all text-sm">{snapshot?.cwd ?? "Opening working directory…"}</p>
-      <p className="mt-2 text-sm" role="status">
+      <output className="mt-2 block text-sm">
         Connection: {snapshot?.connection ?? "starting"} · Execution:{" "}
         {snapshot?.execution ?? "unknown"}
-      </p>
+      </output>
       {snapshot?.activity && <p className="mt-2 text-sm">{snapshot.activity}</p>}
     </header>
   );
@@ -34,6 +34,7 @@ function Transcript({ snapshot }: { snapshot: SessionSnapshot | null }): ReactEl
       {snapshot?.messages
         .filter((item) => item.text.length > 0)
         .map((item, index) => (
+          // oxlint-disable-next-line react/no-array-index-key -- Snapshot entries have no IDs and render stateless text only.
           <article aria-label={`${item.role} message`} key={index}>
             <h2 className="mb-2 text-sm font-semibold">{item.role}</h2>
             <pre
@@ -89,19 +90,26 @@ export function SessionScreen(): ReactElement {
   async function submit(): Promise<void> {
     setPending(true);
     setFeedback(null);
-    try {
-      await window.pi.prompt({ message });
-      setMessage("");
-    } catch (error) {
-      setFeedback(
-        error instanceof Error ? error.message : "Could not submit input. Your draft is preserved.",
-      );
-    } finally {
-      setPending(false);
-    }
+    await window.pi
+      .prompt({ message })
+      .then(
+        () => {
+          setMessage("");
+        },
+        (error: unknown) => {
+          setFeedback(
+            error instanceof Error
+              ? error.message
+              : "Could not submit input. Your draft is preserved.",
+          );
+        },
+      )
+      .finally(() => {
+        setPending(false);
+      });
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     void submit();
   }
@@ -155,11 +163,7 @@ export function SessionScreen(): ReactElement {
           {feedback ?? snapshot?.error}
         </p>
       )}
-      {snapshot?.notice && (
-        <p className="mt-4" role="status">
-          {snapshot.notice}
-        </p>
-      )}
+      {snapshot?.notice && <output className="mt-4 block">{snapshot.notice}</output>}
       <p className="mt-6 text-sm text-muted-foreground">
         Pi tools run on your host without a sandbox. Terminal-only extensions and graphical dialogs
         are not yet supported. Refreshing this view keeps Pi running; quitting the app stops it.

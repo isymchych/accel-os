@@ -46,7 +46,9 @@ function fixture(count = 2): Fixture {
     } as TUI,
     theme,
     keys,
-    (result) => results.push(result),
+    (result) => {
+      results.push(result);
+    },
   );
   return { dialog, results, keys, terminal };
 }
@@ -87,7 +89,9 @@ test("deletion followed by submission in one stdin batch rejects the empty answe
   enterCustom(dialog);
   dialog.handleInput("deleted answer");
   const stdin = new StdinBuffer();
-  stdin.on("data", (data) => dialog.handleInput(data));
+  stdin.on("data", (data) => {
+    dialog.handleInput(data);
+  });
   try {
     stdin.process("\x15\r");
     assert.equal(dialog.editor.getExpandedText(), "");
@@ -210,7 +214,9 @@ test("scrolling keeps the active choice visible in a short terminal", () => {
     { terminal: { rows: 24 }, requestRender() {} } as TUI,
     theme,
     keys,
-    (result) => results.push(result),
+    (result) => {
+      results.push(result);
+    },
   );
 
   for (let index = 0; index <= 6; index += 1) {

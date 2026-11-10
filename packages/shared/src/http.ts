@@ -8,7 +8,7 @@ const fetchJson = async (url: string | URL, init?: RequestInit): Promise<unknown
     const detail = await response.text();
     throw new Error(`${response.status} ${response.statusText}: ${detail}`);
   }
-  return await response.json();
+  return response.json();
 };
 
 export const fetchJsonWithSchema = async <Schema extends TSchema>(

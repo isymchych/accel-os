@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const scriptsDirectory = dirname(fileURLToPath(import.meta.url));
 const binDirectory = resolve(scriptsDirectory, "../bin");
-const completionDeclaration = /^# zsh-completion:\s+(completions\/_[a-z0-9-]+)\s*$/m;
-const compdefDeclaration = /^#compdef\s+(.+)$/m;
+const completionDeclaration = /^# zsh-completion:\s+(completions\/_[a-z0-9-]+)\s*$/mu;
+const compdefDeclaration = /^#compdef\s+(.+)$/mu;
 
 const entries = await readdir(binDirectory, { withFileTypes: true });
 const commandScripts = entries
@@ -43,7 +43,7 @@ for (const scriptName of commandScripts) {
     continue;
   }
 
-  if (!compdef.split(/\s+/).includes(command)) {
+  if (!compdef.split(/\s+/u).includes(command)) {
     errors.push(`${completionPath}: #compdef does not declare ${command}`);
   }
 }

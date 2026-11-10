@@ -226,25 +226,25 @@ test("extension marks structured apply_patch failures as recoverable tool errors
 });
 
 test("apply_patch grammar stays aligned with the Codex-compatible runtime", () => {
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /start: begin_patch/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /add_hunk:/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /delete_hunk:/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /update_hunk:/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /change_move:/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /eof_line:/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /start: begin_patch hunk\+ end_patch/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /add_line\+/);
-  assert.match(APPLY_PATCH_LARK_GRAMMAR, /change_move\? change/);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /start: begin_patch/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /add_hunk:/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /delete_hunk:/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /update_hunk:/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /change_move:/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /eof_line:/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /start: begin_patch hunk\+ end_patch/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /add_line\+/u);
+  assert.match(APPLY_PATCH_LARK_GRAMMAR, /change_move\? change/u);
   assert.match(
     APPLY_PATCH_LARK_GRAMMAR,
-    /initial_change: change_context\? change_line\+ \(change_context change_line\+\)\*/,
+    /initial_change: change_context\? change_line\+ \(change_context change_line\+\)\*/u,
   );
   assert.match(
     APPLY_PATCH_LARK_GRAMMAR,
-    /following_change: change_context change_line\+ \(change_context change_line\+\)\*/,
+    /following_change: change_context change_line\+ \(change_context change_line\+\)\*/u,
   );
-  assert.doesNotMatch(APPLY_PATCH_LARK_GRAMMAR, /change: \(change_context \| change_line\)\+/);
-  assert.doesNotMatch(APPLY_PATCH_LARK_GRAMMAR, /separator/);
+  assert.doesNotMatch(APPLY_PATCH_LARK_GRAMMAR, /change: \(change_context \| change_line\)\+/u);
+  assert.doesNotMatch(APPLY_PATCH_LARK_GRAMMAR, /separator/u);
 });
 
 test("prepareArguments accepts raw strings and legacy patch objects", () => {
@@ -288,9 +288,9 @@ test("apply_patch adds, updates, and deletes files without partial UI updates", 
   const details = result.details;
   assert.ok(details);
   assert.equal("progress" in details, false);
-  assert.match(details.diff ?? "", /File: added.txt/);
-  assert.match(details.diff ?? "", /File: keep.txt/);
-  assert.match(details.diff ?? "", /File: remove.txt/);
+  assert.match(details.diff ?? "", /File: added.txt/u);
+  assert.match(details.diff ?? "", /File: keep.txt/u);
+  assert.match(details.diff ?? "", /File: remove.txt/u);
 });
 
 test("apply_patch requires move operations to include a change chunk", async (t) => {
@@ -333,7 +333,7 @@ test("apply_patch supports move with content changes and end-of-file hunks", asy
     getTextOutput(result),
     "Applied 1 operation.\n1. Updated src/app.ts and moved it to src/main.ts.",
   );
-  assert.match(result.details?.diff ?? "", /File: src\/app.ts -> src\/main.ts/);
+  assert.match(result.details?.diff ?? "", /File: src\/app.ts -> src\/main.ts/u);
 });
 
 test("apply_patch accepts Codex-compatible EOF heredoc input", async (t) => {
@@ -458,7 +458,7 @@ test("apply_patch rejects paths through symbolic-link directories", async (t) =>
 
   assert.equal(result.isError, undefined);
   assert.equal(result.terminate, undefined);
-  assert.match(getTextOutput(result), /Refusing to mutate path through symbolic link/);
+  assert.match(getTextOutput(result), /Refusing to mutate path through symbolic link/u);
   assert.equal(await fileExists(outside, "victim.txt"), false);
 });
 
@@ -512,7 +512,7 @@ test("apply_patch reports line numbers for malformed consecutive contexts", asyn
 +line
 *** End Patch`,
       }),
-    /line 4/,
+    /line 4/u,
   );
 });
 
@@ -677,7 +677,7 @@ test("apply_patch leaves files unchanged when a repeated operation fails preflig
       recoveryPaths: ["note.txt"],
     },
   ]);
-  assert.match(getTextOutput(result), /no files were modified/);
+  assert.match(getTextOutput(result), /no files were modified/u);
 });
 
 test("apply_patch reports only completed steps when a repeated write fails", async (t) => {
@@ -730,7 +730,7 @@ test("apply_patch reports only completed steps when a repeated write fails", asy
   assert.deepEqual(result.details.result.recoveryInstructions.mustReadFiles, ["note.txt"]);
   assert.equal(result.details.diff, "File: note.txt\n-1 alpha\n+1 beta");
   assert.equal(result.details.preview?.files.length, 1);
-  assert.match(getTextOutput(result), /failed after applying 1 operation/);
+  assert.match(getTextOutput(result), /failed after applying 1 operation/u);
 });
 
 test("apply_patch supports delete then move to the same destination in one patch", async (t) => {
@@ -858,7 +858,7 @@ test("apply_patch rejects EOF chunks that rematch consumed lines", async (t) => 
 
   assert.equal(result.isError, undefined);
   assert.equal(result.terminate, undefined);
-  assert.match(getTextOutput(result), /Failed to find expected lines in note\.txt/);
+  assert.match(getTextOutput(result), /Failed to find expected lines in note\.txt/u);
   assert.equal(await readWorkspaceFile(cwd, "note.txt"), "alpha\nbeta\n");
 });
 
@@ -887,7 +887,7 @@ test("apply_patch rejects empty patches", async (t) => {
   const cwd = await createTempWorkspace(t);
   await assert.rejects(
     async () => runApplyPatch(cwd, { input: "*** Begin Patch\n*** End Patch" }),
-    /No files were modified/,
+    /No files were modified/u,
   );
 });
 
@@ -913,10 +913,10 @@ test("apply_patch rejects existing add and move destinations", async (t) => {
 
   assert.equal(addResult.result.isError, undefined);
   assert.equal(addResult.result.terminate, undefined);
-  assert.match(getTextOutput(addResult.result), /file already exists/);
+  assert.match(getTextOutput(addResult.result), /file already exists/u);
   assert.equal(moveResult.result.isError, undefined);
   assert.equal(moveResult.result.terminate, undefined);
-  assert.match(getTextOutput(moveResult.result), /destination existing\.txt already exists/);
+  assert.match(getTextOutput(moveResult.result), /destination existing\.txt already exists/u);
   assert.equal(await readWorkspaceFile(cwd, "existing.txt"), "keep\n");
   assert.equal(await readWorkspaceFile(cwd, "source.txt"), "source\n");
 });
@@ -940,7 +940,7 @@ test(
 
     assert.equal(result.isError, undefined);
     assert.equal(result.terminate, undefined);
-    assert.match(getTextOutput(result), /symbolic link/);
+    assert.match(getTextOutput(result), /symbolic link/u);
     assert.equal(await readWorkspaceFile(cwd, "target.txt"), "target\n");
   },
 );
@@ -966,7 +966,7 @@ test("apply_patch reports accurate preview metadata for deep edits", async (t) =
   assert.equal(details.firstChangedLine, 6);
   assert.equal(previewFile.added, 1);
   assert.equal(previewFile.removed, 1);
-  assert.match(details.diff ?? "", / \.+/);
+  assert.match(details.diff ?? "", / \.+/u);
 });
 
 test("apply_patch returns a structured no-mutation result when preflight fails", async (t) => {
@@ -991,9 +991,9 @@ test("apply_patch returns a structured no-mutation result when preflight fails",
   assert.equal(await readWorkspaceFile(cwd, "stale.txt"), "current\n");
   assert.equal(result.isError, undefined);
   assert.equal(result.terminate, undefined);
-  assert.match(getTextOutput(result), /apply_patch preflight failed; no files were modified\./);
-  assert.match(getTextOutput(result), /stale\.txt \(operation 2, chunk 1\)/);
-  assert.match(getTextOutput(result), /Recovery: reread stale\.txt before retrying\./);
+  assert.match(getTextOutput(result), /apply_patch preflight failed; no files were modified\./u);
+  assert.match(getTextOutput(result), /stale\.txt \(operation 2, chunk 1\)/u);
+  assert.match(getTextOutput(result), /Recovery: reread stale\.txt before retrying\./u);
 
   const patchResult = result.details?.result;
   assert.ok(patchResult);
@@ -1082,8 +1082,8 @@ test("apply_patch returns a recoverable partial failure when a later operation f
   assert.equal(result.isError, undefined);
   assert.equal(result.terminate, undefined);
   assert.equal(updates.length, 0);
-  assert.match(getTextOutput(result), /apply_patch failed after applying 1 operation\./);
-  assert.match(getTextOutput(result), /Recovery: reread b\.txt before retrying\./);
+  assert.match(getTextOutput(result), /apply_patch failed after applying 1 operation\./u);
+  assert.match(getTextOutput(result), /Recovery: reread b\.txt before retrying\./u);
 
   const details = result.details;
   assert.ok(details);
@@ -1097,8 +1097,8 @@ test("apply_patch returns a recoverable partial failure when a later operation f
   assert.deepEqual(patchResult.recoveryInstructions.mustReadFiles, ["b.txt"]);
   assert.deepEqual(patchResult.recoveryInstructions.mustNotReadFiles, []);
   assert.equal(patchResult.details.exact, true);
-  assert.match(details.diff ?? "", /File: a\.txt/);
-  assert.doesNotMatch(details.diff ?? "", /File: b\.txt/);
+  assert.match(details.diff ?? "", /File: a\.txt/u);
+  assert.doesNotMatch(details.diff ?? "", /File: b\.txt/u);
 });
 
 test("apply_patch reports a failed move-with-content-change that already wrote the destination", async (t) => {
@@ -1159,8 +1159,8 @@ test("apply_patch reports a failed move-with-content-change that already wrote t
   assert.equal(await readWorkspaceFile(cwd, "dst.txt"), "beta\n");
   assert.equal(result.isError, undefined);
   assert.equal(result.terminate, undefined);
-  assert.match(getTextOutput(result), /apply_patch failed after partially applying operations\./);
-  assert.match(getTextOutput(result), /Recovery: reread src\.txt, dst\.txt before retrying\./);
+  assert.match(getTextOutput(result), /apply_patch failed after partially applying operations\./u);
+  assert.match(getTextOutput(result), /Recovery: reread src\.txt, dst\.txt before retrying\./u);
 
   const patchResult = result.details?.result;
   assert.ok(patchResult);
@@ -1225,8 +1225,8 @@ test("apply_patch treats a state-unknown move destination write as partial", asy
   assert.equal(await fileExists(cwd, "dst.txt"), false);
   assert.equal(result.isError, undefined);
   assert.equal(result.terminate, undefined);
-  assert.match(getTextOutput(result), /apply_patch failed after partially applying operations\./);
-  assert.match(getTextOutput(result), /Recovery: reread src\.txt, dst\.txt before retrying\./);
+  assert.match(getTextOutput(result), /apply_patch failed after partially applying operations\./u);
+  assert.match(getTextOutput(result), /Recovery: reread src\.txt, dst\.txt before retrying\./u);
 
   const patchResult = result.details?.result;
   assert.ok(patchResult);

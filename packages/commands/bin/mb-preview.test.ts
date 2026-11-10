@@ -16,6 +16,7 @@ import {
   renderGraphvizToSvg,
 } from "./mb-preview.ts";
 
+// oxlint-disable-next-line typescript/strict-void-return -- execFile has a native custom promisify implementation.
 const execFileAsync = promisify(execFile);
 
 class FakeGraphvizChild extends EventEmitter {
@@ -298,7 +299,9 @@ test("renderGraphvizToSvg spawns dot and writes dot input to stdin", async () =>
       calls.push({ command, args, stdin });
       child.stdout.end("<svg>ok</svg>");
       child.stderr.end();
-      queueMicrotask(() => child.emitClose(0));
+      queueMicrotask(() => {
+        child.emitClose(0);
+      });
     });
 
     return child as unknown as ChildProcessWithoutNullStreams;
@@ -313,7 +316,9 @@ test("renderGraphvizToSvg returns stderr on non-zero dot exits", async () => {
     const child = new FakeGraphvizChild();
     child.stdin.on("finish", () => {
       child.stderr.end("syntax error\n");
-      queueMicrotask(() => child.emitClose(1));
+      queueMicrotask(() => {
+        child.emitClose(1);
+      });
     });
     return child as unknown as ChildProcessWithoutNullStreams;
   });

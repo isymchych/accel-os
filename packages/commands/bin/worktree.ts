@@ -387,9 +387,9 @@ function resolveRepoIdentity(repoRoot: string): RepoIdentity {
   const remoteUrl = runCommand("git", ["remote", "get-url", "origin"], {
     cwd: repoRoot,
   }).stdout.trim();
-  const normalizedUrl = remoteUrl.replace(/\.git$/, "");
+  const normalizedUrl = remoteUrl.replace(/\.git$/u, "");
 
-  const sshMatch = /^(?:ssh:\/\/)?git@github\.com[:/](.+)\/(.+)$/.exec(normalizedUrl);
+  const sshMatch = /^(?:ssh:\/\/)?git@github\.com[:/](.+)\/(.+)$/u.exec(normalizedUrl);
   if (sshMatch) {
     const owner = sshMatch[1];
     const name = sshMatch[2];
@@ -399,7 +399,7 @@ function resolveRepoIdentity(repoRoot: string): RepoIdentity {
     return { owner, name, nameWithOwner: `${owner}/${name}` };
   }
 
-  const httpsMatch = /^https:\/\/github\.com\/(.+)\/(.+)$/.exec(normalizedUrl);
+  const httpsMatch = /^https:\/\/github\.com\/(.+)\/(.+)$/u.exec(normalizedUrl);
   if (httpsMatch) {
     const owner = httpsMatch[1];
     const name = httpsMatch[2];
@@ -1049,9 +1049,9 @@ function getDetachedWorktreePath(
 
 export function sanitizePathToken(value: string): string {
   const normalized = value
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/[^A-Za-z0-9._-]+/gu, "-")
+    .replace(/-+/gu, "-")
+    .replace(/^-|-$/gu, "");
   return normalized.length > 0 ? normalized : "ref";
 }
 
@@ -1242,7 +1242,7 @@ function listWorktrees(repoRoot: string): WorktreeRecord[] {
       path: currentPath,
       head,
       branchRef,
-      branchName: branchRef ? branchRef.replace(/^refs\/heads\//, "") : null,
+      branchName: branchRef ? branchRef.replace(/^refs\/heads\//u, "") : null,
       detached,
     });
 

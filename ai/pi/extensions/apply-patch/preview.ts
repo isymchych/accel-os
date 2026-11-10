@@ -31,9 +31,7 @@ function appendChangedDiffLines(
   cursor: DiffCursor,
   added: boolean,
 ): void {
-  if (cursor.firstChangedLine === undefined) {
-    cursor.firstChangedLine = cursor.newLineNumber;
-  }
+  cursor.firstChangedLine ??= cursor.newLineNumber;
 
   for (const line of rawLines) {
     if (added) {

@@ -13,7 +13,9 @@ test(
   { skip: process.platform !== "linux" && "Qt appearance modifiers are Linux-only" },
   (t) => {
     const home = mkdtempSync(join(tmpdir(), "qt-appearance-"));
-    t.after(() => rmSync(home, { recursive: true, force: true }));
+    t.after(() => {
+      rmSync(home, { recursive: true, force: true });
+    });
     const args = [
       "--config",
       "/dev/null",
@@ -47,8 +49,8 @@ test(
       const settings = readFileSync(target, "utf8");
       assert.ok(settings.includes(preserved), settings);
       assert.equal(settings.includes("icon_theme=Papirus\n"), version === "5", settings);
-      assert.match(settings, /^style=Fusion$/m);
-      assert.match(settings, /^custom_palette=true$/m);
+      assert.match(settings, /^style=Fusion$/mu);
+      assert.match(settings, /^custom_palette=true$/mu);
       assert.ok(
         settings.includes(`color_scheme_path=${join(dir, "colors/noctalia.conf")}\n`),
         settings,
@@ -57,7 +59,7 @@ test(
       assert.equal(readFileSync(target, "utf8"), settings, "reapplying is idempotent");
       rmSync(target);
       run(["apply", target]);
-      assert.match(readFileSync(target, "utf8"), /^custom_palette=true$/m);
+      assert.match(readFileSync(target, "utf8"), /^custom_palette=true$/mu);
     }
     const mac = run([
       "--override-data",
@@ -66,6 +68,6 @@ test(
       "--path-style",
       "relative",
     ]);
-    assert.doesNotMatch(mac, /^\.config\/qt[56]ct(?:\/|$)/m);
+    assert.doesNotMatch(mac, /^\.config\/qt[56]ct(?:\/|$)/mu);
   },
 );

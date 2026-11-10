@@ -91,7 +91,7 @@ function createCollapsedHeaderComponent(
 
       const blankLine = currentTheme.bg(currentBackground, " ".repeat(width));
       if (width <= 2) {
-        return new Array(currentContentLines.length + 2).fill(blankLine);
+        return new Array<string>(currentContentLines.length + 2).fill(blankLine);
       }
 
       const lines = [blankLine];

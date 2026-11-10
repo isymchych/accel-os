@@ -23,7 +23,7 @@ export class PatchParseError extends Error {
 }
 
 export function normalizePatchText(text: string): string {
-  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return text.replace(/\r\n/gu, "\n").replace(/\r/gu, "\n");
 }
 
 export function stripHeredoc(input: string): string {

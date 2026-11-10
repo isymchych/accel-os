@@ -82,7 +82,7 @@ async function readMessage(): Promise<string> {
 }
 
 function normalizeMessage(message: string): string {
-  const lines = message.trim().split(/\r?\n/);
+  const lines = message.trim().split(/\r?\n/u);
   const subject = lines[0]?.trim() ?? "";
   if (!subject) throw new MessageError("empty commit subject");
 
@@ -115,7 +115,7 @@ function wrapText(text: string, width: number): string[] {
   if (text === "") return [];
   if (width < 1) return [text];
 
-  const words = text.split(/\s+/).filter(Boolean);
+  const words = text.split(/\s+/u).filter(Boolean);
   const lines: string[] = [];
   let current = "";
 
@@ -156,7 +156,7 @@ function splitLongToken(token: string, width: number): string[] {
 }
 
 function validateMessage(message: string, options: ApplyOptions): void {
-  const [subject = "", ...bodyLines] = message.split(/\r?\n/);
+  const [subject = "", ...bodyLines] = message.split(/\r?\n/u);
   if (!subject.trim()) throw new MessageError("empty commit subject");
   if (!options.allowSubjectOnly && !bodyLines.some((line) => line.trim())) {
     throw new MessageError(
@@ -165,7 +165,7 @@ function validateMessage(message: string, options: ApplyOptions): void {
   }
 }
 
-async function requireGit(result: GitCommandResult, context: string): Promise<string> {
+function requireGit(result: GitCommandResult, context: string): string {
   if (result.success) return result.stdout;
   throw new Error(
     `${context}: ${result.stderr || result.stdout || `git exited with status ${result.code}`}`,
@@ -173,7 +173,7 @@ async function requireGit(result: GitCommandResult, context: string): Promise<st
 }
 
 async function verifyAmendSafety(options: ApplyOptions): Promise<void> {
-  const head = (await requireGit(await runGit(["rev-parse", "HEAD"]), "cannot read HEAD")).trim();
+  const head = requireGit(await runGit(["rev-parse", "HEAD"]), "cannot read HEAD").trim();
   if (head !== options.expectedHead) {
     printStructuredGitError(
       formatGitError("ERR_HEAD_CHANGED", "HEAD changed since amend confirmation", ""),
@@ -181,7 +181,7 @@ async function verifyAmendSafety(options: ApplyOptions): Promise<void> {
     process.exit(67);
   }
 
-  const refs = await requireGit(
+  const refs = requireGit(
     await runGit([
       "for-each-ref",
       "--format=%(refname:short)",
@@ -190,7 +190,7 @@ async function verifyAmendSafety(options: ApplyOptions): Promise<void> {
     ]),
     "cannot check HEAD publication",
   );
-  if (refs.split(/\r?\n/).some(Boolean) && !options.allowPublished) {
+  if (refs.split(/\r?\n/u).some(Boolean) && !options.allowPublished) {
     printStructuredGitError(
       formatGitError(
         "ERR_PUBLISHED_COMMIT",
@@ -211,9 +211,7 @@ function buildArgs(options: ApplyOptions): string[] {
 }
 
 async function readHeadSha(): Promise<string> {
-  return (
-    await requireGit(await runGit(["rev-parse", "HEAD"]), "cannot read resulting HEAD")
-  ).trim();
+  return requireGit(await runGit(["rev-parse", "HEAD"]), "cannot read resulting HEAD").trim();
 }
 
 if (import.meta.main) {

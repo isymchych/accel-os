@@ -55,7 +55,7 @@ async function getChangedFiles(requestedMode: ReviewMode): Promise<string[]> {
   const result = await runGit(diffArgs);
   if (!result.success) {
     const errorText = result.stderr || result.stdout || `git exited with status ${result.code}`;
-    if (/not a git repository/i.test(errorText)) {
+    if (/not a git repository/iu.test(errorText)) {
       console.error(`ERR_NOT_REPO: ${errorText}`);
       process.exit(65);
     }
@@ -86,10 +86,10 @@ function findTsJsPassThrough(path: string, text: string): Finding[] {
   const collectedFindings: Finding[] = [];
 
   const functionRe =
-    /(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(([^)]*)\)\s*\{\s*return\s+([A-Za-z_$][A-Za-z0-9_$.]*)\(([^)]*)\);?\s*\}/g;
+    /(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(([^)]*)\)\s*\{\s*return\s+([A-Za-z_$][A-Za-z0-9_$.]*)\(([^)]*)\);?\s*\}/gu;
 
   const arrowRe =
-    /(?:export\s+)?const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>\s*([A-Za-z_$][A-Za-z0-9_$.]*)\(([^)]*)\);?/g;
+    /(?:export\s+)?const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>\s*([A-Za-z_$][A-Za-z0-9_$.]*)\(([^)]*)\);?/gu;
 
   for (const match of text.matchAll(functionRe)) {
     const finding = toTsJsFinding(path, text, match);
@@ -130,7 +130,7 @@ function toTsJsFinding(path: string, text: string, match: RegExpMatchArray): Fin
 function findRustPassThrough(path: string, text: string): Finding[] {
   const collectedFindings: Finding[] = [];
   const fnRe =
-    /(?:pub\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^{]+)?\{\s*(?:return\s+)?([A-Za-z_][A-Za-z0-9_:]*)\(([^)]*)\);?\s*\}/g;
+    /(?:pub\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^{]+)?\{\s*(?:return\s+)?([A-Za-z_][A-Za-z0-9_:]*)\(([^)]*)\);?\s*\}/gu;
 
   for (const match of text.matchAll(fnRe)) {
     const wrapperName = match[1];
@@ -164,10 +164,10 @@ function parseTsParams(rawParams: string): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "")
-    .map((entry) => entry.replace(/^\.{3}/, ""))
-    .map((entry) => entry.replace(/\?.*$/, ""))
-    .map((entry) => entry.replace(/:.+$/, ""))
-    .map((entry) => entry.replace(/\s*=.+$/, ""))
+    .map((entry) => entry.replace(/^\.{3}/u, ""))
+    .map((entry) => entry.replace(/\?.*$/u, ""))
+    .map((entry) => entry.replace(/:.+$/u, ""))
+    .map((entry) => entry.replace(/\s*=.+$/u, ""))
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "");
 }
@@ -177,7 +177,7 @@ function parseRustParams(rawParams: string): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "")
-    .map((entry) => entry.replace(/^mut\s+/, ""))
+    .map((entry) => entry.replace(/^mut\s+/u, ""))
     .map((entry) => entry.split(":")[0]?.trim() ?? "")
     .filter((entry) => entry !== "");
 }
@@ -187,8 +187,8 @@ function parseCallArgs(rawArgs: string): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "")
-    .map((entry) => entry.replace(/^\.{3}/, ""))
-    .filter((entry) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entry));
+    .map((entry) => entry.replace(/^\.{3}/u, ""))
+    .filter((entry) => /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(entry));
 }
 
 function sameArgs(left: string[], right: string[]): boolean {

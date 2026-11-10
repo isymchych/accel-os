@@ -16,7 +16,7 @@ export async function runGit(
   options: RunGitOptions = {},
 ): Promise<GitCommandResult> {
   const stdin = options.stdin === undefined ? {} : { stdin: options.stdin };
-  return await runCommand("git", ["--no-pager", ...args], {
+  return runCommand("git", ["--no-pager", ...args], {
     env: {
       ...process.env,
       LC_ALL: "C",

@@ -11,7 +11,7 @@ const configFile = path.join(workspace, "vite.config.ts");
 const sourceHtml = path.join(workspace, "src/renderer/index.html");
 
 function policyFrom(html: string): string {
-  const tags = [...html.matchAll(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/g)];
+  const tags = [...html.matchAll(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/gu)];
   assert.equal(tags.length, 1, "HTML must contain exactly one CSP");
   const tag = tags[0];
   assert.ok(tag);
@@ -38,16 +38,16 @@ test("development and production renderer HTML use the intended CSP", async (t) 
     await server.close();
   }
   const developmentPolicy = policyFrom(development);
-  assert.match(developmentPolicy, /script-src 'self' 'unsafe-inline'/);
-  assert.match(developmentPolicy, /connect-src 'self' ws:\/\/127\.0\.0\.1:5173/);
-  assert.match(development, /\/@vite\/client/);
+  assert.match(developmentPolicy, /script-src 'self' 'unsafe-inline'/u);
+  assert.match(developmentPolicy, /connect-src 'self' ws:\/\/127\.0\.0\.1:5173/u);
+  assert.match(development, /\/@vite\/client/u);
 
   await build({ configFile, logLevel: "silent", build: { outDir: output } });
   const production = await readFile(path.join(output, "index.html"), "utf8");
   const productionPolicy = policyFrom(production);
-  assert.match(productionPolicy, /script-src 'self';/);
-  assert.match(productionPolicy, /style-src 'self';/);
-  assert.match(productionPolicy, /connect-src 'none';/);
-  assert.doesNotMatch(productionPolicy, /unsafe-inline/);
-  assert.match(production, /src="\.\/assets\//);
+  assert.match(productionPolicy, /script-src 'self';/u);
+  assert.match(productionPolicy, /style-src 'self';/u);
+  assert.match(productionPolicy, /connect-src 'none';/u);
+  assert.doesNotMatch(productionPolicy, /unsafe-inline/u);
+  assert.match(production, /src="\.\/assets\//u);
 });

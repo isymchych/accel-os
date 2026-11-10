@@ -80,7 +80,7 @@ function buildStartupNotice(contextFiles: PersonalContextFile[]): string {
 export default function personalContext(pi: ExtensionAPI): void {
   let cachedContextFiles: PersonalContextFile[] = [];
 
-  pi.on("session_start", async (event, ctx) => {
+  pi.on("session_start", (event, ctx) => {
     cachedContextFiles = discoverPersonalContextFiles(ctx.cwd);
 
     if (!ctx.hasUI || cachedContextFiles.length === 0) {
@@ -94,7 +94,7 @@ export default function personalContext(pi: ExtensionAPI): void {
     ctx.ui.notify(buildStartupNotice(cachedContextFiles), "info");
   });
 
-  pi.on("before_agent_start", async (_event, ctx) => {
+  pi.on("before_agent_start", (_event, ctx) => {
     if (cachedContextFiles.length === 0) {
       cachedContextFiles = discoverPersonalContextFiles(ctx.cwd);
     }

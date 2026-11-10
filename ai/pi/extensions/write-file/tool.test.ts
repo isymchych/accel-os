@@ -79,7 +79,7 @@ test("write_file creates a new file and parent directories", async (t) => {
   const writeResult = result.details.result;
   assert.ok(writeResult, "Expected result details.");
   assert.equal(writeResult.status, "created");
-  assert.match(result.details.diff, /File: .*src\/note.txt/);
+  assert.match(result.details.diff, /File: .*src\/note.txt/u);
   assert.equal(result.isError, undefined);
 });
 

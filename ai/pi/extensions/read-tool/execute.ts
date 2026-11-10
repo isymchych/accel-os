@@ -14,7 +14,7 @@ import {
 import type { ReadTargetInput, ReadToolInput } from "./schema.ts";
 
 const narrowNoBreakSpace = "\u202F";
-const unicodeSpaces = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
+const unicodeSpaces = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/gu;
 const defaultRecursiveDepth = 4;
 const maxDirectoryEntries = 2000;
 const fileReadChunkBytes = 64 * 1024;
@@ -130,10 +130,10 @@ function resolveReadPath(path: string, cwd: string): string {
   }
 
   const variants = [
-    resolved.replace(/ (AM|PM)\./gi, `${narrowNoBreakSpace}$1.`),
+    resolved.replace(/ (AM|PM)\./giu, `${narrowNoBreakSpace}$1.`),
     resolved.normalize("NFD"),
-    resolved.replace(/'/g, "\u2019"),
-    resolved.normalize("NFD").replace(/'/g, "\u2019"),
+    resolved.replace(/'/gu, "\u2019"),
+    resolved.normalize("NFD").replace(/'/gu, "\u2019"),
   ];
   return variants.find((candidate) => candidate !== resolved && existsSync(candidate)) ?? resolved;
 }
@@ -619,7 +619,7 @@ async function collectTextFile(
 
   const stream = createReadStream(absolutePath, {
     highWaterMark: fileReadChunkBytes,
-    ...(signal !== undefined ? { signal } : {}),
+    ...(signal === undefined ? {} : { signal }),
   });
 
   try {
@@ -654,13 +654,13 @@ async function collectTextFile(
   return {
     lines: state.selectedLines,
     startLine,
-    ...(state.moreLinesReason !== undefined ? { moreLinesReason: state.moreLinesReason } : {}),
-    ...(state.oversizedFirstLineBytes !== undefined
-      ? { oversizedFirstLineBytes: state.oversizedFirstLineBytes }
-      : {}),
-    ...(state.oversizedFirstLineExact !== undefined
-      ? { oversizedFirstLineExact: state.oversizedFirstLineExact }
-      : {}),
+    ...(state.moreLinesReason === undefined ? {} : { moreLinesReason: state.moreLinesReason }),
+    ...(state.oversizedFirstLineBytes === undefined
+      ? {}
+      : { oversizedFirstLineBytes: state.oversizedFirstLineBytes }),
+    ...(state.oversizedFirstLineExact === undefined
+      ? {}
+      : { oversizedFirstLineExact: state.oversizedFirstLineExact }),
     emptyFile: false,
   };
 }

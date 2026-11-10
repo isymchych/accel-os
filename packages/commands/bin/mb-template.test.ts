@@ -79,7 +79,7 @@ test("invalid selections and arguments cannot invoke clipboard tools", async (t)
   ]) {
     const result = fixture.run(args);
     assert.equal(result.status, 1, `${JSON.stringify(args)}: ${result.stderr}`);
-    assert.match(result.stderr, /Usage:|Unknown template/);
+    assert.match(result.stderr, /Usage:|Unknown template/u);
   }
   await assert.rejects(readFile(fixture.capture), { code: "ENOENT" });
 });

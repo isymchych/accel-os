@@ -121,7 +121,7 @@ export function posixQuote(value: string): string {
 
 export function parseAdbPushSummary(folder: string, output: string): PushSummary {
   const match = output.match(
-    /:\s*(\d+) files pushed,\s*\d+ skipped\.\s*[^(]*\((\d+) bytes in ([0-9.]+)s\)/,
+    /:\s*(\d+) files pushed,\s*\d+ skipped\.\s*[^(]*\((\d+) bytes in ([0-9.]+)s\)/u,
   );
   return {
     folder,
@@ -230,7 +230,7 @@ function parseDeviceRows(output: string): DeviceRow[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [serial = "", state = "", ...details] = line.split(/\s+/);
+      const [serial = "", state = "", ...details] = line.split(/\s+/u);
       return { serial, state, details: details.join(" ") };
     });
 }
@@ -278,7 +278,7 @@ async function prepareDestination(serial: string, destination: string): Promise<
 }
 
 function remoteFolderPath(destination: string, folder: string): string {
-  return `${destination.replace(/\/+$/, "")}/${folder}`;
+  return `${destination.replace(/\/+$/u, "")}/${folder}`;
 }
 
 async function remotePathState(
@@ -326,7 +326,7 @@ async function pushFolder(
     serial,
     "push",
     localFolder,
-    `${destination.replace(/\/+$/, "")}/`,
+    `${destination.replace(/\/+$/u, "")}/`,
   ]);
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
   if (!result.success)
@@ -359,7 +359,7 @@ async function phoneManifest(
         console.error(`ERR_PHONE_MANIFEST: invalid byte count: ${line}`);
         process.exit(1);
       }
-      return { path: rawPath.replace(/^\.\//, ""), bytes };
+      return { path: rawPath.replace(/^\.\//u, ""), bytes };
     }),
   );
 }

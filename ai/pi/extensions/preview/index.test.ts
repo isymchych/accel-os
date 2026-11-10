@@ -113,7 +113,9 @@ test("runMbPreview spawns mb-preview and writes markdown to stdin", async () => 
       calls.push({ command, args, cwd: options.cwd, stdin });
       child.stdout.end("/tmp/preview.html\n");
       child.stderr.end();
-      queueMicrotask(() => child.emit("close", 0, null));
+      queueMicrotask(() => {
+        child.emit("close", 0, null);
+      });
     });
     return child;
   };
@@ -135,7 +137,9 @@ test("runMbPreview rejects non-zero mb-preview exits with stderr", async () => {
     const child = new FakePreviewChild();
     child.stdin.on("finish", () => {
       child.stderr.end("boom\n");
-      queueMicrotask(() => child.emit("close", 1, null));
+      queueMicrotask(() => {
+        child.emit("close", 1, null);
+      });
     });
     return child;
   };

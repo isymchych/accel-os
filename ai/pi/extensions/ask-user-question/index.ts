@@ -56,10 +56,12 @@ export async function showQuestionnaire(
         removeAbortListener();
         done(result);
       };
-      const dialog = new QuestionnaireDialog(questions, tui, theme, keybindings, finish, () =>
-        removeAbortListener(),
-      );
-      const abort = (): void => finish({ status: "aborted", answers: [] });
+      const dialog = new QuestionnaireDialog(questions, tui, theme, keybindings, finish, () => {
+        removeAbortListener();
+      });
+      const abort = (): void => {
+        finish({ status: "aborted", answers: [] });
+      };
       removeAbortListener = (): void => signal?.removeEventListener("abort", abort);
       signal?.addEventListener("abort", abort, { once: true });
       // The signal can change between the initial guard and factory invocation.
@@ -87,7 +89,9 @@ export default function askUserQuestionExtension(pi: ExtensionAPI): void {
     hideWithoutTui(event, ctx);
   });
   pi.on("before_agent_start", hideWithoutTui);
-  pi.on("session_shutdown", () => sessionAbort.abort());
+  pi.on("session_shutdown", () => {
+    sessionAbort.abort();
+  });
 
   const tool: ToolDefinition<typeof Parameters, Result | undefined> = {
     name: TOOL_NAME,

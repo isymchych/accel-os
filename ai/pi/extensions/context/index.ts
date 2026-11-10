@@ -111,7 +111,9 @@ async function showSummary(reportText: string, ctx: ExtensionCommandContext): Pr
 
     return {
       render: (width: number): string[] => container.render(width),
-      invalidate: (): void => container.invalidate(),
+      invalidate: (): void => {
+        container.invalidate();
+      },
       handleInput: (data: string): void => {
         if (matchesKey(data, "enter") || matchesKey(data, "escape")) {
           done(undefined);

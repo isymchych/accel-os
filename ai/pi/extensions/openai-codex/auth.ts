@@ -83,7 +83,7 @@ export function parseJwtPayload(token: string): JwtPayload | null {
     return null;
   }
 
-  const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+  const normalized = payloadPart.replace(/-/gu, "+").replace(/_/gu, "/");
   const padLength = normalized.length % 4 === 0 ? 0 : 4 - (normalized.length % 4);
   const padded = normalized + "=".repeat(padLength);
   try {

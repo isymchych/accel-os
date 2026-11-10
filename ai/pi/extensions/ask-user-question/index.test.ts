@@ -172,7 +172,7 @@ test("invalid semantic input fails before the dialog opens", async () => {
       undefined,
       fixture.ctx,
     ),
-    /blank/,
+    /blank/u,
   );
   assert.equal(fixture.calls(), 0);
 });
@@ -194,7 +194,9 @@ test("abort before opening does not create UI", async () => {
 
 test("abort between the initial guard and factory invocation closes the interaction", async () => {
   const controller = new AbortController();
-  const fixture = uiFixture(() => controller.abort());
+  const fixture = uiFixture(() => {
+    controller.abort();
+  });
   assert.deepEqual(await showQuestionnaire(fixture.ctx, questions, controller.signal), {
     status: "aborted",
     answers: [],

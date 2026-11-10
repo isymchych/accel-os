@@ -113,7 +113,7 @@ test("resolveRemoteBranchFromRefs rejects ambiguous branch names across remotes"
   const remoteRefs = ["origin/change-rank", "upstream/change-rank"];
   assert.throws(
     () => resolveRemoteBranchFromRefs(remoteRefs, "change-rank"),
-    /matches multiple remote branches/,
+    /matches multiple remote branches/u,
   );
 });
 

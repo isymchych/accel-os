@@ -17,7 +17,9 @@ type CommandFixture = {
 
 function commandFixture(t: TestContext): CommandFixture {
   const directory = mkdtempSync(join(tmpdir(), "noctalia-bar-"));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => {
+    rmSync(directory, { recursive: true, force: true });
+  });
   const log = join(directory, "calls");
   writeFileSync(log, "");
   writeFileSync(

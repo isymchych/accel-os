@@ -88,7 +88,7 @@ test("buildDiscoverCommand supports repeated symbol scopes and clamps expansion"
 test("buildDiscoverCommand rejects multiple non-symbol scopes", () => {
   assert.throws(
     () => buildDiscoverCommand({ query: "TODO", kind: "text", scopes: ["src", "tests"] }, "/repo"),
-    /multiple scopes only when kind is 'symbol'/,
+    /multiple scopes only when kind is 'symbol'/u,
   );
 });
 
@@ -110,7 +110,7 @@ test("context, assess, and compare commands use common bounded options", () => {
 test("callers validates direct-only filters and builds transitive controls", () => {
   assert.throws(
     () => buildCallersCommand({ target: "Auth", depth: 2, filter: "file:auth" }, "/repo"),
-    /apply only to direct callers/,
+    /apply only to direct callers/u,
   );
   assert.deepEqual(
     buildCallersCommand(
@@ -141,7 +141,7 @@ test("callers validates direct-only filters and builds transitive controls", () 
 test("callees requires detailed mode for filters", () => {
   assert.throws(
     () => buildCalleesCommand({ target: "Auth", filter: "file:auth" }, "/repo"),
-    /requires detailed=true/,
+    /requires detailed=true/u,
   );
   assert.deepEqual(
     buildCalleesCommand({ target: "Auth", detailed: true, filter: "file:auth" }, "/repo"),
@@ -177,7 +177,7 @@ test("review executes in an explicit repository and keeps scope relative to it",
 test("review rejects staged plus an explicit target", () => {
   assert.throws(
     () => buildReviewCommand({ staged: true, target: "HEAD~1..HEAD" }, "/repo"),
-    /cannot be combined/,
+    /cannot be combined/u,
   );
 });
 
@@ -194,8 +194,8 @@ test("executeSrcwalkCommand forwards cwd and reports warnings", async () => {
     undefined,
   );
   assert.equal(observedCwd, "/repo");
-  assert.match(result.content[0].text, /^one\ntwo/);
-  assert.match(result.content[0].text, /Srcwalk argument note: clamped/);
+  assert.match(result.content[0].text, /^one\ntwo/u);
+  assert.match(result.content[0].text, /Srcwalk argument note: clamped/u);
 });
 
 test("executeSrcwalkCommand throws with stderr on unsuccessful exit", async () => {
@@ -212,6 +212,6 @@ test("executeSrcwalkCommand throws with stderr on unsuccessful exit", async () =
       "/repo",
       undefined,
     ),
-    /failed with exit code 2[\s\S]*invalid target/,
+    /failed with exit code 2[\s\S]*invalid target/u,
   );
 });

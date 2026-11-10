@@ -183,11 +183,7 @@ async function checkUserAccount(
     .trim()
     .split("\n")
     .filter((line) => line !== "");
-  if (entries.length !== 1) {
-    problems.push(
-      `expected one passwd entry for ${context.username}, found ${String(entries.length)}`,
-    );
-  } else {
+  if (entries.length === 1) {
     const fields = entries[0]?.split(":") ?? [];
     const shell = fields[6];
     if (fields.length !== 7 || shell === undefined) {
@@ -195,14 +191,14 @@ async function checkUserAccount(
     } else if (shell !== "/bin/zsh") {
       problems.push(`default shell: expected /bin/zsh, found ${shell || "empty"}`);
     }
+  } else {
+    problems.push(
+      `expected one passwd entry for ${context.username}, found ${String(entries.length)}`,
+    );
   }
 
   const groups = await dependencies.runCommand("id", ["-nG", context.username]);
-  if (!groups.success) {
-    problems.push(
-      groups.stderr || `cannot query groups: id exited with status ${String(groups.code)}`,
-    );
-  } else {
+  if (groups.success) {
     const memberships = new Set(
       groups.stdout
         .trim()
@@ -214,6 +210,10 @@ async function checkUserAccount(
         problems.push(`missing required group: ${group}`);
       }
     }
+  } else {
+    problems.push(
+      groups.stderr || `cannot query groups: id exited with status ${String(groups.code)}`,
+    );
   }
 
   if (problems.length > 0) {
@@ -311,7 +311,8 @@ async function checkGcrSshAgent(
     const expectedSocket = path.join(runtimeDirectory, "gcr/ssh");
     const actualSocket = context.environment["SSH_AUTH_SOCK"];
     if (actualSocket !== expectedSocket) {
-      problems.push(`SSH_AUTH_SOCK: expected ${expectedSocket}, found ${actualSocket || "unset"}`);
+      const displayedSocket = actualSocket === "" ? "unset" : (actualSocket ?? "unset");
+      problems.push(`SSH_AUTH_SOCK: expected ${expectedSocket}, found ${displayedSocket}`);
     }
   }
 
@@ -626,9 +627,7 @@ async function checkScriptRuntime(
   }
 
   const accelNode = path.join(homeBin, "accel-node");
-  if (!(await dependencies.isExecutable(accelNode))) {
-    problems.push(`${accelNode}: missing or not executable`);
-  } else {
+  if (await dependencies.isExecutable(accelNode)) {
     const result = await dependencies.runCommand(accelNode, ["--version"], {
       env: { ...context.environment, ACCEL_OS: context.repositoryRoot },
     });
@@ -637,6 +636,8 @@ async function checkScriptRuntime(
         `${accelNode}: ${result.stderr || `exited with status ${String(result.code)}`}`,
       );
     }
+  } else {
+    problems.push(`${accelNode}: missing or not executable`);
   }
 
   if (problems.length > 0) {

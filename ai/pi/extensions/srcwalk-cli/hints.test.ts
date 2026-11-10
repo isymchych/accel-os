@@ -11,10 +11,10 @@ test("routes shell search, reads, listing, and structural review", () => {
     allTools,
   );
   assert.ok(hint);
-  assert.match(hint, /srcwalk_discover.*text discovery/);
-  assert.match(hint, /srcwalk_read.*source reads/);
-  assert.match(hint, /srcwalk_discover.*kind=file.*file discovery/);
-  assert.match(hint, /srcwalk_review.*structural change review/);
+  assert.match(hint, /srcwalk_discover.*text discovery/u);
+  assert.match(hint, /srcwalk_read.*source reads/u);
+  assert.match(hint, /srcwalk_discover.*kind=file.*file discovery/u);
+  assert.match(hint, /srcwalk_review.*structural change review/u);
 });
 
 test("ignores unavailable tools and unrelated commands", () => {

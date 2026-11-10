@@ -19,6 +19,7 @@ async function runFixture(
   args: string[],
   env: NodeJS.ProcessEnv = {},
 ): Promise<{ stdout: string; stderr: string }> {
+  // oxlint-disable-next-line typescript/strict-void-return -- execFile has a native custom promisify implementation.
   return promisify(execFile)(
     process.execPath,
     [
@@ -56,7 +57,7 @@ test("development launcher uses Vite's URL and closes it when Electron fails", a
     runFixture("launcher", ["--dev"], { TEST_ELECTRON_EXIT: "1" }),
     (error: unknown) => {
       assert.ok(error instanceof Error);
-      assert.match(error.message, /Electron exited \(1\)/);
+      assert.match(error.message, /Electron exited \(1\)/u);
       assert.ok("stdout" in error && typeof error.stdout === "string");
       assert.ok(
         error.stdout.includes(
@@ -100,6 +101,6 @@ test("Electron entry forwards profile and navigation to canonical Pi with built 
 test("normal startup rejects fake-execution overrides", async () => {
   await assert.rejects(
     runFixture("entry", ["--node", "/node", ...context, "--pi-entry", "/fake.ts"]),
-    /Unknown option '--pi-entry'/,
+    /Unknown option '--pi-entry'/u,
   );
 });

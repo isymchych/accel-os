@@ -71,7 +71,9 @@ function normalizePreviewLine(markdown: string): string {
     .split("\n")
     .find((line) => line.trim().length > 0)
     ?.trim();
-  const preview = (firstLine ?? "Assistant response").replace(/^#+\s*/, "").replaceAll(/\s+/g, " ");
+  const preview = (firstLine ?? "Assistant response")
+    .replace(/^#+\s*/u, "")
+    .replaceAll(/\s+/gu, " ");
   return preview.length <= 100 ? preview : `${preview.slice(0, 99)}…`;
 }
 
@@ -177,8 +179,12 @@ async function pickAssistantResponse(
       noMatch: (text): string => theme.fg("warning", text),
     });
     selectList.setSelectedIndex(items.length - 1);
-    selectList.onSelect = (item): void => done(Number.parseInt(item.value, 10));
-    selectList.onCancel = (): void => done(null);
+    selectList.onSelect = (item): void => {
+      done(Number.parseInt(item.value, 10));
+    };
+    selectList.onCancel = (): void => {
+      done(null);
+    };
 
     container.addChild(selectList);
     container.addChild(new Text(theme.fg("dim", "↑↓ navigate · enter select · esc cancel"), 1, 0));

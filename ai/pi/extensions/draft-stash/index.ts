@@ -161,8 +161,12 @@ async function pickDraft(
 
       let list = createSelectList(toSelectItems(workingStack));
 
-      list.onSelect = (item): void => done(item.value);
-      list.onCancel = (): void => done(null);
+      list.onSelect = (item): void => {
+        done(item.value);
+      };
+      list.onCancel = (): void => {
+        done(null);
+      };
 
       return {
         render: (width: number): string[] => {
@@ -173,7 +177,9 @@ async function pickDraft(
             (text: string): string => theme.fg("accent", text),
           );
         },
-        invalidate: (): void => list.invalidate(),
+        invalidate: (): void => {
+          list.invalidate();
+        },
         handleInput: (data: string): void => {
           if (matchesKey(data, Key.delete)) {
             const current = list.getSelectedItem();
@@ -199,8 +205,12 @@ async function pickDraft(
             const nextIndex = Math.min(currentIndex, workingStack.items.length - 1);
             const nextSelectedId = workingStack.items[nextIndex]?.id ?? null;
             list = createSelectList(toSelectItems(workingStack), nextSelectedId);
-            list.onSelect = (item): void => done(item.value);
-            list.onCancel = (): void => done(null);
+            list.onSelect = (item): void => {
+              done(item.value);
+            };
+            list.onCancel = (): void => {
+              done(null);
+            };
             tui.requestRender();
             return;
           }
@@ -247,7 +257,7 @@ export default function draftStash(pi: ExtensionAPI): void {
     return true;
   };
 
-  pi.on("session_start", async (_event, ctx) => {
+  pi.on("session_start", (_event, ctx) => {
     stack = getGlobalDraftStack();
     updateStatus(ctx, stack);
   });

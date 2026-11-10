@@ -95,7 +95,9 @@ async function sessionFixture(t: test.TestContext): Promise<InstanceType<typeof 
 test("JSONL framing preserves split UTF-8, Unicode separators, CRLF, and batched records", (t) => {
   const rpc = transport(t);
   const received: object[] = [];
-  rpc.subscribe((record) => received.push(record));
+  rpc.subscribe((record) => {
+    received.push(record);
+  });
   const record = {
     type: "message_update",
     assistantMessageEvent: { type: "text_delta", delta: "before\u2028middle\u2029☕after" },
@@ -126,31 +128,35 @@ test("responses correlate by ID even when commands finish out of order", async (
 
 test("a matching response ID with the wrong command rejects the request", async (t) => {
   const rpc = transport(t);
-  const rejected = assert.rejects(rpc.request("prompt"), /response command mismatch/);
+  const rejected = assert.rejects(rpc.request("prompt"), /response command mismatch/u);
   const command = child.commands[0];
   assert.ok(command);
   child.respond(command, { command: "abort" });
   await rejected;
 });
 
-for (const [name, output] of [
-  ["malformed JSON", (): string => "{bad json}\n"],
-  ["invalid record", (): string => '{"type":42}\n'],
-  ["oversized complete record", (): string => `${"x".repeat(16 * 1024 * 1024 + 1)}\n`],
-  ["oversized unfinished record", (): string => "x".repeat(16 * 1024 * 1024 + 1)],
-] as const) {
+(
+  [
+    ["malformed JSON", (): string => "{bad json}\n"],
+    ["invalid record", (): string => '{"type":42}\n'],
+    ["oversized complete record", (): string => `${"x".repeat(16 * 1024 * 1024 + 1)}\n`],
+    ["oversized unfinished record", (): string => "x".repeat(16 * 1024 * 1024 + 1)],
+  ] as const
+).forEach(([name, output]) => {
   test(`${name} fails the connection and rejects all pending requests`, async (t) => {
     const rpc = transport(t);
     const failures: string[] = [];
-    rpc.onExit((error) => failures.push(error.message));
-    const first = assert.rejects(rpc.request("prompt"), /invalid or oversized RPC output/);
-    const second = assert.rejects(rpc.request("get_state"), /invalid or oversized RPC output/);
+    rpc.onExit((error) => {
+      failures.push(error.message);
+    });
+    const first = assert.rejects(rpc.request("prompt"), /invalid or oversized RPC output/u);
+    const second = assert.rejects(rpc.request("get_state"), /invalid or oversized RPC output/u);
     child.stdout.write(output());
     await Promise.all([first, second]);
     assert.equal(failures.length, 1);
-    await assert.rejects(rpc.request("prompt"), /invalid or oversized RPC output/);
+    await assert.rejects(rpc.request("prompt"), /invalid or oversized RPC output/u);
   });
-}
+});
 
 test("Stop remains stopping until Pi acknowledges cancellation", async (t) => {
   const session = await sessionFixture(t);
@@ -173,7 +179,7 @@ test("Stop remains stopping until Pi acknowledges cancellation", async (t) => {
 test("rejected cancellation is unknown, not a successful Stop", async (t) => {
   const session = await sessionFixture(t);
   await session.prompt("hold");
-  const stopped = assert.rejects(session.stop(), /Cannot abort/);
+  const stopped = assert.rejects(session.stop(), /Cannot abort/u);
   const command = child.commands.at(-1);
   assert.ok(command);
   child.respond(command, { success: false, error: "Cannot abort" });
@@ -188,7 +194,7 @@ test("agent_end does not complete execution before agent_settled", async (t) => 
   await session.prompt("work with automatic continuation");
   child.send({ type: "agent_end", messages: [] });
   assert.equal(session.snapshot().execution, "running");
-  await assert.rejects(session.prompt("too early"), /connected and idle/);
+  await assert.rejects(session.prompt("too early"), /connected and idle/u);
   child.send({ type: "agent_settled", aborted: false });
   assert.equal(session.snapshot().execution, "idle");
 });
@@ -202,19 +208,19 @@ test("lost prompt confirmation times out without resending accepted input", asyn
     child.send({ type: "message_end", message: { role: "user", content: command.message } });
     // Pi accepted the input, but its command response never arrives.
   };
-  const rejected = assert.rejects(session.prompt("accepted once"), /Do not automatically retry/);
+  const rejected = assert.rejects(session.prompt("accepted once"), /Do not automatically retry/u);
   t.mock.timers.tick(29_999);
   await setImmediate();
   assert.equal(session.snapshot().error, null);
   t.mock.timers.tick(1);
   await rejected;
   assert.equal(session.snapshot().execution, "running");
-  assert.match(session.snapshot().error ?? "", /did not confirm prompt within 30 seconds/);
+  assert.match(session.snapshot().error ?? "", /did not confirm prompt within 30 seconds/u);
   assert.deepEqual(
     session.snapshot().messages.map((message) => message.text),
     ["accepted once"],
   );
   t.mock.timers.tick(60_000);
-  await assert.rejects(session.prompt("accepted once"), /connected and idle/);
+  await assert.rejects(session.prompt("accepted once"), /connected and idle/u);
   assert.equal(child.commands.filter((command) => command.type === "prompt").length, 1);
 });

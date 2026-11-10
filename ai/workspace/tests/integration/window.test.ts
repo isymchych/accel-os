@@ -11,6 +11,7 @@ test("closing the native window detaches observation before Pi exits", async (t)
   t.after(async () => {
     await rm(directory, { recursive: true, force: true });
   });
+  // oxlint-disable-next-line typescript/strict-void-return -- execFile has a native custom promisify implementation.
   const result = await promisify(execFile)(
     process.execPath,
     [
@@ -26,6 +27,6 @@ test("closing the native window detaches observation before Pi exits", async (t)
       },
     },
   );
-  assert.doesNotMatch(result.stderr, /Object has been destroyed|Could not close Pi cleanly/);
+  assert.doesNotMatch(result.stderr, /Object has been destroyed|Could not close Pi cleanly/u);
   assert.equal(await readFile(path.join(directory, "closed"), "utf8"), "clean");
 });

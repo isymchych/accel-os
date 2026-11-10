@@ -70,10 +70,12 @@ export class PiRpc {
         resolve();
       });
     });
-    child.once("error", () =>
-      this.fail(new Error("Could not start Pi. Check the Node runtime and launch configuration.")),
-    );
-    child.stdin.on("error", () => this.fail(new Error("Pi's command connection closed.")));
+    child.once("error", () => {
+      this.fail(new Error("Could not start Pi. Check the Node runtime and launch configuration."));
+    });
+    child.stdin.on("error", () => {
+      this.fail(new Error("Pi's command connection closed."));
+    });
     // Do not forward potentially sensitive diagnostics to the renderer.
     child.stderr.on("data", (chunk: Buffer) => {
       process.stderr.write(chunk);
@@ -86,7 +88,7 @@ export class PiRpc {
         let newline = buffer.indexOf("\n");
         while (newline >= 0) {
           if (newline > 16 * 1024 * 1024) throw new Error("Pi RPC record exceeds 16 Mi characters");
-          const line = buffer.slice(0, newline).replace(/\r$/, "");
+          const line = buffer.slice(0, newline).replace(/\r$/u, "");
           buffer = buffer.slice(newline + 1);
           if (line.length > 0) this.receive(parseRecord(line));
           newline = buffer.indexOf("\n");
@@ -147,9 +149,11 @@ export class PiRpc {
       clearTimeout(pending.timer);
       if (record.command !== pending.command)
         pending.reject(new Error("Pi response command mismatch"));
-      else if (!record.success)
+      else if (record.success) {
+        pending.resolve(record);
+      } else {
         pending.reject(new Error(record.error ?? "Pi rejected the command"));
-      else pending.resolve(record);
+      }
       return;
     }
     for (const listener of this.listeners) listener(record);
@@ -199,7 +203,9 @@ export class PiRpc {
       return await Promise.race([
         this.exit.then(() => true),
         new Promise<boolean>((resolve) => {
-          timer = setTimeout(() => resolve(false), milliseconds);
+          timer = setTimeout(() => {
+            resolve(false);
+          }, milliseconds);
         }),
       ]);
     } finally {

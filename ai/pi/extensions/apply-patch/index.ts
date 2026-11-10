@@ -123,7 +123,7 @@ function createCollapsedHeaderComponent(
 
       const blankLine = currentTheme.bg(currentBackground, " ".repeat(width));
       if (width <= 2) {
-        return new Array(currentContentLines.length + 2).fill(blankLine);
+        return new Array<string>(currentContentLines.length + 2).fill(blankLine);
       }
 
       const lines = [blankLine];
@@ -188,7 +188,7 @@ function emptyText(lastComponent: unknown): Text {
 }
 
 function countPatchOperations(input: string): number {
-  return input.match(/^\*\*\* (?:Add|Delete|Update) File:/gm)?.length ?? 0;
+  return input.match(/^\*\*\* (?:Add|Delete|Update) File:/gmu)?.length ?? 0;
 }
 
 function formatPatchCall(input: string): string {
@@ -213,7 +213,7 @@ function buildCollapsedSummaryFiles(
 ): CollapsedSummaryFile[] {
   return (preview?.files ?? []).map((file) => ({
     filePath: file.filePath,
-    ...(file.moveTo !== undefined ? { moveTo: file.moveTo } : {}),
+    ...(file.moveTo === undefined ? {} : { moveTo: file.moveTo }),
     operation: file.operation,
     added: file.added,
     removed: file.removed,
@@ -225,7 +225,7 @@ function renderCollapsedFileSummary(file: CollapsedSummaryFile, theme: Theme): s
     "accent",
     formatDisplayPath({
       filePath: file.filePath,
-      ...(file.moveTo !== undefined ? { moveTo: file.moveTo } : {}),
+      ...(file.moveTo === undefined ? {} : { moveTo: file.moveTo }),
     }),
   );
 

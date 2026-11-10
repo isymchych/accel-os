@@ -51,7 +51,7 @@ test("accel-node fails clearly instead of falling back to a system runtime", asy
     timeout: 5000,
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /pnpm install --frozen-lockfile/);
+  assert.match(result.stderr, /pnpm install --frozen-lockfile/u);
 });
 
 test("bootstrap inspection does not install dependencies or apply dotfiles", async (context) => {
@@ -81,7 +81,7 @@ require("node:fs").appendFileSync(${JSON.stringify(log)}, JSON.stringify([${JSON
     (await readFile(log, "utf8"))
       .trim()
       .split("\n")
-      .map((line) => JSON.parse(line)),
+      .map((line): unknown => JSON.parse(line)),
     [
       ["chezmoi", `--source=${root}/dotfiles`, `--destination=${home}`, "diff"],
       [

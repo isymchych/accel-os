@@ -104,9 +104,9 @@ test("unsupported dialogs are explicitly cancelled and do not hang command accep
 
 test("command rejection and unexpected child exit remain visible", async (t) => {
   const { session } = await fixture(t);
-  await assert.rejects(session.prompt("reject"), /Rejected test prompt/);
+  await assert.rejects(session.prompt("reject"), /Rejected test prompt/u);
   assert.equal(session.snapshot().execution, "idle");
   const disconnected = observe(session, (snapshot) => snapshot.connection === "disconnected");
-  await assert.rejects(session.prompt("crash"), /Pi exited/);
+  await assert.rejects(session.prompt("crash"), /Pi exited/u);
   assert.equal((await disconnected).execution, "unknown");
 });

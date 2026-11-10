@@ -110,7 +110,7 @@ async function getGitBranch(pi: ExtensionAPI, cwd: string): Promise<string | und
 async function getBaseTitle(pi: ExtensionAPI, cwd: string): Promise<string> {
   const displayPath = formatDisplayPath(cwd);
   const branch = await getGitBranch(pi, cwd);
-  const location = branch !== undefined ? `${displayPath} (${branch})` : displayPath;
+  const location = branch === undefined ? displayPath : `${displayPath} (${branch})`;
   return `${TITLE_PREFIX}  ${location}`;
 }
 

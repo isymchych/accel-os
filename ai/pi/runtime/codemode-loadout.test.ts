@@ -38,15 +38,15 @@ const loadoutCases = [
       "srcwalk_compare",
       "srcwalk_review",
     ],
-    descriptionPattern: /callers.*callees.*dependencies.*review/i,
-    reviewHintPattern: /srcwalk_review for structural change review/,
+    descriptionPattern: /callers.*callees.*dependencies.*review/iu,
+    reviewHintPattern: /srcwalk_review for structural change review/u,
   },
   {
     backend: "tilth",
     inlineNames: ["write_file", "tilth_read", "tilth_search", "tilth_list"],
     deferredNames: ["tilth_deps", "tilth_grok", "tilth_diff"],
-    descriptionPattern: /dependencies.*symbol maps.*review/i,
-    reviewHintPattern: /tilth_diff for structural change review/,
+    descriptionPattern: /dependencies.*symbol maps.*review/iu,
+    reviewHintPattern: /tilth_diff for structural change review/u,
   },
 ] as const satisfies ReadonlyArray<{
   backend: CodeNavigationBackend;
@@ -173,7 +173,7 @@ for (const loadoutCase of loadoutCases) {
     for (const name of loadoutCase.deferredNames) {
       assert.ok(!description.includes(`### \`${name}\``), `${name} must not be described upfront`);
     }
-    assert.match(description, new RegExp(`## ${loadoutCase.backend}`, "i"));
+    assert.match(description, new RegExp(`## ${loadoutCase.backend}`, "iu"));
     assert.match(description, loadoutCase.descriptionPattern);
     assert.equal(definitions.get("ask_user_question")?.exposure, "model-only");
     assert.ok(!loadout.callable.some((tool) => tool.name === "ask_user_question"));
@@ -238,10 +238,10 @@ for (const backend of ["srcwalk", "tilth"] as const) {
     assert.ok(prompt);
     assert.ok(prompt.startsWith("base prompt\n\n"));
     assert.ok(prompt.includes(`describeNamespace("${backend}")`));
-    assert.match(prompt, /absent from current context/);
-    assert.match(prompt, /read the returned instructions before/);
-    assert.match(prompt, /Preserve evidence qualifiers/);
-    assert.match(prompt, /structural results are not proof of runtime behavior/);
+    assert.match(prompt, /absent from current context/u);
+    assert.match(prompt, /read the returned instructions before/u);
+    assert.match(prompt, /Preserve evidence qualifiers/u);
+    assert.match(prompt, /structural results are not proof of runtime behavior/u);
     assert.ok(!prompt.includes(detailedRule));
     assert.ok(!prompt.includes(instructions));
     assert.equal(workflowPrompt(fixture, ["codemode", `${backend}_read`]), prompt);

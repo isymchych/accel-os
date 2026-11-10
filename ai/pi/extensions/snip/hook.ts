@@ -72,6 +72,7 @@ const executeSnipHook: SnipHookExecutor = async (
       },
       (error, stdout) => {
         if (error !== null) {
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- execFile reports ExecFileException, which extends Error.
           reject(error);
           return;
         }

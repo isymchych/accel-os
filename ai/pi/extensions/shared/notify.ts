@@ -30,7 +30,7 @@ export function sanitizeNotificationText(text: string): string {
     .replaceAll(";", " ")
     .replaceAll("\u0007", " ")
     .replaceAll("\u001b", " ")
-    .replace(/\s+/g, " ")
+    .replace(/\s+/gu, " ")
     .trim();
 }
 

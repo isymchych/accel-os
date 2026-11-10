@@ -133,25 +133,25 @@ test("renderContextReport produces the expected sections", () => {
 
   const text = renderContextReport(report);
 
-  assert.match(text, /^Context$/m);
-  assert.match(text, /^Current context breakdown$/m);
-  assert.match(text, /^Context files \(0\)$/m);
-  assert.match(text, /^Active tools \(0\)$/m);
-  assert.match(text, /^Cache summary$/m);
-  assert.match(text, /^Per-turn cache stats$/m);
-  assert.match(text, /^Notes$/m);
+  assert.match(text, /^Context$/mu);
+  assert.match(text, /^Current context breakdown$/mu);
+  assert.match(text, /^Context files \(0\)$/mu);
+  assert.match(text, /^Active tools \(0\)$/mu);
+  assert.match(text, /^Cache summary$/mu);
+  assert.match(text, /^Per-turn cache stats$/mu);
+  assert.match(text, /^Notes$/mu);
   assert.match(
     text,
-    /Active branch: 1 turns · sent 1 · received 120 · cache hit 4,000 · hit rate 100.0%/,
+    /Active branch: 1 turns · sent 1 · received 120 · cache hit 4,000 · hit rate 100.0%/u,
   );
   assert.match(
     text,
-    /Whole tree: 2 turns · sent 101 · received 200 · cache hit 4,000 · hit rate 97.5%/,
+    /Whole tree: 2 turns · sent 101 · received 200 · cache hit 4,000 · hit rate 97.5%/u,
   );
-  assert.match(text, /Latest 0.0% · Min 0.0% · Max 100.0%/);
-  assert.match(text, /Snapshot: current resources · 6 messages · 3 entries/);
-  assert.match(text, /usage and bucket values estimated/);
-  assert.match(text, /anthropic\/claude-sonnet-4.6/);
+  assert.match(text, /Latest 0.0% · Min 0.0% · Max 100.0%/u);
+  assert.match(text, /Snapshot: current resources · 6 messages · 3 entries/u);
+  assert.match(text, /usage and bucket values estimated/u);
+  assert.match(text, /anthropic\/claude-sonnet-4.6/u);
 });
 
 test("renderContextReport shows only the last 6 per-turn cache rows", () => {
@@ -184,8 +184,8 @@ test("renderContextReport shows only the last 6 per-turn cache rows", () => {
 
   const text = renderContextReport(report);
 
-  assert.doesNotMatch(text, /^\s*1\s+\*/m);
-  assert.doesNotMatch(text, /^\s*2\s+\*/m);
-  assert.match(text, /^\s*3\s+\*/m);
-  assert.match(text, /^\s*8\s+\*/m);
+  assert.doesNotMatch(text, /^\s*1\s+\*/mu);
+  assert.doesNotMatch(text, /^\s*2\s+\*/mu);
+  assert.match(text, /^\s*3\s+\*/mu);
+  assert.match(text, /^\s*8\s+\*/mu);
 });

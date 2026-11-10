@@ -119,7 +119,7 @@ export async function selectAccountProfile(configDir: string): Promise<AccountPr
 
   const { profiles, activeProfileName } = await reconcileAccountProfiles(configDir);
   const accounts = await Promise.all(
-    profiles.map(async (profile) => await loadAccount(profile, profile.name === activeProfileName)),
+    profiles.map(async (profile) => loadAccount(profile, profile.name === activeProfileName)),
   );
 
   writeStdout("Loading usage...");

@@ -128,7 +128,7 @@ export async function fetchUsageSnapshotForCredential(
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
-    const suffix = details ? ` ${details.replace(/\s+/g, " ").trim()}` : "";
+    const suffix = details ? ` ${details.replace(/\s+/gu, " ").trim()}` : "";
     throw new Error(
       `OpenAI usage request failed (${response.status} ${response.statusText}).${suffix}`,
     );

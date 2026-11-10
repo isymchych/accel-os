@@ -29,7 +29,7 @@ const COMMON_ENDPOINTS = [
   "/blog/index.xml",
 ];
 
-const FEED_HINT_RE = /(rss|atom|feed|\.xml($|[?#]))/i;
+const FEED_HINT_RE = /(rss|atom|feed|\.xml($|[?#]))/iu;
 
 function usage(): never {
   console.error("Usage: find_feed.ts <website-or-page-url>");
@@ -37,7 +37,7 @@ function usage(): never {
 }
 
 function normalizeInput(raw: string): URL {
-  const maybeWithScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const maybeWithScheme = /^[a-z][a-z0-9+.-]*:\/\//iu.test(raw) ? raw : `https://${raw}`;
   return new URL(maybeWithScheme);
 }
 
@@ -69,7 +69,7 @@ function pageCandidates(input: URL): string[] {
 
 function parseAttributes(tag: string): Map<string, string> {
   const attrs = new Map<string, string>();
-  const attrRe = /([a-zA-Z_:][a-zA-Z0-9_:.:-]*)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/g;
+  const attrRe = /([a-zA-Z_:][a-zA-Z0-9_:.:-]*)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gu;
 
   for (const match of tag.matchAll(attrRe)) {
     const key = (match[1] ?? "").toLowerCase();
@@ -101,7 +101,7 @@ function hasTargetHost(url: string, targetHost: string): boolean {
 function isAlternateFeedLink(attrs: Map<string, string>): boolean {
   const rel = (attrs.get("rel") ?? "").toLowerCase();
   const type = (attrs.get("type") ?? "").toLowerCase();
-  if (!rel.split(/\s+/).includes("alternate")) return false;
+  if (!rel.split(/\s+/u).includes("alternate")) return false;
   return (
     type.includes("application/rss+xml") ||
     type.includes("application/atom+xml") ||
@@ -113,7 +113,7 @@ function isAlternateFeedLink(attrs: Map<string, string>): boolean {
 function collectCandidatesFromHtml(html: string, pageUrl: string, targetHost: string): Candidate[] {
   const candidates: Candidate[] = [];
 
-  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+  for (const match of html.matchAll(/<link\b[^>]*>/giu)) {
     const tag = match[0];
     const attrs = parseAttributes(tag);
     const href = resolveHref(pageUrl, attrs.get("href") ?? "");
@@ -130,7 +130,7 @@ function collectCandidatesFromHtml(html: string, pageUrl: string, targetHost: st
     }
   }
 
-  for (const match of html.matchAll(/<a\b[^>]*>/gi)) {
+  for (const match of html.matchAll(/<a\b[^>]*>/giu)) {
     const tag = match[0];
     const attrs = parseAttributes(tag);
     const href = resolveHref(pageUrl, attrs.get("href") ?? "");
@@ -149,7 +149,7 @@ function detectFeed(raw: string): { format: "rss" | "atom"; marker: string } | n
   if (data.includes('xmlns="http://www.w3.org/2005/atom"')) {
     return { format: "atom", marker: "atom-namespace" };
   }
-  if (/<(?:[a-z0-9_]+:)?feed(?:\s|>)/i.test(data)) {
+  if (/<(?:[a-z0-9_]+:)?feed(?:\s|>)/iu.test(data)) {
     return { format: "atom", marker: "<feed-tag" };
   }
   if (data.includes("rdf:rdf") && data.includes("rss")) {
@@ -160,7 +160,7 @@ function detectFeed(raw: string): { format: "rss" | "atom"; marker: string } | n
 
 function parseSelfLink(raw: string, baseUrl: string): string | null {
   const firstChunk = raw.slice(0, 120_000);
-  const xmlSelfRe = /<link\b[^>]*rel=(["'])self\1[^>]*>/i;
+  const xmlSelfRe = /<link\b[^>]*rel=(["'])self\1[^>]*>/iu;
   const match = firstChunk.match(xmlSelfRe);
   if (!match) return null;
   const attrs = parseAttributes(match[0]);

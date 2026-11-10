@@ -20,6 +20,7 @@ function vanished(error: unknown): boolean {
 }
 
 export async function collectActivity(
+  // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- An empty runtime directory is unset, not a relative path.
   runtimeRoot = process.env["XDG_RUNTIME_DIR"] ||
     path.join(tmpdir(), `accel-os-${process.getuid?.() ?? "unknown"}`),
   procRoot = "/proc",
@@ -131,12 +132,18 @@ export class ActivityMonitor {
       this.inhibitorIssue = `Pi idle inhibition failed: ${message}`;
       this.report();
     };
-    this.startup = setTimeout(() => fail("not ready within 5 seconds"), 5000);
+    this.startup = setTimeout(() => {
+      fail("not ready within 5 seconds");
+    }, 5000);
     child.stderr.on("data", (chunk: Buffer) => {
       diagnostic = (diagnostic + chunk.toString()).slice(-4096);
     });
-    child.on("error", (error) => fail(error.message));
-    child.stdin.on("error", (error) => fail(error.message));
+    child.on("error", (error) => {
+      fail(error.message);
+    });
+    child.stdin.on("error", (error) => {
+      fail(error.message);
+    });
     child.on("close", (code, signal) => {
       fail(diagnostic.trim() || `systemd-inhibit exited (${signal ?? code})`);
     });

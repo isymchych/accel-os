@@ -16,7 +16,7 @@ const MAX_BUDGET = 15_000;
 const DEFAULT_SEARCH_EXPAND = 2;
 const MAX_SEARCH_EXPAND = 5;
 const MAX_DIFF_EXPAND = 5;
-const REGEX_METACHAR_PATTERN = /[()[\]{}*+?|\\^$]/;
+const REGEX_METACHAR_PATTERN = /[()[\]{}*+?|\\^$]/u;
 
 export const tilthToolNames = [
   "tilth_read",
@@ -420,7 +420,7 @@ export function prepareTilthDiffInput(params: TilthDiffInput): PreparedTilthInpu
 }
 
 function escapeRegexLiteral(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 function hasRegexMetacharacters(text: string): boolean {

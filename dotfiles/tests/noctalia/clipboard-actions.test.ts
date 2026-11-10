@@ -95,7 +95,9 @@ async function createFixture(
   types = "text/plain",
 ): Promise<ClipboardFixture> {
   const root = await mkdtemp(path.join(tmpdir(), "noctalia-clipboard-actions-test-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   const clipboard = path.join(root, "clipboard");
   const callsFile = path.join(root, "calls");
   const copied = path.join(root, "copied");
@@ -365,7 +367,7 @@ test("action IDs unavailable for the frozen item cannot dispatch commands", asyn
   const fixture = await createFixture(t, "ordinary text");
   const result = fixture.run({ CHOICE: "annotate" });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Select one of the offered/);
+  assert.match(result.stderr, /Select one of the offered/u);
   assert.deepEqual(
     (await fixture.calls()).map((call) => call.command),
     ["wl-paste", "wl-paste", "noctalia", "notify-send"],
@@ -381,7 +383,7 @@ test("empty, unsupported, and failed clipboard reads report errors without openi
     const fixture = await createFixture(t, content, types);
     const result = fixture.run(env);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Clipboard is empty|wl-paste failed/);
+    assert.match(result.stderr, /Clipboard is empty|wl-paste failed/u);
     assert.ok(!(await fixture.calls()).some((call) => call.command === "noctalia"));
   }
 });
@@ -394,7 +396,7 @@ test("failed annotation reports the error and still removes its temporary file",
     FAIL_ARG: "annotate",
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /simulated failure/);
+  assert.match(result.stderr, /simulated failure/u);
   await fixture.assertClean();
 });
 
@@ -411,7 +413,7 @@ test("failed panel opening and failed dialogs report errors and clean up snapsho
       FAIL_CODE: code,
     });
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /simulated failure/);
+    assert.match(result.stderr, /simulated failure/u);
     assert.equal((await fixture.calls()).at(-1)?.command, "notify-send");
     await fixture.assertClean();
   }
@@ -469,7 +471,7 @@ test("snapshot cleanup rejects arbitrary directories and symlinks", async (t) =>
   for (const directory of [fixture.root, link]) {
     const result = fixture.run({}, ["discard", directory]);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Invalid clipboard snapshot|owner-only directory/);
+    assert.match(result.stderr, /Invalid clipboard snapshot|owner-only directory/u);
     assert.equal(await readFile(kept, "utf8"), "do not remove");
   }
 });
@@ -490,7 +492,7 @@ test("execution revalidates the selected action instead of trusting preview meta
   );
   const result = fixture.run({}, ["run", directory, "download"]);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Select one of the offered/);
+  assert.match(result.stderr, /Select one of the offered/u);
   assert.ok(!(await fixture.calls()).some((call) => call.command === "xterm"));
   await fixture.assertClean();
 });

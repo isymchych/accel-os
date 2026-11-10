@@ -3,11 +3,12 @@
   "categories": {
     "correctness": "error",
     "nursery": "error",
+    "pedantic": "error",
     "perf": "error",
     "restriction": "error",
     "suspicious": "error"
   },
-  "plugins": ["typescript"],
+  "plugins": ["typescript", "react", "jsx-a11y"],
   "ignorePatterns": ["ai/workspace/dist/**"],
   "env": {
     "node": true
@@ -20,12 +21,28 @@
   },
   "rules": {
     "class-methods-use-this": "off",
+    "max-classes-per-file": "off",
+    "max-lines": "off",
+    "max-lines-per-function": "off",
     "no-await-in-loop": "off",
     "no-console": "off",
     "no-empty-function": "off",
+    "no-inline-comments": "off",
     "no-use-before-define": "off",
     "no-undefined": "off",
     "no-void": "off",
+    "react/forbid-component-props": "off",
+    "react/jsx-filename-extension": [
+      "error",
+      {
+        "extensions": [".tsx"]
+      }
+    ],
+    "react/jsx-no-literals": "off",
+    "react/no-multi-comp": "off",
+    "react/only-export-components": "off",
+    "react/react-in-jsx-scope": "off",
+    "require-await": "off",
     "typescript/await-thenable": "error",
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
@@ -40,6 +57,7 @@
     "typescript/no-unsafe-assignment": "error",
     "typescript/no-unsafe-call": "error",
     "typescript/no-unsafe-member-access": "error",
+    "typescript/prefer-readonly-parameter-types": "off",
     "typescript/strict-boolean-expressions": [
       "error",
       {
@@ -49,6 +67,14 @@
     ]
   },
   "overrides": [
+    {
+      "files": ["**/*"],
+      "excludeFiles": ["ai/workspace/src/renderer/**/*.ts", "ai/workspace/src/renderer/**/*.tsx"],
+      "plugins": ["typescript"],
+      "rules": {
+        "react/rules-of-hooks": "off"
+      }
+    },
     {
       "files": ["ai/workspace/src/renderer/**/*.ts", "ai/workspace/src/renderer/**/*.tsx"],
       "env": {
@@ -127,6 +153,12 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "ai/workspace/tests/**/*.ts"],
+      "rules": {
+        "typescript/require-await": "off"
       }
     },
     {

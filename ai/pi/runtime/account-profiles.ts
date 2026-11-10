@@ -128,7 +128,7 @@ export async function listAccountProfiles(configDir: string): Promise<AccountPro
 }
 
 export async function createNewAccountProfile(configDir: string): Promise<AccountProfile> {
-  return await ensureAccountProfile(configDir, NEW_PROFILE_NAME);
+  return ensureAccountProfile(configDir, NEW_PROFILE_NAME);
 }
 
 export async function findNewAccountProfile(
@@ -166,7 +166,7 @@ export async function finalizeNewAccountProfile(
     }
     await rename(pending.directory, target);
   }
-  return await ensureAccountProfile(configDir, name);
+  return ensureAccountProfile(configDir, name);
 }
 
 export async function readActiveProfileName(configDir: string): Promise<string | undefined> {

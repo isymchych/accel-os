@@ -68,6 +68,6 @@ test("xterm compatibility forms preserve arguments and retain strict explicit co
     const result = invoke(args);
     assert.equal(result.status, 2, JSON.stringify(args));
     assert.equal(result.stdout, "");
-    assert.match(result.stderr, /Usage:/);
+    assert.match(result.stderr, /Usage:/u);
   }
 });

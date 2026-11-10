@@ -83,7 +83,7 @@ export function removeDraft(stack: DraftStack, id: number): DraftMutationResult 
 
 export function previewDraft(text: string): string {
   const preview = text
-    .split(/\r\n|\r|\n/)
+    .split(/\r\n|\r|\n/u)
     .map((line) => line.trim())
     .find((line) => line.length > 0);
 
@@ -91,5 +91,5 @@ export function previewDraft(text: string): string {
 }
 
 export function countLines(text: string): number {
-  return Math.max(1, text.split(/\r\n|\r|\n/).length);
+  return Math.max(1, text.split(/\r\n|\r|\n/u).length);
 }

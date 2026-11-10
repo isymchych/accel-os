@@ -165,7 +165,7 @@ export async function executeWriteFileTool(
         added: diff.added,
         removed: diff.removed,
       };
-      const status: WriteFileStatus = !exists ? "created" : wrote ? "replaced" : "unchanged";
+      const status: WriteFileStatus = exists ? (wrote ? "replaced" : "unchanged") : "created";
       const summary = buildSuccessSummary(status, relativizeDisplayPath(absolutePath, cwd));
       const details: WriteFileToolDetails = {
         path: absolutePath,

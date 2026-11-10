@@ -183,10 +183,10 @@ function normalizeLinesToLf(lines: readonly string[]): string {
 function normalizeSeekLine(line: string): string {
   return line
     .trim()
-    .replace(/[‐‑‒–—―−]/g, "-")
-    .replace(/[‘’‚‛]/g, "'")
-    .replace(/[“”„‟]/g, '"')
-    .replace(/[\u00A0\u2002-\u200A\u202F\u205F\u3000]/g, " ");
+    .replace(/[‐‑‒–—―−]/gu, "-")
+    .replace(/[‘’‚‛]/gu, "'")
+    .replace(/[“”„‟]/gu, '"')
+    .replace(/[\u00A0\u2002-\u200A\u202F\u205F\u3000]/gu, " ");
 }
 
 function seekSequence(

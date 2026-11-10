@@ -207,17 +207,17 @@ test("executeTilthDiff runs in an explicit repository and keeps scope relative",
 });
 
 test("buildDiffArgs rejects an incomplete file pair", () => {
-  assert.throws(() => buildDiffArgs({ a: "before.ts" }, "/repo"), /requires a and b together/);
+  assert.throws(() => buildDiffArgs({ a: "before.ts" }, "/repo"), /requires a and b together/u);
 });
 
 test("buildDiffArgs rejects conflicting diff modes", () => {
   assert.throws(
     () => buildDiffArgs({ patch: "change.patch", log: "HEAD~2..HEAD" }, "/repo"),
-    /mutually exclusive: patch, log/,
+    /mutually exclusive: patch, log/u,
   );
   assert.throws(
     () => buildDiffArgs({ source: "HEAD~1", a: "before.ts", b: "after.ts" }, "/repo"),
-    /mutually exclusive: source, file pair/,
+    /mutually exclusive: source, file pair/u,
   );
 });
 
@@ -252,7 +252,7 @@ test("executeTilthCommand throws when Tilth exits unsuccessfully", async () => {
       "/repo",
       undefined,
     ),
-    /tilth command failed with exit code 2[\s\S]*invalid query/,
+    /tilth command failed with exit code 2[\s\S]*invalid query/u,
   );
 });
 
@@ -274,7 +274,7 @@ test("executeTilthDiff rejects an invalid git ref before invoking Tilth", async 
       "/repo",
       undefined,
     ),
-    /source 'definitely-not-a-ref' is invalid[\s\S]*fatal: bad revision/,
+    /source 'definitely-not-a-ref' is invalid[\s\S]*fatal: bad revision/u,
   );
   assert.deepEqual(commands, ["git"]);
 });

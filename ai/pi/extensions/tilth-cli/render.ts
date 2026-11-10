@@ -37,7 +37,7 @@ interface RenderContextLike {
 }
 
 function countLines(text: string): number {
-  const normalized = text.replace(/\r/g, "").replace(/\n+$/g, "");
+  const normalized = text.replace(/\r/gu, "").replace(/\n+$/gu, "");
   if (normalized.length === 0) {
     return 0;
   }

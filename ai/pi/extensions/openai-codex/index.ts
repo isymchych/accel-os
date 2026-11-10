@@ -107,7 +107,7 @@ async function fetchUsageSnapshot(
     throw new Error("Not logged into OpenAI Codex. Run /login and choose OpenAI Codex.");
   }
 
-  return await fetchUsageSnapshotForCredential(credential);
+  return fetchUsageSnapshotForCredential(credential);
 }
 
 class StatusOverlay {
@@ -162,11 +162,11 @@ export default function openAICodexExtension(pi: ExtensionAPI): void {
     sessionOverride = restoreSessionOverride(ctx);
   };
 
-  pi.on("session_start", async (_event, ctx) => {
+  pi.on("session_start", (_event, ctx) => {
     syncFromBranch(ctx);
   });
 
-  pi.on("session_tree", async (_event, ctx) => {
+  pi.on("session_tree", (_event, ctx) => {
     syncFromBranch(ctx);
   });
 
@@ -216,6 +216,7 @@ export default function openAICodexExtension(pi: ExtensionAPI): void {
       );
       return matches.length > 0 ? matches.map((value) => ({ value, label: value })) : null;
     },
+    // oxlint-disable-next-line typescript/require-await -- Pi command handlers must return Promise<void>, even for synchronous commands.
     handler: async (args, ctx) => {
       const selection = args.trim().toLowerCase();
 

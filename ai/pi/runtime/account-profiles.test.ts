@@ -104,6 +104,6 @@ test("rejects a profile resource that is not the expected symlink", async () => 
 
   await assert.rejects(
     ensureAccountProfile(configDir, ".pi-account-account-1"),
-    /profile resource is not a symlink/,
+    /profile resource is not a symlink/u,
   );
 });

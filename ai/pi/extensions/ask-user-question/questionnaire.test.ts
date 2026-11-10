@@ -40,31 +40,31 @@ test("normalization supplies tab labels without changing authored identifiers or
 });
 
 test("validation rejects invalid counts, blank strings and duplicate identifiers", () => {
-  for (const count of [0, 5]) assert.throws(() => normalizeQuestions(params(count)), /1-4/);
+  for (const count of [0, 5]) assert.throws(() => normalizeQuestions(params(count)), /1-4/u);
   for (const options of [
     [],
     Array.from({ length: 7 }, (_, index) => ({ value: String(index), label: "Choice" })),
   ]) {
     const input = params();
     questionAt(input).options = options;
-    assert.throws(() => normalizeQuestions(input), /2-6/);
+    assert.throws(() => normalizeQuestions(input), /2-6/u);
   }
   for (const field of ["id", "prompt", "label"] as const) {
     const input = params();
     questionAt(input)[field] = " \n ";
-    assert.throws(() => normalizeQuestions(input), /blank/);
+    assert.throws(() => normalizeQuestions(input), /blank/u);
   }
   for (const field of ["value", "label"] as const) {
     const input = params();
     optionAt(input)[field] = " ";
-    assert.throws(() => normalizeQuestions(input), /blank/);
+    assert.throws(() => normalizeQuestions(input), /blank/u);
   }
   const duplicateQuestions = params(2);
   questionAt(duplicateQuestions, 1).id = "q0";
-  assert.throws(() => normalizeQuestions(duplicateQuestions), /IDs must be unique/);
+  assert.throws(() => normalizeQuestions(duplicateQuestions), /IDs must be unique/u);
   const duplicateOptions = params();
   optionAt(duplicateOptions, 1).value = "a";
-  assert.throws(() => normalizeQuestions(duplicateOptions), /values must be unique/);
+  assert.throws(() => normalizeQuestions(duplicateOptions), /values must be unique/u);
   // Reusing option values across questions is valid.
   assert.equal(normalizeQuestions(params(2)).length, 2);
 });
@@ -128,8 +128,8 @@ test("non-submission outcomes are distinct and carry no answer text", () => {
     formatResult({ status, answers: [] }),
   );
   assert.equal(new Set(texts).size, 3);
-  assert.match(texts[0] ?? "", /No answers were submitted/);
-  assert.match(texts[2] ?? "", /did not see/);
+  assert.match(texts[0] ?? "", /No answers were submitted/u);
+  assert.match(texts[2] ?? "", /did not see/u);
 });
 
 test("formatted choices retain stable values when display labels match", () => {

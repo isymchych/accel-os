@@ -60,7 +60,7 @@ test("apply_commit preserves exact input in verbatim mode", () => {
 
     const result = run(applyScript, cwd, ["--verbatim", "create"], message);
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^OK [0-9a-f]{40}\n$/);
+    assert.match(result.stdout, /^OK [0-9a-f]{40}\n$/u);
     assert.equal(commitBody(cwd), message);
   } finally {
     removeDir(cwd, { recursive: true, force: true });
@@ -134,7 +134,7 @@ test("apply_commit rejects stale or published amends unless explicitly allowed",
       "feat: stale\n\nExplain the stale outcome.\n",
     );
     assert.equal(stale.status, 67);
-    assert.match(stale.stderr, /^ERR_HEAD_CHANGED\n/);
+    assert.match(stale.stderr, /^ERR_HEAD_CHANGED\n/u);
 
     git(remote, "init", "--bare", "--quiet");
     git(cwd, "remote", "add", "origin", remote);
@@ -148,7 +148,7 @@ test("apply_commit rejects stale or published amends unless explicitly allowed",
       "feat: published\n\nExplain the published outcome.\n",
     );
     assert.equal(published.status, 68);
-    assert.match(published.stderr, /^ERR_PUBLISHED_COMMIT\n/);
+    assert.match(published.stderr, /^ERR_PUBLISHED_COMMIT\n/u);
 
     const allowed = run(
       applyScript,
@@ -194,9 +194,9 @@ test("apply_commit honors hooks unless --no-verify is requested", () => {
       "feat: blocked\n\nExercise the configured hook.\n",
     );
     assert.equal(blocked.status, 3);
-    assert.match(blocked.stderr, /^ERR_GIT_HOOK_PRE_COMMIT\n/);
-    assert.match(blocked.stderr, /stderr:[\s\S]*backend typecheck failed: error TS2322/);
-    assert.match(blocked.stderr, /hook output 12/);
+    assert.match(blocked.stderr, /^ERR_GIT_HOOK_PRE_COMMIT\n/u);
+    assert.match(blocked.stderr, /stderr:[\s\S]*backend typecheck failed: error TS2322/u);
+    assert.match(blocked.stderr, /hook output 12/u);
 
     const allowed = run(
       applyScript,
@@ -238,8 +238,8 @@ test("apply_commit rejects subject-only messages unless explicitly allowed", () 
 
     const rejected = run(applyScript, cwd, ["create"], "feat: subject only\n");
     assert.equal(rejected.status, 2);
-    assert.match(rejected.stderr, /^ERR_MESSAGE_INVALID\n/);
-    assert.match(rejected.stderr, /--allow-subject-only/);
+    assert.match(rejected.stderr, /^ERR_MESSAGE_INVALID\n/u);
+    assert.match(rejected.stderr, /--allow-subject-only/u);
     assert.equal(git(cwd, "status", "--short"), "A  subject.txt");
 
     const allowed = run(
@@ -264,7 +264,7 @@ test("apply_commit rejects an empty subject in verbatim mode", () => {
 
     const result = run(applyScript, cwd, ["create", "--verbatim"], "\n\nBody only.\n");
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /^ERR_MESSAGE_INVALID\nempty commit subject\n$/);
+    assert.match(result.stderr, /^ERR_MESSAGE_INVALID\nempty commit subject\n$/u);
     assert.equal(git(cwd, "status", "--short"), "A  invalid.txt");
   } finally {
     removeDir(cwd, { recursive: true, force: true });

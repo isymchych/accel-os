@@ -69,7 +69,7 @@ const { startDesktop } = await import("../../src/electron/main.ts");
 async function invoke(channel: string, sender: Sender, request?: unknown): Promise<unknown> {
   const handler = handlers.get(channel);
   assert.ok(handler, `Missing IPC handler: ${channel}`);
-  return handler(sender, request);
+  return await handler(sender, request);
 }
 
 test("IPC authorizes the exact main frame and validates prompts before calling Pi", async (t) => {
@@ -106,7 +106,7 @@ test("IPC authorizes the exact main frame and validates prompts before calling P
       for (const channel of ["pi:snapshot", "pi:prompt", "pi:stop"]) {
         await assert.rejects(
           invoke(channel, sender, { message: "must not execute" }),
-          /Untrusted desktop IPC sender/,
+          /Untrusted desktop IPC sender/u,
         );
       }
     });
@@ -119,7 +119,7 @@ test("IPC authorizes the exact main frame and validates prompts before calling P
       for (const channel of ["pi:snapshot", "pi:prompt", "pi:stop"]) {
         await assert.rejects(
           invoke(channel, trusted, { message: "must not execute" }),
-          /Untrusted desktop IPC sender/,
+          /Untrusted desktop IPC sender/u,
         );
       }
     } finally {
@@ -139,7 +139,7 @@ test("IPC authorizes the exact main frame and validates prompts before calling P
     ]) {
       await assert.rejects(
         invoke("pi:prompt", trusted, request),
-        /Enter a message of at most 100,000 characters/,
+        /Enter a message of at most 100,000 characters/u,
       );
     }
     assert.deepEqual(prompts, []);

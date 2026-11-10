@@ -50,10 +50,10 @@ test("renderStatusLines includes account and both usage windows", () => {
     1_000,
   );
 
-  assert.match(lines.join("\n"), /Status: allowed/);
-  assert.match(lines.join("\n"), /Account: symchychnya@gmail\.com \(Plus\)/);
-  assert.match(lines.join("\n"), /5h limit\s*:.*100% left/);
-  assert.match(lines.join("\n"), /weekly limit\s*:.*91% left/);
+  assert.match(lines.join("\n"), /Status: allowed/u);
+  assert.match(lines.join("\n"), /Account: symchychnya@gmail\.com \(Plus\)/u);
+  assert.match(lines.join("\n"), /5h limit\s*:.*100% left/u);
+  assert.match(lines.join("\n"), /weekly limit\s*:.*91% left/u);
 });
 
 test("renderStatusLines omits unavailable usage windows", () => {
@@ -67,8 +67,8 @@ test("renderStatusLines omits unavailable usage windows", () => {
   );
 
   const output = lines.join("\n");
-  assert.match(output, /weekly limit\s*:.*80% left/);
-  assert.doesNotMatch(output, /5h limit/);
+  assert.match(output, /weekly limit\s*:.*80% left/u);
+  assert.doesNotMatch(output, /5h limit/u);
 });
 
 test("renderUsageSummary produces compact account-list text", () => {

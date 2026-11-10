@@ -36,7 +36,7 @@ function toDisplayPath(value: string): string {
 }
 
 function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 function findLastDelimiter(text: string): number {

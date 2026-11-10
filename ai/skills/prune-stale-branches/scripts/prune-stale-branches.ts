@@ -336,7 +336,7 @@ async function aheadCount(mainBranch: string, branch: string): Promise<number | 
     { tolerateFailure: true },
   );
   if (!rev.success) return null;
-  const parts = rev.stdout.trim().split(/\s+/);
+  const parts = rev.stdout.trim().split(/\s+/u);
   const ahead = Number.parseInt(parts[1] ?? "", 10);
   if (Number.isNaN(ahead)) return null;
   return ahead;
@@ -429,12 +429,7 @@ async function collectBranchDecision(
     return { kind: "candidate", candidate: { branch, lastPush: lastPush || "unknown" } };
   }
 
-  return await collectRegularBranchDecision(
-    branch,
-    lastPush,
-    context.mainBranch,
-    context.thresholdMs,
-  );
+  return collectRegularBranchDecision(branch, lastPush, context.mainBranch, context.thresholdMs);
 }
 
 async function collectRegularBranchDecision(

@@ -264,7 +264,7 @@ const base64UrlEncode = (bytes: Uint8Array): string => {
   for (const value of bytes) {
     binary += String.fromCharCode(value);
   }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/[=]+$/g, "");
+  return btoa(binary).replace(/\+/gu, "-").replace(/\//gu, "_").replace(/[=]+$/gu, "");
 };
 
 const sha256 = async (input: string): Promise<string> => {
@@ -290,7 +290,7 @@ const spotifyRequest = async <Schema extends TSchema>(
   if (init?.body !== undefined && init.body !== null && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  return await fetchJsonWithSchema(url, schema, context, { ...init, headers });
+  return fetchJsonWithSchema(url, schema, context, { ...init, headers });
 };
 
 const refreshToken = async (config: Config): Promise<Token> => {
@@ -333,7 +333,7 @@ const hasGrantedScopes = (grantedScope: string | undefined, requiredScopes: stri
     return false;
   }
 
-  const granted = new Set(grantedScope.split(/\s+/).filter((scope) => scope.length > 0));
+  const granted = new Set(grantedScope.split(/\s+/u).filter((scope) => scope.length > 0));
   return requiredScopes.every((scope) => granted.has(scope));
 };
 
@@ -472,7 +472,7 @@ const waitForAuthCode = async (expectedPath: string, state: string): Promise<str
     server.listen(REDIRECT_PORT, REDIRECT_HOST);
   });
 
-  return await codePromise;
+  return codePromise;
 };
 
 const isErrnoException = (value: unknown): value is NodeJS.ErrnoException => {
