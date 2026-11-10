@@ -144,8 +144,10 @@ minimum_brightness = 0.05
 [notification]
 enable_daemon = true
 filter_order = ["default-timeout"]
+follow_focused_output = true
+history_retention_hours = 6
 keep_dismissed_in_history = true
-max_visible = 7
+max_visible = 3
 position = "top_right"
 width = 500
 offset_y = 25
