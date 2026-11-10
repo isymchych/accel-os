@@ -22,7 +22,7 @@
     "fmt:check": "oxfmt --check .",
     "fmt:check:ai": "oxfmt --check ai",
     "fmt:check:commands": "oxfmt --check packages/commands",
-    "lint": "oxlint ai/pi ai/skills ai/workspace packages dotfiles",
+    "lint": "pnpm -r run lint",
     "lint:ai": "oxlint ai",
     "lint:commands": "oxlint packages/commands",
     "test": "pnpm -r --if-present run test",

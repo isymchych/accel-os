@@ -213,9 +213,40 @@ scale = 1.1
 font_scale = 1.15
 padding = 14
 widget_spacing = 10
-start = ["launcher", "launcher-gap", "cpu", "cpu-gap", "memory", "memory-gap", "disk", "disk-gap", "brightness", "brightness-gap", "battery", "metrics-gap", "workspaces", "sway-mode"]
+start = [
+  "launcher",
+  "launcher-gap",
+  "cpu",
+  "cpu-gap",
+  "memory",
+  "memory-gap",
+  "disk",
+  "disk-gap",
+  "brightness",
+  "brightness-gap",
+  "battery",
+  "metrics-gap",
+  "workspaces",
+  "sway-mode",
+]
 center = ["media-art", "media-title-gap", "media"]
-end = ["notifications", "notifications-gap", "pi-agents", "agents-gap", "network", "bluetooth", "playback", "caffeine", "keyboard_layout", "failed-units", "privacy", "tray", "clock-gap", "date", "clock"]
+end = [
+  "notifications",
+  "notifications-gap",
+  "pi-agents",
+  "agents-gap",
+  "network",
+  "bluetooth",
+  "playback",
+  "caffeine",
+  "keyboard_layout",
+  "failed-units",
+  "privacy",
+  "tray",
+  "clock-gap",
+  "date",
+  "clock",
+]
 
 # scripts/bar-layout persists which layout is enabled through native config-set.
 [bar.right]
@@ -235,8 +266,32 @@ font_scale = 1.1
 padding = 8
 widget_spacing = 8
 start = ["launcher", "right-clock", "right-date", "right-date-gap", "workspaces", "sway-mode"]
-center = ["right-media-art", "right-media-gap", "notifications", "playback", "privacy", "right-audio-gap", "network", "bluetooth", "tray", "right-connectivity-gap", "keyboard_layout", "caffeine", "right-center-balance-gap"]
-end = ["pi-agents", "failed-units", "right-status-gap", "cpu", "memory", "disk", "right-metrics-gap", "brightness", "battery"]
+center = [
+  "right-media-art",
+  "right-media-gap",
+  "notifications",
+  "playback",
+  "privacy",
+  "right-audio-gap",
+  "network",
+  "bluetooth",
+  "tray",
+  "right-connectivity-gap",
+  "keyboard_layout",
+  "caffeine",
+  "right-center-balance-gap",
+]
+end = [
+  "pi-agents",
+  "failed-units",
+  "right-status-gap",
+  "cpu",
+  "memory",
+  "disk",
+  "right-metrics-gap",
+  "brightness",
+  "battery",
+]
 
 [widget.right-date-gap]
 type = "spacer"

@@ -14,27 +14,36 @@ run = "git"
 group = "git"
 
 [opener]
-imv = [
-  { run = "imv-dir %s", desc = "Open image in imv-dir", orphan = true, for = "linux" },
-]
-mpv = [
-  { run = "mpv %s", desc = "Open video in mpv", orphan = true, for = "linux" },
-]
-nvim = [
-  { run = "nvim %s", desc = "Open in Neovim", block = true }
-]
+imv = [{ run = "imv-dir %s", desc = "Open image in imv-dir", orphan = true, for = "linux" }]
+mpv = [{ run = "mpv %s", desc = "Open video in mpv", orphan = true, for = "linux" }]
+nvim = [{ run = "nvim %s", desc = "Open in Neovim", block = true }]
 md-preview = [
   { run = 'mb-preview --open --base-dir %d1 %s1', desc = "Preview Markdown in browser", for = "unix" },
 ]
-emacs = [
-  { run = "emacs %s", desc = "Open in Emacs GUI", orphan = true }
-]
+emacs = [{ run = "emacs %s", desc = "Open in Emacs GUI", orphan = true }]
 
 [open]
 prepend_rules = [
-  { url = "*.md", use = ["nvim", "md-preview", "emacs"] },
-  { url = "*.markdown", use = ["nvim", "md-preview", "emacs"] },
-  { mime = "image/*", use = ["imv", "open"] },
-  { mime = "video/*", use = ["mpv", "play"] },
-  { mime = "text/*", use = ["nvim", "emacs"] },
+  { url = "*.md", use = [
+    "nvim",
+    "md-preview",
+    "emacs",
+  ] },
+  { url = "*.markdown", use = [
+    "nvim",
+    "md-preview",
+    "emacs",
+  ] },
+  { mime = "image/*", use = [
+    "imv",
+    "open",
+  ] },
+  { mime = "video/*", use = [
+    "mpv",
+    "play",
+  ] },
+  { mime = "text/*", use = [
+    "nvim",
+    "emacs",
+  ] },
 ]

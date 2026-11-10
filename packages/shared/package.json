@@ -18,6 +18,7 @@
   "scripts": {
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

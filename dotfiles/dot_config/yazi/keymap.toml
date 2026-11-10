@@ -1,30 +1,30 @@
 [[input.prepend_keymap]]
-  on   = [ "<Esc>" ]
-  run  = "close"
-  desc = "Cancel input"
+on = ["<Esc>"]
+run = "close"
+desc = "Cancel input"
 
 [[mgr.prepend_keymap]]
-  on   = [ "l" ]
-  run  = "plugin smart-enter"
-  desc = "Enter the child directory, or open the file"
+on = ["l"]
+run = "plugin smart-enter"
+desc = "Enter the child directory, or open the file"
 
 [[mgr.prepend_keymap]]
-  on   = [ "<Enter>" ]
-  run  = "plugin smart-enter"
-  desc = "Enter the child directory, or open the file"
+on = ["<Enter>"]
+run = "plugin smart-enter"
+desc = "Enter the child directory, or open the file"
 
 [[mgr.prepend_keymap]]
-  on = [ "T" ]
-  run = "plugin toggle-pane min-preview"
-  desc = "Toggle preview pane"
+on = ["T"]
+run = "plugin toggle-pane min-preview"
+desc = "Toggle preview pane"
 
 [[mgr.prepend_keymap]]
-  on = [ "g", "m" ]
-  run = "cd \"/run/media/$USER\""
-  desc = "Go to mounted media"
+on = ["g", "m"]
+run = "cd \"/run/media/$USER\""
+desc = "Go to mounted media"
 
 [[mgr.prepend_keymap]]
-on   = "!"
-for  = "unix"
-run  = 'shell "$SHELL" --block'
+on = "!"
+for = "unix"
+run = 'shell "$SHELL" --block'
 desc = "Open $SHELL here"

@@ -11,6 +11,7 @@
   "scripts": {
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
     "tilth": "tilth",
     "test": "node --test $(find extensions runtime shared -name '*.test.ts' -print | sort)",
     "typecheck": "tsc --noEmit"

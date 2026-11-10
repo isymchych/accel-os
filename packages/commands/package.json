@@ -12,6 +12,7 @@
   "scripts": {
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
     "test": "node --test bin/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
