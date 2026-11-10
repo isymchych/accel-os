@@ -14,6 +14,10 @@ const RequestSchema = Type.Object({
   tools: Type.Array(Type.Object({ function: Type.Object({ name: Type.String() }) })),
   messages: Type.Array(Type.Object({ role: Type.String(), content: Type.Unknown() })),
 });
+const PersistedMessageSchema = Type.Object({
+  type: Type.Literal("message"),
+  message: Type.Object({ role: Type.String(), content: Type.Unknown() }),
+});
 
 test(
   "configured Pi RPC entry reuses actual extensions with a local fake model and read tool",
@@ -187,7 +191,38 @@ test(
       "Configured Pi completed the isolated read.",
     );
     assert.equal(await readFile(path.join(project, "fixture.txt"), "utf8"), "isolated tool result");
-    const sessionFiles = await readdir(path.join(config, "sessions"), { recursive: true });
-    assert.ok(sessionFiles.some((file) => file.endsWith(".jsonl")));
+    await session.close();
+    const sessionsDirectory = path.join(config, "sessions");
+    const sessionFiles = (await readdir(sessionsDirectory, { recursive: true })).filter((file) =>
+      file.endsWith(".jsonl"),
+    );
+    assert.equal(sessionFiles.length, 1);
+    const sessionFile = sessionFiles[0];
+    assert.ok(sessionFile);
+    const entries = await readFile(path.join(sessionsDirectory, sessionFile), "utf8");
+    const messages = entries
+      .trim()
+      .split("\n")
+      .flatMap((line) => {
+        const entry: unknown = JSON.parse(line);
+        return Value.Check(PersistedMessageSchema, entry) ? [entry.message] : [];
+      });
+    assert.deepEqual(messages.find((message) => message.role === "user")?.content, [
+      { type: "text", text: "Read fixture.txt and report the result." },
+    ]);
+    assert.ok(
+      messages.some(
+        (message) =>
+          message.role === "toolResult" &&
+          JSON.stringify(message.content).includes("isolated tool result"),
+      ),
+    );
+    assert.ok(
+      messages.some(
+        (message) =>
+          message.role === "assistant" &&
+          JSON.stringify(message.content).includes("Configured Pi completed the isolated read."),
+      ),
+    );
   },
 );

@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
-import { writeFile } from "node:fs/promises";
+import { appendFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { Type } from "typebox";
@@ -45,7 +45,18 @@ async function handle(line: string): Promise<void> {
       respond({ messages: [] });
       break;
     case "prompt": {
+      await appendFile(
+        path.join(stateDirectory, "prompts.jsonl"),
+        `${JSON.stringify({ message: command.message })}\n`,
+      );
       if (command.message === "crash") process.exit(17);
+      if (command.message === "uncertain") {
+        send({ type: "agent_start" });
+        send({ type: "message_end", message: { role: "user", content: command.message } });
+        // Accepted input is observable, but its command acknowledgement is lost.
+        process.stdout.end(() => process.exit(18));
+        return;
+      }
       if (command.message === "reject") {
         send({
           type: "response",
@@ -91,7 +102,7 @@ async function handle(line: string): Promise<void> {
             assistantMessageEvent: { type: "text_delta", delta: text },
           })}\r\n`,
         );
-        // Exercise both split UTF-8 and CRLF framing without timer-based synchronization.
+        // Real-pipe smoke coverage; rpc.test.ts controls exact chunk boundaries.
         process.stdout.write(record.subarray(0, record.length - 4));
         process.stdout.write(record.subarray(record.length - 4));
         send({

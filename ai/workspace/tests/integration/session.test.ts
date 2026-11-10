@@ -45,7 +45,7 @@ async function observe(
   });
 }
 
-test("streams strict JSONL and replaces partial text with the authoritative message", async (t) => {
+test("preserves Unicode JSONL and replaces partial text with the authoritative message", async (t) => {
   const { session } = await fixture(t);
   const deltas: string[] = [];
   const unsubscribe = session.subscribe((snapshot) => {

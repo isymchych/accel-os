@@ -18,7 +18,7 @@
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
     "start": "node scripts/launch.ts",
-    "test": "node --test tests/integration/*.test.ts",
+    "test": "node --experimental-test-module-mocks --test tests/integration/*.test.ts",
     "test:e2e": "pnpm run build && playwright test",
     "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.renderer.json"
   },
