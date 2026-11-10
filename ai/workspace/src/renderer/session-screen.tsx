@@ -1,7 +1,9 @@
+import { SendIcon, SquareIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
 
 import type { SessionSnapshot } from "../desktop-api.ts";
-import { Button } from "./button.tsx";
+import { Button } from "./components/ui/button.tsx";
+import { Textarea } from "./components/ui/textarea.tsx";
 
 function savedDraft(): string {
   try {
@@ -116,8 +118,8 @@ export function SessionScreen(): ReactElement {
         <label className="mb-2 block text-sm font-medium" htmlFor="message">
           Message
         </label>
-        <textarea
-          className="min-h-28 w-full resize-y rounded-sm border border-input bg-card p-3"
+        <Textarea
+          className="min-h-28 resize-y"
           id="message"
           maxLength={100_000}
           onChange={(event) => {
@@ -129,6 +131,7 @@ export function SessionScreen(): ReactElement {
         />
         <div className="mt-3 flex gap-3">
           <Button disabled={!ready || busy || pending || message.trim().length === 0} type="submit">
+            <SendIcon aria-hidden="true" data-icon="inline-start" />
             {pending ? "Sending…" : "Send"}
           </Button>
           <Button
@@ -139,7 +142,9 @@ export function SessionScreen(): ReactElement {
               });
             }}
             type="button"
+            variant="outline"
           >
+            <SquareIcon aria-hidden="true" data-icon="inline-start" />
             {snapshot?.execution === "stopping" ? "Stopping…" : "Stop"}
           </Button>
         </div>

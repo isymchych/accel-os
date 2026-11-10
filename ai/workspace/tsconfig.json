@@ -1,5 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": { "@/*": ["./src/renderer/*"] }
+  },
   "include": [
     "src/electron/**/*.ts",
     "src/electron/**/*.cts",

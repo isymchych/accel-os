@@ -86,6 +86,27 @@ test("sandboxed renderer submits text without interpreting agent output as HTML"
   await expect(page.locator("img")).toHaveCount(0);
 });
 
+test("the preset follows system appearance and uses system fonts", async ({
+  desktop: { page },
+}) => {
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+  const body = page.locator("body");
+  await expect(body).toHaveCSS("background-color", "oklch(1 0 0)");
+  await expect(body).toHaveCSS("font-family", /^ui-sans-serif, system-ui,/);
+  const message = page.getByLabel("Message", { exact: true });
+  await message.fill("Keep this draft while appearance changes");
+  expect(
+    await message.evaluate((element) =>
+      Number.parseFloat(globalThis.window.getComputedStyle(element).transitionDuration),
+    ),
+  ).toBeLessThanOrEqual(0.00001);
+
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(body).toHaveCSS("background-color", "oklch(0.141 0.005 285.823)");
+  await expect(message).toHaveValue("Keep this draft while appearance changes");
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
+});
+
 test("rejected input preserves the draft across renderer reload", async ({ desktop: { page } }) => {
   const message = page.getByLabel("Message", { exact: true });
   await message.fill("reject");

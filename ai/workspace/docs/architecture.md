@@ -13,7 +13,8 @@ Node child: ai/pi/runtime/rpc-entry.ts
 
 Electron main owns each active Pi child and its live presentation state; React observes it through a
 narrow preload API. TypeScript spans both sides. Vite with the official React plugin builds the
-renderer; Tailwind and semantic tokens provide presentation infrastructure.
+renderer; Tailwind and semantic tokens provide presentation infrastructure. Locally owned shadcn/ui
+components use Base UI primitives and Lucide icons.
 
 ## Source ownership
 
@@ -109,4 +110,4 @@ References, not dependencies or feature checklists:
 - [minghinmatthewlam/pi-gui](https://github.com/minghinmatthewlam/pi-gui)
 
 Inspect relevant source and version compatibility before adaptation; do not inherit their broader
-product scope. [DESIGN.md](design.md) owns visual/interaction references.
+product scope.

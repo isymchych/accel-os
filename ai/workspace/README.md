@@ -91,7 +91,6 @@ boundary. See [execution authority](docs/domain.md#execution-authority).
 - [Domain](docs/domain.md): vocabulary, behavioral invariants, and lifecycle.
 - [Architecture](docs/architecture.md): process, IPC, configuration, and security boundaries.
 - [First release](docs/mvp.md): release outcomes, implementation status, and acceptance criteria.
-- [Design](docs/design.md): proposed presentation and interaction direction.
 - [Decisions](docs/decisions.md): stack, integration, ownership, and lifecycle rationale.
 - [Agent guide](AGENTS.md): development instructions.
 - [Historical ideas](docs/ideas.md): brainstorming, not an implementation queue.
