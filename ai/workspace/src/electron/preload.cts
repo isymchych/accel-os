@@ -1,4 +1,4 @@
-import type { DesktopApi, SessionSnapshot } from "../contracts/desktop.ts";
+import type { DesktopApi, SessionSnapshot } from "../desktop-api.ts";
 
 // Electron's sandboxed preload is CommonJS and may only require supported built-ins.
 // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-var-requires, typescript/no-require-imports -- Sandboxed preload requires Electron's native CommonJS module.

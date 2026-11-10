@@ -16,8 +16,8 @@ second agent configuration or execution system.
 ## First release
 
 The first release makes local Pi conversations usable graphically, from choosing a session to
-directing and reviewing its work. [MVP.md](MVP.md) defines the committed workflows and acceptance
-checks; [README.md](README.md) describes what works now.
+directing and reviewing its work. [MVP.md](mvp.md) defines the committed workflows and acceptance
+checks; [README.md](../README.md) describes what works now.
 
 ## Scope boundaries
 
@@ -30,5 +30,5 @@ history tree, an embedded terminal, a file explorer/editor, installers, and dist
 are deferred. A future profile selector would use the existing Pi profile system. Additional Pi
 capabilities enter UI scope through an explicit product decision.
 
-[DOMAIN.md](DOMAIN.md) defines session behavior; [ARCHITECTURE.md](ARCHITECTURE.md) defines
-integration and execution authority. [IDEAS.md](IDEAS.md) retains nonbinding brainstorming.
+[DOMAIN.md](domain.md) defines session behavior; [ARCHITECTURE.md](architecture.md) defines
+integration and execution authority. [IDEAS.md](ideas.md) retains nonbinding brainstorming.

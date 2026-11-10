@@ -1,6 +1,6 @@
 import { Value } from "typebox/value";
 
-import type { SessionSnapshot, TranscriptMessage } from "../contracts/desktop.ts";
+import type { SessionSnapshot, TranscriptMessage } from "../desktop-api.ts";
 import {
   DeltaSchema,
   ExtensionErrorSchema,

@@ -24,15 +24,11 @@ test("sandboxed desktop submits, reconnects, stops, and shuts down isolated Pi w
   }
   Object.assign(env, {
     HOME: directory,
-    AI_UI_CWD: directory,
-    AI_UI_NODE: process.execPath,
-    AI_UI_PI_ENTRY: path.join(source, "tests/integration/fixtures/fake-pi.ts"),
-    AI_UI_DATA_DIR: path.join(directory, "electron"),
     FAKE_PI_STATE: directory,
   });
   const application = await _electron.launch({
     executablePath,
-    args: [source],
+    args: [path.join(source, "tests/e2e/fixtures/main.mjs"), process.execPath, directory],
     env,
     chromiumSandbox: true,
   });

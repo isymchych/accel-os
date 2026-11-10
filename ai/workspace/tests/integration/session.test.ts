@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import type { SessionSnapshot } from "../../contracts/desktop.ts";
-import { DesktopSession } from "../../electron/session.ts";
+import type { SessionSnapshot } from "../../src/desktop-api.ts";
+import { DesktopSession } from "../../src/electron/session.ts";
 
 async function fixture(
   t: test.TestContext,

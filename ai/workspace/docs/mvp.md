@@ -1,7 +1,7 @@
 # Pi workspace first release
 
-[VISION.md](VISION.md) defines product scope. Release workflows must preserve the
-[domain rules](DOMAIN.md) and [architectural boundaries](ARCHITECTURE.md).
+[VISION.md](vision.md) defines product scope. Release workflows must preserve the
+[domain rules](domain.md) and [architectural boundaries](architecture.md).
 
 Checkboxes track implementation status, not release verification: checked items are present in the
 inspected implementation; unchecked items are missing or partial. Acceptance checks below still
@@ -34,7 +34,7 @@ apply to the complete release.
 - [x] **Preserve the execution lifetime:** renderer refresh reattaches to current state without
       stopping work; application quit closes children and active work.
 
-[README.md](README.md) describes currently supported usage. Unchecked outcomes remain missing or
+[README.md](../README.md) describes currently supported usage. Unchecked outcomes remain missing or
 partial; graphical profile selection and credential management are deferred.
 
 Existing Node integration and Electron E2E tests cover parts of the foundation. A configured-Pi test
@@ -44,8 +44,8 @@ does not establish compatibility for all configured tools or required graphical 
 ## Acceptance checks
 
 Use fake providers or deterministic fake execution, harmless tools, and isolated temporary state.
-Never use real provider credentials in automated tests. [README.md](README.md#checks) owns commands
-and display prerequisites.
+Never use real provider credentials in automated tests. [README.md](../README.md#checks) owns
+commands and display prerequisites.
 
 ### Launch and runtime
 

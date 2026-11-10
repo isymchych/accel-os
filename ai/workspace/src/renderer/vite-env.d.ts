@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { DesktopApi } from "../contracts/desktop.ts";
+import type { DesktopApi } from "../desktop-api.ts";
 
 declare global {
   interface Window {

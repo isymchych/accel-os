@@ -1,8 +1,8 @@
 # Historical ideas
 
 These notes retain earlier brainstorming, including the superseded distributed/Durable direction.
-They are not requirements or a commitment to future compatibility. [VISION.md](VISION.md) owns the
-current local-only Pi desktop scope; [MVP.md](MVP.md) owns the remaining first-release work. All
+They are not requirements or a commitment to future compatibility. [VISION.md](vision.md) owns the
+current local-only Pi desktop scope; [MVP.md](mvp.md) owns the remaining first-release work. All
 sections below are historical notes, not an actionable backlog. Capability claims and suggested
 tasks reflect the earlier direction and have not been revalidated against the current setup.
 

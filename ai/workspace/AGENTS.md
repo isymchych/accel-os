@@ -5,13 +5,14 @@ Local-only Electron/React app in private pnpm workspace `@accel-os/workspace`. R
 
 ## Read before changing
 
-- For behavior changes, read [DOMAIN.md](DOMAIN.md) and the [release outcomes](MVP.md).
-- For integration changes, read [ARCHITECTURE.md](ARCHITECTURE.md): it owns process, import, IPC,
-  and security boundaries, including reuse of the `ai/pi/` RPC entry rather than private imports.
-- Before expanding scope, read [VISION.md](VISION.md); [DECISIONS.md](DECISIONS.md) explains the
-  consequential tradeoffs.
-- Before visual work, read [DESIGN.md](DESIGN.md). It is a proposal, not authorization to redesign
-  unrelated UI.
+- For behavior changes, read [DOMAIN.md](docs/domain.md) and the [release outcomes](docs/mvp.md).
+- For integration changes, read [ARCHITECTURE.md](docs/architecture.md): it owns process, import,
+  IPC, and security boundaries, including reuse of the `ai/pi/` RPC entry rather than private
+  imports.
+- Before expanding scope, read [VISION.md](docs/vision.md); [DECISIONS.md](docs/decisions.md)
+  explains the consequential tradeoffs.
+- Before visual work, read [DESIGN.md](docs/design.md). It is a proposal, not authorization to
+  redesign unrelated UI.
 
 ## UI and validation
 
@@ -24,7 +25,7 @@ Run commands from this directory: `pnpm run dev`, `pnpm run build`, `pnpm run st
 changes require explicit restart.
 
 Use Node's test runner for focused/integration checks and Playwright's Electron support for full
-renderer/preload/main journeys. Follow [MVP acceptance checks](MVP.md#acceptance-checks) for
+renderer/preload/main journeys. Follow [MVP acceptance checks](docs/mvp.md#acceptance-checks) for
 isolated, credential-free execution and the distinction between fake RPC wiring and real Pi
 compatibility.
 

@@ -57,5 +57,5 @@ outside TUI mode require graphical adaptation.
 ## Execution authority
 
 Tools run unsandboxed on the host under the user's permissions, without approval gates. The working
-directory is not a filesystem boundary. [Architecture](ARCHITECTURE.md#security-and-execution)
+directory is not a filesystem boundary. [Architecture](architecture.md#security-and-execution)
 defines how the desktop protects the renderer and credentials without restricting tool authority.

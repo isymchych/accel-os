@@ -38,5 +38,5 @@ The desktop needs extension-response writing and child-exit observation as well 
 and events. Upstream `RpcClient` does not expose all those hooks, so the desktop uses a local
 transport. Reconsider upstream reuse when its public API covers this boundary.
 
-[DOMAIN.md](DOMAIN.md) owns lifecycle rules; [ARCHITECTURE.md](ARCHITECTURE.md) owns integration and
-security boundaries; [MVP.md](MVP.md) owns release requirements.
+[DOMAIN.md](domain.md) owns lifecycle rules; [ARCHITECTURE.md](architecture.md) owns integration and
+security boundaries; [MVP.md](mvp.md) owns release requirements.

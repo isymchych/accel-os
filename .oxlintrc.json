@@ -50,7 +50,7 @@
   },
   "overrides": [
     {
-      "files": ["ai/workspace/client/**/*.ts", "ai/workspace/client/**/*.tsx"],
+      "files": ["ai/workspace/src/renderer/**/*.ts", "ai/workspace/src/renderer/**/*.tsx"],
       "env": {
         "browser": true,
         "node": false
@@ -65,7 +65,7 @@
                 "message": "client code must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+(?:electron|scripts)/",
+                "regex": "^(?:\\.\\./)+(?:electron/|(?:\\.\\./)*scripts/)",
                 "message": "client code must use desktop contracts, not privileged implementation"
               }
             ]
@@ -74,7 +74,7 @@
       }
     },
     {
-      "files": ["ai/workspace/contracts/**/*.ts"],
+      "files": ["ai/workspace/src/desktop-api.ts"],
       "env": {
         "browser": false,
         "node": false
@@ -89,7 +89,7 @@
                 "message": "contracts must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+(?:client|electron|scripts)/",
+                "regex": "^(?:\\./|(?:\\.\\./)+)(?:renderer/|electron/|(?:\\.\\./)*scripts/)",
                 "message": "contracts must not import application code"
               }
             ]
@@ -98,14 +98,14 @@
       }
     },
     {
-      "files": ["ai/workspace/electron/**/*.ts", "ai/workspace/electron/**/*.cts"],
+      "files": ["ai/workspace/src/electron/**/*.ts", "ai/workspace/src/electron/**/*.cts"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "regex": "^(?:\\.\\./)+client/",
+                "regex": "^(?:\\.\\./)+renderer/",
                 "message": "Electron code must not import client implementation"
               }
             ]
@@ -121,8 +121,8 @@
           {
             "patterns": [
               {
-                "regex": "^(?:\\.\\./)+(?:client|electron)/",
-                "message": "development scripts must launch the app, not import its implementation"
+                "regex": "^(?:\\.\\./)+src/(?:renderer|electron)/",
+                "message": "the launcher must launch the app, not import its implementation"
               }
             ]
           }

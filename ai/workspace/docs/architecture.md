@@ -17,17 +17,17 @@ renderer; Tailwind and semantic tokens provide presentation infrastructure.
 
 ## Source ownership
 
-- `client/`: React screens, feature state, domain-free controls, and semantic styles.
-- `contracts/`: environment-neutral desktop API, request schemas, and presentation types.
-- `electron/`: main/preload, Pi RPC integration, and session observation.
-- `scripts/`: development, compilation, startup, and process cleanup.
+- `src/renderer/`: React screens, feature state, domain-free controls, and semantic styles.
+- `src/desktop-api.ts`: environment-neutral desktop API, request schemas, and presentation types.
+- `src/electron/`: main/preload, Pi RPC integration, and session observation.
+- `scripts/launch.ts`: development/startup and process cleanup; package scripts own build commands.
 - `tests/integration/`: Node checks with fake execution and isolated state.
 - `tests/e2e/`: actual Electron renderer/preload/main journeys.
 - `../pi/runtime/`: terminal/desktop routing and canonical Pi launch configuration.
 
 Renderer runtime imports stay browser-safe. Contracts do not import Node or implementation code.
-Main does not import renderer implementation. Scripts launch the application rather than importing
-its main module. Root lint rules enforce these boundaries.
+Main does not import renderer implementation. The launcher starts Electron rather than importing its
+main module. Root lint rules enforce these boundaries.
 
 Keep workspace runtime code independent of repository-internal packages. The integration boundary to
 the existing setup is a Node entry point owned by `ai/pi/`, not imports of its private runtime
@@ -43,7 +43,7 @@ The RPC entry reuses `ai/SYSTEM.md`, explicit built-ins/extensions, excluded too
 directory, and isolated agent Git configuration.
 
 Pi owns session persistence, schemas, credentials, and model configuration.
-[Domain rules](DOMAIN.md#lifecycle) define single-writer handoff and child-lifetime profile
+[Domain rules](domain.md#lifecycle) define single-writer handoff and child-lifetime profile
 selection.
 
 Verify compatibility against installed Pi declarations and documentation. Check the revision of any
@@ -56,18 +56,18 @@ Accept extra Pi/provider fields. Translate only necessary data into explicit ren
 send credentials or raw configuration.
 
 The local RPC transport handles typed commands/events, extension responses, and child exit.
-[The transport decision](DECISIONS.md#local-rpc-transport) records why it is local rather than an
+[The transport decision](decisions.md#local-rpc-transport) records why it is local rather than an
 upstream `RpcClient`.
 
 Main owns the live presentation snapshot, including current partial text. It survives renderer
 reloads. Completed Pi messages replace reconstructed partial output. Revision numbers prevent a late
 initial snapshot from overwriting a newer observation.
-[Domain rules](DOMAIN.md#activity-outcomes-and-connection) distinguish observation, command
+[Domain rules](domain.md#activity-outcomes-and-connection) distinguish observation, command
 acceptance, and settled execution.
 
 Graphical interactions use Pi's RPC dialog request/response contract and the
-[domain compatibility rules](DOMAIN.md#configuration-and-interaction-compatibility).
-[README.md](README.md#configuration-and-compatibility) describes supported interactions.
+[domain compatibility rules](domain.md#configuration-and-interaction-compatibility).
+[README.md](../README.md#configuration-and-compatibility) describes supported interactions.
 
 ### Wire contract and limits
 
@@ -91,14 +91,14 @@ local assets with a restrictive CSP and no network connections. Development alon
 explicit loopback and permits its hot-update connection and injected scripts.
 
 These controls protect the UI boundary, not Pi tools; see
-[execution authority](DOMAIN.md#execution-authority).
+[execution authority](domain.md#execution-authority).
 
 ## Process lifetime
 
 Main owns children independently of renderer observation. App quit closes child stdin for native Pi
 disposal, then uses bounded termination if the child does not exit.
-[Lifecycle rules](DOMAIN.md#lifecycle) define the user-visible guarantees;
-[README.md](README.md#development) covers development and restart instructions.
+[Lifecycle rules](domain.md#lifecycle) define the user-visible guarantees;
+[README.md](../README.md#development) covers development and restart instructions.
 
 ## Integration references
 
@@ -109,4 +109,4 @@ References, not dependencies or feature checklists:
 - [minghinmatthewlam/pi-gui](https://github.com/minghinmatthewlam/pi-gui)
 
 Inspect relevant source and version compatibility before adaptation; do not inherit their broader
-product scope. [DESIGN.md](DESIGN.md) owns visual/interaction references.
+product scope. [DESIGN.md](design.md) owns visual/interaction references.

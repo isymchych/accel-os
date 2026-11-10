@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
 
-import type { SessionSnapshot } from "../../contracts/desktop.ts";
-import { Button } from "../ui/button.tsx";
+import type { SessionSnapshot } from "../desktop-api.ts";
+import { Button } from "./button.tsx";
 
 function savedDraft(): string {
   try {

@@ -4,8 +4,8 @@ Local-only Electron + React UI for the existing Pi coding-agent configuration in
 owns windows and Pi RPC children; Pi owns execution and native session persistence.
 
 The app supports one session for the launch directory, plain-text streaming, basic tool activity,
-Stop, renderer reattachment, and clean shutdown. [First-release outcomes](MVP.md#release-outcomes)
-track the remaining UI work.
+Stop, renderer reattachment, and clean shutdown.
+[First-release outcomes](docs/mvp.md#release-outcomes) track the remaining UI work.
 
 ## Setup and run
 
@@ -74,24 +74,24 @@ The desktop reuses the terminal's `ai/pi/` configuration and native session stor
 maintaining separate agent settings or credentials.
 
 `AI_CWD` retains its existing launch-directory override. The launcher passes the selected profile,
-working directory, and navigation backend through internal `AI_UI_*` variables; these are not
-renderer-exposed settings. Integration tests override the RPC entry and desktop data directory to
-keep test execution isolated.
+working directory, and navigation backend as explicit process arguments, not renderer-exposed
+settings. Tests use a separate entry point to inject fake Pi execution and isolated desktop storage;
+normal startup does not expose those overrides.
 
 Notifications are displayed. RPC select/confirm/input/editor dialogs receive explicit cancellation
 with a visible notice; other presentation-only records are not rendered. Terminal components require
 React adaptations; the existing `ask_user_question` disables itself outside TUI mode.
 
 Agents have unsandboxed host filesystem and shell access; the working directory is not a security
-boundary. See [execution authority](DOMAIN.md#execution-authority).
+boundary. See [execution authority](docs/domain.md#execution-authority).
 
 ## Documentation
 
-- [Vision](VISION.md): product scope and accepted direction.
-- [Domain](DOMAIN.md): vocabulary, behavioral invariants, and lifecycle.
-- [Architecture](ARCHITECTURE.md): process, IPC, configuration, and security boundaries.
-- [First release](MVP.md): release outcomes, implementation status, and acceptance criteria.
-- [Design](DESIGN.md): proposed presentation and interaction direction.
-- [Decisions](DECISIONS.md): stack, integration, ownership, and lifecycle rationale.
+- [Vision](docs/vision.md): product scope and accepted direction.
+- [Domain](docs/domain.md): vocabulary, behavioral invariants, and lifecycle.
+- [Architecture](docs/architecture.md): process, IPC, configuration, and security boundaries.
+- [First release](docs/mvp.md): release outcomes, implementation status, and acceptance criteria.
+- [Design](docs/design.md): proposed presentation and interaction direction.
+- [Decisions](docs/decisions.md): stack, integration, ownership, and lifecycle rationale.
 - [Agent guide](AGENTS.md): development instructions.
-- [Historical ideas](IDEAS.md): brainstorming, not an implementation queue.
+- [Historical ideas](docs/ideas.md): brainstorming, not an implementation queue.

@@ -4,18 +4,18 @@ import path from "node:path";
 import type { AccountProfile } from "./account-profiles.ts";
 import type { CodeNavigationBackend } from "./launcher-args.ts";
 
-export function uiLaunchEnvironment(
-  accelOs: string,
+export function uiLaunchArgs(
   profile: Pick<AccountProfile, "directory">,
   codeNavigation: CodeNavigationBackend,
-): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    ACCEL_OS: accelOs,
-    AI_UI_CWD: process.env["AI_CWD"] ?? process.cwd(),
-    AI_UI_PROFILE_DIR: profile.directory,
-    AI_UI_CODE_NAVIGATION: codeNavigation,
-  };
+): string[] {
+  return [
+    "--cwd",
+    process.env["AI_CWD"] ?? process.cwd(),
+    "--profile-dir",
+    profile.directory,
+    "--code-navigation",
+    codeNavigation,
+  ];
 }
 
 export async function launchUi(
@@ -23,10 +23,17 @@ export async function launchUi(
   profile: AccountProfile,
   codeNavigation: CodeNavigationBackend,
 ): Promise<void> {
-  const child = spawn(process.execPath, [path.join(accelOs, "ai/workspace/scripts/start.ts")], {
-    env: uiLaunchEnvironment(accelOs, profile, codeNavigation),
-    stdio: "inherit",
-  });
+  const child = spawn(
+    process.execPath,
+    [
+      path.join(accelOs, "ai/workspace/scripts/launch.ts"),
+      ...uiLaunchArgs(profile, codeNavigation),
+    ],
+    {
+      env: { ...process.env, ACCEL_OS: accelOs },
+      stdio: "inherit",
+    },
+  );
   const terminate = (): void => {
     child.kill("SIGTERM");
   };

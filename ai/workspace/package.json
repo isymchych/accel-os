@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "dist/main/electron/main.js",
+  "main": "dist/main/electron/entry.js",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -11,16 +11,16 @@
     }
   },
   "scripts": {
-    "dev": "node scripts/dev.ts",
-    "build": "node scripts/build.ts",
+    "dev": "tsc --project tsconfig.build.json && node scripts/launch.ts --dev",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json && vite build",
     "check": "pnpm run fmt:check && pnpm run lint && pnpm run typecheck && pnpm test",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
-    "start": "node scripts/start.ts",
+    "start": "node scripts/launch.ts",
     "test": "node --test tests/integration/*.test.ts",
     "test:e2e": "pnpm run build && playwright test",
-    "typecheck": "tsc --project electron/tsconfig.json && tsc --project client/tsconfig.json && tsc --project scripts/tsconfig.json"
+    "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.renderer.json"
   },
   "dependencies": {
     "react": "^19.3.1",

@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import "../styles/theme.css";
+import "./theme.css";
 import { SessionScreen } from "./session-screen.tsx";
 
 const root = document.getElementById("root");

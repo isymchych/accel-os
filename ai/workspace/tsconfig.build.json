@@ -3,9 +3,9 @@
   "compilerOptions": {
     "noEmit": false,
     "noEmitOnError": true,
-    "rootDir": "..",
-    "outDir": "../dist/main",
+    "rootDir": "src",
+    "outDir": "dist/main",
     "sourceMap": true
   },
-  "include": ["**/*.ts", "**/*.cts", "../contracts/**/*.ts"]
+  "include": ["src/electron/**/*.ts", "src/electron/**/*.cts", "src/desktop-api.ts"]
 }

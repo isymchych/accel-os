@@ -8,7 +8,7 @@ import test from "node:test";
 import { Type } from "typebox";
 import { Value } from "typebox/value";
 
-import { DesktopSession } from "../../electron/session.ts";
+import { DesktopSession } from "../../src/electron/session.ts";
 
 const RequestSchema = Type.Object({
   tools: Type.Array(Type.Object({ function: Type.Object({ name: Type.String() }) })),
@@ -127,7 +127,11 @@ test(
     );
     const session = new DesktopSession({
       executable: process.execPath,
-      args: [path.resolve(import.meta.dirname, "../../../pi/runtime/rpc-entry.ts")],
+      args: [
+        path.resolve(import.meta.dirname, "../../../pi/runtime/rpc-entry.ts"),
+        "--profile-dir",
+        profile,
+      ],
       cwd: project,
       env: {
         PATH: process.env["PATH"] ?? "",
@@ -136,7 +140,6 @@ test(
         XDG_CONFIG_HOME: directory,
         XDG_DATA_HOME: directory,
         ACCEL_OS: directory,
-        AI_UI_PROFILE_DIR: profile,
         PI_OFFLINE: "1",
       },
     });

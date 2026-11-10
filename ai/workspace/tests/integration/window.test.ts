@@ -16,14 +16,12 @@ test("closing the native window detaches observation before Pi exits", async (t)
     [
       "--experimental-test-module-mocks",
       path.resolve(import.meta.dirname, "fixtures/desktop-lifecycle.ts"),
+      directory,
     ],
     {
       timeout: 15_000,
       env: {
         HOME: directory,
-        AI_UI_CWD: directory,
-        AI_UI_NODE: process.execPath,
-        AI_UI_PI_ENTRY: path.resolve(import.meta.dirname, "fixtures/fake-pi.ts"),
         FAKE_PI_STATE: directory,
       },
     },

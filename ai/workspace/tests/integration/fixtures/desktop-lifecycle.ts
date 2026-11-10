@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { EventEmitter, once } from "node:events";
+import path from "node:path";
 import { mock } from "node:test";
 
-import type { SessionSnapshot } from "../../../contracts/desktop.ts";
+import type { SessionSnapshot } from "../../../src/desktop-api.ts";
 
 // Exercise the real main/session/RPC code without starting Electron or a display.
 const app = Object.assign(new EventEmitter(), {
@@ -78,7 +79,18 @@ mock.module("electron", {
 });
 
 const connected = once(ready, "connected");
-await import("../../../electron/main.ts");
+const { startDesktop } = await import("../../../src/electron/main.ts");
+const directory = process.argv[2];
+assert.ok(directory);
+await startDesktop({
+  pi: {
+    executable: process.execPath,
+    args: [path.join(import.meta.dirname, "fake-pi.ts")],
+    cwd: directory,
+    env: { ...process.env },
+  },
+  userData: path.join(directory, "electron"),
+});
 await connected;
 const window = windows.at(0);
 assert.ok(window !== undefined);

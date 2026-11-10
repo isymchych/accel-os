@@ -86,15 +86,15 @@ scene.
 The front matter proposes local baseline values, not a copy of the reference's identity or layout.
 No reference fonts, logos, textures, or shader assets are adopted.
 
-`client/styles/theme.css` owns runtime tokens and Tailwind mappings; shared styles reference those
-tokens. `client/ui/` owns domain-free primitives; features own content and state.
+`src/renderer/theme.css` owns runtime tokens and Tailwind mappings; shared styles reference those
+tokens. Domain-free primitives live in `src/renderer/`; features own content and state.
 
 ### Interaction references
 
 Use [assistant-ui](https://github.com/assistant-ui/assistant-ui) and
 [TanStack AI UI](https://tanstack.com/ai/latest/docs/ui/react) as conversation UX references when
 designing streaming, composer behavior, tool disclosures, message actions, and error/reconnect
-feedback. These and the [Pi UI references](ARCHITECTURE.md#integration-references) are references,
+feedback. These and the [Pi UI references](architecture.md#integration-references) are references,
 not selected dependencies, layout prescriptions, or additions to feature scope. Borrow fitting
 patterns, not their visual identity; do not assume a conventional chat layout.
 
@@ -187,7 +187,7 @@ Distinguish author, prose, code, and tool metadata through hierarchy, not a colo
 message. Keep tool summaries compact and details in operable disclosures; keep failure-critical
 information visible.
 
-Show [execution, outcomes, and connection](DOMAIN.md#activity-outcomes-and-connection)
+Show [execution, outcomes, and connection](domain.md#activity-outcomes-and-connection)
 independently. Badges reflect domain state rather than inventing it. Streaming preserves reading
 position and active input.
 
