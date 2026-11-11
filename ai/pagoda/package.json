@@ -1,5 +1,6 @@
 {
-  "name": "@accel-os/workspace",
+  "name": "@accel-os/pagoda",
+  "productName": "Pagoda",
   "version": "0.0.0",
   "private": true,
   "type": "module",

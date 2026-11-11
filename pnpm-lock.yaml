@@ -233,7 +233,7 @@ importers:
         specifier: 'catalog:'
         version: 1.4.6
 
-  ai/workspace:
+  ai/pagoda:
     dependencies:
       '@base-ui/react':
         specifier: ^1.9.0

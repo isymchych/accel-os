@@ -25,10 +25,7 @@ export async function launchUi(
 ): Promise<void> {
   const child = spawn(
     process.execPath,
-    [
-      path.join(accelOs, "ai/workspace/scripts/launch.ts"),
-      ...uiLaunchArgs(profile, codeNavigation),
-    ],
+    [path.join(accelOs, "ai/pagoda/scripts/launch.ts"), ...uiLaunchArgs(profile, codeNavigation)],
     {
       env: { ...process.env, ACCEL_OS: accelOs },
       stdio: "inherit",

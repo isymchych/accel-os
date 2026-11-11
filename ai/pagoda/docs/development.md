@@ -1,6 +1,6 @@
 # Development and verification
 
-Run workspace commands from `ai/workspace/`.
+Run workspace commands from `ai/pagoda/`.
 
 ## Development
 

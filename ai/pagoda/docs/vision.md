@@ -1,4 +1,4 @@
-# Pi workspace vision
+# Pagoda vision
 
 A local desktop workspace for interacting with the existing Pi coding-agent setup. It provides a
 graphical way to follow agent work, manage conversations, and explore history without creating a

@@ -1,6 +1,6 @@
 .sass-cache
 .nvimlog
 node_modules/
-ai/workspace/dist/
-ai/workspace/playwright-report/
-ai/workspace/test-results/
+ai/pagoda/dist/
+ai/pagoda/playwright-report/
+ai/pagoda/test-results/

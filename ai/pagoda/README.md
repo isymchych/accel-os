@@ -1,4 +1,4 @@
-# Pi workspace
+# Pagoda
 
 Local-only Electron + React UI for the existing Pi coding-agent configuration in `../pi/`. Electron
 owns windows and Pi RPC children; Pi owns execution and native session persistence.
@@ -15,7 +15,7 @@ From the repository root, install locked dependencies:
 pnpm install --frozen-lockfile
 ```
 
-From `ai/workspace/`:
+From `ai/pagoda/`:
 
 ```sh
 pnpm run build

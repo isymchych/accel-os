@@ -28,7 +28,7 @@ Notes:
   - \`account\` selects an isolated OpenAI Codex credential profile and then opens Pi.
   - Each profile has its own auth.json, so changing accounts does not affect existing chats.
   - \`ui\` opens the local Electron app with the selected profile and current working directory.
-  - Build the app first with \`pnpm --dir "$ACCEL_OS/ai/workspace" run build\`.
+  - Build the app first with \`pnpm --dir "$ACCEL_OS/ai/pagoda" run build\`.
   - Use \`ai -- --help\` to show Pi CLI docs.`;
 
 function requireAccelOs(): string {

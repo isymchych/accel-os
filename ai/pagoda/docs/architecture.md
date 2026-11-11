@@ -1,4 +1,4 @@
-# Pi workspace architecture
+# Pagoda architecture
 
 ## Structure
 

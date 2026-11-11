@@ -16,7 +16,7 @@ const source = path.resolve(import.meta.dirname, "..");
 try {
   await access(path.join(source, "dist/main/electron/entry.js"));
 } catch {
-  throw new Error('Build the desktop app first: pnpm --dir "$ACCEL_OS/ai/workspace" run build');
+  throw new Error('Build the desktop app first: pnpm --dir "$ACCEL_OS/ai/pagoda" run build');
 }
 const executable: unknown = createRequire(import.meta.url)("electron");
 if (typeof executable !== "string") throw new Error("Could not locate the Electron binary");

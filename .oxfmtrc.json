@@ -9,7 +9,7 @@
   ],
   "ignorePatterns": [
     "*.json",
-    "ai/workspace/dist/**",
+    "ai/pagoda/dist/**",
     "ai/skills/frontend-design/references/design-md/spec.md",
     "ai/skills/frontend-design/references/design-md/LICENSE"
   ]

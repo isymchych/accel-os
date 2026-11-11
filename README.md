@@ -68,5 +68,5 @@ repository-wide Markdown formatting.
 - [Arch Linux setup](docs/linux/README.md)
 - [macOS setup](docs/mac/README.md)
 - [Firefox preferences](firefox/README.md)
-- [AI workspace development](ai/workspace/README.md)
+- [Pagoda development](ai/pagoda/README.md)
 - [Retargeting a Git SPR stack](docs/git-spr-retargeting.md)

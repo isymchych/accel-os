@@ -66,7 +66,7 @@ test("reopening and navigation render native summary messages", async (t) => {
 });
 
 test("independent owners survive view changes, reopen deduplicates, and forks preserve active work", async (t) => {
-  const directory = await mkdtemp(path.join(tmpdir(), "pi-workspace-"));
+  const directory = await mkdtemp(path.join(tmpdir(), "pagoda-"));
   const other = path.join(directory, "other");
   await mkdir(other);
   const workspace = new DesktopWorkspace({

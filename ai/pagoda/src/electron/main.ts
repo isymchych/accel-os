@@ -137,7 +137,7 @@ export async function startDesktop({
 
   await app.whenReady();
   window = new BrowserWindow({
-    title: "Pi workspace",
+    title: "Pagoda",
     width: 1100,
     height: 800,
     minWidth: 560,

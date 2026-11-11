@@ -194,7 +194,7 @@ export function SessionScreen(): ReactElement {
       className="grid min-h-screen outline-none md:grid-cols-[18rem_minmax(0,1fr)]"
     >
       <aside className="border-b border-border bg-sidebar p-4 md:border-r md:border-b-0">
-        <h1 className="mb-5 text-lg font-semibold">Pi workspace</h1>
+        <h1 className="mb-5 text-lg font-semibold">Pagoda</h1>
         <WorkspaceNavigation
           target={workspaceRef}
           composer={composerRef}

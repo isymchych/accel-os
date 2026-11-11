@@ -1,7 +1,7 @@
 packages:
   - ai/pi
   - ai/skills
-  - ai/workspace
+  - ai/pagoda
   - dotfiles
   - packages/commands
   - packages/shared

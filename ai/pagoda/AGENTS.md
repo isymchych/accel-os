@@ -1,7 +1,7 @@
-# Pi workspace agent guide
+# Pagoda agent guide
 
-Local-only Electron/React app in private pnpm workspace `@accel-os/workspace`. Root
-`../../AGENTS.md` governs this workspace.
+Local-only Electron/React app in private pnpm workspace `@accel-os/pagoda`. Root `../../AGENTS.md`
+governs this workspace.
 
 Use engineering judgment within the requested scope and accepted product and architecture decisions.
 

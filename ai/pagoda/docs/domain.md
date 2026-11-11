@@ -1,4 +1,4 @@
-# Pi workspace domain
+# Pagoda domain
 
 ## Concepts and ownership
 

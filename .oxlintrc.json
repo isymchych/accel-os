@@ -9,7 +9,7 @@
     "suspicious": "error"
   },
   "plugins": ["typescript", "react", "jsx-a11y"],
-  "ignorePatterns": ["ai/workspace/dist/**"],
+  "ignorePatterns": ["ai/pagoda/dist/**"],
   "env": {
     "node": true
   },
@@ -69,14 +69,14 @@
   "overrides": [
     {
       "files": ["**/*"],
-      "excludeFiles": ["ai/workspace/src/renderer/**/*.ts", "ai/workspace/src/renderer/**/*.tsx"],
+      "excludeFiles": ["ai/pagoda/src/renderer/**/*.ts", "ai/pagoda/src/renderer/**/*.tsx"],
       "plugins": ["typescript"],
       "rules": {
         "react/rules-of-hooks": "off"
       }
     },
     {
-      "files": ["ai/workspace/src/renderer/**/*.ts", "ai/workspace/src/renderer/**/*.tsx"],
+      "files": ["ai/pagoda/src/renderer/**/*.ts", "ai/pagoda/src/renderer/**/*.tsx"],
       "env": {
         "browser": true,
         "node": false
@@ -100,7 +100,7 @@
       }
     },
     {
-      "files": ["ai/workspace/src/desktop-api.ts"],
+      "files": ["ai/pagoda/src/desktop-api.ts"],
       "env": {
         "browser": false,
         "node": false
@@ -124,7 +124,7 @@
       }
     },
     {
-      "files": ["ai/workspace/src/electron/**/*.ts", "ai/workspace/src/electron/**/*.cts"],
+      "files": ["ai/pagoda/src/electron/**/*.ts", "ai/pagoda/src/electron/**/*.cts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -140,7 +140,7 @@
       }
     },
     {
-      "files": ["ai/workspace/scripts/**/*.ts"],
+      "files": ["ai/pagoda/scripts/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -156,7 +156,7 @@
       }
     },
     {
-      "files": ["**/*.test.ts", "ai/workspace/tests/**/*.ts"],
+      "files": ["**/*.test.ts", "ai/pagoda/tests/**/*.ts"],
       "rules": {
         "typescript/require-await": "off"
       }
