@@ -6,6 +6,9 @@ import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from "el
 import type { TSchema, Static } from "typebox";
 import { Value } from "typebox/value";
 
+import { workspaceApi } from "../backend/api.ts";
+import type { PiLaunch } from "../backend/rpc.ts";
+import { DesktopWorkspace } from "../backend/workspace.ts";
 import {
   DirectorySchema,
   EntrySchema,
@@ -15,8 +18,6 @@ import {
   TargetSchema,
   ThinkingSchema,
 } from "../desktop-api.ts";
-import type { PiLaunch } from "./rpc.ts";
-import { DesktopWorkspace } from "./workspace.ts";
 
 export interface DesktopOptions {
   pi: PiLaunch;
@@ -45,6 +46,7 @@ export async function startDesktop({
     cwd,
     env: { ...pi.env, AI_CWD: cwd },
   });
+  const api = workspaceApi(workspace);
   let window: BrowserWindow | null = null;
   let quitAllowed = false;
   let quitting = false;
@@ -71,9 +73,9 @@ export async function startDesktop({
       return action(request);
     });
   }
-  ipcMain.handle("pi:workspace", (event) => {
+  ipcMain.handle("pi:workspace", async (event) => {
     validateSender(event);
-    return workspace.snapshot();
+    return api.workspace();
   });
   ipcMain.handle("pi:directory", async (event) => {
     validateSender(event);
@@ -81,30 +83,22 @@ export async function startDesktop({
     const result = await dialog.showOpenDialog(window, { properties: ["openDirectory"] });
     return result.canceled ? null : (result.filePaths[0] ?? null);
   });
-  handle("pi:snapshot", TargetSchema, ({ key }) => workspace.session(key).snapshot());
-  handle("pi:list", DirectorySchema, async ({ cwd: directory }) => workspace.list(directory));
-  handle("pi:create", DirectorySchema, async ({ cwd: directory }) => workspace.create(directory));
-  handle("pi:open", OpenSchema, async (request) => workspace.open(request.cwd, request.path));
-  handle("pi:prompt", PromptSchema, async (request) => {
-    if (request.message.trim().length === 0)
-      throw new Error("Enter a message of at most 100,000 characters.");
-    return workspace.session(request.key).prompt(request.message, request.mode);
-  });
-  handle("pi:stop", TargetSchema, async ({ key }) => workspace.session(key).stop());
-  handle("pi:history", TargetSchema, async ({ key }) => workspace.session(key).history());
-  handle("pi:navigate", EntrySchema, async ({ key, entryId }) =>
-    workspace.session(key).navigate(entryId),
-  );
-  handle("pi:fork", EntrySchema, async ({ key, entryId }) => workspace.fork(key, entryId));
-  handle("pi:controls", TargetSchema, async ({ key }) => workspace.session(key).controls());
+  handle("pi:snapshot", TargetSchema, async ({ key }) => api.snapshot(key));
+  handle("pi:list", DirectorySchema, async ({ cwd: directory }) => api.list(directory));
+  handle("pi:create", DirectorySchema, async ({ cwd: directory }) => api.create(directory));
+  handle("pi:open", OpenSchema, async (request) => api.open(request.cwd, request.path));
+  handle("pi:prompt", PromptSchema, async (request) => api.prompt(request));
+  handle("pi:stop", TargetSchema, async ({ key }) => api.stop(key));
+  handle("pi:history", TargetSchema, async ({ key }) => api.history(key));
+  handle("pi:navigate", EntrySchema, async ({ key, entryId }) => api.navigate(key, entryId));
+  handle("pi:fork", EntrySchema, async ({ key, entryId }) => api.fork(key, entryId));
+  handle("pi:controls", TargetSchema, async ({ key }) => api.controls(key));
   handle("pi:model", ModelSchema, async ({ key, provider, modelId }) =>
-    workspace.session(key).model(provider, modelId),
+    api.model(key, provider, modelId),
   );
-  handle("pi:thinking", ThinkingSchema, async ({ key, level }) =>
-    workspace.session(key).thinking(level),
-  );
+  handle("pi:thinking", ThinkingSchema, async ({ key, level }) => api.thinking(key, level));
 
-  const unsubscribe = workspace.subscribe((snapshot) => {
+  const unsubscribe = api.subscribe((snapshot) => {
     if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
       window.webContents.send("pi:changed", snapshot);
     }

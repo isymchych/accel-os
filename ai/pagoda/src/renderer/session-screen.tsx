@@ -8,6 +8,7 @@ import type {
   SessionSummary,
   StoredSession,
 } from "../desktop-api.ts";
+import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
 import { SessionView, type ComposerFeedback } from "./session-view.tsx";
 import { useWorkspaceObservation } from "./use-workspace-observation.ts";
@@ -37,6 +38,7 @@ export function errorMessage(error: unknown): string {
 }
 
 export function SessionScreen(): ReactElement {
+  const { workspace, native } = useApi();
   const workspaceRef = useRef<HTMLElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -54,12 +56,12 @@ export function SessionScreen(): ReactElement {
   const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});
 
   const onWorkspace = useCallback(
-    (workspace: { initialKey: SessionKey; sessions: SessionSummary[] }): void => {
+    (initial: { initialKey: SessionKey; sessions: SessionSummary[] }): void => {
       const previous = saved("pi-selected");
       const key =
-        workspace.sessions.find((session) => session.key === previous)?.key ?? workspace.initialKey;
+        initial.sessions.find((session) => session.key === previous)?.key ?? initial.initialKey;
       setSelected(key);
-      setDirectory(workspace.sessions.find((session) => session.key === key)?.cwd ?? "");
+      setDirectory(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
     },
     [],
   );
@@ -78,7 +80,7 @@ export function SessionScreen(): ReactElement {
   useEffect(() => {
     if (!directory || !connected) return undefined;
     let active = true;
-    void window.pi
+    void workspace
       .list(directory)
       .then((items) => {
         if (active) setListing({ cwd: directory, items });
@@ -89,7 +91,7 @@ export function SessionScreen(): ReactElement {
     return (): void => {
       active = false;
     };
-  }, [directory, connected]);
+  }, [workspace, directory, connected]);
 
   const snapshot = selected === null ? undefined : sessions[selected]?.snapshot;
   const composer = (selected === null ? undefined : composers[selected]) ?? {
@@ -120,7 +122,7 @@ export function SessionScreen(): ReactElement {
     const message = composer.message;
     updateComposer(key, { pending: true, feedback: null });
     try {
-      const disposition = await window.pi.prompt({ key, message, mode });
+      const disposition = await workspace.prompt({ key, message, mode });
       remember(`pi-composer:${key}`, "");
       updateComposer(key, { message: "", feedback: { kind: "accepted", disposition } });
     } catch (error) {
@@ -143,7 +145,7 @@ export function SessionScreen(): ReactElement {
   }
   async function refreshCatalog(): Promise<void> {
     try {
-      setListing({ cwd: directory, items: await window.pi.list(directory) });
+      setListing({ cwd: directory, items: await workspace.list(directory) });
       setFeedback(null);
     } catch (error) {
       setFeedback(errorMessage(error));
@@ -169,7 +171,7 @@ export function SessionScreen(): ReactElement {
           <Button
             variant="outline"
             onClick={() => {
-              void window.pi
+              void native
                 .chooseDirectory()
                 .then((cwd) => {
                   if (cwd) {
@@ -203,7 +205,7 @@ export function SessionScreen(): ReactElement {
         <Button
           disabled={!directory || opening}
           onClick={() => {
-            void open(async () => window.pi.create(directory));
+            void open(async () => workspace.create(directory));
           }}
         >
           <PlusIcon aria-hidden="true" />
@@ -242,7 +244,7 @@ export function SessionScreen(): ReactElement {
               disabled={opening}
               className="h-auto w-full justify-start whitespace-normal text-left"
               onClick={() => {
-                void open(async () => window.pi.open(session.cwd, session.path));
+                void open(async () => workspace.open(session.cwd, session.path));
               }}
             >
               <span className="min-w-0">
@@ -282,7 +284,7 @@ export function SessionScreen(): ReactElement {
               void submit(mode);
             }}
             onFork={(entryId) => {
-              void open(async () => window.pi.fork(snapshot.key, entryId));
+              void open(async () => workspace.fork(snapshot.key, entryId));
             }}
           />
         ) : (

@@ -1,5 +1,6 @@
 import type { Static } from "typebox";
 
+import type { StateSchema } from "../src/backend/protocol.ts";
 import type {
   DesktopApi,
   EntrySchema,
@@ -8,7 +9,6 @@ import type {
   SessionKey,
   TargetSchema,
 } from "../src/desktop-api.ts";
-import type { StateSchema } from "../src/electron/protocol.ts";
 
 type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type Assert<T extends true> = T;

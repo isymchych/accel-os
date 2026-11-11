@@ -10,6 +10,7 @@ import type {
   SessionSnapshot,
   TranscriptMessage,
 } from "../desktop-api.ts";
+import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
 import {
   Collapsible,
@@ -85,6 +86,7 @@ function ModelControls({
   sessionKey: SessionKey;
   change: (operation: () => Promise<void>) => Promise<void>;
 }): ReactElement {
+  const { workspace } = useApi();
   if (!controls) return <p className="text-xs text-muted-foreground">Loading model controls…</p>;
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -103,7 +105,7 @@ function ModelControls({
             );
             if (model)
               void change(async () => {
-                await window.pi.model(sessionKey, model.provider, model.id);
+                await workspace.model(sessionKey, model.provider, model.id);
               });
           }}
         >
@@ -134,7 +136,7 @@ function ModelControls({
           onValueChange={(value) => {
             if (value)
               void change(async () => {
-                await window.pi.thinking(sessionKey, value);
+                await workspace.thinking(sessionKey, value);
               });
           }}
         >
@@ -166,6 +168,7 @@ function RuntimeControls({
   onFork: (entryId: HistoryEntryId) => void;
   onNavigateText: (key: SessionKey, text: string) => void;
 }): ReactElement {
+  const { workspace } = useApi();
   const [controls, setControls] = useState<SessionControls | null>(null);
   const [history, setHistory] = useState<SessionHistory | null>(null);
   const [entry, setEntry] = useState<HistoryEntryId | null>(null);
@@ -177,7 +180,7 @@ function RuntimeControls({
   useEffect(() => {
     if (connection !== "connected") return undefined;
     let active = true;
-    void Promise.all([window.pi.controls(key), window.pi.history(key)])
+    void Promise.all([workspace.controls(key), workspace.history(key)])
       .then(([next, tree]) => {
         if (!active) return;
         setControls(next);
@@ -193,7 +196,7 @@ function RuntimeControls({
       active = false;
     };
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- These revisions explicitly invalidate the fetched data.
-  }, [key, connection, snapshot.runtimeRevision, refreshRequest]);
+  }, [workspace, key, connection, snapshot.runtimeRevision, refreshRequest]);
 
   async function change(operation: () => Promise<void>): Promise<void> {
     setPending(true);
@@ -248,7 +251,7 @@ function RuntimeControls({
               onClick={() => {
                 if (entry)
                   void change(async () => {
-                    const text = await window.pi.navigate(key, entry);
+                    const text = await workspace.navigate(key, entry);
                     if (text !== undefined) onNavigateText(key, text);
                   });
               }}
@@ -311,6 +314,7 @@ function SessionComposer({
   composerRef,
   onExitComposer,
 }: ComposerProps): ReactElement {
+  const { workspace } = useApi();
   const [stopError, setStopError] = useState<string | null>(null);
   const ready = snapshot.connection === "connected";
   const busy = snapshot.execution === "running" || snapshot.execution === "stopping";
@@ -384,7 +388,7 @@ function SessionComposer({
             variant="outline"
             onClick={() => {
               setStopError(null);
-              void window.pi.stop(snapshot.key).catch((error: unknown) => {
+              void workspace.stop(snapshot.key).catch((error: unknown) => {
                 setStopError(errorText(error));
               });
             }}

@@ -33,7 +33,7 @@ mock.module("electron", {
     ipcMain: { handle: (channel: string, handler: Handler) => handlers.set(channel, handler) },
   },
 });
-mock.module(path.resolve(import.meta.dirname, "../../src/electron/workspace.ts"), {
+mock.module(path.resolve(import.meta.dirname, "../../src/backend/workspace.ts"), {
   exports: {
     DesktopWorkspace: class {
       public subscribe(): () => void {

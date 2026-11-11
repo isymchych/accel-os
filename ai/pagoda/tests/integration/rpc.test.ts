@@ -64,8 +64,8 @@ class ControlledChild extends EventEmitter {
 
 let child: ControlledChild;
 mock.module("node:child_process", { exports: { spawn: () => child } });
-const { PiRpc } = await import("../../src/electron/rpc.ts");
-const { DesktopSession } = await import("../../src/electron/session.ts");
+const { PiRpc } = await import("../../src/backend/rpc.ts");
+const { DesktopSession } = await import("../../src/backend/session.ts");
 const launch = { executable: "/unused/node", args: [], cwd: "/unused", env: {} };
 
 function transport(t: test.TestContext): InstanceType<typeof PiRpc> {

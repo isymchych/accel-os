@@ -104,9 +104,8 @@ export interface SessionControls {
   pendingMessageCount: number;
 }
 export type Prompt = Static<typeof PromptSchema>;
-export interface DesktopApi {
+export interface WorkspaceApi {
   workspace(): Promise<{ initialKey: SessionKey; sessions: SessionSummary[] }>;
-  chooseDirectory(): Promise<string | null>;
   list(cwd: string): Promise<StoredSession[]>;
   create(cwd: string): Promise<SessionSnapshot>;
   open(cwd: string, path: string): Promise<SessionSnapshot>;
@@ -121,3 +120,9 @@ export interface DesktopApi {
   thinking(key: SessionKey, level: string): Promise<void>;
   subscribe(listener: (snapshot: SessionSnapshot) => void): () => void;
 }
+
+export interface NativeApi {
+  chooseDirectory(): Promise<string | null>;
+}
+
+export interface DesktopApi extends WorkspaceApi, NativeApi {}

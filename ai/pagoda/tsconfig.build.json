@@ -7,5 +7,5 @@
     "outDir": "dist/main",
     "sourceMap": true
   },
-  "include": ["src/electron/**/*.ts", "src/electron/**/*.cts", "src/desktop-api.ts"]
+  "include": ["src/electron/**/*.ts", "src/electron/**/*.cts", "src/backend/**/*.ts", "src/desktop-api.ts"]
 }

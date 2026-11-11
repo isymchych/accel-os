@@ -6,6 +6,7 @@
   "include": [
     "src/electron/**/*.ts",
     "src/electron/**/*.cts",
+    "src/backend/**/*.ts",
     "src/desktop-api.ts",
     "scripts/**/*.ts",
     "vite.config.ts",

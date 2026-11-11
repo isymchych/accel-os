@@ -3,6 +3,7 @@ import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
 
+import type { PiLaunch } from "../../src/backend/rpc.ts";
 import type {
   SessionId,
   SessionKey,
@@ -10,7 +11,6 @@ import type {
   SessionSummary,
   StoredSession,
 } from "../../src/desktop-api.ts";
-import type { PiLaunch } from "../../src/electron/rpc.ts";
 
 // Control only owner startup/disposal. The real workspace handles reservations,
 // catalog validation, target selection, and shutdown across every owner.
@@ -77,10 +77,10 @@ class ControlledOwner {
 }
 
 mock.module("node:fs/promises", { exports: { realpath: async (value: string) => value } });
-mock.module(path.resolve(import.meta.dirname, "../../src/electron/session.ts"), {
+mock.module(path.resolve(import.meta.dirname, "../../src/backend/session.ts"), {
   exports: { DesktopSession: ControlledOwner },
 });
-const { DesktopWorkspace } = await import("../../src/electron/workspace.ts");
+const { DesktopWorkspace } = await import("../../src/backend/workspace.ts");
 
 async function fixture(t: test.TestContext): Promise<InstanceType<typeof DesktopWorkspace>> {
   owners.length = 0;

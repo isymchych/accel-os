@@ -8,8 +8,8 @@ import test from "node:test";
 import { Type } from "typebox";
 import { Value } from "typebox/value";
 
+import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/desktop-api.ts";
-import { DesktopSession } from "../../src/electron/session.ts";
 
 const RequestSchema = Type.Object({
   tools: Type.Array(Type.Object({ function: Type.Object({ name: Type.String() }) })),

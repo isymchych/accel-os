@@ -10,7 +10,7 @@ import type {
 import type { PiLaunch } from "./rpc.ts";
 import { DesktopSession } from "./session.ts";
 
-/** One main-owned child per open session; view selection is never execution state. */
+/** One app-owned child per open session; view selection is never execution state. */
 export class DesktopWorkspace {
   private readonly sessions = new Map<SessionKey, DesktopSession>();
   private readonly opening = new Map<string, Promise<SessionSnapshot>>();

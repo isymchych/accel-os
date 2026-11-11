@@ -91,7 +91,7 @@
                 "message": "client code must not import Node modules"
               },
               {
-                "regex": "^(?:\\.\\./)+(?:electron/|(?:\\.\\./)*scripts/)",
+                "regex": "^(?:\\.\\./)+(?:electron/|backend/|(?:\\.\\./)*scripts/)",
                 "message": "client code must use desktop contracts, not privileged implementation"
               }
             ]
@@ -115,8 +115,28 @@
                 "message": "contracts must not import Node modules"
               },
               {
-                "regex": "^(?:\\./|(?:\\.\\./)+)(?:renderer/|electron/|(?:\\.\\./)*scripts/)",
+                "regex": "^(?:\\./|(?:\\.\\./)+)(?:renderer/|electron/|backend/|(?:\\.\\./)*scripts/)",
                 "message": "contracts must not import application code"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["ai/pagoda/src/backend/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["electron"],
+                "message": "backend code must not import Electron"
+              },
+              {
+                "regex": "^(?:\\.\\./)+(?:renderer|electron)/",
+                "message": "backend code must not import renderer or Electron implementation"
               }
             ]
           }
@@ -147,7 +167,7 @@
           {
             "patterns": [
               {
-                "regex": "^(?:\\.\\./)+src/(?:renderer|electron)/",
+                "regex": "^(?:\\.\\./)+src/(?:renderer|electron|backend)/",
                 "message": "the launcher must launch the app, not import its implementation"
               }
             ]

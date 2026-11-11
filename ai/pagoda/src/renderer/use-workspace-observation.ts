@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer } from "react";
 
 import type { SessionKey, SessionSnapshot, SessionSummary } from "../desktop-api.ts";
+import { useApi } from "./api.ts";
 
 interface ObservedSession {
   summary: SessionSummary;
@@ -48,6 +49,7 @@ export function useWorkspaceObservation(
   onWorkspace: (workspace: InitialWorkspace) => void,
   onError: (error: unknown) => void,
 ): { sessions: ObservedSessions; receive: (snapshot: SessionSnapshot) => void } {
+  const { workspace } = useApi();
   const [sessions, dispatch] = useReducer(mergeObservation, {});
   const receive = useCallback((snapshot: SessionSnapshot): void => {
     dispatch({ type: "snapshot", snapshot });
@@ -55,15 +57,15 @@ export function useWorkspaceObservation(
 
   useEffect(() => {
     let active = true;
-    const unsubscribe = window.pi.subscribe((snapshot) => {
+    const unsubscribe = workspace.subscribe((snapshot) => {
       if (active) receive(snapshot);
     });
-    void window.pi
+    void workspace
       .workspace()
-      .then((workspace) => {
+      .then((initial) => {
         if (!active) return;
-        dispatch({ type: "summaries", sessions: workspace.sessions });
-        onWorkspace(workspace);
+        dispatch({ type: "summaries", sessions: initial.sessions });
+        onWorkspace(initial);
       })
       .catch((error: unknown) => {
         if (active) onError(error);
@@ -72,12 +74,12 @@ export function useWorkspaceObservation(
       active = false;
       unsubscribe();
     };
-  }, [receive, onWorkspace, onError]);
+  }, [workspace, receive, onWorkspace, onError]);
 
   useEffect(() => {
     if (!selected) return undefined;
     let active = true;
-    void window.pi
+    void workspace
       .snapshot(selected)
       .then((snapshot) => {
         if (active) receive(snapshot);
@@ -88,7 +90,7 @@ export function useWorkspaceObservation(
     return (): void => {
       active = false;
     };
-  }, [selected, receive, onError]);
+  }, [workspace, selected, receive, onError]);
 
   return { sessions, receive };
 }

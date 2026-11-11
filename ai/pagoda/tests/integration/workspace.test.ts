@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { DesktopWorkspace } from "../../src/electron/workspace.ts";
+import { workspaceApi } from "../../src/backend/api.ts";
+import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 
 test("reopening and navigation render native summary messages", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pi-summary-"));
@@ -52,17 +53,21 @@ test("reopening and navigation render native summary messages", async (t) => {
     await rm(directory, { recursive: true, force: true });
   });
   await workspace.start();
-  const opened = await workspace.open(directory, file);
+  const api = workspaceApi(workspace);
+  const opened = await api.open(directory, file);
+  await assert.rejects(
+    api.prompt({ key: opened.key, message: " \n", mode: "prompt" }),
+    /Enter a message/u,
+  );
   assert.deepEqual(
     opened.messages.map((message) => message.text),
     ["Compacted history", "Previous branch", "Latest"],
   );
-  const session = workspace.session(opened.key);
-  const branch = (await session.history()).entries.find((entry) => entry.id === "branch");
+  const branch = (await api.history(opened.key)).entries.find((entry) => entry.id === "branch");
   assert.ok(branch);
-  await session.navigate(branch.id);
+  await api.navigate(opened.key, branch.id);
   assert.deepEqual(
-    session.snapshot().messages.map((message) => message.text),
+    (await api.snapshot(opened.key)).messages.map((message) => message.text),
     ["Compacted history", "Previous branch"],
   );
 });

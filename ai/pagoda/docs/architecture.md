@@ -20,7 +20,8 @@ components use Base UI primitives and Lucide icons.
 
 - `src/renderer/`: React screens, feature state, domain-free controls, and semantic styles.
 - `src/desktop-api.ts`: environment-neutral desktop API, request schemas, and presentation types.
-- `src/electron/`: main/preload, Pi RPC integration, and session observation.
+- `src/backend/`: Node workspace, Pi RPC integration, and session observation.
+- `src/electron/`: main/preload and native desktop integration.
 - `scripts/launch.ts`: development/startup and process cleanup; package scripts own build commands.
 - `tests/integration/`: Node checks with fake execution and isolated state.
 - `tests/e2e/`: actual Electron renderer/preload/main journeys.
