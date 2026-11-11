@@ -54,7 +54,7 @@ const sessionPath = sessionArgument >= 0 ? process.argv[sessionArgument + 1] : u
 let stored: Static<typeof StoredSchema> = {
   id: randomUUID(),
   cwd: process.cwd(),
-  name: "Test conversation",
+  name: "Test session",
   modified: new Date().toISOString(),
   leafId: null,
   entries: [],
@@ -188,7 +188,7 @@ async function control(messageText: string): Promise<void> {
         JSON.stringify({
           ...stored,
           id,
-          name: "Forked conversation",
+          name: "Forked session",
           entries: stored.entries.slice(0, index + 1),
           leafId: value.value,
         }),

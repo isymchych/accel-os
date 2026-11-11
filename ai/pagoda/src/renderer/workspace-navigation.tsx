@@ -3,6 +3,7 @@ import { useHotkeys, type UseHotkeyDefinition } from "@tanstack/react-hotkeys";
 import { KeyboardIcon } from "lucide-react";
 import { useState, type ReactElement, type RefObject } from "react";
 
+import type { SessionKey } from "../desktop-api.ts";
 import { Button } from "./components/ui/button.tsx";
 
 export function WorkspaceNavigation({
@@ -14,13 +15,13 @@ export function WorkspaceNavigation({
 }: {
   target: RefObject<HTMLElement | null>;
   composer: RefObject<HTMLTextAreaElement | null>;
-  sessionKeys: string[];
-  selected: string;
-  onSelect: (key: string) => void;
+  sessionKeys: SessionKey[];
+  selected: SessionKey | null;
+  onSelect: (key: SessionKey) => void;
 }): ReactElement {
   const [helpOpen, setHelpOpen] = useState(false);
   function switchSession(direction: number): void {
-    const index = sessionKeys.indexOf(selected);
+    const index = selected === null ? -1 : sessionKeys.indexOf(selected);
     const next = sessionKeys[index + direction];
     if (index >= 0 && next) onSelect(next);
   }
@@ -84,7 +85,7 @@ export function WorkspaceNavigation({
     {
       hotkey: "[",
       label: "[",
-      description: "Previous open conversation",
+      description: "Previous open session",
       callback: () => {
         switchSession(-1);
       },
@@ -92,7 +93,7 @@ export function WorkspaceNavigation({
     {
       hotkey: "]",
       label: "]",
-      description: "Next open conversation",
+      description: "Next open session",
       callback: () => {
         switchSession(1);
       },

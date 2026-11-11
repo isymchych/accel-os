@@ -389,42 +389,37 @@ test(
       },
     );
     await session.close();
-    await t.test(
-      "native persistence retains the original conversation after shutdown",
-      async () => {
-        const sessionsDirectory = path.join(config, "sessions");
-        const sessionFiles = (await readdir(sessionsDirectory, { recursive: true })).filter(
-          (file) => file.endsWith(".jsonl"),
-        );
-        assert.equal(sessionFiles.length, 2);
-        const entries = await readFile(original.path, "utf8");
-        const messages = entries
-          .trim()
-          .split("\n")
-          .flatMap((line) => {
-            const entry: unknown = JSON.parse(line);
-            return Value.Check(PersistedMessageSchema, entry) ? [entry.message] : [];
-          });
-        assert.deepEqual(messages.find((message) => message.role === "user")?.content, [
-          { type: "text", text: "Read fixture.txt and report the result." },
-        ]);
-        assert.ok(
-          messages.some(
-            (message) =>
-              message.role === "toolResult" &&
-              JSON.stringify(message.content).includes("isolated tool result"),
-          ),
-        );
-        assert.ok(
-          messages.some(
-            (message) =>
-              message.role === "assistant" &&
-              JSON.stringify(message.content).includes(
-                "Configured Pi completed the isolated read.",
-              ),
-          ),
-        );
-      },
-    );
+    await t.test("native persistence retains the original session after shutdown", async () => {
+      const sessionsDirectory = path.join(config, "sessions");
+      const sessionFiles = (await readdir(sessionsDirectory, { recursive: true })).filter((file) =>
+        file.endsWith(".jsonl"),
+      );
+      assert.equal(sessionFiles.length, 2);
+      const entries = await readFile(original.path, "utf8");
+      const messages = entries
+        .trim()
+        .split("\n")
+        .flatMap((line) => {
+          const entry: unknown = JSON.parse(line);
+          return Value.Check(PersistedMessageSchema, entry) ? [entry.message] : [];
+        });
+      assert.deepEqual(messages.find((message) => message.role === "user")?.content, [
+        { type: "text", text: "Read fixture.txt and report the result." },
+      ]);
+      assert.ok(
+        messages.some(
+          (message) =>
+            message.role === "toolResult" &&
+            JSON.stringify(message.content).includes("isolated tool result"),
+        ),
+      );
+      assert.ok(
+        messages.some(
+          (message) =>
+            message.role === "assistant" &&
+            JSON.stringify(message.content).includes("Configured Pi completed the isolated read."),
+        ),
+      );
+    });
   },
 );

@@ -3,8 +3,8 @@
 Local-only Electron + React UI for the existing Pi coding-agent configuration in `../pi/`. Electron
 owns windows and Pi RPC children; Pi owns execution and native session persistence.
 
-The app supports directory/session selection, independent concurrent conversations, native history
-navigation and snapshot forks, streaming transcripts and tool results, follow-ups and steering,
+The app supports directory/session selection, independent concurrent sessions, native history
+navigation and forks, streaming transcripts and tool results, follow-ups and steering,
 model/thinking controls, Stop, renderer reattachment, and clean shutdown.
 
 ## Setup and run
@@ -32,12 +32,12 @@ renderer or copy credentials into desktop storage. A graphical Linux/macOS sessi
 
 Production startup loads `dist/`; rebuild after source changes.
 
-## Working with conversations
+## Working with sessions
 
-- Use **Choose directory** and **New conversation**, or reopen a saved conversation. Refresh the
-  saved list after creating history elsewhere.
-- Switch between open conversations without stopping their work. Drafts and pending commands stay
-  with their original conversation, including across renderer reloads.
+- Use **Choose directory** and **New session**, or reopen a saved session. Refresh the saved list
+  after creating history elsewhere.
+- Switch between open sessions without stopping their work. Drafts and pending commands stay with
+  their original session, including across renderer reloads.
 - **Send** starts idle work; **Follow up** queues input after current work; **Steer** uses Pi's
   steering boundary. When idle, both start work immediately. Model and thinking controls apply to
   the current idle session, not global defaults.
@@ -45,8 +45,8 @@ Production startup loads `dist/`; rebuild after source changes.
   native entry; **Navigate** changes the active branch when idle without deleting other history.
   Selecting a user message other than the current leaf moves to its parent and restores that
   message's text to the composer; selecting the current leaf is a no-op.
-- **Fork conversation** copies persisted history through the selected entry into an independent
-  session. The source keeps running; unfinished output and runtime fork hooks are excluded.
+- **Fork session** copies persisted history through the selected entry into an independent session.
+  The source keeps running; unfinished output and runtime fork hooks are excluded.
 
 CLI/GUI handoff is sequential: close the terminal session before reopening it here, and quit the
 desktop before resuming its sessions in the terminal. Lost acknowledgements preserve drafts but do
@@ -59,9 +59,9 @@ history through Pi; unfinished execution requires a fresh run after an app or ma
 
 Outside text inputs, use `j` / `k` to scroll, `Ctrl+d` / `Ctrl+u` for half pages, and `gg` / `G` for
 the page start/end. `i` focuses the message input; `Esc` returns to navigation without stopping the
-agent. `[` / `]` select the previous/next open conversation without wrapping or interrupting work.
-Press `?` or click **Keyboard shortcuts** for help. Menus and dialogs keep their own key handling.
-These shortcuts do not submit prompts or provide Vim text editing.
+agent. `[` / `]` select the previous/next open session without wrapping or interrupting work. Press
+`?` or click **Keyboard shortcuts** for help. Menus and dialogs keep their own key handling. These
+shortcuts do not submit prompts or provide Vim text editing.
 
 ## Configuration and compatibility
 

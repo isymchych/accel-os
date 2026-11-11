@@ -75,7 +75,7 @@ export class PiRpc {
       child.once("close", (code, signal) => {
         this.fail(
           new Error(
-            `Pi exited (${signal ?? code ?? "unknown"}). Reopen the saved conversation to reconnect.`,
+            `Pi exited (${signal ?? code ?? "unknown"}). Reopen the saved session to reconnect.`,
           ),
         );
         resolve();
@@ -150,7 +150,7 @@ export class PiRpc {
       !Value.Check(CommandsSchema, commands.data) ||
       !commands.data.commands.some((command) => command.name === "workspace-control")
     )
-      throw new Error("Pi's desktop session bridge is unavailable");
+      throw new Error("Pi's desktop bridge is unavailable");
     const id = randomUUID();
     let result: unknown;
     const unsubscribe = this.subscribe((record) => {

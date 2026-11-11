@@ -51,9 +51,10 @@ context. Correlated results travel through RPC notifications, not raw stdout (Pi
 stdout). Electron verifies bridge availability before issuing control commands; controls never fall
 back to model input.
 
-Snapshot forks open a private copy with `SessionManager`, so legacy migrations cannot rewrite the
-live source. Pi constructs the selected branch; the bridge restores source lineage and publishes the
-destination atomically without overwriting another file.
+Forks open a private copy with `SessionManager`, so legacy migrations cannot rewrite the live
+source. Pi constructs the selected branch; the bridge restores source lineage and publishes the
+destination atomically without overwriting another file. The bridge's `snapshot` operation creates
+the fork's session file.
 
 Verify compatibility against installed Pi declarations and documentation. Check the revision of any
 reference checkout before using its source, and validate upgrades with integration checks.
@@ -73,8 +74,13 @@ reloads. Completed Pi messages replace reconstructed partial output. Revision nu
 initial snapshot from overwriting a newer observation. Transient text/tool deltas coalesce before
 cloning and forwarding a full snapshot; completed messages and lifecycle changes publish
 immediately. The main-owned workspace reuses active owners and reserves pending opens. Commands
-carry an explicit desktop session key; renderer selection never retargets a child or an outstanding
-request. Drafts are keyed by that same session and retained in renderer session storage.
+carry an explicit session key; renderer selection never retargets a child or an outstanding request.
+Drafts use the same key and are retained in renderer session storage.
+
+Each open session has an execution owner. The owner's `key` routes commands and observations;
+`sessionId` identifies the Pi session, and `sessionFile` locates its persisted history. Reopening
+saved history after its child exits creates a new owner and key for the same Pi session.
+`SessionSnapshot` carries a copy of live presentation state to the renderer.
 
 Graphical interactions use Pi's RPC dialog request/response contract.
 [README.md](../README.md#configuration-and-compatibility) describes supported interactions.

@@ -3,7 +3,13 @@ import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
 
-import type { SessionSnapshot, SessionSummary, StoredSession } from "../../src/desktop-api.ts";
+import type {
+  SessionId,
+  SessionKey,
+  SessionSnapshot,
+  SessionSummary,
+  StoredSession,
+} from "../../src/desktop-api.ts";
 import type { PiLaunch } from "../../src/electron/rpc.ts";
 
 // Control only owner startup/disposal. The real workspace handles reservations,
@@ -21,10 +27,10 @@ class ControlledOwner {
     const index = launch.args.indexOf("--session");
     this.sessionPath = index < 0 ? null : (launch.args[index + 1] ?? null);
     this.state = {
-      key: `owner-${owners.length}`,
+      key: `owner-${owners.length}` as SessionKey,
       revision: 0,
       cwd: launch.cwd,
-      name: "Conversation",
+      name: "Session",
       connection: "starting",
       execution: "unknown",
       sessionId: null,
@@ -54,7 +60,9 @@ class ControlledOwner {
     this.state.connection = "connected";
     this.state.execution = "idle";
     this.state.sessionFile = this.sessionPath;
-    this.state.sessionId = this.state.sessionFile ? "stored" : this.state.key;
+    this.state.sessionId = (
+      this.state.sessionFile ? "stored" : `session-${this.state.key}`
+    ) as SessionId;
   }
   public async list(): Promise<StoredSession[]> {
     return catalog;
@@ -80,9 +88,9 @@ async function fixture(t: test.TestContext): Promise<InstanceType<typeof Desktop
   catalog = [
     {
       path: "/project/stored.jsonl",
-      id: "stored",
+      id: "stored" as SessionId,
       cwd: "/project",
-      name: "Saved conversation",
+      name: "Saved session",
       modified: "2026-01-01T00:00:00.000Z",
     },
   ];

@@ -247,14 +247,12 @@ test("directory selection, independent drafts, and a pending Stop stay bound to 
   }, other);
   await page.getByRole("button", { name: "Choose directory", exact: true }).click();
   await expect(page.getByRole("complementary")).toContainText(other);
-  await page.getByRole("button", { name: "New conversation", exact: true }).click();
-  const conversations = page
-    .getByRole("navigation", { name: "Open conversations" })
-    .getByRole("button");
-  await expect(conversations).toHaveCount(2);
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  await expect(sessions).toHaveCount(2);
   await expect(page.getByRole("status").first()).toContainText("idle");
   await message.fill("B draft");
-  await conversations.nth(0).click();
+  await sessions.nth(0).click();
   await expect(message).toHaveValue("A draft");
   await writeFile(path.join(directory, "delay-abort"), "delay");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
@@ -262,7 +260,7 @@ test("directory selection, independent drafts, and a pending Stop stay bound to 
     .poll(async () => readFile(path.join(directory, "abort-pending"), "utf8").catch(() => ""))
     .toBe("pending");
   await expect(page.getByRole("status").first()).toContainText("stopping");
-  await conversations.nth(1).click();
+  await sessions.nth(1).click();
   await expect(message).toHaveValue("B draft");
   await message.fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -294,13 +292,11 @@ test("history forks preserve active source work and reopening reuses its owner",
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
   await page.getByRole("button", { name: "Refresh sessions", exact: true }).click();
-  const saved = page.getByRole("region", { name: "Saved conversations" });
+  const saved = page.getByRole("region", { name: "Saved sessions" });
   await expect(saved.getByRole("button")).toHaveCount(1);
   await saved.getByRole("button").click();
-  const conversations = page
-    .getByRole("navigation", { name: "Open conversations" })
-    .getByRole("button");
-  await expect(conversations).toHaveCount(1);
+  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  await expect(sessions).toHaveCount(1);
   await page.getByRole("button", { name: "History and branches", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "History entry", exact: true })).toContainText(
     "assistant:",
@@ -308,8 +304,8 @@ test("history forks preserve active source work and reopening reuses its owner",
   await message.fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("status").first()).toContainText("running");
-  await page.getByRole("button", { name: "Fork conversation", exact: true }).click();
-  await expect(conversations).toHaveCount(2);
+  await page.getByRole("button", { name: "Fork session", exact: true }).click();
+  await expect(sessions).toHaveCount(2);
   await expect(page.getByRole("article", { name: "user message" })).toHaveCount(1);
   await expect(page.getByRole("article", { name: "user message" })).toContainText(
     "original history",
@@ -393,17 +389,15 @@ test("a delayed Send acknowledgement clears only its original session's draft", 
     .poll(async () => readFile(path.join(directory, "prompt-pending"), "utf8").catch(() => ""))
     .toBe("pending");
   await expect(message).toHaveValue("delayed");
-  await page.getByRole("button", { name: "New conversation", exact: true }).click();
-  const conversations = page
-    .getByRole("navigation", { name: "Open conversations" })
-    .getByRole("button");
-  await expect(conversations).toHaveCount(2);
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  await expect(sessions).toHaveCount(2);
   await expect(page.getByRole("status").first()).toContainText("idle");
   await message.fill("B must keep this draft");
   await writeFile(path.join(directory, "release-prompt"), "release");
-  await conversations.nth(0).click();
+  await sessions.nth(0).click();
   await expect(message).toHaveValue("");
-  await conversations.nth(1).click();
+  await sessions.nth(1).click();
   await expect(message).toHaveValue("B must keep this draft");
 });
 
@@ -509,7 +503,7 @@ test("keyboard navigation scrolls and focuses the composer without intercepting 
   await expect(page.getByRole("article", { name: "user message" })).toHaveCount(1);
 });
 
-test("keyboard conversation switching preserves drafts and work while overlays own their keys", async ({
+test("keyboard session switching preserves drafts and work while overlays own their keys", async ({
   desktop: { page },
 }) => {
   const message = page.getByLabel("Message", { exact: true });
@@ -522,11 +516,9 @@ test("keyboard conversation switching preserves drafts and work while overlays o
   await message.fill("A draft");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("status").first()).toContainText("running");
-  await page.getByRole("button", { name: "New conversation", exact: true }).click();
-  const conversations = page
-    .getByRole("navigation", { name: "Open conversations" })
-    .getByRole("button");
-  await expect(conversations).toHaveCount(2);
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  await expect(sessions).toHaveCount(2);
   await message.fill("B draft");
   await page.keyboard.press("Escape");
   await page.keyboard.press("[");

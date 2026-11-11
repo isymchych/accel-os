@@ -2,25 +2,31 @@
 
 ## Concepts and ownership
 
-- **Session:** a native Pi conversation, its history tree, active branch, and persisted
-  configuration.
+- **Session:** a Pi session with its history tree, active branch, and persisted configuration.
+  Pagoda opens sessions to execute work and display their state; saved history survives app
+  shutdown.
+- **History entry:** a node in a session's persisted history tree.
+- **Branch:** a path through that tree; navigation changes the active branch within the same
+  session.
+- **Fork:** a new, independent session copied from persisted history through a selected entry.
 - **Working directory:** the local starting context for project resources and tools.
 - **Account profile:** an existing `ai/pi/` profile with isolated credentials and shared resources.
-- **Desktop session:** an app-owned Pi RPC child and its current observable state.
-- **Renderer:** the React view; it observes sessions and sends explicit commands.
+
+The workspace is the app's collection of open sessions.
 
 Pi owns tools, model access, context management, retries, compaction, queues, history, and session
 files. The desktop owns process lifecycle, navigation, drafts, and graphical presentation. `ai/pi/`
 remains the source of truth for agent configuration and credentials.
 
-## Activity, outcomes, and connection
+## Connection and execution
 
 Connection and execution are separate. Disconnection does not establish success, failure, or
-cancellation; displayed execution becomes unknown until fresh state confirms it.
+cancellation; displayed execution becomes unknown until fresh state confirms it. Activity describes
+current work, such as a running tool.
 
 Prompt acceptance is not completion. A Pi response can mean started, queued, or handled by an
 extension. `agent_end` may precede retries or queued work; `agent_settled` marks the end of
-automatic continuation. A tool error does not necessarily end the run.
+automatic continuation. A tool error does not necessarily end execution.
 
 Display command rejection, provider/tool errors, extension failures, and child-process exit
 distinctly where the runtime exposes them. Preserve drafts on failed or uncertain submission; do not
@@ -44,10 +50,9 @@ Session navigation and native Pi branching must preserve original history and ta
 explicitly selected session. Follow-up and steering remain distinct, using Pi's native semantics
 rather than an application queue.
 
-GUI forks are native-format snapshots of persisted history through the selected entry. They create
-an independent session without interrupting the source. They exclude unfinished streaming output and
-do not invoke Pi's runtime fork lifecycle hooks. Branch navigation remains a native Pi operation and
-requires an idle session.
+Forks preserve Pi's session format and do not interrupt the source. They exclude unfinished
+streaming output and do not invoke Pi's runtime fork lifecycle hooks. Branch navigation remains a
+native Pi operation and requires an idle session.
 
 ## Configuration and interaction compatibility
 

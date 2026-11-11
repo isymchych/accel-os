@@ -1,14 +1,25 @@
 import { Type, type Static } from "typebox";
 
+import type { Brand } from "./lib/brand.ts";
+
+export type SessionKey = Brand<string, "SessionKey">;
+export type SessionId = Brand<string, "SessionId">;
+export type HistoryEntryId = Brand<string, "HistoryEntryId">;
+
 const Key = Type.String({ minLength: 1, maxLength: 200 });
+const SessionKeySchema = Type.Unsafe<SessionKey>(Key);
+const HistoryEntryIdSchema = Type.Unsafe<HistoryEntryId>(Key);
 const Path = Type.String({ minLength: 1, maxLength: 32_768 });
-export const TargetSchema = Type.Object({ key: Key }, { additionalProperties: false });
+export const TargetSchema = Type.Object({ key: SessionKeySchema }, { additionalProperties: false });
 export const DirectorySchema = Type.Object({ cwd: Path }, { additionalProperties: false });
 export const OpenSchema = Type.Object({ cwd: Path, path: Path }, { additionalProperties: false });
-export const EntrySchema = Type.Object({ key: Key, entryId: Key }, { additionalProperties: false });
+export const EntrySchema = Type.Object(
+  { key: SessionKeySchema, entryId: HistoryEntryIdSchema },
+  { additionalProperties: false },
+);
 export const PromptSchema = Type.Object(
   {
-    key: Key,
+    key: SessionKeySchema,
     message: Type.String({ minLength: 1, maxLength: 100_000 }),
     mode: Type.Union([Type.Literal("prompt"), Type.Literal("follow_up"), Type.Literal("steer")]),
   },
@@ -16,7 +27,7 @@ export const PromptSchema = Type.Object(
 );
 export const ModelSchema = Type.Object(
   {
-    key: Key,
+    key: SessionKeySchema,
     provider: Key,
     modelId: Key,
   },
@@ -24,7 +35,7 @@ export const ModelSchema = Type.Object(
 );
 export const ThinkingSchema = Type.Object(
   {
-    key: Key,
+    key: SessionKeySchema,
     level: Type.String({ minLength: 1, maxLength: 30 }),
   },
   { additionalProperties: false },
@@ -43,15 +54,17 @@ export interface ToolActivity {
   state: "running" | "completed" | "error";
 }
 export interface SessionSummary {
-  key: string;
+  /** Routes commands and observations to the current execution owner. */
+  key: SessionKey;
   revision: number;
   connection: "starting" | "connected" | "disconnected";
   execution: "idle" | "running" | "stopping" | "unknown";
   cwd: string;
-  sessionId: string | null;
+  sessionId: SessionId | null;
   sessionFile: string | null;
   name: string;
 }
+/** A copy of live presentation state for the renderer. */
 export interface SessionSnapshot extends SessionSummary {
   messages: TranscriptMessage[];
   streaming: string;
@@ -62,19 +75,19 @@ export interface SessionSnapshot extends SessionSummary {
 }
 export interface StoredSession {
   path: string;
-  id: string;
+  id: SessionId;
   cwd: string;
   name: string;
   modified: string;
 }
 export interface HistoryEntry {
-  id: string;
-  parentId: string | null;
+  id: HistoryEntryId;
+  parentId: HistoryEntryId | null;
   label: string;
 }
 export interface SessionHistory {
   entries: HistoryEntry[];
-  leafId: string | null;
+  leafId: HistoryEntryId | null;
 }
 export interface ModelChoice {
   provider: string;
@@ -90,19 +103,19 @@ export interface SessionControls {
 }
 export type Prompt = Static<typeof PromptSchema>;
 export interface DesktopApi {
-  workspace(): Promise<{ initialKey: string; sessions: SessionSummary[] }>;
+  workspace(): Promise<{ initialKey: SessionKey; sessions: SessionSummary[] }>;
   chooseDirectory(): Promise<string | null>;
   list(cwd: string): Promise<StoredSession[]>;
   create(cwd: string): Promise<SessionSnapshot>;
   open(cwd: string, path: string): Promise<SessionSnapshot>;
-  snapshot(key: string): Promise<SessionSnapshot>;
+  snapshot(key: SessionKey): Promise<SessionSnapshot>;
   prompt(request: Prompt): Promise<string>;
-  stop(key: string): Promise<void>;
-  history(key: string): Promise<SessionHistory>;
-  navigate(key: string, entryId: string): Promise<string | undefined>;
-  fork(key: string, entryId: string): Promise<SessionSnapshot>;
-  controls(key: string): Promise<SessionControls>;
-  model(key: string, provider: string, modelId: string): Promise<void>;
-  thinking(key: string, level: string): Promise<void>;
+  stop(key: SessionKey): Promise<void>;
+  history(key: SessionKey): Promise<SessionHistory>;
+  navigate(key: SessionKey, entryId: HistoryEntryId): Promise<string | undefined>;
+  fork(key: SessionKey, entryId: HistoryEntryId): Promise<SessionSnapshot>;
+  controls(key: SessionKey): Promise<SessionControls>;
+  model(key: SessionKey, provider: string, modelId: string): Promise<void>;
+  thinking(key: SessionKey, level: string): Promise<void>;
   subscribe(listener: (snapshot: SessionSnapshot) => void): () => void;
 }

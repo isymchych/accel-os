@@ -7,6 +7,8 @@ import { setImmediate } from "node:timers/promises";
 import { Type, type Static } from "typebox";
 import { Value } from "typebox/value";
 
+import type { HistoryEntryId } from "../../src/desktop-api.ts";
+
 const CommandSchema = Type.Object({
   id: Type.String(),
   type: Type.String(),
@@ -369,7 +371,10 @@ test("rejected controls preserve history and release the mutation guard", async 
       child.respond(command, { data: { levels: ["off"] } });
     else throw new Error(`Unexpected command: ${command.type}`);
   };
-  await assert.rejects(session.navigate("entry"), /cancelled history navigation/u);
+  await assert.rejects(
+    session.navigate("entry" as HistoryEntryId),
+    /cancelled history navigation/u,
+  );
   await assert.rejects(session.model("fixture", "missing"), /Model is unavailable/u);
   await assert.rejects(session.thinking("high"), /Unsupported thinking level/u);
   assert.deepEqual(session.snapshot().messages, history);

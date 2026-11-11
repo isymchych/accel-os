@@ -10,16 +10,15 @@ account selection behavior.
 The desktop receives launch selections without changing terminal launcher configuration. Unsupported
 UI arguments are rejected rather than forwarded to Pi.
 
-## Conversation selection and concurrent work
+## Session selection and concurrent work
 
-Users can choose directories and browse, create, and reopen native Pi sessions. Selecting a
-conversation displays its transcript, draft, and activity. Reopening an active session reuses its
-existing execution owner.
+Users can choose directories and browse, create, and reopen native Pi sessions. Selecting a session
+displays its transcript, draft, and activity. Reopening an active session reuses its existing
+execution owner.
 
-Work continues independently across conversations. Starting work in A, switching to B and submitting
-there, then returning to A preserves each conversation's history, draft, and activity. Commands
-remain attached to the conversation where they originated, including while Send or Stop confirmation
-is pending.
+Work continues independently across sessions. Starting work in A, switching to B and submitting
+there, then returning to A preserves each session's history, draft, and activity. Commands remain
+attached to the session where they originated, including while Send or Stop confirmation is pending.
 
 Terminal/desktop handoff is sequential: close a session in one interface before opening it in the
 other. Each session has one writer.
@@ -35,7 +34,7 @@ uncertain; input must not be resent automatically.
 
 ## Transcript and activity
 
-Conversations display history, streaming text, meaningful tool activity and results, connection and
+Sessions display history, streaming text, meaningful tool activity and results, connection and
 execution state, errors, and interaction notices. Long text and tool results expand on demand.
 Transient streaming updates coalesce; completed messages and lifecycle changes appear immediately.
 
@@ -52,14 +51,14 @@ preserves the original history.
 
 Forking creates an independent native session containing persisted history through the selected
 entry. The source retains its history and continues active work; unfinished streaming output is
-excluded from the fork. Snapshot creation must not invoke runtime fork hooks or let legacy
-migrations rewrite the live source.
+excluded from the fork. Fork creation must not invoke runtime fork hooks or let legacy migrations
+rewrite the live source.
 
 The fork can execute independently while its source continues streaming.
 
 ## Stop, reconnect, and application lifetime
 
-Stop targets the conversation where it was requested, even if the selected view changes while
+Stop targets the session where it was requested, even if the selected view changes while
 confirmation is pending. It remains stopping until Pi confirms cancellation; an unknown outcome must
 not be displayed as successful cancellation.
 

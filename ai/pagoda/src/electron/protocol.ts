@@ -1,7 +1,11 @@
 import { Type, type Static } from "typebox";
 import { Value } from "typebox/value";
 
+import type { HistoryEntryId, SessionId } from "../desktop-api.ts";
+
 // Pi owns these records; extra provider/extension fields are intentionally allowed.
+const SessionIdSchema = Type.Unsafe<SessionId>(Type.String());
+const HistoryEntryIdSchema = Type.Unsafe<HistoryEntryId>(Type.String());
 export const RecordSchema = Type.Object({ type: Type.String() });
 export const ResponseSchema = Type.Object({
   type: Type.Literal("response"),
@@ -12,7 +16,7 @@ export const ResponseSchema = Type.Object({
   error: Type.Optional(Type.String()),
 });
 export const StateSchema = Type.Object({
-  sessionId: Type.String(),
+  sessionId: SessionIdSchema,
   isStreaming: Type.Boolean(),
   isCompacting: Type.Boolean(),
   sessionFile: Type.Optional(Type.String()),
@@ -91,7 +95,7 @@ export const ToolSchema = Type.Object({
 export const CatalogSchema = Type.Array(
   Type.Object({
     path: Type.String(),
-    id: Type.String(),
+    id: SessionIdSchema,
     cwd: Type.String(),
     name: Type.String(),
     modified: Type.String(),
@@ -100,14 +104,14 @@ export const CatalogSchema = Type.Array(
 export const EntriesSchema = Type.Object({
   entries: Type.Array(
     Type.Object({
-      id: Type.String(),
-      parentId: Type.Union([Type.String(), Type.Null()]),
+      id: HistoryEntryIdSchema,
+      parentId: Type.Union([HistoryEntryIdSchema, Type.Null()]),
       type: Type.String(),
       message: Type.Optional(MessageSchema),
       summary: Type.Optional(Type.String()),
     }),
   ),
-  leafId: Type.Union([Type.String(), Type.Null()]),
+  leafId: Type.Union([HistoryEntryIdSchema, Type.Null()]),
 });
 export const ModelsSchema = Type.Object({
   models: Type.Array(

@@ -2,9 +2,11 @@ import { GitBranchIcon, SendIcon, SquareIcon } from "lucide-react";
 import { memo, useEffect, useState, type ReactElement, type RefObject } from "react";
 
 import type {
+  HistoryEntryId,
   Prompt,
   SessionControls,
   SessionHistory,
+  SessionKey,
   SessionSnapshot,
   TranscriptMessage,
 } from "../desktop-api.ts";
@@ -80,7 +82,7 @@ function ModelControls({
 }: {
   controls: SessionControls | null;
   idle: boolean;
-  sessionKey: string;
+  sessionKey: SessionKey;
   change: (operation: () => Promise<void>) => Promise<void>;
 }): ReactElement {
   if (!controls) return <p className="text-xs text-muted-foreground">Loading model controls…</p>;
@@ -161,12 +163,12 @@ function RuntimeControls({
   onNavigateText,
 }: {
   snapshot: SessionSnapshot;
-  onFork: (entryId: string) => void;
-  onNavigateText: (key: string, text: string) => void;
+  onFork: (entryId: HistoryEntryId) => void;
+  onNavigateText: (key: SessionKey, text: string) => void;
 }): ReactElement {
   const [controls, setControls] = useState<SessionControls | null>(null);
   const [history, setHistory] = useState<SessionHistory | null>(null);
-  const [entry, setEntry] = useState<string | null>(null);
+  const [entry, setEntry] = useState<HistoryEntryId | null>(null);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const { key, connection, execution } = snapshot;
@@ -222,7 +224,9 @@ function RuntimeControls({
           <div className="flex flex-wrap gap-2">
             <Select
               value={entry}
-              onValueChange={setEntry}
+              onValueChange={(value) => {
+                setEntry(history?.entries.find((item) => item.id === value)?.id ?? null);
+              }}
               disabled={(history?.entries.length ?? 0) === 0}
             >
               <SelectTrigger aria-label="History entry" className="max-w-full">
@@ -260,7 +264,7 @@ function RuntimeControls({
                 if (entry) onFork(entry);
               }}
             >
-              Fork conversation
+              Fork session
             </Button>
             <Button
               variant="ghost"
@@ -408,15 +412,15 @@ function SessionComposer({
 
 export function SessionView(
   props: ComposerProps & {
-    onFork: (entryId: string) => void;
-    onNavigateText: (key: string, text: string) => void;
+    onFork: (entryId: HistoryEntryId) => void;
+    onNavigateText: (key: SessionKey, text: string) => void;
   },
 ): ReactElement {
   const { snapshot, onFork } = props;
   return (
     <div className="mx-auto max-w-4xl">
       <header>
-        <h2 className="text-xl font-semibold">{snapshot.name || "New conversation"}</h2>
+        <h2 className="text-xl font-semibold">{snapshot.name || "New session"}</h2>
         <p className="mt-2 break-all text-sm text-muted-foreground">{snapshot.cwd}</p>
         <output className="mt-2 block text-sm">
           Connection: {snapshot.connection} · Execution: {snapshot.execution}
@@ -424,7 +428,7 @@ export function SessionView(
         {snapshot.activity && <p className="mt-2 text-sm">{snapshot.activity}</p>}
       </header>
       <RuntimeControls snapshot={snapshot} onFork={onFork} onNavigateText={props.onNavigateText} />
-      <section aria-label="Conversation" className="space-y-4 py-5">
+      <section aria-label="Session transcript" className="space-y-4 py-5">
         <Transcript messages={snapshot.messages} />
         {snapshot.streaming && (
           <article aria-label="Streaming response" className="rounded-lg border border-border p-4">

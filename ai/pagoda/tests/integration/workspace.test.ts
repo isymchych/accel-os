@@ -58,7 +58,9 @@ test("reopening and navigation render native summary messages", async (t) => {
     ["Compacted history", "Previous branch", "Latest"],
   );
   const session = workspace.session(opened.key);
-  await session.navigate("branch");
+  const branch = (await session.history()).entries.find((entry) => entry.id === "branch");
+  assert.ok(branch);
+  await session.navigate(branch.id);
   assert.deepEqual(
     session.snapshot().messages.map((message) => message.text),
     ["Compacted history", "Previous branch"],

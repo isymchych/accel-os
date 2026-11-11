@@ -1,7 +1,13 @@
 import { FolderOpenIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
-import type { Prompt, SessionSnapshot, SessionSummary, StoredSession } from "../desktop-api.ts";
+import type {
+  Prompt,
+  SessionKey,
+  SessionSnapshot,
+  SessionSummary,
+  StoredSession,
+} from "../desktop-api.ts";
 import { Button } from "./components/ui/button.tsx";
 import { SessionView } from "./session-view.tsx";
 import { WorkspaceNavigation } from "./workspace-navigation.tsx";
@@ -35,9 +41,9 @@ export function SessionScreen(): ReactElement {
   useEffect(() => {
     workspaceRef.current?.focus({ preventScroll: true });
   }, []);
-  const [sessions, setSessions] = useState<Record<string, SessionSummary>>({});
-  const [snapshots, setSnapshots] = useState<Record<string, SessionSnapshot>>({});
-  const [selected, setSelected] = useState(() => saved("pi-selected"));
+  const [sessions, setSessions] = useState<Record<SessionKey, SessionSummary>>({});
+  const [snapshots, setSnapshots] = useState<Record<SessionKey, SessionSnapshot>>({});
+  const [selected, setSelected] = useState<SessionKey | null>(null);
   const [directory, setDirectory] = useState("");
   const [listing, setListing] = useState<{ cwd: string; items: StoredSession[] }>({
     cwd: "",
@@ -46,7 +52,7 @@ export function SessionScreen(): ReactElement {
   const catalog = listing.cwd === directory ? listing.items : [];
   const [feedback, setFeedback] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-  const [composers, setComposers] = useState<Record<string, ComposerState>>({});
+  const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});
 
   const receive = useCallback((next: SessionSnapshot): void => {
     setSnapshots((current) =>
@@ -61,7 +67,7 @@ export function SessionScreen(): ReactElement {
     );
   }, []);
   useEffect(() => {
-    remember("pi-selected", selected);
+    if (selected !== null) remember("pi-selected", selected);
   }, [selected]);
 
   useEffect(() => {
@@ -82,9 +88,9 @@ export function SessionScreen(): ReactElement {
           return next;
         });
         const previous = saved("pi-selected");
-        const key = workspace.sessions.some((session) => session.key === previous)
-          ? previous
-          : workspace.initialKey;
+        const key =
+          workspace.sessions.find((session) => session.key === previous)?.key ??
+          workspace.initialKey;
         setSelected(key);
         setDirectory(workspace.sessions.find((session) => session.key === key)?.cwd ?? "");
       })
@@ -130,13 +136,13 @@ export function SessionScreen(): ReactElement {
     };
   }, [directory, connected]);
 
-  const snapshot = snapshots[selected];
-  const composer = composers[selected] ?? {
-    message: saved(`pi-composer:${selected}`),
+  const snapshot = selected === null ? undefined : snapshots[selected];
+  const composer = (selected === null ? undefined : composers[selected]) ?? {
+    message: selected === null ? "" : saved(`pi-composer:${selected}`),
     pending: false,
     feedback: null,
   };
-  function updateComposer(key: string, change: Partial<ComposerState>): void {
+  function updateComposer(key: SessionKey, change: Partial<ComposerState>): void {
     setComposers((current) => ({
       ...current,
       [key]: {
@@ -149,11 +155,13 @@ export function SessionScreen(): ReactElement {
     }));
   }
   function edit(message: string): void {
+    if (selected === null) return;
     remember(`pi-composer:${selected}`, message);
     updateComposer(selected, { message });
   }
   async function submit(mode: Prompt["mode"]): Promise<void> {
     const key = selected;
+    if (key === null) return;
     const message = composer.message;
     updateComposer(key, { pending: true, feedback: null });
     try {
@@ -198,7 +206,7 @@ export function SessionScreen(): ReactElement {
         <WorkspaceNavigation
           target={workspaceRef}
           composer={composerRef}
-          sessionKeys={Object.keys(sessions)}
+          sessionKeys={Object.values(sessions).map((session) => session.key)}
           selected={selected}
           onSelect={setSelected}
         />
@@ -244,12 +252,10 @@ export function SessionScreen(): ReactElement {
           }}
         >
           <PlusIcon aria-hidden="true" />
-          New conversation
+          New session
         </Button>
-        <nav aria-label="Open conversations" className="mt-6 space-y-2">
-          <h2 className="text-xs font-semibold uppercase text-muted-foreground">
-            Open conversations
-          </h2>
+        <nav aria-label="Open sessions" className="mt-6 space-y-2">
+          <h2 className="text-xs font-semibold uppercase text-muted-foreground">Open sessions</h2>
           {Object.values(sessions).map((session) => (
             <Button
               key={session.key}
@@ -261,7 +267,7 @@ export function SessionScreen(): ReactElement {
               }}
             >
               <span className="min-w-0">
-                <span className="block truncate">{session.name || "New conversation"}</span>
+                <span className="block truncate">{session.name || "New session"}</span>
                 <span className="block text-xs text-muted-foreground">
                   {session.connection} · {session.execution}
                 </span>
@@ -269,14 +275,10 @@ export function SessionScreen(): ReactElement {
             </Button>
           ))}
         </nav>
-        <section aria-label="Saved conversations" className="mt-6 space-y-2">
-          <h2 className="text-xs font-semibold uppercase text-muted-foreground">
-            Saved conversations
-          </h2>
+        <section aria-label="Saved sessions" className="mt-6 space-y-2">
+          <h2 className="text-xs font-semibold uppercase text-muted-foreground">Saved sessions</h2>
           {catalog.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              No saved conversations in this directory.
-            </p>
+            <p className="text-xs text-muted-foreground">No saved sessions in this directory.</p>
           )}
           {catalog.map((session) => (
             <Button
@@ -329,7 +331,7 @@ export function SessionScreen(): ReactElement {
             }}
           />
         ) : (
-          <output>Opening conversation…</output>
+          <output>Opening session…</output>
         )}
       </div>
     </main>

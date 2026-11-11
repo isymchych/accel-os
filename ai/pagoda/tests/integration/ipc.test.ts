@@ -48,6 +48,7 @@ mock.module(path.resolve(import.meta.dirname, "../../src/electron/workspace.ts")
         snapshot: () => object;
         prompt: (message: string, mode: string) => Promise<void>;
         stop: () => Promise<void>;
+        navigate: (entryId: string) => Promise<void>;
       } {
         calls.push({ key });
         return {
@@ -60,6 +61,9 @@ mock.module(path.resolve(import.meta.dirname, "../../src/electron/workspace.ts")
           },
           stop: async (): Promise<void> => {
             calls.push("stop");
+          },
+          navigate: async (entryId): Promise<void> => {
+            calls.push({ entryId });
           },
         };
       }
@@ -117,9 +121,21 @@ test("every IPC method authorizes the exact main frame and validates explicit ta
     { key: "A", message: "missing mode" },
   ])
     await assert.rejects(invoke("pi:prompt", trusted, request), /Invalid pi:|Enter a message/u);
+  await assert.rejects(invoke("pi:stop", trusted, { key: "a".repeat(201) }), /Invalid pi:/u);
+  for (const entryId of ["", 1, "a".repeat(201)]) {
+    await assert.rejects(invoke("pi:navigate", trusted, { key: "A", entryId }), /Invalid pi:/u);
+  }
   assert.deepEqual(calls, []);
   const message = "x".repeat(100_000);
   await invoke("pi:prompt", trusted, { key: "A", mode: "follow_up", message });
-  await invoke("pi:stop", trusted, { key: "B" });
-  assert.deepEqual(calls, [{ key: "A" }, { message, mode: "follow_up" }, { key: "B" }, "stop"]);
+  await invoke("pi:stop", trusted, { key: "b".repeat(200) });
+  await invoke("pi:navigate", trusted, { key: "A", entryId: "a".repeat(200) });
+  assert.deepEqual(calls, [
+    { key: "A" },
+    { message, mode: "follow_up" },
+    { key: "b".repeat(200) },
+    "stop",
+    { key: "A" },
+    { entryId: "a".repeat(200) },
+  ]);
 });

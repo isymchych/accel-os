@@ -5,8 +5,10 @@ import { Type } from "typebox";
 import { Value } from "typebox/value";
 
 import type {
+  HistoryEntryId,
   SessionControls,
   SessionHistory,
+  SessionKey,
   SessionSnapshot,
   SessionSummary,
   StoredSession,
@@ -72,7 +74,7 @@ function transcriptMessage(message: PiMessage): TranscriptMessage {
   };
 }
 
-/** Owns execution independently of views; coalesces transient streaming observations. */
+/** Owns a session's execution independently of views; coalesces streaming observations. */
 export class DesktopSession {
   private readonly rpc: PiRpc;
   private listeners = new Set<(snapshot: SessionSnapshot) => void>();
@@ -82,10 +84,12 @@ export class DesktopSession {
   private notification: ReturnType<typeof setTimeout> | undefined;
   private state: SessionSnapshot;
 
-  public constructor(launch: PiLaunch, key = randomUUID()) {
+  public constructor(launch: PiLaunch, key?: SessionKey) {
     this.rpc = new PiRpc(launch);
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- This generated UUID identifies this execution owner.
+    const ownerKey = key ?? (randomUUID() as SessionKey);
     this.state = {
-      key,
+      key: ownerKey,
       revision: 0,
       connection: "starting",
       execution: "unknown",
@@ -225,7 +229,7 @@ export class DesktopSession {
     };
   }
 
-  public async navigate(entryId: string): Promise<string | undefined> {
+  public async navigate(entryId: HistoryEntryId): Promise<string | undefined> {
     return this.mutate(async () => {
       const data = await this.rpc.control("navigate", entryId);
       if (!Value.Check(NavigationSchema, data)) throw new Error("Invalid Pi navigation result");
@@ -235,7 +239,7 @@ export class DesktopSession {
     });
   }
 
-  public async fork(entryId: string): Promise<string> {
+  public async fork(entryId: HistoryEntryId): Promise<string> {
     const data = await this.rpc.control("snapshot", entryId);
     if (!Value.Check(PathSchema, data)) throw new Error("Invalid Pi snapshot result");
     return data.path;

@@ -40,7 +40,7 @@ use real provider credentials in automated tests.
 
 Configured-Pi checks use synthetic credentials and a local fake model to exercise actual extensions,
 read/shell execution, shell termination, native persistence, discovery/navigation, and independent
-snapshot execution while the source streams. Fake RPC checks establish application wiring; extension
+fork execution while the source streams. Fake RPC checks establish application wiring; extension
 compatibility requires configured-Pi checks, and these checks cover only the tools and extensions
 they exercise.
 
@@ -55,8 +55,8 @@ extension coverage limits explicitly.
 - Built renderer/preload/main journeys: submit/stream, renderer reload during work, draft
   preservation, untrusted text rendering, and clean quit.
 - Directory/session selection, sequential terminal/desktop handoff, persisted-history reopening,
-  history navigation and snapshot preservation, explicit follow-ups, model/thinking controls, and
-  long content.
+  history navigation and fork preservation, explicit follow-ups, model/thinking controls, and long
+  content.
 - Concurrent session activity, independent drafts, pending Send/Stop confirmations across view
   changes, and reuse of an active session's execution owner.
 

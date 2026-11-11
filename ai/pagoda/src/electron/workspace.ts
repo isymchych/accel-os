@@ -1,16 +1,22 @@
 import { realpath } from "node:fs/promises";
 
-import type { SessionSnapshot, SessionSummary, StoredSession } from "../desktop-api.ts";
+import type {
+  HistoryEntryId,
+  SessionKey,
+  SessionSnapshot,
+  SessionSummary,
+  StoredSession,
+} from "../desktop-api.ts";
 import type { PiLaunch } from "./rpc.ts";
 import { DesktopSession } from "./session.ts";
 
-/** One main-owned child per open conversation; view selection is never execution state. */
+/** One main-owned child per open session; view selection is never execution state. */
 export class DesktopWorkspace {
-  private readonly sessions = new Map<string, DesktopSession>();
+  private readonly sessions = new Map<SessionKey, DesktopSession>();
   private readonly opening = new Map<string, Promise<SessionSnapshot>>();
   private readonly listeners = new Set<(snapshot: SessionSnapshot) => void>();
   private closing = false;
-  public readonly initialKey: string;
+  public readonly initialKey: SessionKey;
   private readonly initial: DesktopSession;
 
   public constructor(privateLaunch: PiLaunch) {
@@ -23,15 +29,15 @@ export class DesktopWorkspace {
   public async start(): Promise<void> {
     await this.initial.start();
   }
-  public snapshot(): { initialKey: string; sessions: SessionSummary[] } {
+  public snapshot(): { initialKey: SessionKey; sessions: SessionSummary[] } {
     return {
       initialKey: this.initialKey,
       sessions: [...this.sessions.values()].map((session) => session.summary()),
     };
   }
-  public session(key: string): DesktopSession {
+  public session(key: SessionKey): DesktopSession {
     const session = this.sessions.get(key);
-    if (!session || this.closing) throw new Error("This desktop session is unavailable");
+    if (!session || this.closing) throw new Error("This session is unavailable");
     return session;
   }
   public subscribe(listener: (snapshot: SessionSnapshot) => void): () => void {
@@ -107,7 +113,7 @@ export class DesktopWorkspace {
     await session.start();
     return session.snapshot();
   }
-  public async fork(key: string, entryId: string): Promise<SessionSnapshot> {
+  public async fork(key: SessionKey, entryId: HistoryEntryId): Promise<SessionSnapshot> {
     const source = this.session(key);
     const cwd = source.summary().cwd;
     const sessionPath = await source.fork(entryId);
