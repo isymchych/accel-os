@@ -31,6 +31,15 @@ and module together.
 Follow project conventions. Recommend changes that reduce reasoning effort, not merely express a
 stylistic preference.
 
+Track coverage of the selected scope by meaningful responsibility, not just files opened.
+Investigate each relevant area before finalizing; finding several worthwhile simplifications is not
+a stopping condition. If tool output is truncated, retrieve the relevant omitted portions before
+considering that area reviewed.
+
+Before reporting, identify remaining unexamined areas and unresolved material candidates. Continue
+investigating them, or explicitly disclose the coverage limitation. Keep findings selective; do not
+invent issues to satisfy coverage.
+
 Output:
 
 List findings by net maintenance benefit, from high to low, accounting for migration cost,

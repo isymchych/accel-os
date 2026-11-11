@@ -91,9 +91,12 @@ time, and leave a clear next action when pausing.
 
 Update documentation when affected readers need different instructions or existing guidance becomes
 incorrect. Preserve personal and project intent; topical relevance alone does not justify new docs.
-For visual UI work, read the applicable project `DESIGN.md`, checking its purpose first. Prefer
-current rules and reader-facing guidance to implementation history; include rationale and exact
-technical details when they change how readers act or decide.
+Respect each document's established purpose, audience, and level of detail. Update the document that
+owns the information; do not default to README files or expand their scope merely because code
+changed. Leave docs unchanged when no reader guidance needs updating. For visual UI work, read the
+applicable project `DESIGN.md`, checking its purpose first. Prefer current rules and reader-facing
+guidance to implementation history; include rationale and exact technical details when they change
+how readers act or decide.
 
 ### Specialized Skills
 

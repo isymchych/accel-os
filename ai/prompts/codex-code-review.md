@@ -5,8 +5,14 @@ argument-hint: "<github-pr-url|git-selector|file...>"
 
 Review the code selected by the target selector provided at the end of this prompt.
 
-Keep files, git state, and external systems unchanged. Ask before diagnostics with unclear or
-persistent side effects; PR targets prohibit checks entirely.
+Review only; do not edit project files or change Git state. For local diff and file targets, run
+focused tests, checks, or minimal reproductions when needed to confirm or reject a material finding.
+Inspect unfamiliar commands before running them. Temporary diagnostic files and processes are
+allowed; isolate them from user data and clean them up afterward.
+
+Ask before diagnostics that could modify project files, affect persistent user or host state, or
+write to external systems, or whose side effects remain unclear after inspection. Do not use
+auto-fix commands. PR targets prohibit checks entirely.
 
 First classify the selector:
 
@@ -33,6 +39,9 @@ include untracked files unless the selector explicitly names them as file target
 For file targets, review the current contents of the selected files. Inspect surrounding repository
 context when needed to establish whether a finding is a real bug, but report findings only against
 the selected files.
+
+Choose verification that exercises the reviewed version. If checking the current working tree
+instead of the selected diff, account for differences before attributing results to the target.
 
 For pull request targets:
 
@@ -64,6 +73,17 @@ Accepted examples:
 Review the target and report only clear, actionable bugs.
 
 Prefer more specific instructions over these defaults.
+
+Track coverage of the selected scope by meaningful behavior, not just files opened. Investigate each
+relevant area before finalizing; finding several valid issues is not a stopping condition. If tool
+output is truncated, retrieve the relevant omitted portions before considering that area reviewed.
+
+At changed integration boundaries, check whether callers correctly handle the dependency's relevant
+outcomes and state-dependent behavior.
+
+Before reporting, identify remaining unexamined areas and unresolved material candidates. Continue
+investigating them, or explicitly disclose the coverage limitation. Keep findings selective; do not
+invent issues to satisfy coverage.
 
 Flag an issue only when it is:
 
