@@ -238,6 +238,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.9.0
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@tanstack/react-hotkeys':
+        specifier: ^0.23.0
+        version: 0.23.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1063,6 +1066,17 @@ packages:
     resolution: {integrity: sha512-BCNiY0a1ZjdOHVqw7kyb7U72BwfMF3dfUuN+tQsLWky/J5JOI/r7abibglXfygrZhVO/3u3V+E25kkKTeMkXaQ==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
+
+  '@tanstack/hotkeys@0.27.0':
+    resolution: {integrity: sha512-nFg/Shd0MHECBgi+R2p8ct7qFrQVRW7+buIJgq63YrDdQpsetFwttKJOWhyesalJtBK9igEISRjk49N1q77fqw==}
+    engines: {node: '>=20'}
+
+  '@tanstack/react-hotkeys@0.23.0':
+    resolution: {integrity: sha512-RfzJhJrzXLt/9l29Se5ZhEvANPSooF8IAymlFR/JKHdrf7+tWl2Vd3GpJt3PdIbztMAml4EbnjWVmwF/aqgfxg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
 
   '@types/node@24.19.2':
     resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
@@ -2677,6 +2691,14 @@ snapshots:
       '@tailwindcss/oxide': 4.3.5
       tailwindcss: 4.3.5
       vite: 8.3.6(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1)
+
+  '@tanstack/hotkeys@0.27.0': {}
+
+  '@tanstack/react-hotkeys@0.23.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      '@tanstack/hotkeys': 0.27.0
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   '@types/node@24.19.2':
     dependencies:

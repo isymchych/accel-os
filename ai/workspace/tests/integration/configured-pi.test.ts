@@ -8,6 +8,7 @@ import test from "node:test";
 import { Type } from "typebox";
 import { Value } from "typebox/value";
 
+import type { SessionSnapshot } from "../../src/desktop-api.ts";
 import { DesktopSession } from "../../src/electron/session.ts";
 
 const RequestSchema = Type.Object({
@@ -19,8 +20,28 @@ const PersistedMessageSchema = Type.Object({
   message: Type.Object({ role: Type.String(), content: Type.Unknown() }),
 });
 
+async function observe(
+  session: DesktopSession,
+  predicate: (state: SessionSnapshot) => boolean,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      unsubscribe();
+      reject(new Error("Configured Pi state was not observed"));
+    }, 15_000);
+    const receive = (state: SessionSnapshot): void => {
+      if (!predicate(state)) return;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve();
+    };
+    const unsubscribe = session.subscribe(receive);
+    receive(session.snapshot());
+  });
+}
+
 test(
-  "configured Pi RPC entry reuses actual extensions with a local fake model and read tool",
+  "configured Pi compatibility with isolated native sessions and a local fake provider",
   { timeout: 30_000 },
   async (t) => {
     const directory = await mkdtemp(path.join(tmpdir(), "configured-pi-ui-"));
@@ -51,6 +72,9 @@ test(
 
     let requests = 0;
     let providerError: unknown;
+    const queueStarted = Promise.withResolvers<undefined>();
+    const releaseQueue = Promise.withResolvers<undefined>();
+    const queueInputs: string[] = [];
     const server = createServer((request, response) => {
       void (async (): Promise<void> => {
         let body = "";
@@ -70,23 +94,43 @@ test(
         assert.equal(request.headers.authorization, "Bearer synthetic-test-key");
         requests += 1;
         response.writeHead(200, { "Content-Type": "text/event-stream" });
-        const toolCall = requests === 1;
+        const lastUser = value.messages.findLast((message) => message.role === "user");
+        const input = lastUser ? JSON.stringify(lastUser.content) : "";
+        const queueInput = ["QUEUE_RUN", "QUEUE_STEER", "QUEUE_FOLLOW"].find((label) =>
+          input.includes(label),
+        );
+        if (queueInput) queueInputs.push(queueInput);
+        const hold = input.includes("HOLD_SOURCE");
+        const shell = input.includes("RUN_HARMLESS_TOOL");
+        const toolCall = requests === 1 || shell;
         const delta = toolCall
           ? {
               role: "assistant",
               tool_calls: [
                 {
                   index: 0,
-                  id: "fixture-read",
+                  id: shell ? "fixture-bash" : "fixture-read",
                   type: "function",
                   function: {
-                    name: "read",
-                    arguments: JSON.stringify({ targets: [{ path: "fixture.txt" }] }),
+                    name: shell ? "bash" : "read",
+                    arguments: JSON.stringify(
+                      shell
+                        ? {
+                            command:
+                              "printf '%s' \"$$\" > native-tool-pid; printf 'NATIVE_WAIT_READY\\n'; exec sleep 60",
+                          }
+                        : { targets: [{ path: "fixture.txt" }] },
+                    ),
                   },
                 },
               ],
             }
-          : { role: "assistant", content: "Configured Pi completed the isolated read." };
+          : {
+              role: "assistant",
+              content: queueInput
+                ? `Queue response ${queueInputs.length}`
+                : "Configured Pi completed the isolated read.",
+            };
         response.write(
           `data: ${JSON.stringify({
             id: `fixture-${requests}`,
@@ -96,6 +140,11 @@ test(
             choices: [{ index: 0, delta, finish_reason: null }],
           })}\n\n`,
         );
+        if (hold) return;
+        if (queueInput === "QUEUE_RUN") {
+          queueStarted.resolve(undefined);
+          await releaseQueue.promise;
+        }
         response.write(
           `data: ${JSON.stringify({
             id: `fixture-${requests}`,
@@ -129,7 +178,7 @@ test(
         },
       }),
     );
-    const session = new DesktopSession({
+    const launch = {
       executable: process.execPath,
       args: [
         path.resolve(import.meta.dirname, "../../../pi/runtime/rpc-entry.ts"),
@@ -146,9 +195,14 @@ test(
         ACCEL_OS: directory,
         PI_OFFLINE: "1",
       },
-    });
+    };
+    const session = new DesktopSession(launch);
+    let destination: DesktopSession | undefined;
     t.after(async () => {
+      releaseQueue.resolve(undefined);
       await session.close();
+      await destination?.close();
+      server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
           if (error) reject(error);
@@ -158,71 +212,219 @@ test(
       await rm(directory, { recursive: true, force: true });
     });
     await session.start();
-    const settled = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        unsubscribe();
-        reject(new Error("Configured Pi did not settle"));
-      }, 15_000);
-      const unsubscribe = session.subscribe((snapshot) => {
-        if (
+    await t.test("canonical configuration executes the actual read tool", async () => {
+      const settled = observe(
+        session,
+        (snapshot) =>
           snapshot.execution === "idle" &&
-          snapshot.messages.some((message) => message.role === "assistant")
-        ) {
-          clearTimeout(timer);
-          unsubscribe();
-          resolve();
-        }
-      });
+          snapshot.messages.some((message) => message.role === "assistant"),
+      );
+      await session.prompt("Read fixture.txt and report the result.");
+      await settled;
+      assert.equal(providerError, undefined);
+      assert.equal(requests, 2);
+      assert.ok(
+        session
+          .snapshot()
+          .messages.some(
+            (message) =>
+              message.role === "toolResult" && message.text.includes("isolated tool result"),
+          ),
+      );
+      assert.equal(
+        session.snapshot().messages.at(-1)?.text,
+        "Configured Pi completed the isolated read.",
+      );
+      assert.equal(
+        await readFile(path.join(project, "fixture.txt"), "utf8"),
+        "isolated tool result",
+      );
     });
-    await session.prompt("Read fixture.txt and report the result.");
-    await settled;
-    assert.equal(providerError, undefined);
-    assert.equal(requests, 2);
-    assert.ok(
-      session
-        .snapshot()
-        .messages.some(
-          (message) =>
-            message.role === "toolResult" && message.text.includes("isolated tool result"),
+    const catalog = await session.list(project);
+    assert.equal(catalog.length, 1);
+    const original = catalog[0];
+    assert.ok(original);
+    const history = await session.history();
+    const first = history.entries.find((entry) => entry.label.startsWith("user:"));
+    assert.ok(first && history.leafId);
+    const leafId = history.leafId;
+    await t.test("current user leaf navigation is a no-op without restored text", async () => {
+      const forkPath = await session.fork(first.id);
+      const fork = new DesktopSession({ ...launch, args: [...launch.args, "--session", forkPath] });
+      try {
+        await fork.start();
+        const before = fork.snapshot().messages;
+        assert.equal((await fork.history()).leafId, first.id);
+        assert.equal(await fork.navigate(first.id), undefined);
+        assert.equal((await fork.history()).leafId, first.id);
+        assert.deepEqual(fork.snapshot().messages, before);
+      } finally {
+        await fork.close();
+        await rm(forkPath, { force: true });
+      }
+    });
+    await t.test(
+      "native navigation preserves entries and model controls omit credentials",
+      async () => {
+        assert.equal(await session.navigate(first.id), "Read fixture.txt and report the result.");
+        assert.equal(session.snapshot().messages.length, 1);
+        await session.navigate(leafId);
+        assert.deepEqual(
+          (await session.history()).entries,
+          history.entries,
+          "Navigation preserves every original entry",
+        );
+        const controls = await session.controls();
+        assert.deepEqual(controls.model, { provider: "desktop-fixture", id: "fixture" });
+        assert.ok(!JSON.stringify(controls).includes("synthetic-test-key"));
+        await session.model("desktop-fixture", "fixture");
+        await session.thinking("off");
+      },
+    );
+
+    await t.test(
+      "snapshot execution leaves the streaming source and its persisted history untouched",
+      async () => {
+        const active = observe(session, (snapshot) => snapshot.streaming.length > 0);
+        await session.prompt("HOLD_SOURCE");
+        await active;
+        const sourceBytes = await readFile(original.path, "utf8");
+        const forkPath = await session.fork(leafId);
+        assert.equal(await readFile(original.path, "utf8"), sourceBytes);
+        assert.equal(session.snapshot().execution, "running");
+        await assert.rejects(session.navigate(first.id), /idle/u);
+        destination = new DesktopSession({
+          ...launch,
+          args: [...launch.args, "--session", forkPath],
+        });
+        await destination.start();
+        assert.notEqual(destination.snapshot().sessionId, session.snapshot().sessionId);
+        assert.ok(
+          !destination.snapshot().messages.some((message) => message.text.includes("HOLD_SOURCE")),
+        );
+        const forkSettled = observe(
+          destination,
+          (snapshot) =>
+            snapshot.execution === "idle" &&
+            snapshot.messages.some((message) => message.text.includes("Independent fork")),
+        );
+        await destination.prompt("Independent fork");
+        await forkSettled;
+        assert.equal(
+          session.snapshot().execution,
+          "running",
+          "Destination execution does not retarget the source",
+        );
+        await session.stop();
+      },
+    );
+    await t.test("Stop terminates an actual configured shell process", async () => {
+      const toolRunning = observe(session, (snapshot) =>
+        snapshot.tools.some(
+          (tool) => tool.name === "bash" && tool.output.includes("NATIVE_WAIT_READY"),
         ),
+      );
+      await session.prompt("RUN_HARMLESS_TOOL");
+      await toolRunning;
+      const nativeToolPid = Number(await readFile(path.join(project, "native-tool-pid"), "utf8"));
+      process.kill(nativeToolPid, 0);
+      await session.stop();
+      assert.throws(() => process.kill(nativeToolPid, 0), { code: "ESRCH" });
+      assert.equal(providerError, undefined);
+      assert.equal(requests, 5);
+    });
+    await t.test(
+      "idle follow-ups and steering start execution without another prompt",
+      async () => {
+        for (const mode of ["follow_up", "steer"] as const) {
+          const text = `Idle ${mode}`;
+          const messages = session.snapshot().messages.length;
+          const complete = observe(
+            session,
+            (snapshot) =>
+              snapshot.execution === "idle" &&
+              snapshot.messages.length > messages &&
+              snapshot.messages.at(-1)?.role === "assistant" &&
+              snapshot.messages.some((message) => message.text === text),
+          );
+          assert.equal(await session.prompt(text, mode), "started");
+          await complete;
+          assert.equal((await session.controls()).pendingMessageCount, 0);
+        }
+      },
     );
-    assert.equal(
-      session.snapshot().messages.at(-1)?.text,
-      "Configured Pi completed the isolated read.",
+    await t.test(
+      "native steering runs before follow-up without interrupting the current response",
+      async () => {
+        await session.prompt("QUEUE_RUN");
+        await queueStarted.promise;
+        assert.equal(await session.prompt("QUEUE_FOLLOW", "follow_up"), "queued");
+        assert.equal(await session.prompt("QUEUE_STEER", "steer"), "queued");
+        assert.deepEqual(
+          queueInputs,
+          ["QUEUE_RUN"],
+          "Queued inputs must not launch another provider request while the response is held",
+        );
+        assert.equal((await session.controls()).pendingMessageCount, 2);
+        const complete = observe(
+          session,
+          (snapshot) =>
+            snapshot.execution === "idle" &&
+            snapshot.messages.some((message) => message.text === "Queue response 3"),
+        );
+        releaseQueue.resolve(undefined);
+        await complete;
+        assert.deepEqual(queueInputs, ["QUEUE_RUN", "QUEUE_STEER", "QUEUE_FOLLOW"]);
+        assert.deepEqual(
+          session
+            .snapshot()
+            .messages.filter(
+              (message) => message.role === "user" && message.text.startsWith("QUEUE_"),
+            )
+            .map((message) => message.text),
+          ["QUEUE_RUN", "QUEUE_STEER", "QUEUE_FOLLOW"],
+        );
+        assert.equal((await session.controls()).pendingMessageCount, 0);
+        assert.equal(providerError, undefined);
+      },
     );
-    assert.equal(await readFile(path.join(project, "fixture.txt"), "utf8"), "isolated tool result");
     await session.close();
-    const sessionsDirectory = path.join(config, "sessions");
-    const sessionFiles = (await readdir(sessionsDirectory, { recursive: true })).filter((file) =>
-      file.endsWith(".jsonl"),
-    );
-    assert.equal(sessionFiles.length, 1);
-    const sessionFile = sessionFiles[0];
-    assert.ok(sessionFile);
-    const entries = await readFile(path.join(sessionsDirectory, sessionFile), "utf8");
-    const messages = entries
-      .trim()
-      .split("\n")
-      .flatMap((line) => {
-        const entry: unknown = JSON.parse(line);
-        return Value.Check(PersistedMessageSchema, entry) ? [entry.message] : [];
-      });
-    assert.deepEqual(messages.find((message) => message.role === "user")?.content, [
-      { type: "text", text: "Read fixture.txt and report the result." },
-    ]);
-    assert.ok(
-      messages.some(
-        (message) =>
-          message.role === "toolResult" &&
-          JSON.stringify(message.content).includes("isolated tool result"),
-      ),
-    );
-    assert.ok(
-      messages.some(
-        (message) =>
-          message.role === "assistant" &&
-          JSON.stringify(message.content).includes("Configured Pi completed the isolated read."),
-      ),
+    await t.test(
+      "native persistence retains the original conversation after shutdown",
+      async () => {
+        const sessionsDirectory = path.join(config, "sessions");
+        const sessionFiles = (await readdir(sessionsDirectory, { recursive: true })).filter(
+          (file) => file.endsWith(".jsonl"),
+        );
+        assert.equal(sessionFiles.length, 2);
+        const entries = await readFile(original.path, "utf8");
+        const messages = entries
+          .trim()
+          .split("\n")
+          .flatMap((line) => {
+            const entry: unknown = JSON.parse(line);
+            return Value.Check(PersistedMessageSchema, entry) ? [entry.message] : [];
+          });
+        assert.deepEqual(messages.find((message) => message.role === "user")?.content, [
+          { type: "text", text: "Read fixture.txt and report the result." },
+        ]);
+        assert.ok(
+          messages.some(
+            (message) =>
+              message.role === "toolResult" &&
+              JSON.stringify(message.content).includes("isolated tool result"),
+          ),
+        );
+        assert.ok(
+          messages.some(
+            (message) =>
+              message.role === "assistant" &&
+              JSON.stringify(message.content).includes(
+                "Configured Pi completed the isolated read.",
+              ),
+          ),
+        );
+      },
     );
   },
 );

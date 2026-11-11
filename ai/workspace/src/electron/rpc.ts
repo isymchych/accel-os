@@ -1,9 +1,18 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 
 import { Value } from "typebox/value";
 
-import { parseRecord, ResponseSchema, type PiRecord, type PiResponse } from "./protocol.ts";
+import {
+  CommandsSchema,
+  ControlResultSchema,
+  parseRecord,
+  ResponseSchema,
+  UiSchema,
+  type PiRecord,
+  type PiResponse,
+} from "./protocol.ts";
 
 export interface PiLaunch {
   executable: string;
@@ -65,7 +74,9 @@ export class PiRpc {
     this.exit = new Promise((resolve) => {
       child.once("close", (code, signal) => {
         this.fail(
-          new Error(`Pi exited (${signal ?? code ?? "unknown"}). Reopen the app to reconnect.`),
+          new Error(
+            `Pi exited (${signal ?? code ?? "unknown"}). Reopen the saved conversation to reconnect.`,
+          ),
         );
         resolve();
       });
@@ -127,6 +138,46 @@ export class PiRpc {
 
   public async cancelDialog(id: string): Promise<void> {
     await this.write({ type: "extension_ui_response", id, cancelled: true });
+  }
+
+  public async control(
+    operation: "list" | "navigate" | "snapshot",
+    value: string,
+  ): Promise<unknown> {
+    // Fail before submitting a slash command if this runtime lacks the bridge.
+    const commands = await this.request("get_commands");
+    if (
+      !Value.Check(CommandsSchema, commands.data) ||
+      !commands.data.commands.some((command) => command.name === "workspace-control")
+    )
+      throw new Error("Pi's desktop session bridge is unavailable");
+    const id = randomUUID();
+    let result: unknown;
+    const unsubscribe = this.subscribe((record) => {
+      if (
+        record.type !== "extension_ui_request" ||
+        !Value.Check(UiSchema, record) ||
+        record.method !== "notify" ||
+        !record.message?.startsWith("workspace-control:")
+      )
+        return;
+      const response: unknown = JSON.parse(record.message.slice("workspace-control:".length));
+      if (!Value.Check(ControlResultSchema, response))
+        throw new Error("Invalid desktop control result");
+      if (response.id !== id) return;
+      result = response;
+    });
+    try {
+      await this.request("prompt", {
+        message: `/workspace-control ${JSON.stringify({ id, operation, value })}`,
+      });
+      if (!Value.Check(ControlResultSchema, result))
+        throw new Error("Pi did not confirm the desktop control operation");
+      if (!result.success) throw new Error(result.error ?? "Pi rejected the desktop control");
+      return result.data;
+    } finally {
+      unsubscribe();
+    }
   }
 
   public async close(): Promise<void> {

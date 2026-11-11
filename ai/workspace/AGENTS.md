@@ -3,9 +3,12 @@
 Local-only Electron/React app in private pnpm workspace `@accel-os/workspace`. Root
 `../../AGENTS.md` governs this workspace.
 
+Use engineering judgment within the requested scope and accepted product and architecture decisions.
+
 ## Read before changing
 
-- For behavior changes, read [DOMAIN.md](docs/domain.md) and the [release outcomes](docs/mvp.md).
+- For behavior changes, read [DOMAIN.md](docs/domain.md) and the
+  [workspace specification](docs/specs/workspace.md).
 - For integration changes, read [ARCHITECTURE.md](docs/architecture.md): it owns process, import,
   IPC, and security boundaries, including reuse of the `ai/pi/` RPC entry rather than private
   imports.
@@ -26,11 +29,13 @@ Run commands from this directory: `pnpm run dev`, `pnpm run build`, `pnpm run st
 changes require explicit restart.
 
 Use Node's test runner for focused/integration checks and Playwright's Electron support for full
-renderer/preload/main journeys. Follow [MVP acceptance checks](docs/mvp.md#acceptance-checks) for
+renderer/preload/main journeys. Follow [development checks](docs/development.md#checks) for
 isolated, credential-free execution and the distinction between fake RPC wiring and real Pi
 compatibility.
 
 Run the desktop build and Electron E2E alongside root `just check`; disclose missing display or
-Electron prerequisites. Follow [README display prerequisites](README.md#checks) before GUI checks;
-do not open unexpected windows. pnpm scripts own workspace tooling; Just recipes are convenience
+Electron prerequisites. Follow [display prerequisites](docs/development.md#display-prerequisites)
+before GUI checks; do not open unexpected windows. Report tool and extension coverage limits.
+Formatting, lint, typecheck, build, and repository checks must pass or their outstanding failures
+must be reported precisely. pnpm scripts own workspace tooling; Just recipes are convenience
 wrappers.

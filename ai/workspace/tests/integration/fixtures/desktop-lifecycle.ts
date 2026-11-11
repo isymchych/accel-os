@@ -74,6 +74,7 @@ mock.module("electron", {
   exports: {
     app,
     BrowserWindow: FakeWindow,
+    dialog: {},
     ipcMain: { handle: () => {} },
   },
 });

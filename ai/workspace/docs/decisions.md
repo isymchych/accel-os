@@ -37,6 +37,3 @@ background service or automatic crash recovery; persisted history does not resum
 The desktop needs extension-response writing and child-exit observation as well as typed commands
 and events. Upstream `RpcClient` does not expose all those hooks, so the desktop uses a local
 transport. Reconsider upstream reuse when its public API covers this boundary.
-
-[DOMAIN.md](domain.md) owns lifecycle rules; [ARCHITECTURE.md](architecture.md) owns integration and
-security boundaries; [MVP.md](mvp.md) owns release requirements.

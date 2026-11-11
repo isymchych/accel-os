@@ -14,6 +14,7 @@ const { values } = parseArgs({
   options: {
     "profile-dir": { type: "string" },
     "code-navigation": { type: "string", default: "srcwalk" },
+    session: { type: "string" },
   },
 });
 const codeNavigation = values["code-navigation"];
@@ -23,4 +24,15 @@ if (codeNavigation !== "srcwalk" && codeNavigation !== "tilth") {
 const directory =
   values["profile-dir"] ?? (await resolveAccountProfile(path.join(accelOs, "ai/pi"))).directory;
 
-await launchPi(accelOs, { directory }, ["--mode", "rpc"], codeNavigation);
+await launchPi(
+  accelOs,
+  { directory },
+  [
+    "--mode",
+    "rpc",
+    "--extension",
+    path.join(import.meta.dirname, "desktop-extension.ts"),
+    ...(values.session ? ["--session", values.session] : []),
+  ],
+  codeNavigation,
+);

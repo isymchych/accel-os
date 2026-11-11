@@ -3,9 +3,9 @@
 Local-only Electron + React UI for the existing Pi coding-agent configuration in `../pi/`. Electron
 owns windows and Pi RPC children; Pi owns execution and native session persistence.
 
-The app supports one session for the launch directory, plain-text streaming, basic tool activity,
-Stop, renderer reattachment, and clean shutdown.
-[First-release outcomes](docs/mvp.md#release-outcomes) track the remaining UI work.
+The app supports directory/session selection, independent concurrent conversations, native history
+navigation and snapshot forks, streaming transcripts and tool results, follow-ups and steering,
+model/thinking controls, Stop, renderer reattachment, and clean shutdown.
 
 ## Setup and run
 
@@ -30,53 +30,45 @@ The Electron npm package downloads its matching binary on first execution if it 
 app uses the repository's Node runtime to run configured Pi; it does not run agent code inside the
 renderer or copy credentials into desktop storage. A graphical Linux/macOS session is required.
 
-## Development
+Production startup loads `dist/`; rebuild after source changes.
 
-```sh
-pnpm run dev
-```
+## Working with conversations
 
-This compiles main/preload, starts Vite on `127.0.0.1:5173`, and opens Electron with Chromium
-DevTools. React edits update live. Restart explicitly after main/preload or Pi-integration edits.
-Electron's main process can be debugged separately with its Node inspector.
+- Use **Choose directory** and **New conversation**, or reopen a saved conversation. Refresh the
+  saved list after creating history elsewhere.
+- Switch between open conversations without stopping their work. Drafts and pending commands stay
+  with their original conversation, including across renderer reloads.
+- **Send** starts idle work; **Follow up** queues input after current work; **Steer** uses Pi's
+  steering boundary. When idle, both start work immediately. Model and thinking controls apply to
+  the current idle session, not global defaults.
+- Expand tool activity or long text to inspect full content. **History and branches** selects a
+  native entry; **Navigate** changes the active branch when idle without deleting other history.
+  Selecting a user message other than the current leaf moves to its parent and restores that
+  message's text to the composer; selecting the current leaf is a no-op.
+- **Fork conversation** copies persisted history through the selected entry into an independent
+  session. The source keeps running; unfinished output and runtime fork hooks are excluded.
+
+CLI/GUI handoff is sequential: close the terminal session before reopening it here, and quit the
+desktop before resuming its sessions in the terminal. Lost acknowledgements preserve drafts but do
+not trigger automatic resubmission.
 
 Renderer refresh keeps Pi running. Quitting the app closes Pi and active work. Reopen persisted
 history through Pi; unfinished execution requires a fresh run after an app or machine crash.
 
-Production startup loads `dist/`; rebuild after source changes.
+### Keyboard navigation
 
-## Checks
-
-From this directory:
-
-```sh
-pnpm run check
-pnpm run build
-pnpm run test:e2e
-```
-
-`check` runs workspace formatting, lint, TypeScript checks, and Node integration tests. E2E uses the
-installed Electron binary. It starts the actual app with a deterministic fake Pi child, harmless
-local processes, and temporary user data; no real credentials or model network calls are used.
-
-E2E opens visible windows on the configured graphical display. Before running GUI checks, arrange an
-isolated virtual display or obtain agreement to use the active desktop. The runner uses its
-inherited display environment. If a suitable display is unavailable, report E2E as unverified.
-
-- [ ] Tooling TODO: automate isolated virtual-display setup for Electron E2E.
-
-Root `just check` remains the repository gate. Workspace `Justfile` recipes are optional wrappers
-around pnpm commands.
+Outside text inputs, use `j` / `k` to scroll, `Ctrl+d` / `Ctrl+u` for half pages, and `gg` / `G` for
+the page start/end. `i` focuses the message input; `Esc` returns to navigation without stopping the
+agent. `[` / `]` select the previous/next open conversation without wrapping or interrupting work.
+Press `?` or click **Keyboard shortcuts** for help. Menus and dialogs keep their own key handling.
+These shortcuts do not submit prompts or provide Vim text editing.
 
 ## Configuration and compatibility
 
 The desktop reuses the terminal's `ai/pi/` configuration and native session storage rather than
 maintaining separate agent settings or credentials.
 
-`AI_CWD` retains its existing launch-directory override. The launcher passes the selected profile,
-working directory, and navigation backend as explicit process arguments, not renderer-exposed
-settings. Tests use a separate entry point to inject fake Pi execution and isolated desktop storage;
-normal startup does not expose those overrides.
+`AI_CWD` retains its existing launch-directory override.
 
 Notifications are displayed. RPC select/confirm/input/editor dialogs receive explicit cancellation
 with a visible notice; other presentation-only records are not rendered. Terminal components require
@@ -87,10 +79,13 @@ boundary. See [execution authority](docs/domain.md#execution-authority).
 
 ## Documentation
 
+- [Development and verification](docs/development.md): contributor workflow, checks, and display
+  setup.
 - [Vision](docs/vision.md): product scope and accepted direction.
 - [Domain](docs/domain.md): vocabulary, behavioral invariants, and lifecycle.
 - [Architecture](docs/architecture.md): process, IPC, configuration, and security boundaries.
-- [First release](docs/mvp.md): release outcomes, implementation status, and acceptance criteria.
+- [Workspace specification](docs/specs/workspace.md): agreed workflows and acceptance criteria.
+- [Future work](docs/future-work.md): candidate capabilities.
 - [Decisions](docs/decisions.md): stack, integration, ownership, and lifecycle rationale.
 - [Agent guide](AGENTS.md): development instructions.
-- [Historical ideas](docs/ideas.md): brainstorming, not an implementation queue.
+- [Ideas](docs/ideas.md): product brainstorming and exploration.

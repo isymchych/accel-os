@@ -44,6 +44,11 @@ Session navigation and native Pi branching must preserve original history and ta
 explicitly selected session. Follow-up and steering remain distinct, using Pi's native semantics
 rather than an application queue.
 
+GUI forks are native-format snapshots of persisted history through the selected entry. They create
+an independent session without interrupting the source. They exclude unfinished streaming output and
+do not invoke Pi's runtime fork lifecycle hooks. Branch navigation remains a native Pi operation and
+requires an idle session.
+
 ## Configuration and interaction compatibility
 
 Share configuration and session formats with the terminal launcher, not terminal widgets. Changes

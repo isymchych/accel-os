@@ -16,23 +16,29 @@ type Command = Static<typeof CommandSchema>;
 
 // Control the real transport's input streams, not its framing, request, or session logic.
 class ControlledChild extends EventEmitter {
+  public readonly pid = 424242;
   public readonly stdout = new PassThrough();
   public readonly stderr = new PassThrough();
   public readonly commands: Command[] = [];
   public onCommand: (command: Command) => void = () => {};
+  public holdWrites = false;
+  public ignoreEnd = false;
+  public releaseWrite: (() => void) | undefined;
   public readonly stdin = new Writable({
     write: (chunk: Buffer, _encoding, callback): void => {
       const command: unknown = JSON.parse(chunk.toString("utf8"));
       assert.ok(Value.Check(CommandSchema, command));
       this.commands.push(command);
       this.onCommand(command);
-      callback();
+      if (this.holdWrites) this.releaseWrite = callback;
+      else callback();
     },
   });
 
   public constructor() {
     super();
     this.stdin.on("finish", () => {
+      if (this.ignoreEnd) return;
       this.stdout.end();
       this.stderr.end();
       this.emit("close", 0, null);
@@ -135,6 +141,51 @@ test("a matching response ID with the wrong command rejects the request", async 
   await rejected;
 });
 
+test("dialog responses wait for stdin drain without duplicating writes", async (t) => {
+  const rpc = transport(t);
+  child.holdWrites = true;
+  let delivered = false;
+  const delivery = rpc.cancelDialog("x".repeat(100_000)).then(() => {
+    delivered = true;
+  });
+  assert.equal(child.stdin.writableNeedDrain, true);
+  await setImmediate();
+  assert.equal(delivered, false, "A buffered write is not yet drained");
+  assert.ok(child.releaseWrite);
+  child.releaseWrite();
+  await delivery;
+  assert.equal(delivered, true);
+  assert.equal(child.commands.length, 1);
+  assert.equal(child.commands[0]?.type, "extension_ui_response");
+});
+
+test("shutdown escalates an unresponsive child to process-group termination", async (t) => {
+  const rpc = transport(t);
+  child.ignoreEnd = true;
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const signals: unknown[][] = [];
+  t.mock.method(process, "kill", (pid: number, signal: NodeJS.Signals) => {
+    signals.push([pid, signal]);
+    if (signal === "SIGKILL") child.emit("close", null, signal);
+    return true;
+  });
+  const closed = rpc.close();
+  await setImmediate();
+  t.mock.timers.tick(4_999);
+  await setImmediate();
+  assert.deepEqual(signals, []);
+  t.mock.timers.tick(1);
+  await setImmediate();
+  assert.deepEqual(signals, [[-child.pid, "SIGTERM"]]);
+  t.mock.timers.tick(1_000);
+  await closed;
+  assert.deepEqual(signals, [
+    [-child.pid, "SIGTERM"],
+    [-child.pid, "SIGKILL"],
+  ]);
+  await assert.rejects(rpc.request("get_state"), /Pi exited/u);
+});
+
 (
   [
     ["malformed JSON", (): string => "{bad json}\n"],
@@ -163,6 +214,12 @@ test("Stop remains stopping until Pi acknowledges cancellation", async (t) => {
   await session.prompt("hold");
   const stopped = session.stop();
   assert.equal(session.snapshot().execution, "stopping");
+  child.send({ type: "agent_settled", aborted: true });
+  assert.equal(
+    session.snapshot().execution,
+    "stopping",
+    "Settled before the abort response is not Stop confirmation",
+  );
   assert.notEqual(session.snapshot().notice, "Stopped.");
   const command = child.commands.at(-1);
   assert.ok(command);
@@ -174,6 +231,159 @@ test("Stop remains stopping until Pi acknowledges cancellation", async (t) => {
   await stopped;
   assert.equal(session.snapshot().execution, "idle");
   assert.equal(session.snapshot().notice, "Stopped.");
+});
+
+test("streaming bursts coalesce history snapshots and final messages flush immediately", async (t) => {
+  const session = await sessionFixture(t);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  child.send({ type: "message_end", message: { role: "user", content: "history".repeat(10_000) } });
+  const snapshots: string[] = [];
+  session.subscribe((snapshot) => {
+    snapshots.push(snapshot.streaming);
+  });
+  for (let index = 0; index < 1_000; index += 1) {
+    child.send({
+      type: "message_update",
+      assistantMessageEvent: { type: "text_delta", delta: "x" },
+    });
+  }
+  assert.deepEqual(snapshots, [], "Do not clone and publish full history per delta");
+  t.mock.timers.tick(40);
+  assert.deepEqual(snapshots, ["x".repeat(1_000)]);
+  child.send({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_delta", delta: "unfinished tail" },
+  });
+  assert.equal(snapshots.length, 1);
+  child.send({
+    type: "message_end",
+    message: { role: "assistant", content: "authoritative output" },
+  });
+  assert.deepEqual(snapshots, ["x".repeat(1_000), ""]);
+  assert.equal(session.snapshot().messages.at(-1)?.text, "authoritative output");
+  t.mock.timers.tick(80);
+  assert.deepEqual(snapshots, ["x".repeat(1_000), ""], "Completion cancels pending publication");
+});
+
+test("missing desktop bridge rejects without submitting control text as model input", async (t) => {
+  const rpc = transport(t);
+  child.onCommand = (command): void => {
+    assert.equal(command.type, "get_commands");
+    child.respond(command, { data: { commands: [{ name: "another-command" }] } });
+  };
+  await assert.rejects(rpc.control("list", "/project"), /bridge is unavailable/u);
+  assert.deepEqual(
+    child.commands.map((command) => command.type),
+    ["get_commands"],
+  );
+});
+
+function controlResult(command: Command, fields: Record<string, unknown>): void {
+  assert.ok(command.message);
+  assert.ok(command.message.startsWith("/workspace-control "));
+  const request: unknown = JSON.parse(command.message.slice("/workspace-control ".length));
+  const schema = Type.Object({ id: Type.String() });
+  assert.ok(Value.Check(schema, request));
+  child.send({
+    type: "extension_ui_request",
+    id: "notification",
+    method: "notify",
+    message: `workspace-control:${JSON.stringify({
+      type: "workspace_result",
+      id: request.id,
+      success: true,
+      ...fields,
+    })}`,
+  });
+}
+
+test("concurrent bridge operations correlate results independently of notification order", async (t) => {
+  const rpc = transport(t);
+  child.onCommand = (command): void => {
+    if (command.type === "get_commands")
+      child.respond(command, { data: { commands: [{ name: "workspace-control" }] } });
+  };
+  const list = rpc.control("list", "/project");
+  const snapshot = rpc.control("snapshot", "entry");
+  await setImmediate();
+  const [first, second] = child.commands.filter((command) => command.type === "prompt");
+  assert.ok(first && second);
+  controlResult(first, { id: "unrelated", data: "must not be used" });
+  controlResult(second, { data: { path: "/fork.jsonl" } });
+  child.respond(second);
+  assert.deepEqual(await snapshot, { path: "/fork.jsonl" });
+  controlResult(first, { data: [] });
+  child.respond(first);
+  assert.deepEqual(await list, []);
+  assert.equal(child.commands.filter((command) => command.type === "prompt").length, 2);
+});
+
+test("bridge failures and unmatched results reject without replay and allow later controls", async (t) => {
+  const rpc = transport(t);
+  let attempt = 0;
+  child.onCommand = (command): void => {
+    if (command.type === "get_commands") {
+      child.respond(command, { data: { commands: [{ name: "workspace-control" }] } });
+      return;
+    }
+    assert.equal(command.type, "prompt");
+    attempt += 1;
+    if (attempt === 1)
+      controlResult(command, { success: false, error: "Snapshot entry is missing" });
+    else if (attempt === 2)
+      controlResult(command, { id: "another-operation", data: { path: "/wrong.jsonl" } });
+    else controlResult(command, { data: { path: "/confirmed.jsonl" } });
+    child.respond(command, { data: { disposition: "handled" } });
+  };
+  await assert.rejects(rpc.control("snapshot", "missing"), /Snapshot entry is missing/u);
+  await assert.rejects(rpc.control("snapshot", "entry"), /did not confirm/u);
+  assert.deepEqual(await rpc.control("snapshot", "entry"), { path: "/confirmed.jsonl" });
+  assert.equal(attempt, 3, "Each explicit operation is submitted once, without fallback or replay");
+});
+
+test("rejected controls preserve history and release the mutation guard", async (t) => {
+  const session = await sessionFixture(t);
+  child.send({ type: "message_end", message: { role: "user", content: "original history" } });
+  const history = session.snapshot().messages;
+  child.onCommand = (command): void => {
+    if (command.type === "get_commands")
+      child.respond(command, { data: { commands: [{ name: "workspace-control" }] } });
+    else if (command.type === "prompt") {
+      controlResult(command, { data: { cancelled: true } });
+      child.respond(command, { data: { disposition: "handled" } });
+    } else if (command.type === "set_model")
+      child.respond(command, { success: false, error: "Model is unavailable" });
+    else if (command.type === "get_state")
+      child.respond(command, {
+        data: {
+          sessionId: "controlled-session",
+          isStreaming: false,
+          isCompacting: false,
+          model: { provider: "fixture", id: "original" },
+          thinkingLevel: "off",
+        },
+      });
+    else if (command.type === "get_available_models")
+      child.respond(command, { data: { models: [] } });
+    else if (command.type === "get_available_thinking_levels")
+      child.respond(command, { data: { levels: ["off"] } });
+    else throw new Error(`Unexpected command: ${command.type}`);
+  };
+  await assert.rejects(session.navigate("entry"), /cancelled history navigation/u);
+  await assert.rejects(session.model("fixture", "missing"), /Model is unavailable/u);
+  await assert.rejects(session.thinking("high"), /Unsupported thinking level/u);
+  assert.deepEqual(session.snapshot().messages, history);
+  assert.equal(session.snapshot().execution, "idle");
+  assert.deepEqual((await session.controls()).model, { provider: "fixture", id: "original" });
+  assert.equal(
+    child.commands.some((command) => command.type === "set_thinking_level"),
+    false,
+  );
+  assert.equal(
+    child.commands.filter((command) => command.type === "get_messages").length,
+    1,
+    "Cancelled navigation must not refresh or replace history",
+  );
 });
 
 test("rejected cancellation is unknown, not a successful Stop", async (t) => {
@@ -189,12 +399,51 @@ test("rejected cancellation is unknown, not a successful Stop", async (t) => {
   assert.notEqual(session.snapshot().notice, "Stopped.");
 });
 
+test("native bash messages on active and abandoned branches remain readable", async (t) => {
+  const session = await sessionFixture(t);
+  const bash = {
+    role: "bashExecution",
+    command: "printf fixture",
+    output: "fixture",
+    exitCode: 0,
+    cancelled: false,
+    truncated: false,
+    timestamp: 1,
+  };
+  child.onCommand = (command): void => {
+    if (command.type === "get_state")
+      child.respond(command, {
+        data: { sessionId: "controlled-session", isStreaming: false, isCompacting: false },
+      });
+    else if (command.type === "get_entries")
+      child.respond(command, {
+        data: {
+          entries: [{ id: "bash", parentId: null, type: "message", message: bash }],
+          leafId: null,
+        },
+      });
+    else if (command.type === "get_messages")
+      child.respond(command, { data: { messages: [bash] } });
+  };
+  assert.deepEqual(await session.history(), {
+    entries: [{ id: "bash", parentId: null, label: "bashExecution: $ printf fixture\nfixture" }],
+    leafId: null,
+  });
+  await session.refresh();
+  assert.deepEqual(session.snapshot().messages, [
+    { role: "bashExecution", text: "$ printf fixture\nfixture", isError: false },
+  ]);
+  child.send({ type: "message_end", message: { ...bash, exitCode: 1 } });
+  assert.equal(session.snapshot().messages.at(-1)?.isError, true);
+  assert.equal(session.snapshot().connection, "connected");
+});
+
 test("agent_end does not complete execution before agent_settled", async (t) => {
   const session = await sessionFixture(t);
   await session.prompt("work with automatic continuation");
   child.send({ type: "agent_end", messages: [] });
   assert.equal(session.snapshot().execution, "running");
-  await assert.rejects(session.prompt("too early"), /connected and idle/u);
+  await assert.rejects(session.prompt("too early"), /connected and ready/u);
   child.send({ type: "agent_settled", aborted: false });
   assert.equal(session.snapshot().execution, "idle");
 });
@@ -221,6 +470,6 @@ test("lost prompt confirmation times out without resending accepted input", asyn
     ["accepted once"],
   );
   t.mock.timers.tick(60_000);
-  await assert.rejects(session.prompt("accepted once"), /connected and idle/u);
+  await assert.rejects(session.prompt("accepted once"), /connected and ready/u);
   assert.equal(child.commands.filter((command) => command.type === "prompt").length, 1);
 });

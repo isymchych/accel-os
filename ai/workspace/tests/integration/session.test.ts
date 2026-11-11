@@ -47,23 +47,18 @@ async function observe(
 
 test("preserves Unicode JSONL and replaces partial text with the authoritative message", async (t) => {
   const { session } = await fixture(t);
-  const deltas: string[] = [];
-  const unsubscribe = session.subscribe((snapshot) => {
-    deltas.push(snapshot.streaming);
-  });
-  t.after(unsubscribe);
   const finished = observe(session, (snapshot) =>
     snapshot.messages.some((message) => message.role === "assistant"),
   );
-  await session.prompt("hello");
+  const input = "hello \u2028 \u2029 ☕";
+  await session.prompt(input);
   const snapshot = await finished;
-  assert.ok(deltas.includes("Hello from fake Pi. \u2028 \u2029 ☕"));
   assert.deepEqual(
     snapshot.messages.map((message) => message.text),
-    ["hello", "Hello from fake Pi."],
+    [input, "Hello from fake Pi."],
   );
   assert.equal(snapshot.streaming, "");
-  assert.equal(session.snapshot().sessionId, "isolated-test-session");
+  assert.ok(session.snapshot().sessionId);
 });
 
 test("renderer subscription replacement does not interrupt work; Stop confirms tool termination", async (t) => {

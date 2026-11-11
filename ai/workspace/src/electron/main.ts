@@ -2,12 +2,21 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from "electron";
+import type { TSchema, Static } from "typebox";
 import { Value } from "typebox/value";
 
-import { PromptSchema } from "../desktop-api.ts";
+import {
+  DirectorySchema,
+  EntrySchema,
+  ModelSchema,
+  OpenSchema,
+  PromptSchema,
+  TargetSchema,
+  ThinkingSchema,
+} from "../desktop-api.ts";
 import type { PiLaunch } from "./rpc.ts";
-import { DesktopSession } from "./session.ts";
+import { DesktopWorkspace } from "./workspace.ts";
 
 export interface DesktopOptions {
   pi: PiLaunch;
@@ -31,7 +40,7 @@ export async function startDesktop({
   const rendererUrl = developmentUrl ?? pathToFileURL(rendererFile).href;
   const cwd = await realpath(pi.cwd);
   if (userData) app.setPath("userData", userData);
-  const session = new DesktopSession({
+  const workspace = new DesktopWorkspace({
     ...pi,
     cwd,
     env: { ...pi.env, AI_CWD: cwd },
@@ -51,23 +60,51 @@ export async function startDesktop({
     }
   }
 
-  ipcMain.handle("pi:snapshot", (event) => {
+  function handle<T extends TSchema>(
+    channel: string,
+    schema: T,
+    action: (request: Static<T>) => unknown,
+  ): void {
+    ipcMain.handle(channel, (event, request: unknown) => {
+      validateSender(event);
+      if (!Value.Check(schema, request)) throw new Error(`Invalid ${channel} request`);
+      return action(request);
+    });
+  }
+  ipcMain.handle("pi:workspace", (event) => {
     validateSender(event);
-    return session.snapshot();
+    return workspace.snapshot();
   });
-  ipcMain.handle("pi:prompt", async (event, request: unknown) => {
+  ipcMain.handle("pi:directory", async (event) => {
     validateSender(event);
-    if (!Value.Check(PromptSchema, request) || request.message.trim().length === 0) {
+    if (!window) throw new Error("The desktop window is unavailable");
+    const result = await dialog.showOpenDialog(window, { properties: ["openDirectory"] });
+    return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
+  handle("pi:snapshot", TargetSchema, ({ key }) => workspace.session(key).snapshot());
+  handle("pi:list", DirectorySchema, async ({ cwd: directory }) => workspace.list(directory));
+  handle("pi:create", DirectorySchema, async ({ cwd: directory }) => workspace.create(directory));
+  handle("pi:open", OpenSchema, async (request) => workspace.open(request.cwd, request.path));
+  handle("pi:prompt", PromptSchema, async (request) => {
+    if (request.message.trim().length === 0)
       throw new Error("Enter a message of at most 100,000 characters.");
-    }
-    await session.prompt(request.message);
+    return workspace.session(request.key).prompt(request.message, request.mode);
   });
-  ipcMain.handle("pi:stop", async (event) => {
-    validateSender(event);
-    await session.stop();
-  });
+  handle("pi:stop", TargetSchema, async ({ key }) => workspace.session(key).stop());
+  handle("pi:history", TargetSchema, async ({ key }) => workspace.session(key).history());
+  handle("pi:navigate", EntrySchema, async ({ key, entryId }) =>
+    workspace.session(key).navigate(entryId),
+  );
+  handle("pi:fork", EntrySchema, async ({ key, entryId }) => workspace.fork(key, entryId));
+  handle("pi:controls", TargetSchema, async ({ key }) => workspace.session(key).controls());
+  handle("pi:model", ModelSchema, async ({ key, provider, modelId }) =>
+    workspace.session(key).model(provider, modelId),
+  );
+  handle("pi:thinking", ThinkingSchema, async ({ key, level }) =>
+    workspace.session(key).thinking(level),
+  );
 
-  const unsubscribe = session.subscribe((snapshot) => {
+  const unsubscribe = workspace.subscribe((snapshot) => {
     if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
       window.webContents.send("pi:changed", snapshot);
     }
@@ -78,7 +115,7 @@ export async function startDesktop({
     event.preventDefault();
     if (quitting) return;
     quitting = true;
-    void session
+    void workspace
       .close()
       .catch((error: unknown) => {
         console.error("Could not close Pi cleanly:", error);
@@ -130,7 +167,7 @@ export async function startDesktop({
   window.webContents.session.setPermissionCheckHandler(() => false);
   await window.loadURL(rendererUrl);
   if (developmentUrl) window.webContents.openDevTools({ mode: "detach" });
-  void session.start().catch((error: unknown) => {
+  void workspace.start().catch((error: unknown) => {
     console.error("Pi startup failed:", error);
   });
 }

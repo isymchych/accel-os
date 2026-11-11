@@ -44,8 +44,16 @@ The RPC entry reuses `ai/SYSTEM.md`, explicit built-ins/extensions, excluded too
 directory, and isolated agent Git configuration.
 
 Pi owns session persistence, schemas, credentials, and model configuration.
-[Domain rules](domain.md#lifecycle) define single-writer handoff and child-lifetime profile
-selection.
+
+The RPC entry additionally loads `runtime/desktop-extension.ts`, a desktop-only bridge built on
+public Pi APIs. Discovery uses `SessionManager.list`; tree navigation uses the extension command
+context. Correlated results travel through RPC notifications, not raw stdout (Pi guards extension
+stdout). Electron verifies bridge availability before issuing control commands; controls never fall
+back to model input.
+
+Snapshot forks open a private copy with `SessionManager`, so legacy migrations cannot rewrite the
+live source. Pi constructs the selected branch; the bridge restores source lineage and publishes the
+destination atomically without overwriting another file.
 
 Verify compatibility against installed Pi declarations and documentation. Check the revision of any
 reference checkout before using its source, and validate upgrades with integration checks.
@@ -62,12 +70,13 @@ upstream `RpcClient`.
 
 Main owns the live presentation snapshot, including current partial text. It survives renderer
 reloads. Completed Pi messages replace reconstructed partial output. Revision numbers prevent a late
-initial snapshot from overwriting a newer observation.
-[Domain rules](domain.md#activity-outcomes-and-connection) distinguish observation, command
-acceptance, and settled execution.
+initial snapshot from overwriting a newer observation. Transient text/tool deltas coalesce before
+cloning and forwarding a full snapshot; completed messages and lifecycle changes publish
+immediately. The main-owned workspace reuses active owners and reserves pending opens. Commands
+carry an explicit desktop session key; renderer selection never retargets a child or an outstanding
+request. Drafts are keyed by that same session and retained in renderer session storage.
 
-Graphical interactions use Pi's RPC dialog request/response contract and the
-[domain compatibility rules](domain.md#configuration-and-interaction-compatibility).
+Graphical interactions use Pi's RPC dialog request/response contract.
 [README.md](../README.md#configuration-and-compatibility) describes supported interactions.
 
 ### Wire contract and limits
@@ -98,8 +107,6 @@ These controls protect the UI boundary, not Pi tools; see
 
 Main owns children independently of renderer observation. App quit closes child stdin for native Pi
 disposal, then uses bounded termination if the child does not exit.
-[Lifecycle rules](domain.md#lifecycle) define the user-visible guarantees;
-[README.md](../README.md#development) covers development and restart instructions.
 
 ## Integration references
 
