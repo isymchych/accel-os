@@ -66,6 +66,8 @@ export interface SessionSummary {
 }
 /** A copy of live presentation state for the renderer. */
 export interface SessionSnapshot extends SessionSummary {
+  /** Changes when controls or persisted history may need to be reloaded. */
+  runtimeRevision: number;
   messages: TranscriptMessage[];
   streaming: string;
   tools: ToolActivity[];

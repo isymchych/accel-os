@@ -9,13 +9,14 @@ import type {
   StoredSession,
 } from "../desktop-api.ts";
 import { Button } from "./components/ui/button.tsx";
-import { SessionView } from "./session-view.tsx";
+import { SessionView, type ComposerFeedback } from "./session-view.tsx";
+import { useWorkspaceObservation } from "./use-workspace-observation.ts";
 import { WorkspaceNavigation } from "./workspace-navigation.tsx";
 
 interface ComposerState {
   message: string;
   pending: boolean;
-  feedback: string | null;
+  feedback: ComposerFeedback | null;
 }
 function saved(key: string): string {
   try {
@@ -41,8 +42,6 @@ export function SessionScreen(): ReactElement {
   useEffect(() => {
     workspaceRef.current?.focus({ preventScroll: true });
   }, []);
-  const [sessions, setSessions] = useState<Record<SessionKey, SessionSummary>>({});
-  const [snapshots, setSnapshots] = useState<Record<SessionKey, SessionSnapshot>>({});
   const [selected, setSelected] = useState<SessionKey | null>(null);
   const [directory, setDirectory] = useState("");
   const [listing, setListing] = useState<{ cwd: string; items: StoredSession[] }>({
@@ -54,72 +53,28 @@ export function SessionScreen(): ReactElement {
   const [opening, setOpening] = useState(false);
   const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});
 
-  const receive = useCallback((next: SessionSnapshot): void => {
-    setSnapshots((current) =>
-      next.revision >= (current[next.key]?.revision ?? -1)
-        ? { ...current, [next.key]: next }
-        : current,
-    );
-    setSessions((current) =>
-      next.revision >= (current[next.key]?.revision ?? -1)
-        ? { ...current, [next.key]: next }
-        : current,
-    );
+  const onWorkspace = useCallback(
+    (workspace: { initialKey: SessionKey; sessions: SessionSummary[] }): void => {
+      const previous = saved("pi-selected");
+      const key =
+        workspace.sessions.find((session) => session.key === previous)?.key ?? workspace.initialKey;
+      setSelected(key);
+      setDirectory(workspace.sessions.find((session) => session.key === key)?.cwd ?? "");
+    },
+    [],
+  );
+  const onObservationError = useCallback((error: unknown): void => {
+    setFeedback(errorMessage(error));
   }, []);
+  const { sessions, receive } = useWorkspaceObservation(selected, onWorkspace, onObservationError);
   useEffect(() => {
     if (selected !== null) remember("pi-selected", selected);
   }, [selected]);
 
-  useEffect(() => {
-    let active = true;
-    const unsubscribe = window.pi.subscribe((next) => {
-      if (active) receive(next);
-    });
-    void window.pi
-      .workspace()
-      .then((workspace) => {
-        if (!active) return;
-        setSessions((current) => {
-          const next = { ...current };
-          for (const session of workspace.sessions) {
-            if (session.revision >= (next[session.key]?.revision ?? -1))
-              next[session.key] = session;
-          }
-          return next;
-        });
-        const previous = saved("pi-selected");
-        const key =
-          workspace.sessions.find((session) => session.key === previous)?.key ??
-          workspace.initialKey;
-        setSelected(key);
-        setDirectory(workspace.sessions.find((session) => session.key === key)?.cwd ?? "");
-      })
-      .catch((error: unknown) => {
-        if (active) setFeedback(errorMessage(error));
-      });
-    return (): void => {
-      active = false;
-      unsubscribe();
-    };
-  }, [receive]);
-
-  useEffect(() => {
-    if (!selected) return undefined;
-    let active = true;
-    void window.pi
-      .snapshot(selected)
-      .then((next) => {
-        if (active) receive(next);
-      })
-      .catch((error: unknown) => {
-        if (active) setFeedback(errorMessage(error));
-      });
-    return (): void => {
-      active = false;
-    };
-  }, [selected, receive]);
-
-  const connected = Object.values(sessions).some((session) => session.connection === "connected");
+  const summaries = Object.values(sessions).flatMap((session) =>
+    session ? [session.summary] : [],
+  );
+  const connected = summaries.some((session) => session.connection === "connected");
   useEffect(() => {
     if (!directory || !connected) return undefined;
     let active = true;
@@ -136,7 +91,7 @@ export function SessionScreen(): ReactElement {
     };
   }, [directory, connected]);
 
-  const snapshot = selected === null ? undefined : snapshots[selected];
+  const snapshot = selected === null ? undefined : sessions[selected]?.snapshot;
   const composer = (selected === null ? undefined : composers[selected]) ?? {
     message: selected === null ? "" : saved(`pi-composer:${selected}`),
     pending: false,
@@ -167,9 +122,9 @@ export function SessionScreen(): ReactElement {
     try {
       const disposition = await window.pi.prompt({ key, message, mode });
       remember(`pi-composer:${key}`, "");
-      updateComposer(key, { message: "", feedback: `Input: ${disposition}.` });
+      updateComposer(key, { message: "", feedback: { kind: "accepted", disposition } });
     } catch (error) {
-      updateComposer(key, { feedback: errorMessage(error) });
+      updateComposer(key, { feedback: { kind: "error", message: errorMessage(error) } });
     }
     updateComposer(key, { pending: false });
   }
@@ -206,7 +161,7 @@ export function SessionScreen(): ReactElement {
         <WorkspaceNavigation
           target={workspaceRef}
           composer={composerRef}
-          sessionKeys={Object.values(sessions).map((session) => session.key)}
+          sessionKeys={summaries.map((session) => session.key)}
           selected={selected}
           onSelect={setSelected}
         />
@@ -256,7 +211,7 @@ export function SessionScreen(): ReactElement {
         </Button>
         <nav aria-label="Open sessions" className="mt-6 space-y-2">
           <h2 className="text-xs font-semibold uppercase text-muted-foreground">Open sessions</h2>
-          {Object.values(sessions).map((session) => (
+          {summaries.map((session) => (
             <Button
               key={session.key}
               variant={session.key === selected ? "secondary" : "ghost"}

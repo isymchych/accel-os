@@ -171,6 +171,7 @@ function RuntimeControls({
   const [entry, setEntry] = useState<HistoryEntryId | null>(null);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [refreshRequest, setRefreshRequest] = useState(0);
   const { key, connection, execution } = snapshot;
 
   useEffect(() => {
@@ -191,17 +192,14 @@ function RuntimeControls({
     return (): void => {
       active = false;
     };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Refresh at execution/submission boundaries, not on every streaming revision.
-  }, [key, connection, execution, snapshot.notice]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- These revisions explicitly invalidate the fetched data.
+  }, [key, connection, snapshot.runtimeRevision, refreshRequest]);
 
   async function change(operation: () => Promise<void>): Promise<void> {
     setPending(true);
     setFeedback(null);
     try {
       await operation();
-      const [next, tree] = await Promise.all([window.pi.controls(key), window.pi.history(key)]);
-      setControls(next);
-      setHistory(tree);
     } catch (error) {
       setFeedback(errorText(error));
     }
@@ -270,7 +268,8 @@ function RuntimeControls({
               variant="ghost"
               disabled={connection !== "connected" || pending}
               onClick={() => {
-                void change(async () => {});
+                setFeedback(null);
+                setRefreshRequest((current) => current + 1);
               }}
             >
               Refresh history
@@ -287,11 +286,15 @@ function RuntimeControls({
   );
 }
 
+export type ComposerFeedback =
+  | { kind: "accepted"; disposition: string }
+  | { kind: "error"; message: string };
+
 interface ComposerProps {
   snapshot: SessionSnapshot;
   message: string;
   pending: boolean;
-  feedback: string | null;
+  feedback: ComposerFeedback | null;
   composerRef: RefObject<HTMLTextAreaElement | null>;
   onExitComposer: () => void;
   onEdit: (message: string) => void;
@@ -317,7 +320,7 @@ function SessionComposer({
     snapshot.execution !== "unknown" &&
     snapshot.execution !== "stopping" &&
     message.trim().length > 0;
-  const submissionError = feedback && !feedback.startsWith("Input:") ? feedback : null;
+  const submissionError = feedback?.kind === "error" ? feedback.message : null;
   const visibleError = stopError ?? submissionError ?? snapshot.error;
   return (
     <section aria-label="Direct agent">
@@ -400,7 +403,9 @@ function SessionComposer({
           {visibleError}
         </p>
       )}
-      {feedback?.startsWith("Input:") && <output className="mt-3 block text-sm">{feedback}</output>}
+      {feedback?.kind === "accepted" && (
+        <output className="mt-3 block text-sm">Input: {feedback.disposition}.</output>
+      )}
       {snapshot.notice && <output className="mt-3 block text-sm">{snapshot.notice}</output>}
       <p className="mt-6 text-xs text-muted-foreground">
         Pi tools run on your host without a sandbox. Unsupported dialogs are cancelled. Refreshing

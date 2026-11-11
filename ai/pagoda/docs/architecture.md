@@ -73,9 +73,11 @@ Main owns the live presentation snapshot, including current partial text. It sur
 reloads. Completed Pi messages replace reconstructed partial output. Revision numbers prevent a late
 initial snapshot from overwriting a newer observation. Transient text/tool deltas coalesce before
 cloning and forwarding a full snapshot; completed messages and lifecycle changes publish
-immediately. The main-owned workspace reuses active owners and reserves pending opens. Commands
-carry an explicit session key; renderer selection never retargets a child or an outstanding request.
-Drafts use the same key and are retained in renderer session storage.
+immediately. A separate runtime revision signals when controls or history may need refreshing,
+without treating streaming deltas or display notices as invalidations. The main-owned workspace
+reuses active owners and reserves pending opens. Commands carry an explicit session key; renderer
+selection never retargets a child or an outstanding request. Drafts use the same key and are
+retained in renderer session storage.
 
 Each open session has an execution owner. The owner's `key` routes commands and observations;
 `sessionId` identifies the Pi session, and `sessionFile` locates its persisted history. Reopening

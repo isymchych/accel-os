@@ -192,6 +192,19 @@ test("shutdown escalates an unresponsive child to process-group termination", as
   [
     ["malformed JSON", (): string => "{bad json}\n"],
     ["invalid record", (): string => '{"type":42}\n'],
+    ...["{bad json}", JSON.stringify({ type: "workspace_result", id: "control" })].map(
+      (message, index) =>
+        [
+          `invalid bridge result ${index + 1}`,
+          (): string =>
+            `${JSON.stringify({
+              type: "extension_ui_request",
+              id: "notification",
+              method: "notify",
+              message: `workspace-control:${message}`,
+            })}\n`,
+        ] as const,
+    ),
     ["oversized complete record", (): string => `${"x".repeat(16 * 1024 * 1024 + 1)}\n`],
     ["oversized unfinished record", (): string => "x".repeat(16 * 1024 * 1024 + 1)],
   ] as const
@@ -301,6 +314,10 @@ function controlResult(command: Command, fields: Record<string, unknown>): void 
 
 test("concurrent bridge operations correlate results independently of notification order", async (t) => {
   const rpc = transport(t);
+  const observed: object[] = [];
+  rpc.subscribe((record) => {
+    observed.push(record);
+  });
   child.onCommand = (command): void => {
     if (command.type === "get_commands")
       child.respond(command, { data: { commands: [{ name: "workspace-control" }] } });
@@ -318,6 +335,15 @@ test("concurrent bridge operations correlate results independently of notificati
   child.respond(first);
   assert.deepEqual(await list, []);
   assert.equal(child.commands.filter((command) => command.type === "prompt").length, 2);
+  controlResult(first, { data: "late result" });
+  const notice = {
+    type: "extension_ui_request",
+    id: "user-notification",
+    method: "notify",
+    message: "Ordinary Pi notification",
+  };
+  child.send(notice);
+  assert.deepEqual(observed, [notice], "Bridge results stay private to the transport");
 });
 
 test("bridge failures and unmatched results reject without replay and allow later controls", async (t) => {
@@ -451,6 +477,25 @@ test("agent_end does not complete execution before agent_settled", async (t) => 
   await assert.rejects(session.prompt("too early"), /connected and ready/u);
   child.send({ type: "agent_settled", aborted: false });
   assert.equal(session.snapshot().execution, "idle");
+});
+
+test("runtime invalidation follows session changes, not notices or streaming deltas", async (t) => {
+  const session = await sessionFixture(t);
+  const initial = session.snapshot().runtimeRevision;
+  child.send({ type: "extension_ui_request", id: "notice", method: "notify", message: "Hello" });
+  child.send({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_delta", delta: "partial" },
+  });
+  assert.equal(session.snapshot().runtimeRevision, initial);
+  await session.prompt("work");
+  const submitted = session.snapshot().runtimeRevision;
+  assert.ok(submitted > initial);
+  child.send({ type: "message_end", message: { role: "user", content: "work" } });
+  const completed = session.snapshot().runtimeRevision;
+  assert.ok(completed > submitted);
+  child.send({ type: "agent_settled", aborted: false });
+  assert.ok(session.snapshot().runtimeRevision > completed);
 });
 
 test("lost prompt confirmation times out without resending accepted input", async (t) => {

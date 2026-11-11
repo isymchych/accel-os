@@ -91,6 +91,7 @@ export class DesktopSession {
     this.state = {
       key: ownerKey,
       revision: 0,
+      runtimeRevision: 0,
       connection: "starting",
       execution: "unknown",
       cwd: launch.cwd,
@@ -152,6 +153,7 @@ export class DesktopSession {
       messages: messages.data.messages.map(transcriptMessage),
       streaming: "",
       tools: [],
+      runtimeRevision: this.state.runtimeRevision + 1,
     });
   }
 
@@ -190,6 +192,7 @@ export class DesktopSession {
       throw error;
     } finally {
       this.submitting = false;
+      this.invalidateRuntime();
     }
   }
 
@@ -205,6 +208,7 @@ export class DesktopSession {
       throw error;
     } finally {
       this.stopping = false;
+      this.invalidateRuntime();
     }
   }
 
@@ -294,6 +298,7 @@ export class DesktopSession {
       return await operation();
     } finally {
       this.mutating = false;
+      this.invalidateRuntime();
     }
   }
 
@@ -310,13 +315,19 @@ export class DesktopSession {
         this.update({ execution: "running" });
         break;
       case "agent_settled":
-        if (!this.stopping) this.update({ execution: "idle", activity: null });
+        if (!this.stopping)
+          this.update({
+            execution: "idle",
+            activity: null,
+            runtimeRevision: this.state.runtimeRevision + 1,
+          });
         break;
       case "message_end":
         if (!Value.Check(MessageEndSchema, record)) throw new Error("Invalid completed message");
         this.update({
           messages: [...this.state.messages, transcriptMessage(record.message)],
           streaming: record.message.role === "assistant" ? "" : this.state.streaming,
+          runtimeRevision: this.state.runtimeRevision + 1,
         });
         break;
       case "message_update":
@@ -378,7 +389,6 @@ export class DesktopSession {
         this.update({ error: "Could not cancel the unsupported Pi dialog." });
       });
     } else if (record.method === "notify" && record.message) {
-      if (record.message.startsWith("workspace-control:")) return;
       this.update({ notice: record.message });
     }
   }
@@ -390,6 +400,10 @@ export class DesktopSession {
         this.notify();
       }, 40);
     } else this.notify();
+  }
+
+  private invalidateRuntime(): void {
+    this.update({ runtimeRevision: this.state.runtimeRevision + 1 });
   }
 
   private notify(): void {

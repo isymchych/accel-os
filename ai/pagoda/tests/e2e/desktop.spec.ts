@@ -360,9 +360,11 @@ test("shadcn model/thinking controls and distinct follow-up/steering reach Pi", 
   await message.fill("explicit follow-up");
   await page.getByRole("button", { name: "Follow up", exact: true }).click();
   await expect(message).toHaveValue("");
+  await expect(page.getByText("1 queued inputs", { exact: true })).toBeVisible();
   await message.fill("explicit steering");
   await page.getByRole("button", { name: "Steer", exact: true }).click();
   await expect(message).toHaveValue("");
+  await expect(page.getByText("2 queued inputs", { exact: true })).toBeVisible();
   const queued = (await readFile(path.join(directory, "queue.jsonl"), "utf8"))
     .trim()
     .split("\n")
@@ -371,6 +373,64 @@ test("shadcn model/thinking controls and distinct follow-up/steering reach Pi", 
     expect.objectContaining({ type: "follow_up", message: "explicit follow-up" }),
     expect.objectContaining({ type: "steer", message: "explicit steering" }),
   ]);
+});
+
+test("a late controls/history refresh cannot overwrite a newer refresh", async ({
+  desktop: { application, page },
+}) => {
+  await page.getByRole("combobox", { name: "Model", exact: true }).waitFor();
+  await application.evaluate(({ ipcMain }) => {
+    let calls = 0;
+    const released = new Promise<void>((resolve) => {
+      ipcMain.once("test:release-controls", () => {
+        resolve();
+      });
+    });
+    ipcMain.on("test:await-controls", (_event, resolve: () => void) => {
+      if (calls > 0) resolve();
+      else ipcMain.once("test:controls-requested", resolve);
+    });
+    ipcMain.removeHandler("pi:controls");
+    ipcMain.handle("pi:controls", async () => {
+      calls += 1;
+      const first = calls === 1;
+      ipcMain.emit("test:controls-requested");
+      if (first) await released;
+      return {
+        models: [],
+        model: { provider: "test", id: first ? "old" : "new" },
+        thinkingLevel: "off",
+        levels: ["off"],
+        pendingMessageCount: 0,
+      };
+    });
+  });
+  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  const refresh = page.getByRole("button", { name: "Refresh history", exact: true });
+  await refresh.click();
+  await application.evaluate(
+    async ({ ipcMain }) =>
+      new Promise<void>((resolve) => {
+        ipcMain.emit("test:await-controls", null, resolve);
+      }),
+  );
+  await refresh.click();
+  const model = page.getByRole("combobox", { name: "Model", exact: true });
+  await expect(model).toContainText("test/new");
+  await application.evaluate(({ ipcMain }) => {
+    ipcMain.emit("test:release-controls");
+  });
+  await page.evaluate(
+    async () =>
+      new Promise<void>((resolve) => {
+        globalThis.window.requestAnimationFrame(() => {
+          globalThis.window.requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      }),
+  );
+  await expect(model).toContainText("test/new");
 });
 
 test("idle follow-up and steering execute immediately", async ({ desktop: { page } }) => {

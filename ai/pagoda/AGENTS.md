@@ -33,9 +33,13 @@ renderer/preload/main journeys. Follow [development checks](docs/development.md#
 isolated, credential-free execution and the distinction between fake RPC wiring and real Pi
 compatibility.
 
-Run the desktop build and Electron E2E alongside root `just check`; disclose missing display or
-Electron prerequisites. Follow [display prerequisites](docs/development.md#display-prerequisites)
-before GUI checks; do not open unexpected windows. Report tool and extension coverage limits.
-Formatting, lint, typecheck, build, and repository checks must pass or their outstanding failures
-must be reported precisely. pnpm scripts own workspace tooling; Just recipes are convenience
-wrappers.
+For Pagoda-only changes, run `pnpm run check`. Run `pnpm run test:e2e` for affected
+renderer/preload/main journeys; it includes the desktop build. Use root `just check` for shared
+code, repository tooling, or cross-area changes. When running a broader check, do not separately
+repeat checks it includes unless intervening changes require revalidation.
+
+Disclose missing display or Electron prerequisites. Follow
+[display prerequisites](docs/development.md#display-prerequisites) before GUI checks; do not open
+unexpected windows. Report tool and extension coverage limits. Required checks must pass or their
+outstanding failures must be reported precisely. pnpm scripts own workspace tooling; Just recipes
+are convenience wrappers.

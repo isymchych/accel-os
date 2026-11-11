@@ -44,6 +44,7 @@ class ControlledOwner {
   public snapshot(): SessionSnapshot {
     return {
       ...this.summary(),
+      runtimeRevision: 0,
       messages: [],
       streaming: "",
       tools: [],
