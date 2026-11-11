@@ -16,6 +16,7 @@ const PANEL_SOURCE = readFileSync(PANEL_PATH, "utf8");
 // has no dofile/loadfile, so compose each isolated harness from the source file.
 const FIXTURES = new URL("./fixtures/", import.meta.url);
 const HARNESS = readFileSync(new URL("harness.luau", FIXTURES), "utf8");
+const SHARED_STATUS = readFileSync(new URL("status-shared.luau", FIXTURES), "utf8");
 const STATUS = new URL("../../dot_config/noctalia/plugins/desktop-status/", import.meta.url);
 
 function checkLuau(fixture: string, harness: string, source: string): void {
@@ -62,7 +63,7 @@ function checkPi(fixture: string): void {
   const widget = readFileSync(new URL("pi-agents.luau", STATUS), "utf8");
   checkLuau(
     fixture,
-    harness,
+    `${SHARED_STATUS}\n${harness}`,
     `
 local function loadService()
 ${service}
@@ -71,6 +72,35 @@ local function loadWidget()
   local current, barWidget = makeWidget()
 ${widget}
   return current
+end
+`,
+  );
+}
+
+function checkFailedUnits(fixture: string): void {
+  const harness = readFileSync(new URL("failed-units-harness.luau", FIXTURES), "utf8");
+  const poll = readFileSync(new URL("poll.luau", STATUS), "utf8");
+  const service = readFileSync(new URL("failed-units-service.luau", STATUS), "utf8");
+  const widget = readFileSync(new URL("failed-units.luau", STATUS), "utf8");
+  checkLuau(
+    fixture,
+    `${SHARED_STATUS}\n${harness}`,
+    `
+local function loadPoll()
+${poll}
+end
+local function require(name)
+  assert(name == "./poll.luau")
+  return loadPoll()
+end
+local function loadService()
+${service}
+  return update
+end
+local function loadWidget(vertical)
+  local current, barWidget = makeWidget(vertical)
+${widget}
+  return current, update, onClick
 end
 `,
   );
@@ -126,11 +156,6 @@ for (const [name, fixture, entry] of [
     "status-poll.test.luau",
   ],
   [
-    "failed units combines system and user counts without hiding query failures",
-    "failed-units.test.luau",
-    "failed-units.luau",
-  ],
-  [
     "Sway mode hides default, rejects invalid responses, and recovers",
     "sway-mode.test.luau",
     "sway-mode.luau",
@@ -138,6 +163,19 @@ for (const [name, fixture, entry] of [
 ] as const) {
   test(name, { skip: process.platform !== "linux" && "Noctalia plugins are Linux-only" }, () => {
     checkStatus(fixture, entry);
+  });
+}
+
+for (const [name, fixture] of [
+  ["failed units notify once per scoped failure across bars", "failed-units.test.luau"],
+  [
+    "failed units blink until acknowledged and re-arm for new failures",
+    "failed-units-blink.test.luau",
+  ],
+  ["failed units preserve status and report errors", "failed-units-errors.test.luau"],
+] as const) {
+  test(name, { skip: process.platform !== "linux" && "Noctalia plugins are Linux-only" }, () => {
+    checkFailedUnits(fixture);
   });
 }
 

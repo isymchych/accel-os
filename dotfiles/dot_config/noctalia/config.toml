@@ -234,6 +234,7 @@ start = [
 ]
 center = ["media-art", "media-title-gap", "media"]
 end = [
+  "failed-units",
   "notifications",
   "notifications-gap",
   "pi-agents",
@@ -243,7 +244,6 @@ end = [
   "playback",
   "caffeine",
   "keyboard_layout",
-  "failed-units",
   "privacy",
   "tray",
   "clock-gap",
@@ -272,6 +272,7 @@ start = ["launcher", "right-clock", "right-date", "right-date-gap", "workspaces"
 center = [
   "right-media-art",
   "right-media-gap",
+  "failed-units",
   "notifications",
   "playback",
   "privacy",
@@ -286,7 +287,6 @@ center = [
 ]
 end = [
   "pi-agents",
-  "failed-units",
   "right-status-gap",
   "cpu",
   "memory",
@@ -488,11 +488,15 @@ type = "accel-os/desktop-status:pi-agents"
 
 [widget.failed-units]
 type = "accel-os/desktop-status:failed-units"
-show_tooltip = false
+show_tooltip = true
+scale = 1.4
+font_weight = 700
 color = "error"
+capsule = false
 
 [widget.failed-units.actions]
-left = "exec xterm run --class=systemd-manager -- systemctl-tui --scope all --no-log --limit-units '*'"
+# Free left-click for the plugin to acknowledge and open the manager.
+left = "none"
 right = "none"
 middle = "none"
 
