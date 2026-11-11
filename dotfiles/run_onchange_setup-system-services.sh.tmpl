@@ -45,13 +45,21 @@ fi
 
 for service in "${disabled_system_services[@]}"; do
   if systemctl cat "$service" >/dev/null 2>&1; then
-    sudo systemctl disable --now "$service"
+    unit_file_state=$(systemctl show --property=UnitFileState --value "$service")
+    case "$unit_file_state" in
+      masked|masked-runtime) sudo systemctl stop "$service" ;;
+      *) sudo systemctl disable --now "$service" ;;
+    esac
   fi
 done
 
 for service in "${disabled_user_services[@]}"; do
   if systemctl --user cat "$service" >/dev/null 2>&1; then
-    systemctl --user disable --now "$service"
+    unit_file_state=$(systemctl --user show --property=UnitFileState --value "$service")
+    case "$unit_file_state" in
+      masked|masked-runtime) systemctl --user stop "$service" ;;
+      *) systemctl --user disable --now "$service" ;;
+    esac
   fi
 done
 {{ end }}

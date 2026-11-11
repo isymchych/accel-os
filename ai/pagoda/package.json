@@ -20,7 +20,7 @@
     "lint": "oxlint .",
     "start": "node scripts/launch.ts",
     "test": "node --experimental-test-module-mocks --test tests/integration/*.test.ts",
-    "test:e2e": "pnpm run build && playwright test",
+    "test:e2e": "pnpm run build && node scripts/test-e2e.ts",
     "typecheck": "tsc --project tsconfig.json && tsc --project src/renderer/tsconfig.json"
   },
   "dependencies": {

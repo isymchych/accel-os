@@ -62,8 +62,11 @@ extension coverage limits explicitly.
 
 ### Display prerequisites
 
-E2E opens visible windows on the configured graphical display. Before running GUI checks, arrange an
-isolated virtual display or obtain agreement to use the active desktop. The runner uses its
-inherited display environment. If a suitable display is unavailable, report E2E as unverified.
+On Linux, `pnpm run test:e2e` starts a temporary Xvfb display with `xvfb-run` and cleans it up when
+the tests exit. Electron uses X11, not the active Wayland desktop. Arch workstation provisioning
+includes `xorg-server-xvfb`; install it before running E2E on an existing host. The fixture forwards
+`DISPLAY` and `XAUTHORITY` while keeping its temporary home and fake Pi state isolated.
 
-- [ ] Tooling TODO: automate isolated virtual-display setup for Electron E2E.
+On other platforms, E2E uses the inherited graphical display and opens visible windows. Obtain
+agreement to use the active desktop before running it. If the required display support is
+unavailable, report E2E as unverified.

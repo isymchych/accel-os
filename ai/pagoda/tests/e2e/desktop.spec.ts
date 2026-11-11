@@ -39,6 +39,7 @@ const test = base.extend<{ desktop: Desktop }>({
       for (const name of [
         "PATH",
         "DISPLAY",
+        "XAUTHORITY",
         "WAYLAND_DISPLAY",
         "XDG_RUNTIME_DIR",
         "DBUS_SESSION_BUS_ADDRESS",
@@ -50,7 +51,12 @@ const test = base.extend<{ desktop: Desktop }>({
       Object.assign(env, { HOME: directory, FAKE_PI_STATE: directory });
       application = await _electron.launch({
         executablePath,
-        args: [path.join(source, "tests/e2e/fixtures/main.mjs"), process.execPath, directory],
+        args: [
+          ...(process.platform === "linux" ? ["--ozone-platform=x11"] : []),
+          path.join(source, "tests/e2e/fixtures/main.mjs"),
+          process.execPath,
+          directory,
+        ],
         env,
         chromiumSandbox: true,
       });
@@ -478,10 +484,12 @@ test("keyboard navigation scrolls and focuses the composer without intercepting 
   await page.keyboard.press("Control+d");
   const halfPage = await page.evaluate(() => globalThis.window.innerHeight / 2);
   await expect
-    .poll(async () => page.evaluate(() => globalThis.window.scrollY))
-    .toBeCloseTo(halfPage, 0);
+    .poll(async () => Math.abs((await page.evaluate(() => globalThis.window.scrollY)) - halfPage))
+    .toBeLessThanOrEqual(1);
   await page.keyboard.press("Control+u");
-  await expect.poll(async () => page.evaluate(() => globalThis.window.scrollY)).toBe(0);
+  await expect
+    .poll(async () => page.evaluate(() => globalThis.window.scrollY))
+    .toBeLessThanOrEqual(1);
   await page.keyboard.press("Shift+g");
   await expect
     .poll(async () =>

@@ -61,6 +61,7 @@ packages:
               - typescript # JavaScript with syntax for types
               - typescript-language-server # Language Server Protocol (LSP) implementation for TypeScript using tsserver
               - uv # An extremely fast Python package installer and resolver written in Rust
+              - xorg-server-xvfb # Isolated virtual X11 display for Electron E2E tests
               # - watchexec # Executes commands in response to file modifications
 
             containers:
