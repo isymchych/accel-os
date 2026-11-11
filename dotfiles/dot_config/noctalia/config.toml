@@ -69,6 +69,7 @@ theme_mode_changed = [
 
 [wallpaper]
 enabled = true
+fill_mode = "fit"
 directory = "~/Pictures/wallpapers"
 per_monitor_directories = false
 
@@ -77,7 +78,7 @@ path = "color:#002B36"
 
 [wallpaper.automation]
 enabled = true
-interval_seconds = 3600
+interval_seconds = 1800
 order = "random"
 recursive = false
 

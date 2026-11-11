@@ -7,7 +7,7 @@ packages:
   - packages/shared
 
 catalog:
-  typebox: ^1.1.36
+  typebox: ^1.4.6
 
 # Minimum dependency release age, in minutes.
 minimumReleaseAge: 1440
