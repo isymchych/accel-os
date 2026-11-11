@@ -12,6 +12,13 @@ services:
         user:
           enabled: []
       features:
+        workstation:
+          system:
+            enabled: []
+            disabled:
+              - man-db.timer # Index manual pages after pacman transactions instead.
+          user:
+            enabled: []
         sway:
           system:
             enabled:

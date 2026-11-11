@@ -1,0 +1,47 @@
+{{- $osID := "" -}}
+{{- with .chezmoi.osRelease }}
+  {{- $osID = or .id "" -}}
+{{- end -}}
+{{- if and (eq .chezmoi.os "linux") (eq $osID "arch") -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+{{ template "load-resolved-host-state.sh" . }}
+
+manage_man_db=0
+for service in "${disabled_system_services[@]}"; do
+  if [[ "$service" == man-db.timer ]]; then
+    manage_man_db=1
+    break
+  fi
+done
+
+if (( ! manage_man_db )); then
+  exit 0
+fi
+
+config=$(mktemp)
+trap 'rm -f "$config"' EXIT
+
+cat >"$config" <<'EOF'
+# Managed by accel-os.
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Path
+Target = usr/share/man/*
+
+[Action]
+Description = Updating manual-page index...
+When = PostTransaction
+Depends = man-db
+Exec = /usr/bin/mandb --quiet
+EOF
+
+sudo install -D -o root -g root -m 0644 \
+  "$config" /etc/pacman.d/hooks/mandb.hook
+
+# Install the replacement first. Masking also blocks the vendor timer symlink.
+sudo systemctl mask --now man-db.timer
+{{ end }}
