@@ -68,6 +68,15 @@ const { PiRpc } = await import("../../src/backend/rpc.ts");
 const { DesktopSession } = await import("../../src/backend/session.ts");
 const launch = { executable: "/unused/node", args: [], cwd: "/unused", env: {} };
 
+test("a closed transport cannot start a Pi child", async () => {
+  child = new ControlledChild();
+  const rpc = new PiRpc(launch);
+  await rpc.close();
+  assert.throws(() => {
+    rpc.start();
+  }, /closed/u);
+});
+
 function transport(t: test.TestContext): InstanceType<typeof PiRpc> {
   child = new ControlledChild();
   const rpc = new PiRpc(launch);
@@ -479,23 +488,27 @@ test("agent_end does not complete execution before agent_settled", async (t) => 
   assert.equal(session.snapshot().execution, "idle");
 });
 
-test("runtime invalidation follows session changes, not notices or streaming deltas", async (t) => {
+test("controls and history invalidate independently, not on notices or streaming deltas", async (t) => {
   const session = await sessionFixture(t);
-  const initial = session.snapshot().runtimeRevision;
+  const initial = session.snapshot();
   child.send({ type: "extension_ui_request", id: "notice", method: "notify", message: "Hello" });
   child.send({
     type: "message_update",
     assistantMessageEvent: { type: "text_delta", delta: "partial" },
   });
-  assert.equal(session.snapshot().runtimeRevision, initial);
+  assert.equal(session.snapshot().controlsRevision, initial.controlsRevision);
+  assert.equal(session.snapshot().historyRevision, initial.historyRevision);
   await session.prompt("work");
-  const submitted = session.snapshot().runtimeRevision;
-  assert.ok(submitted > initial);
+  const submitted = session.snapshot();
+  assert.ok(submitted.controlsRevision > initial.controlsRevision);
+  assert.equal(submitted.historyRevision, initial.historyRevision);
   child.send({ type: "message_end", message: { role: "user", content: "work" } });
-  const completed = session.snapshot().runtimeRevision;
-  assert.ok(completed > submitted);
+  const completed = session.snapshot();
+  assert.ok(completed.controlsRevision > submitted.controlsRevision);
+  assert.ok(completed.historyRevision > submitted.historyRevision);
   child.send({ type: "agent_settled", aborted: false });
-  assert.ok(session.snapshot().runtimeRevision > completed);
+  assert.ok(session.snapshot().controlsRevision > completed.controlsRevision);
+  assert.ok(session.snapshot().historyRevision > completed.historyRevision);
 });
 
 test("lost prompt confirmation times out without resending accepted input", async (t) => {

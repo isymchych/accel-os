@@ -71,6 +71,10 @@ and conventions live in [AGENTS.md](../AGENTS.md).
   preference does not authorize silent scope expansion or unrelated cleanup.
 - Compatibility is worth preserving when I ask for it or active users/configurations require it, not
   merely because a path already exists.
+- I prefer assuming the supported, configured environment over handling hypothetical
+  misconfiguration. Defensive behavior adds complexity that needs an evidenced justification. When
+  simplifying it, question whether the behavior should exist—not merely how neatly it is
+  implemented.
 - Required cleanup and error reporting remain important.
 - Retries, fallbacks, and other recovery should serve evidenced operational needs or supported
   contracts; otherwise I prefer a clear failure over concealed problems.

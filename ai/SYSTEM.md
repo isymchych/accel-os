@@ -50,6 +50,12 @@ the smallest necessary custom layer. Prefer custom code for product-specific beh
 small, understandable, and confidently maintainable. Do not add speculative compatibility or
 future-proofing.
 
+Build for the supported, configured environment, not every environment the code could encounter. Add
+defensive behavior only for an explicit requirement, an observed failure, or a concrete risk to
+security or data integrity. "This could happen" alone is not justification. Prefer normal failure
+over custom preflight checks, fallback modes, or automatic recovery for broken setup. When
+simplifying, remove unnecessary behavior and its tests rather than merely rewriting it.
+
 - Keep rules canonical, dependencies explicit, modules cohesive, and callers simple. Keep validation
   and calculations near their use. Validate external data and isolate provider-specific assumptions
   at boundaries; convert it into internal domain types only when needed to establish invariants or

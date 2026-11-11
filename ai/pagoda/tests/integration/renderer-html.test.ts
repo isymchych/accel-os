@@ -47,7 +47,7 @@ test("development and production renderer HTML use the intended CSP", async (t) 
   const productionPolicy = policyFrom(production);
   assert.match(productionPolicy, /script-src 'self';/u);
   assert.match(productionPolicy, /style-src 'self';/u);
-  assert.match(productionPolicy, /connect-src 'none';/u);
+  assert.match(productionPolicy, /connect-src 'self';/u);
   assert.doesNotMatch(productionPolicy, /unsafe-inline/u);
   assert.match(production, /src="\.\/assets\//u);
 });

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as fs from "node:fs/promises";
 import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
@@ -44,7 +45,8 @@ class ControlledOwner {
   public snapshot(): SessionSnapshot {
     return {
       ...this.summary(),
-      runtimeRevision: 0,
+      controlsRevision: 0,
+      historyRevision: 0,
       messages: [],
       streaming: "",
       tools: [],
@@ -76,7 +78,9 @@ class ControlledOwner {
   }
 }
 
-mock.module("node:fs/promises", { exports: { realpath: async (value: string) => value } });
+mock.module("node:fs/promises", {
+  exports: { ...fs, realpath: async (value: string) => value },
+});
 mock.module(path.resolve(import.meta.dirname, "../../src/backend/session.ts"), {
   exports: { DesktopSession: ControlledOwner },
 });
@@ -175,13 +179,19 @@ test("reopening waits for a disconnected writer and shares the replacement", asy
   assert.equal(owners[0]?.state.connection, "connected");
 });
 
-test("reopening works when every previous child disconnected", async (t) => {
+test("reopening after every owner disconnects starts discovery and shares the replacement", async (t) => {
   const workspace = await fixture(t);
   const original = await workspace.open("/project", "/project/stored.jsonl");
   for (const owner of owners) owner.state.connection = "disconnected";
-  const reopened = await workspace.open("/project", "/project/stored.jsonl");
-  assert.notEqual(reopened.key, original.key);
-  assert.equal(reopened.connection, "connected");
+  const [first, second] = await Promise.all([
+    workspace.open("/project", "/project/stored.jsonl"),
+    workspace.open("/project", "/project/stored.jsonl"),
+  ]);
+  assert.notEqual(first.key, original.key);
+  assert.equal(first.key, second.key);
+  assert.equal(first.sessionId, "stored");
+  assert.equal(owners.length, 4);
+  assert.equal(owners[1]?.closeCalls, 1);
 });
 
 test("quit during cold-open startup disposes every attached owner and rejects the open", async (t) => {

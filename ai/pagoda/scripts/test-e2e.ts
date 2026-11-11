@@ -3,7 +3,7 @@ import path from "node:path";
 
 const linux = process.platform === "linux";
 const env = { ...process.env };
-if (linux) Reflect.deleteProperty(env, "WAYLAND_DISPLAY");
+if (linux) delete env["WAYLAND_DISPLAY"];
 const args = ["exec", "playwright", "test", ...process.argv.slice(2)];
 const child = spawn(
   linux ? "xvfb-run" : "pnpm",

@@ -2,35 +2,40 @@
 
 ## Launch and configuration
 
-`ai ui` opens the built desktop with the selected account profile, working directory, and
-code-navigation choice. It uses the canonical Pi RPC entry and Pi-owned configuration, credentials,
-resources, and session storage. The terminal launcher retains its ordinary argument passthrough and
-account selection behavior.
+`ai ui` starts the local backend with the selected account profile, working directory, and
+code-navigation choice, then opens Electron. Closing Electron stops the backend and active work.
+`ai ui --browser` opens the browser instead and keeps the backend foreground until Ctrl+C. The
+terminal launcher retains its ordinary argument passthrough and account selection behavior.
+Unsupported UI arguments are rejected rather than forwarded to Pi. Remote access is outside scope.
 
-The desktop receives launch selections without changing terminal launcher configuration. Unsupported
-UI arguments are rejected rather than forwarded to Pi.
+Execution uses the canonical Pi RPC entry and existing configuration, credentials, resources, and
+session storage. Each child keeps its own directory and profile environment; process-global changes
+must not retarget another session.
 
 ## Session selection and concurrent work
 
-Users can choose directories and browse, create, and reopen native Pi sessions. Selecting a session
-displays its transcript, draft, and activity. Reopening an active session reuses its existing
-execution owner.
+Users can enter validated directory paths and browse, create, and reopen native Pi sessions.
+Selecting a session displays its transcript, draft, and activity. Reopening an active session reuses
+its execution owner; reopening saved history after child exit creates a new owner.
 
 Work continues independently across sessions. Starting work in A, switching to B and submitting
 there, then returning to A preserves each session's history, draft, and activity. Commands remain
 attached to the session where they originated, including while Send or Stop confirmation is pending.
 
-Terminal/desktop handoff is sequential: close a session in one interface before opening it in the
-other. Each session has one writer.
+Terminal/Pagoda handoff is sequential: close the terminal session before opening it through Pagoda,
+and stop its backend before resuming the session in the terminal. Browser and Electron clients share
+execution owners, while their drafts and selections remain independent.
 
 ## Input, follow-ups, and steering
 
 Users can submit input, queue explicit follow-ups, and steer active work using Pi's native
 semantics. Follow-ups and steering are distinct actions. Model and thinking-level controls use Pi's
-existing configuration and runtime.
+existing configuration and runtime, apply to the selected idle session, and do not change global
+defaults. When idle, follow-up and steering both start work immediately.
 
-Rejected or uncertain submissions retain the draft. A lost command response leaves submission
-uncertain; input must not be resent automatically.
+Drafts and pending commands stay with their originating session across view changes and page
+reloads. Rejected or uncertain submissions retain the draft. A lost command response leaves
+submission uncertain; input must not be resent automatically.
 
 ## Transcript and activity
 
@@ -39,15 +44,16 @@ execution state, errors, and interaction notices. Long text and tool results exp
 Transient streaming updates coalesce; completed messages and lifecycle changes appear immediately.
 
 Command rejection, provider/tool errors, extension failures, and child exit remain distinguishable
-where Pi exposes them. Disconnection leaves execution unknown until fresh state confirms its
-outcome. Agent output is displayed as untrusted text.
+where Pi exposes them. Agent output is displayed as untrusted text.
 
-Unsupported RPC dialogs receive explicit cancellation and a visible notice.
+Pi notifications are displayed. Unsupported RPC dialogs receive explicit cancellation and a visible
+notice, never silent approval; other presentation-only records are not rendered.
 
 ## History navigation and forks
 
 Users can read persisted history and navigate native branches while the session is idle. Navigation
-preserves the original history.
+preserves the original history. Selecting a user message other than the current leaf navigates to
+its parent and restores its text to the composer; selecting the current leaf is a no-op.
 
 Forking creates an independent native session containing persisted history through the selected
 entry. The source retains its history and continues active work; unfinished streaming output is
@@ -62,8 +68,9 @@ Stop targets the session where it was requested, even if the selected view chang
 confirmation is pending. It remains stopping until Pi confirms cancellation; an unknown outcome must
 not be displayed as successful cancellation.
 
-Renderer refresh and view changes preserve active execution. Reattachment displays current
-main-process state and ignores stale observations.
+Page refresh, hot updates, view changes, and closing browser tabs preserve active execution. Closing
+the launcher-owned Electron window stops the backend. Reconnection displays current state and
+ignores stale observations. Lost connectivity makes execution unknown, not cancelled or failed.
 
-Application quit closes Pi children and their active work. Persisted history remains reopenable
-after an application or machine crash; unfinished execution requires a fresh run.
+Stopping the backend ends active Pi work even while clients remain connected. Persisted history
+remains reopenable after a backend or machine crash; unfinished execution requires a fresh run.

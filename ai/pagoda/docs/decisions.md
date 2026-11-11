@@ -2,7 +2,8 @@
 
 ## ADR-011: Local Electron interface to the existing Pi setup
 
-Status: accepted.
+Status: UI transport and app-lifetime execution superseded by ADR-012 below. The configured Pi
+subprocess, native-session, and local Pi RPC transport decisions remain applicable.
 
 ### Why Electron and plain Vite
 
@@ -37,3 +38,24 @@ background service or automatic crash recovery; persisted history does not resum
 The desktop needs extension-response writing and child-exit observation as well as typed commands
 and events. Upstream `RpcClient` does not expose all those hooks, so the desktop uses a local
 transport. Reconsider upstream reuse when its public API covers this boundary.
+
+## ADR-012: One local HTTP application with browser and Electron clients
+
+Status: accepted. Supersedes ADR-011's renderer IPC and app-lifetime execution choices.
+
+Hono on Node owns a foreground backend. HTTP commands and SSE observations are the sole application
+transport; the configured Pi JSONL RPC integration remains unchanged. React runs in a browser or a
+thin sandboxed Electron shell. This makes the real application directly available to browser
+development tools and moves most integrated journeys to browser tests without maintaining a second
+transport or a fixture-only frontend.
+
+The credible alternative was to retain Electron IPC and add a browser development adapter. That
+would keep desktop-first lifecycle semantics but duplicate the boundary and would not provide
+production browser use.
+
+The consequence is a launcher-owned backend lifetime: browser mode runs until interrupted, while
+Electron mode ends with its window. There is no managed service or crash recovery. Execution
+configuration belongs to backend startup, and clients use directory-path entry instead of native
+dialogs. Local HTTP also introduces an
+[authentication and origin-security boundary](architecture.md#security-and-execution); remote access
+remains outside scope.

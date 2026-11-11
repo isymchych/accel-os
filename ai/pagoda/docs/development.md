@@ -8,27 +8,39 @@ Run workspace commands from `ai/pagoda/`.
 pnpm run dev
 ```
 
-This compiles main/preload, starts Vite on `127.0.0.1:5173`, and opens Electron with Chromium
-DevTools. React edits update live. Restart explicitly after main/preload or Pi-integration edits.
-Electron's main process can be debugged separately with its Node inspector.
+This builds the backend and Electron shell, starts Vite on `127.0.0.1:5173`, and starts the backend
+on `127.0.0.1:4317`. Open its printed connection URL in a browser; no window opens automatically.
+This development server is separate from the normal launcher-owned UI.
 
-Renderer refresh keeps Pi running. Quitting the app closes Pi and active work.
+React edits update live. Restart explicitly after backend/Pi-integration edits, or restart Electron
+after shell edits. Source watchers must not restart active agent work.
 
-The launcher passes the selected profile, working directory, and navigation backend as explicit
-process arguments, not renderer-exposed settings. Tests use a separate entry point to inject fake Pi
-execution and isolated desktop storage; normal startup does not expose those overrides.
+### Startup options
+
+Production uses `pnpm run build` then `pnpm run start`. The server accepts `--cwd`, `--profile-dir`,
+`--code-navigation`, and `--port` (default 4317). Launch selections are explicit process arguments,
+not frontend settings. Normal startup does not expose test fake-execution overrides.
+
+Through the terminal launcher, `ai ui` uses the selected account profile; `ai ui tilth` selects the
+navigation backend and `ai ui --browser` opens a browser. `AI_CWD` retains its launch-directory
+override. Closing Electron or interrupting browser mode stops active work.
+
+The Electron npm package downloads its matching binary on first execution if it is not cached.
 
 ## Checks
 
 ```sh
 pnpm run check
-pnpm run build
 pnpm run test:e2e
 ```
 
-`check` runs workspace formatting, lint, TypeScript checks, and Node integration tests. E2E uses the
-installed Electron binary and exercises the built renderer, sandboxed preload, IPC, main process,
-and a deterministic fake Pi child.
+`check` runs formatting, lint, TypeScript checks, and Node integration tests. `test:e2e` includes
+the production build. Browser journeys exercise the real frontend and HTTP/SSE backend with a fake
+Pi child; Electron checks cover shell isolation, shared state, and quit behavior. Ordinary journeys
+do not mock the application API; targeted fault tests cover stale responses and rejection.
+
+For browser-only iteration without a graphical display or Xvfb, run `pnpm run test:e2e:browser`. The
+full `test:e2e` command also checks Electron.
 
 Root `just check` remains the repository gate. Workspace `Justfile` recipes are optional wrappers
 around pnpm commands.
@@ -38,34 +50,23 @@ around pnpm commands.
 Use fake providers or deterministic execution, harmless tools, and isolated temporary state. Never
 use real provider credentials in automated tests.
 
-Configured-Pi checks use synthetic credentials and a local fake model to exercise actual extensions,
-read/shell execution, shell termination, native persistence, discovery/navigation, and independent
-fork execution while the source streams. Fake RPC checks establish application wiring; extension
-compatibility requires configured-Pi checks, and these checks cover only the tools and extensions
-they exercise.
+Fake RPC checks establish application wiring, not Pi compatibility. Configured-Pi checks use
+synthetic credentials and a local fake model to exercise actual extensions, tools, native history,
+and concurrent fork execution. They establish compatibility only for what they exercise.
 
 Verify actual configured tool-process termination as well as fake cancellation. Report tool and
 extension coverage limits explicitly.
 
-### Verification scenarios
-
-- Launcher UI selection, terminal argument passthrough, account selection, and launch settings.
-- JSONL chunking and Unicode separators, final-message replacement, request rejection, child exit,
-  unsupported-dialog cancellation, Stop confirmation, and shutdown cleanup.
-- Built renderer/preload/main journeys: submit/stream, renderer reload during work, draft
-  preservation, untrusted text rendering, and clean quit.
-- Directory/session selection, sequential terminal/desktop handoff, persisted-history reopening,
-  history navigation and fork preservation, explicit follow-ups, model/thinking controls, and long
-  content.
-- Concurrent session activity, independent drafts, pending Send/Stop confirmations across view
-  changes, and reuse of an active session's execution owner.
-
 ### Display prerequisites
 
-On Linux, `pnpm run test:e2e` starts a temporary Xvfb display with `xvfb-run` and cleans it up when
-the tests exit. Electron uses X11, not the active Wayland desktop. Arch workstation provisioning
-includes `xorg-server-xvfb`; install it before running E2E on an existing host. The fixture forwards
-`DISPLAY` and `XAUTHORITY` while keeping its temporary home and fake Pi state isolated.
+On Linux, browser tests use the installed `/usr/bin/chromium`; set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`
+to use another installed Chromium executable. Other platforms use Playwright's installed Chromium
+unless that override is set. Install its browser prerequisites before running E2E. Tracing is
+disabled to avoid recording connection credentials.
+
+On Linux, `test:e2e` runs Electron on a temporary Xvfb/X11 display, not the active Wayland desktop,
+and cleans it up afterward. Arch provisioning includes `xorg-server-xvfb`; install it before running
+E2E on an existing host.
 
 On other platforms, E2E uses the inherited graphical display and opens visible windows. Obtain
 agreement to use the active desktop before running it. If the required display support is

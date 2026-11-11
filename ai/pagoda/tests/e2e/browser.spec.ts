@@ -1,78 +1,48 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { expect, type Page } from "@playwright/test";
+import { Value } from "typebox/value";
+
+import type { Backend } from "../../src/backend/server.ts";
 import {
-  _electron,
-  expect,
-  test as base,
-  type ElectronApplication,
-  type Page,
-} from "@playwright/test";
+  SnapshotSchema,
+  WorkspaceSchema,
+  type SessionKey,
+  type SessionSnapshot,
+  type WorkspaceState,
+} from "../../src/desktop-api.ts";
+import { test as base } from "./fixtures/backend.ts";
+import { createNetwork } from "./fixtures/network.ts";
 
-import type { DesktopApi } from "../../src/desktop-api.ts";
-
-interface Desktop {
-  application: ElectronApplication;
+interface Workspace {
+  backend: Backend;
   page: Page;
   directory: string;
 }
-declare global {
-  interface Window {
-    pi: DesktopApi;
-  }
+async function state(page: Page): Promise<WorkspaceState> {
+  const response = await page.request.get(`${new URL(page.url()).origin}/api/workspace`);
+  const value: unknown = await response.json();
+  assert.ok(Value.Check(WorkspaceSchema, value));
+  return value;
+}
+async function snapshot(page: Page, key: SessionKey): Promise<SessionSnapshot> {
+  const origin = new URL(page.url()).origin;
+  const response = await page.request.post(`${origin}/api/snapshot`, {
+    headers: { origin },
+    data: { key },
+  });
+  const value: unknown = await response.json();
+  assert.ok(Value.Check(SnapshotSchema, value));
+  return value;
 }
 
-const test = base.extend<{ desktop: Desktop }>({
-  // oxlint-disable-next-line no-empty-pattern -- Playwright requires destructured fixture dependencies.
-  desktop: async ({}, use) => {
-    const directory = await mkdtemp(path.join(tmpdir(), "pi-electron-"));
-    let application: ElectronApplication | undefined;
-    const lifecycle = { closed: false };
-    try {
-      const source = path.resolve(import.meta.dirname, "../..");
-      const executablePath: unknown = createRequire(import.meta.url)("electron");
-      if (typeof executablePath !== "string") throw new Error("Electron binary unavailable");
-      const env: Record<string, string> = {};
-      for (const name of [
-        "PATH",
-        "DISPLAY",
-        "XAUTHORITY",
-        "WAYLAND_DISPLAY",
-        "XDG_RUNTIME_DIR",
-        "DBUS_SESSION_BUS_ADDRESS",
-        "LANG",
-      ]) {
-        const value = process.env[name];
-        if (value !== undefined) env[name] = value;
-      }
-      Object.assign(env, { HOME: directory, FAKE_PI_STATE: directory });
-      application = await _electron.launch({
-        executablePath,
-        args: [
-          ...(process.platform === "linux" ? ["--ozone-platform=x11"] : []),
-          path.join(source, "tests/e2e/fixtures/main.mjs"),
-          process.execPath,
-          directory,
-        ],
-        env,
-        chromiumSandbox: true,
-      });
-      application.on("close", () => {
-        lifecycle.closed = true;
-      });
-      const page = await application.firstWindow();
-      await expect(page.getByRole("status").first()).toContainText("connected");
-      await use({ application, page, directory });
-    } finally {
-      try {
-        if (application && !lifecycle.closed) await application.close();
-      } finally {
-        await rm(directory, { recursive: true, force: true });
-      }
-    }
+const test = base.extend<{ desktop: Workspace }>({
+  desktop: async ({ page, testBackend }, use) => {
+    await page.goto(testBackend.backend.connectionUrl);
+    await expect(page.getByRole("status").first()).toContainText("connected");
+    await use({ ...testBackend, page });
   },
 });
 
@@ -163,95 +133,93 @@ test("renderer reload reattaches to active work and Stop terminates the tool", a
   assert.throws(() => process.kill(toolPid, 0), { code: "ESRCH" });
 });
 
-test("a delayed initial snapshot cannot overwrite newer streaming state", async ({
-  desktop: { application, page },
+test("clients share execution but keep separate drafts and resynchronize after a network interruption", async ({
+  desktop: { page, backend },
+  browser,
 }) => {
-  const stale = await page.evaluate(async () => {
-    const { initialKey } = await globalThis.window.pi.workspace();
-    return globalThis.window.pi.snapshot(initialKey);
-  });
-  await application.evaluate(({ ipcMain }, snapshot) => {
-    let requested = false;
-    const released = new Promise<void>((resolve) => {
-      ipcMain.once("test:release-snapshot", () => {
-        resolve();
-      });
-    });
-    ipcMain.on("test:await-snapshot", (_event, resolve: () => void) => {
-      if (requested) resolve();
-      else ipcMain.once("test:snapshot-requested", resolve);
-    });
-    ipcMain.removeHandler("pi:snapshot");
-    ipcMain.handle("pi:snapshot", async () => {
-      requested = true;
-      ipcMain.emit("test:snapshot-requested");
-      await released;
-      return snapshot;
-    });
-  }, stale);
-  await page.reload();
-  await application.evaluate(
-    async ({ ipcMain }) =>
-      new Promise<void>((resolve) => {
-        ipcMain.emit("test:await-snapshot", null, resolve);
-      }),
-  );
-  await page.evaluate(
-    async (key) => globalThis.window.pi.prompt({ key, mode: "prompt", message: "hold" }),
-    stale.key,
-  );
-  await expect(page.getByRole("status").first()).toContainText("running");
-  await application.evaluate(({ ipcMain }) => {
-    ipcMain.emit("test:release-snapshot");
-  });
-  await page.evaluate(async (key) => {
-    await globalThis.window.pi.snapshot(key);
-    // Let React render after the delayed IPC response, rather than asserting before delivery.
-    await new Promise<void>((resolve) => {
-      globalThis.window.requestAnimationFrame(() => {
-        globalThis.window.requestAnimationFrame(() => {
-          resolve();
-        });
-      });
-    });
-  }, stale.key);
-  await expect(page.getByRole("status").first()).toContainText("running");
-  await expect(page.getByRole("article", { name: "Streaming response" })).toContainText("Working");
+  const otherContext = await browser.newContext();
+  const network = await createNetwork(backend.origin);
+  try {
+    await page.goto(`${network.origin}/${new URL(backend.connectionUrl).hash}`);
+    await expect(page.getByRole("status").first()).toContainText("connected");
+    const other = await otherContext.newPage();
+    await other.goto(backend.connectionUrl);
+    await expect(other.getByRole("status").first()).toContainText("connected");
+    const draft = page.getByLabel("Message", { exact: true });
+    await draft.fill("Keep my private draft");
+    await expect(other.getByLabel("Message", { exact: true })).toHaveValue("");
+    expect(new URL(page.url()).hash).toBe("");
+    expect((await state(page)).initialKey).toBe((await state(other)).initialKey);
+    network.disconnect();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Backend connection unavailable" }),
+    ).toBeVisible();
+    await expect(page.getByRole("status").first()).toContainText("unknown");
+    await expect(page.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+    await other.getByLabel("Message", { exact: true }).fill("hold");
+    await other.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(other.getByText("Running harmless-wait", { exact: true })).toBeVisible();
+    network.reconnect();
+    await expect(page.getByRole("status").first()).toContainText("running", { timeout: 10_000 });
+    await expect(page.getByRole("article", { name: "Streaming response" })).toContainText(
+      "Working",
+    );
+    await expect(draft).toHaveValue("Keep my private draft");
+    await expect(
+      page.getByRole("navigation", { name: "Open sessions" }).getByRole("button"),
+    ).toHaveCount(1);
+    await other.close();
+    await page.reload();
+    await expect(page.getByRole("status").first()).toContainText("running");
+    await expect(draft).toHaveValue("Keep my private draft");
+  } finally {
+    await network.close();
+    await otherContext.close();
+  }
 });
 
-test("quitting the desktop closes Pi and terminates active tool work", async ({
-  desktop: { application, page, directory },
+test("an unauthenticated browser cannot read a workspace and gets connection instructions", async ({
+  desktop: { backend },
+  browser,
+}) => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(backend.origin);
+    await expect(page.getByRole("heading", { name: "Cannot connect to Pagoda" })).toBeVisible();
+    await expect(page.getByRole("alert")).toContainText("authenticate");
+    await expect(page.getByLabel("Message", { exact: true })).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("stopping the backend closes Pi and terminates active tool work", async ({
+  desktop: { backend, page, directory },
 }) => {
   await page.getByLabel("Message", { exact: true }).fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByText("Running harmless-wait", { exact: true })).toBeVisible();
   const toolPid = Number(await readFile(path.join(directory, "tool-pid"), "utf8"));
   process.kill(toolPid, 0);
-  await application.close();
+  await backend.close();
   expect(await readFile(path.join(directory, "closed"), "utf8")).toBe("clean");
   assert.throws(() => process.kill(toolPid, 0), { code: "ESRCH" });
 });
 
 test("directory selection, independent drafts, and a pending Stop stay bound to their sessions", async ({
-  desktop: { application, page, directory },
+  desktop: { page, directory },
 }) => {
   const other = path.join(directory, "other-project");
   await mkdir(other);
-  const initialKey = await page.evaluate(
-    async () => (await globalThis.window.pi.workspace()).initialKey,
-  );
+  const initialKey = (await state(page)).initialKey;
   const message = page.getByLabel("Message", { exact: true });
   await message.fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByText("Running harmless-wait", { exact: true })).toBeVisible();
   await message.fill("A draft");
-  await application.evaluate(({ dialog }, cwd) => {
-    dialog.showOpenDialog = async (): Promise<Electron.OpenDialogReturnValue> => ({
-      canceled: false,
-      filePaths: [cwd],
-    });
-  }, other);
-  await page.getByRole("button", { name: "Choose directory", exact: true }).click();
+  await page.getByLabel("Working directory", { exact: true }).fill(other);
+  await page.getByRole("button", { name: "Use directory", exact: true }).click();
   await expect(page.getByRole("complementary")).toContainText(other);
   await page.getByRole("button", { name: "New session", exact: true }).click();
   const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
@@ -272,14 +240,7 @@ test("directory selection, independent drafts, and a pending Stop stay bound to 
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("status").first()).toContainText("running");
   await writeFile(path.join(directory, "release-abort"), "release");
-  await expect
-    .poll(async () =>
-      page.evaluate(
-        async (key) => (await globalThis.window.pi.snapshot(key)).execution,
-        initialKey,
-      ),
-    )
-    .toBe("idle");
+  await expect.poll(async () => (await snapshot(page, initialKey)).execution).toBe("idle");
   await expect(page.getByRole("status").first()).toContainText("running");
   await message.fill("B retained draft");
   await page.reload();
@@ -291,9 +252,7 @@ test("history forks preserve active source work and reopening reuses its owner",
   desktop: { page },
 }) => {
   const message = page.getByLabel("Message", { exact: true });
-  const initialKey = await page.evaluate(
-    async () => (await globalThis.window.pi.workspace()).initialKey,
-  );
+  const initialKey = (await state(page)).initialKey;
   await message.fill("original history");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
@@ -316,12 +275,7 @@ test("history forks preserve active source work and reopening reuses its owner",
   await expect(page.getByRole("article", { name: "user message" })).toContainText(
     "original history",
   );
-  expect(
-    await page.evaluate(
-      async (key) => (await globalThis.window.pi.snapshot(key)).execution,
-      initialKey,
-    ),
-  ).toBe("running");
+  expect((await snapshot(page, initialKey)).execution).toBe("running");
   await page.getByRole("button", { name: "History and branches", exact: true }).click();
   await page.getByRole("combobox", { name: "History entry", exact: true }).click();
   await page.getByRole("option").filter({ hasText: "user: original history" }).click();
@@ -375,51 +329,43 @@ test("shadcn model/thinking controls and distinct follow-up/steering reach Pi", 
   ]);
 });
 
-test("a late controls/history refresh cannot overwrite a newer refresh", async ({
-  desktop: { application, page },
+test("history refreshes independently and a late response cannot overwrite a newer refresh", async ({
+  desktop: { page },
 }) => {
-  await page.getByRole("combobox", { name: "Model", exact: true }).waitFor();
-  await application.evaluate(({ ipcMain }) => {
-    let calls = 0;
-    const released = new Promise<void>((resolve) => {
-      ipcMain.once("test:release-controls", () => {
-        resolve();
-      });
-    });
-    ipcMain.on("test:await-controls", (_event, resolve: () => void) => {
-      if (calls > 0) resolve();
-      else ipcMain.once("test:controls-requested", resolve);
-    });
-    ipcMain.removeHandler("pi:controls");
-    ipcMain.handle("pi:controls", async () => {
-      calls += 1;
-      const first = calls === 1;
-      ipcMain.emit("test:controls-requested");
-      if (first) await released;
-      return {
-        models: [],
-        model: { provider: "test", id: first ? "old" : "new" },
-        thinkingLevel: "off",
-        levels: ["off"],
-        pendingMessageCount: 0,
-      };
+  const model = page.getByRole("combobox", { name: "Model", exact: true });
+  await expect(model).toContainText("fake/fixture");
+  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  let controlsRequests = 0;
+  await page.route("**/api/controls", async (route) => {
+    controlsRequests += 1;
+    await route.continue();
+  });
+  let calls = 0;
+  const requested = Promise.withResolvers<undefined>();
+  const release = Promise.withResolvers<undefined>();
+  await page.route("**/api/history", async (route) => {
+    const response = await route.fetch();
+    calls += 1;
+    const first = calls === 1;
+    requested.resolve(undefined);
+    if (first) await release.promise;
+    await route.fulfill({
+      response,
+      json: {
+        entries: [{ id: "entry", parentId: null, label: first ? "old history" : "new history" }],
+        leafId: "entry",
+      },
     });
   });
-  await page.getByRole("button", { name: "History and branches", exact: true }).click();
   const refresh = page.getByRole("button", { name: "Refresh history", exact: true });
   await refresh.click();
-  await application.evaluate(
-    async ({ ipcMain }) =>
-      new Promise<void>((resolve) => {
-        ipcMain.emit("test:await-controls", null, resolve);
-      }),
-  );
+  await requested.promise;
   await refresh.click();
-  const model = page.getByRole("combobox", { name: "Model", exact: true });
-  await expect(model).toContainText("test/new");
-  await application.evaluate(({ ipcMain }) => {
-    ipcMain.emit("test:release-controls");
-  });
+  const history = page.getByRole("combobox", { name: "History entry", exact: true });
+  await expect(history).toContainText("new history");
+  const delivered = page.waitForResponse("**/api/history");
+  release.resolve(undefined);
+  await delivered;
   await page.evaluate(
     async () =>
       new Promise<void>((resolve) => {
@@ -430,7 +376,9 @@ test("a late controls/history refresh cannot overwrite a newer refresh", async (
         });
       }),
   );
-  await expect(model).toContainText("test/new");
+  await expect(history).toContainText("new history");
+  await expect(model).toContainText("fake/fixture");
+  expect(controlsRequests).toBe(0);
 });
 
 test("idle follow-up and steering execute immediately", async ({ desktop: { page } }) => {
@@ -467,8 +415,31 @@ test("a delayed Send acknowledgement clears only its original session's draft", 
   await expect(message).toHaveValue("B must keep this draft");
 });
 
+test("reloading during Send preserves the draft and reports an uncertain outcome", async ({
+  desktop: { page, directory },
+}) => {
+  await writeFile(path.join(directory, "delay-prompt"), "delay");
+  const message = page.getByLabel("Message", { exact: true });
+  await message.fill("delayed");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect
+    .poll(async () => readFile(path.join(directory, "prompt-pending"), "utf8").catch(() => ""))
+    .toBe("pending");
+  await page.reload();
+  await expect(message).toHaveValue("delayed");
+  await expect(page.getByRole("region", { name: "Direct agent" }).getByRole("alert")).toContainText(
+    "outcome is uncertain",
+  );
+  await writeFile(path.join(directory, "release-prompt"), "release");
+  const prompts = (await readFile(path.join(directory, "prompts.jsonl"), "utf8"))
+    .trim()
+    .split("\n")
+    .map((line): unknown => JSON.parse(line));
+  expect(prompts).toEqual([{ message: "delayed" }]);
+});
+
 test("rejected model changes and navigation keep confirmed controls and transcript", async ({
-  desktop: { application, page },
+  desktop: { page },
 }) => {
   await page.getByLabel("Message", { exact: true }).fill("preserved history");
   await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -476,26 +447,27 @@ test("rejected model changes and navigation keep confirmed controls and transcri
   await expect(assistant).toContainText("Hello from fake Pi.");
   const model = page.getByRole("combobox", { name: "Model", exact: true });
   await expect(model).toContainText("fake/fixture");
-  // Inject rejection at the main/preload boundary; Node tests cover Pi rejection.
-  await application.evaluate(({ ipcMain }) => {
-    for (const channel of ["pi:model", "pi:navigate"]) {
-      ipcMain.removeHandler(channel);
-      ipcMain.handle(channel, () => {
-        throw new Error(`Rejected ${channel} for test`);
+  // Inject transport-level rejection; Node tests cover Pi rejection.
+  for (const operation of ["model", "navigate"]) {
+    await page.route(`**/api/${operation}`, async (route) => {
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        json: { error: `Rejected ${operation} for test` },
       });
-    }
-  });
+    });
+  }
   await model.click();
   await page.getByRole("option", { name: "fake/Other", exact: true }).click();
   const controls = page.getByRole("region", { name: "Session controls" });
-  await expect(controls.getByRole("alert")).toContainText("Rejected pi:model");
+  await expect(controls.getByRole("alert")).toContainText("Rejected model");
   await expect(model).toContainText("fake/fixture");
   await expect(model).toBeEnabled();
   await page.getByRole("button", { name: "History and branches", exact: true }).click();
   await page.getByRole("combobox", { name: "History entry", exact: true }).click();
   await page.getByRole("option").filter({ hasText: "user: preserved history" }).click();
   await page.getByRole("button", { name: "Navigate", exact: true }).click();
-  await expect(controls.getByRole("alert")).toContainText("Rejected pi:navigate");
+  await expect(controls.getByRole("alert")).toContainText("Rejected navigate");
   await expect(assistant).toContainText("Hello from fake Pi.");
   await expect(page.getByRole("article", { name: "user message" })).toContainText(
     "preserved history",
@@ -575,9 +547,7 @@ test("keyboard session switching preserves drafts and work while overlays own th
   desktop: { page },
 }) => {
   const message = page.getByLabel("Message", { exact: true });
-  const initialKey = await page.evaluate(
-    async () => (await globalThis.window.pi.workspace()).initialKey,
-  );
+  const initialKey = (await state(page)).initialKey;
   await message.fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("status").first()).toContainText("running");
@@ -625,10 +595,5 @@ test("keyboard session switching preserves drafts and work while overlays own th
   await page.getByRole("button", { name: "Keyboard shortcuts", exact: true }).click();
   await expect(help).toBeVisible();
   await help.getByRole("button", { name: "Close", exact: true }).click();
-  expect(
-    await page.evaluate(
-      async (key) => (await globalThis.window.pi.snapshot(key)).execution,
-      initialKey,
-    ),
-  ).toBe("running");
+  expect((await snapshot(page, initialKey)).execution).toBe("running");
 });

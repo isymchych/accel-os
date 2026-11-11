@@ -4,11 +4,26 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { workspaceApi } from "../../src/backend/api.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
+import { fakePiLaunch } from "./fixtures/helpers.ts";
+
+async function fixture(
+  t: test.TestContext,
+): Promise<{ workspace: DesktopWorkspace; directory: string }> {
+  const directory = await mkdtemp(path.join(tmpdir(), "pagoda-"));
+  const workspace = new DesktopWorkspace(fakePiLaunch(directory));
+  t.after(async () => {
+    try {
+      await workspace.close();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+  return { workspace, directory };
+}
 
 test("reopening and navigation render native summary messages", async (t) => {
-  const directory = await mkdtemp(path.join(tmpdir(), "pi-summary-"));
+  const { workspace, directory } = await fixture(t);
   const native = path.join(directory, "native");
   await mkdir(native);
   const file = path.join(native, "summary.jsonl");
@@ -42,50 +57,27 @@ test("reopening and navigation render native summary messages", async (t) => {
       ],
     }),
   );
-  const workspace = new DesktopWorkspace({
-    executable: process.execPath,
-    args: [path.join(import.meta.dirname, "fixtures/fake-pi.ts")],
-    cwd: directory,
-    env: { HOME: directory, FAKE_PI_STATE: directory },
-  });
-  t.after(async () => {
-    await workspace.close();
-    await rm(directory, { recursive: true, force: true });
-  });
   await workspace.start();
-  const api = workspaceApi(workspace);
-  const opened = await api.open(directory, file);
-  await assert.rejects(
-    api.prompt({ key: opened.key, message: " \n", mode: "prompt" }),
-    /Enter a message/u,
-  );
+  const opened = await workspace.open(directory, file);
+  const session = workspace.session(opened.key);
+  await assert.rejects(session.prompt(" \n"), /Enter a message/u);
   assert.deepEqual(
     opened.messages.map((message) => message.text),
     ["Compacted history", "Previous branch", "Latest"],
   );
-  const branch = (await api.history(opened.key)).entries.find((entry) => entry.id === "branch");
+  const branch = (await session.history()).entries.find((entry) => entry.id === "branch");
   assert.ok(branch);
-  await api.navigate(opened.key, branch.id);
+  await session.navigate(branch.id);
   assert.deepEqual(
-    (await api.snapshot(opened.key)).messages.map((message) => message.text),
+    session.snapshot().messages.map((message) => message.text),
     ["Compacted history", "Previous branch"],
   );
 });
 
 test("independent owners survive view changes, reopen deduplicates, and forks preserve active work", async (t) => {
-  const directory = await mkdtemp(path.join(tmpdir(), "pagoda-"));
+  const { workspace, directory } = await fixture(t);
   const other = path.join(directory, "other");
   await mkdir(other);
-  const workspace = new DesktopWorkspace({
-    executable: process.execPath,
-    args: [path.join(import.meta.dirname, "fixtures/fake-pi.ts")],
-    cwd: directory,
-    env: { HOME: directory, FAKE_PI_STATE: directory },
-  });
-  t.after(async () => {
-    await workspace.close();
-    await rm(directory, { recursive: true, force: true });
-  });
   await workspace.start();
   const a = workspace.session(workspace.initialKey);
   await a.prompt("hold");
@@ -125,4 +117,32 @@ test("independent owners survive view changes, reopen deduplicates, and forks pr
   assert.equal(a.summary().execution, "running", "Stop on the destination cannot stop its source");
   await a.stop();
   assert.equal(a.summary().execution, "idle");
+});
+
+test("model and thinking changes invalidate history; delivered queue entries invalidate controls", async (t) => {
+  const { workspace } = await fixture(t);
+  await workspace.start();
+  const session = workspace.session(workspace.initialKey);
+  let historyRevision = session.snapshot().historyRevision;
+  await session.model("fake", "other");
+  assert.ok(session.snapshot().historyRevision > historyRevision);
+  historyRevision = session.snapshot().historyRevision;
+  await session.thinking("low");
+  assert.ok(session.snapshot().historyRevision > historyRevision);
+
+  await session.prompt("hold");
+  await session.prompt("queued message", "follow_up");
+  assert.equal((await session.controls()).pendingMessageCount, 1);
+  const before = session.snapshot().controlsRevision;
+  let deliveredRevision = 0;
+  const unsubscribe = session.subscribe((snapshot) => {
+    if (snapshot.messages.some((message) => message.text === "queued message")) {
+      deliveredRevision ||= snapshot.controlsRevision;
+    }
+  });
+  await session.prompt("__deliver_queued__", "steer");
+  unsubscribe();
+  assert.ok(deliveredRevision > before, "Delivery itself invalidates controls");
+  assert.equal((await session.controls()).pendingMessageCount, 0);
+  assert.equal(session.snapshot().execution, "running");
 });

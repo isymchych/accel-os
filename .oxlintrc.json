@@ -58,6 +58,8 @@
     "typescript/no-unsafe-call": "error",
     "typescript/no-unsafe-member-access": "error",
     "typescript/prefer-readonly-parameter-types": "off",
+    "typescript/promise-function-async": "off",
+    "typescript/require-await": "off",
     "typescript/strict-boolean-expressions": [
       "error",
       {
@@ -173,12 +175,6 @@
             ]
           }
         ]
-      }
-    },
-    {
-      "files": ["**/*.test.ts", "ai/pagoda/tests/**/*.ts"],
-      "rules": {
-        "typescript/require-await": "off"
       }
     },
     {

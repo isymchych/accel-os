@@ -1,16 +1,16 @@
-import { realpath } from "node:fs/promises";
+import { realpath, stat } from "node:fs/promises";
 
 import type {
   HistoryEntryId,
   SessionKey,
   SessionSnapshot,
-  SessionSummary,
   StoredSession,
+  WorkspaceState,
 } from "../desktop-api.ts";
 import type { PiLaunch } from "./rpc.ts";
 import { DesktopSession } from "./session.ts";
 
-/** One app-owned child per open session; view selection is never execution state. */
+/** One backend-owned child per open session; view selection is never execution state. */
 export class DesktopWorkspace {
   private readonly sessions = new Map<SessionKey, DesktopSession>();
   private readonly opening = new Map<string, Promise<SessionSnapshot>>();
@@ -29,16 +29,21 @@ export class DesktopWorkspace {
   public async start(): Promise<void> {
     await this.initial.start();
   }
-  public snapshot(): { initialKey: SessionKey; sessions: SessionSummary[] } {
+  public snapshot(): WorkspaceState {
     return {
       initialKey: this.initialKey,
-      sessions: [...this.sessions.values()].map((session) => session.summary()),
+      sessions: [...this.sessions.values()].map((session) => session.snapshot()),
     };
   }
   public session(key: SessionKey): DesktopSession {
     const session = this.sessions.get(key);
     if (!session || this.closing) throw new Error("This session is unavailable");
     return session;
+  }
+  public async directory(cwd: string): Promise<string> {
+    const directory = await realpath(cwd);
+    if (!(await stat(directory)).isDirectory()) throw new Error("Choose a directory");
+    return directory;
   }
   public subscribe(listener: (snapshot: SessionSnapshot) => void): () => void {
     this.listeners.add(listener);
@@ -79,8 +84,7 @@ export class DesktopWorkspace {
     }
   }
   private async openStored(cwd: string, sessionPath: string): Promise<SessionSnapshot> {
-    // Discovery itself uses a live Pi child. If all owners exited, start a
-    // fresh untitled owner rather than requiring an application restart.
+    // Discovery requires a connected Pi child, even after all previous owners exit.
     if (
       ![...this.sessions.values()].some((session) => session.summary().connection === "connected")
     ) {
@@ -101,7 +105,7 @@ export class DesktopWorkspace {
     return this.launchSession(cwd, sessionPath);
   }
   private async launchSession(cwd: string, sessionPath?: string): Promise<SessionSnapshot> {
-    if (this.closing) throw new Error("The desktop is shutting down");
+    if (this.closing) throw new Error("The backend is shutting down");
     const session = this.attach(
       new DesktopSession({
         ...this.launch,

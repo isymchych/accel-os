@@ -3,29 +3,18 @@
 ## Structure
 
 ```text
-React renderer (Vite)
-       ↕ narrow contextBridge API / Electron IPC
-Electron main (windows, session state, lifecycle)
+React frontend (Vite), in browser or sandboxed Electron
+       ↕ authenticated HTTP commands / SSE snapshots
+Hono / Node foreground backend (session state, lifecycle)
        ↕ Pi RPC: JSONL commands, responses, events
 Node child: ai/pi/runtime/rpc-entry.ts
        └─ existing Pi launcher configuration and native sessions
 ```
 
-Electron main owns each active Pi child and its live presentation state; React observes it through a
-narrow preload API. TypeScript spans both sides. Vite with the official React plugin builds the
-renderer; Tailwind and semantic tokens provide presentation infrastructure. Locally owned shadcn/ui
-components use Base UI primitives and Lucide icons.
+The backend owns Pi children and shared presentation state. Both clients use the same HTTP API;
+Electron is only a window shell, with no preload or application IPC.
 
-## Source ownership
-
-- `src/renderer/`: React screens, feature state, domain-free controls, and semantic styles.
-- `src/desktop-api.ts`: environment-neutral desktop API, request schemas, and presentation types.
-- `src/backend/`: Node workspace, Pi RPC integration, and session observation.
-- `src/electron/`: main/preload and native desktop integration.
-- `scripts/launch.ts`: development/startup and process cleanup; package scripts own build commands.
-- `tests/integration/`: Node checks with fake execution and isolated state.
-- `tests/e2e/`: actual Electron renderer/preload/main journeys.
-- `../pi/runtime/`: terminal/desktop routing and canonical Pi launch configuration.
+## Dependency boundaries
 
 Renderer runtime imports stay browser-safe. Contracts do not import Node or implementation code.
 Main does not import renderer implementation. The launcher starts Electron rather than importing its
@@ -33,89 +22,81 @@ main module. Root lint rules enforce these boundaries.
 
 Keep workspace runtime code independent of repository-internal packages. The integration boundary to
 the existing setup is a Node entry point owned by `ai/pi/`, not imports of its private runtime
-modules into Electron. Terminal and RPC entry points share launch construction; do not copy the
+modules into the backend. Terminal and RPC entry points share launch construction; do not copy the
 extension list or tool policy.
 
 ## Pi compatibility
 
-`ai ui` resolves the existing profile and passes its directory, launch directory, and
-code-navigation choice to the app. Electron starts `rpc-entry.ts` with the repository's Node
-executable, not Electron's executable. Each child gets its own working directory and environment.
-The RPC entry reuses `ai/SYSTEM.md`, explicit built-ins/extensions, excluded tools, shared session
-directory, and isolated agent Git configuration.
+Backend startup fixes the profile, launch directory, and code-navigation choice. Each Pi child uses
+the repository's Node runtime with its own directory and environment. The canonical RPC entry reuses
+the terminal's system prompt, tools, extensions, sessions, and isolated Git configuration. Pi owns
+persistence, schemas, credentials, and model configuration; clients receive neither Pi credentials
+nor raw configuration.
 
-Pi owns session persistence, schemas, credentials, and model configuration.
-
-The RPC entry additionally loads `runtime/desktop-extension.ts`, a desktop-only bridge built on
-public Pi APIs. Discovery uses `SessionManager.list`; tree navigation uses the extension command
-context. Correlated results travel through RPC notifications, not raw stdout (Pi guards extension
-stdout). Electron verifies bridge availability before issuing control commands; controls never fall
-back to model input.
-
-Forks open a private copy with `SessionManager`, so legacy migrations cannot rewrite the live
-source. Pi constructs the selected branch; the bridge restores source lineage and publishes the
-destination atomically without overwriting another file. The bridge's `snapshot` operation creates
-the fork's session file.
+`runtime/desktop-extension.ts` bridges session discovery and history controls through public Pi APIs
+and RPC notifications. Verify bridge availability before issuing controls; never fall back to model
+input. Fork publication preserves lineage and is atomic without overwriting another file; the
+[specification](specs/workspace.md#history-navigation-and-forks) defines source-history protection.
 
 Verify compatibility against installed Pi declarations and documentation. Check the revision of any
 reference checkout before using its source, and validate upgrades with integration checks.
 
 ## RPC and state
 
-Validate external JSON at the RPC boundary with permissive TypeBox schemas for the fields consumed.
-Accept extra Pi/provider fields. Translate only necessary data into explicit renderer types; do not
-send credentials or raw configuration.
+Validate HTTP requests at the server and JSON/SSE responses at the client. Validate Pi RPC with
+permissive TypeBox schemas for consumed fields, accepting extra Pi/provider fields. Expose only the
+data clients need, never credentials or raw configuration.
 
 The local RPC transport handles typed commands/events, extension responses, and child exit.
 [The transport decision](decisions.md#local-rpc-transport) records why it is local rather than an
 upstream `RpcClient`.
 
-Main owns the live presentation snapshot, including current partial text. It survives renderer
-reloads. Completed Pi messages replace reconstructed partial output. Revision numbers prevent a late
-initial snapshot from overwriting a newer observation. Transient text/tool deltas coalesce before
-cloning and forwarding a full snapshot; completed messages and lifecycle changes publish
-immediately. A separate runtime revision signals when controls or history may need refreshing,
-without treating streaming deltas or display notices as invalidations. The main-owned workspace
-reuses active owners and reserves pending opens. Commands carry an explicit session key; renderer
-selection never retargets a child or an outstanding request. Drafts use the same key and are
-retained in renderer session storage.
+The backend publishes snapshots including partial output; completed Pi messages replace
+reconstructed output. Slow observers are disconnected through bounded buffering and write deadlines
+without cancelling execution. Clients resynchronize from current state rather than replaying
+commands. Pi's `agent_end` may precede retries or queued work; `agent_settled` marks the end of
+automatic continuation.
 
-Each open session has an execution owner. The owner's `key` routes commands and observations;
-`sessionId` identifies the Pi session, and `sessionFile` locates its persisted history. Reopening
-saved history after its child exits creates a new owner and key for the same Pi session.
-`SessionSnapshot` carries a copy of live presentation state to the renderer.
+Commands and observations target an execution-owner key, distinct from the persisted Pi session ID
+and file. Client session storage keys drafts to that owner. The
+[workspace specification](specs/workspace.md) defines session routing and reconnection behavior.
 
-Graphical interactions use Pi's RPC dialog request/response contract.
-[README.md](../README.md#configuration-and-compatibility) describes supported interactions.
+Graphical interactions use Pi's RPC dialog contract; see
+[supported interactions](../README.md#configuration-and-compatibility).
 
-### Wire contract and limits
-
-- Split JSONL only at LF, preserving Unicode separators and chunked UTF-8. Correlate responses by
-  request ID and command; consume stdout continuously and honor stdin backpressure. Stderr stays
-  local diagnostics.
-- Records are limited to 16 Mi characters; oversized or malformed records fail the connection.
-  Prompt IPC accepts up to 100,000 characters.
-- Command confirmation has a 30-second deadline. Timeout leaves submission uncertain, not eligible
-  for automatic resubmission.
+Transports bound request sizes and confirmation waits, fail malformed or oversized RPC connections,
+and honor backpressure. Keep Pi stderr in local diagnostics. Confirmation timeout leaves submission
+uncertain, not safe to retry.
 
 ## Security and execution
 
-Use sandboxed renderers, context isolation, no Node integration, and specific preload methods.
-Validate IPC payloads and restrict callers to the application's main frame and exact loaded URL. Do
-not expose arbitrary IPC, shell, filesystem, environment, or credential APIs.
+The backend binds only to `127.0.0.1`. Validate Host against explicit backend/development origins;
+reject foreign Origin and cross-site requests. All API reads, commands, and streams require an
+authenticated session, except the credential exchange. Writes require same-origin JSON requests.
+There is no permissive CORS or arbitrary shell, filesystem, environment, or credential API.
 
-Deny new windows, renderer navigation, webviews, and permission requests. Render agent output as
-untrusted text; later Markdown must not enable raw HTML or executable content. Production loads
-local assets with a restrictive CSP and no network connections. Development alone loads Vite from
-explicit loopback and permits its hot-update connection and injected scripts.
+The connection URL carries a backend-lifetime credential in its fragment. The frontend removes it
+and authenticates through an HttpOnly, SameSite=Strict cookie. Do not log the credential beyond
+explicit startup output or persist it in app storage. Backend restart invalidates authentication;
+reconnect through the new connection URL.
+
+Electron loads only an explicit loopback connection URL. Keep sandboxing, context isolation, and no
+Node integration; there is no preload bridge. Deny new windows, renderer navigation, webviews, and
+permission requests. Render agent output as untrusted text; later Markdown must not enable raw HTML
+or executable content. Production loads same-origin assets with a restrictive CSP and same-origin
+API connections. Development alone loads Vite from explicit loopback and permits its hot-update
+connection and injected scripts.
 
 These controls protect the UI boundary, not Pi tools; see
 [execution authority](domain.md#execution-authority).
 
 ## Process lifetime
 
-Main owns children independently of renderer observation. App quit closes child stdin for native Pi
-disposal, then uses bounded termination if the child does not exit.
+Backend shutdown closes observers and child stdin for native Pi disposal, then uses bounded
+termination if a child does not exit. Startup and attachment are explicit: no automatic discovery,
+daemon, or crash replay. The launcher owns backend lifetime; see
+[lifecycle behavior](specs/workspace.md#stop-reconnect-and-application-lifetime) for shutdown
+triggers and client reconnection.
 
 ## Integration references
 

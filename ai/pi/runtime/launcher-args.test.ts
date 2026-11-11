@@ -10,6 +10,7 @@ test("defaults to srcwalk without launcher modifiers", () => {
     showHelp: false,
     useAccountSwitcher: false,
     useUi: false,
+    browser: false,
   });
 });
 
@@ -20,6 +21,7 @@ test("parses leading launcher modifiers", () => {
     showHelp: true,
     useAccountSwitcher: true,
     useUi: false,
+    browser: false,
   });
 });
 
@@ -30,6 +32,7 @@ test("preserves unrecognized launcher modifiers as Pi arguments", () => {
     showHelp: false,
     useAccountSwitcher: false,
     useUi: false,
+    browser: false,
   });
 });
 
@@ -40,6 +43,7 @@ test("preserves modifier-like values after Pi arguments", () => {
     showHelp: false,
     useAccountSwitcher: false,
     useUi: false,
+    browser: false,
   });
 });
 
@@ -50,6 +54,7 @@ test("preserves arguments after the Pi delimiter", () => {
     showHelp: false,
     useAccountSwitcher: false,
     useUi: false,
+    browser: false,
   });
 });
 
@@ -64,17 +69,21 @@ test("rejects conflicting code navigation backends", () => {
   );
 });
 
-test("routes ui to the desktop without invoking account selection", () => {
+test("routes ui to the desktop or browser with execution configuration", () => {
   assert.deepEqual(parseLauncherArgs(["ui"]), {
     codeNavigation: "srcwalk",
     passthrough: [],
     showHelp: false,
     useAccountSwitcher: false,
     useUi: true,
+    browser: false,
   });
   assert.throws(() => parseLauncherArgs(["ui", "account"]), /select an account/u);
   assert.throws(
     () => parseLauncherArgs(["ui", "--model", "test"]),
     /does not accept Pi arguments/u,
   );
+  assert.equal(parseLauncherArgs(["ui", "tilth", "--browser"]).browser, true);
+  assert.equal(parseLauncherArgs(["ui", "tilth"]).codeNavigation, "tilth");
+  assert.deepEqual(parseLauncherArgs(["--browser"]).passthrough, ["--browser"]);
 });

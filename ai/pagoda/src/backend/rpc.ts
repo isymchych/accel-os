@@ -67,6 +67,7 @@ export class PiRpc {
   }
 
   public start(): void {
+    if (this.closing) throw new Error("Pi connection is closed");
     if (this.child) throw new Error("Pi is already started");
     const child = spawn(this.launch.executable, this.launch.args, {
       cwd: this.launch.cwd,

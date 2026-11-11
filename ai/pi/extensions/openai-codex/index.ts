@@ -216,7 +216,6 @@ export default function openAICodexExtension(pi: ExtensionAPI): void {
       );
       return matches.length > 0 ? matches.map((value) => ({ value, label: value })) : null;
     },
-    // oxlint-disable-next-line typescript/require-await -- Pi command handlers must return Promise<void>, even for synchronous commands.
     handler: async (args, ctx) => {
       const selection = args.trim().toLowerCase();
 

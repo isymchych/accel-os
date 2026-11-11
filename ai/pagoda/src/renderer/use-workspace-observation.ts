@@ -1,96 +1,52 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 
-import type { SessionKey, SessionSnapshot, SessionSummary } from "../desktop-api.ts";
+import type {
+  SessionKey,
+  SessionSnapshot,
+  WorkspaceObservation,
+  WorkspaceState,
+} from "../desktop-api.ts";
 import { useApi } from "./api.ts";
 
-interface ObservedSession {
-  summary: SessionSummary;
-  snapshot?: SessionSnapshot;
-}
-type ObservedSessions = Partial<Record<SessionKey, ObservedSession>>;
-type Observation =
-  | { type: "summaries"; sessions: SessionSummary[] }
-  | { type: "snapshot"; snapshot: SessionSnapshot };
+type ObservedSessions = Partial<Record<SessionKey, SessionSnapshot>>;
 
-/** Merge summary and snapshot revisions independently; neither discards the other. */
+/** HTTP command results and SSE updates share the same snapshot revision. */
 export function mergeObservation(
   current: ObservedSessions,
-  observation: Observation,
+  observation: WorkspaceObservation,
 ): ObservedSessions {
-  if (observation.type === "summaries") {
-    let next = current;
-    for (const summary of observation.sessions) {
-      const existing = next[summary.key];
-      if (!existing || summary.revision >= existing.summary.revision) {
-        next = { ...next, [summary.key]: { ...existing, summary } };
-      }
+  const snapshots =
+    observation.type === "workspace" ? observation.workspace.sessions : [observation.snapshot];
+  let next = current;
+  for (const snapshot of snapshots) {
+    if (snapshot.revision >= (next[snapshot.key]?.revision ?? -1)) {
+      next = { ...next, [snapshot.key]: snapshot };
     }
-    return next;
   }
-
-  const snapshot = observation.snapshot;
-  const existing = current[snapshot.key];
-  if (!existing) return { ...current, [snapshot.key]: { summary: snapshot, snapshot } };
-  const summary = snapshot.revision >= existing.summary.revision ? snapshot : existing.summary;
-  const full =
-    snapshot.revision >= (existing.snapshot?.revision ?? -1) ? snapshot : existing.snapshot;
-  if (summary === existing.summary && full === existing.snapshot) return current;
-  return { ...current, [snapshot.key]: { summary, ...(full ? { snapshot: full } : {}) } };
+  return next;
 }
 
-interface InitialWorkspace {
-  initialKey: SessionKey;
-  sessions: SessionSummary[];
-}
-
-/** Observe main-owned sessions independently of the selected view. */
-export function useWorkspaceObservation(
-  selected: SessionKey | null,
-  onWorkspace: (workspace: InitialWorkspace) => void,
-  onError: (error: unknown) => void,
-): { sessions: ObservedSessions; receive: (snapshot: SessionSnapshot) => void } {
-  const { workspace } = useApi();
+/** SSE supplies the initial workspace and all subsequent observations. */
+export function useWorkspaceObservation(onWorkspace: (workspace: WorkspaceState) => void): {
+  sessions: ObservedSessions;
+  receive: (snapshot: SessionSnapshot) => void;
+  transportConnected: boolean;
+} {
+  const workspace = useApi();
   const [sessions, dispatch] = useReducer(mergeObservation, {});
+  const [transportConnected, setTransportConnected] = useState(false);
   const receive = useCallback((snapshot: SessionSnapshot): void => {
     dispatch({ type: "snapshot", snapshot });
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    const unsubscribe = workspace.subscribe((snapshot) => {
-      if (active) receive(snapshot);
-    });
-    void workspace
-      .workspace()
-      .then((initial) => {
-        if (!active) return;
-        dispatch({ type: "summaries", sessions: initial.sessions });
-        onWorkspace(initial);
-      })
-      .catch((error: unknown) => {
-        if (active) onError(error);
-      });
-    return (): void => {
-      active = false;
-      unsubscribe();
-    };
-  }, [workspace, receive, onWorkspace, onError]);
+  useEffect(
+    () =>
+      workspace.subscribe((observation) => {
+        dispatch(observation);
+        if (observation.type === "workspace") onWorkspace(observation.workspace);
+      }, setTransportConnected),
+    [workspace, onWorkspace],
+  );
 
-  useEffect(() => {
-    if (!selected) return undefined;
-    let active = true;
-    void workspace
-      .snapshot(selected)
-      .then((snapshot) => {
-        if (active) receive(snapshot);
-      })
-      .catch((error: unknown) => {
-        if (active) onError(error);
-      });
-    return (): void => {
-      active = false;
-    };
-  }, [workspace, selected, receive, onError]);
-
-  return { sessions, receive };
+  return { sessions, receive, transportConnected };
 }

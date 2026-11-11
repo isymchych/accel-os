@@ -10,6 +10,7 @@ import { Value } from "typebox/value";
 
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/desktop-api.ts";
+import { waitForSession } from "./fixtures/helpers.ts";
 
 const RequestSchema = Type.Object({
   tools: Type.Array(Type.Object({ function: Type.Object({ name: Type.String() }) })),
@@ -20,25 +21,14 @@ const PersistedMessageSchema = Type.Object({
   message: Type.Object({ role: Type.String(), content: Type.Unknown() }),
 });
 
-async function observe(
+const observe = (
   session: DesktopSession,
-  predicate: (state: SessionSnapshot) => boolean,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      unsubscribe();
-      reject(new Error("Configured Pi state was not observed"));
-    }, 15_000);
-    const receive = (state: SessionSnapshot): void => {
-      if (!predicate(state)) return;
-      clearTimeout(timer);
-      unsubscribe();
-      resolve();
-    };
-    const unsubscribe = session.subscribe(receive);
-    receive(session.snapshot());
+  predicate: Parameters<typeof waitForSession>[1],
+): Promise<SessionSnapshot> =>
+  waitForSession(session, predicate, {
+    timeout: 15_000,
+    description: "Configured Pi state was not observed",
   });
-}
 
 test(
   "configured Pi compatibility with isolated native sessions and a local fake provider",

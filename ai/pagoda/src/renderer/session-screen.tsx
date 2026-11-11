@@ -1,12 +1,12 @@
-import { FolderOpenIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
+import { PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
 import type {
   Prompt,
   SessionKey,
   SessionSnapshot,
-  SessionSummary,
   StoredSession,
+  WorkspaceState,
 } from "../desktop-api.ts";
 import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
@@ -20,25 +20,17 @@ interface ComposerState {
   feedback: ComposerFeedback | null;
 }
 function saved(key: string): string {
-  try {
-    return sessionStorage.getItem(key) ?? "";
-  } catch {
-    return "";
-  }
+  return sessionStorage.getItem(key) ?? "";
 }
 function remember(key: string, value: string): void {
-  try {
-    sessionStorage.setItem(key, value);
-  } catch {
-    /* In-memory state remains available. */
-  }
+  sessionStorage.setItem(key, value);
 }
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "The desktop operation failed.";
+  return error instanceof Error ? error.message : "The workspace operation failed.";
 }
 
 export function SessionScreen(): ReactElement {
-  const { workspace, native } = useApi();
+  const workspace = useApi();
   const workspaceRef = useRef<HTMLElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -46,6 +38,7 @@ export function SessionScreen(): ReactElement {
   }, []);
   const [selected, setSelected] = useState<SessionKey | null>(null);
   const [directory, setDirectory] = useState("");
+  const [directoryInput, setDirectoryInput] = useState("");
   const [listing, setListing] = useState<{ cwd: string; items: StoredSession[] }>({
     cwd: "",
     items: [],
@@ -55,27 +48,20 @@ export function SessionScreen(): ReactElement {
   const [opening, setOpening] = useState(false);
   const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});
 
-  const onWorkspace = useCallback(
-    (initial: { initialKey: SessionKey; sessions: SessionSummary[] }): void => {
-      const previous = saved("pi-selected");
-      const key =
-        initial.sessions.find((session) => session.key === previous)?.key ?? initial.initialKey;
-      setSelected(key);
-      setDirectory(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
-    },
-    [],
-  );
-  const onObservationError = useCallback((error: unknown): void => {
-    setFeedback(errorMessage(error));
+  const onWorkspace = useCallback((initial: WorkspaceState): void => {
+    const previous = saved("pi-selected");
+    const key =
+      initial.sessions.find((session) => session.key === previous)?.key ?? initial.initialKey;
+    setSelected(key);
+    setDirectory(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
+    setDirectoryInput(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
   }, []);
-  const { sessions, receive } = useWorkspaceObservation(selected, onWorkspace, onObservationError);
+  const { sessions, receive, transportConnected } = useWorkspaceObservation(onWorkspace);
   useEffect(() => {
     if (selected !== null) remember("pi-selected", selected);
   }, [selected]);
 
-  const summaries = Object.values(sessions).flatMap((session) =>
-    session ? [session.summary] : [],
-  );
+  const summaries = Object.values(sessions).flatMap((session) => (session ? [session] : []));
   const connected = summaries.some((session) => session.connection === "connected");
   useEffect(() => {
     if (!directory || !connected) return undefined;
@@ -93,11 +79,22 @@ export function SessionScreen(): ReactElement {
     };
   }, [workspace, directory, connected]);
 
-  const snapshot = selected === null ? undefined : sessions[selected]?.snapshot;
+  const observed = selected === null ? undefined : sessions[selected];
+  const snapshot =
+    observed && !transportConnected
+      ? { ...observed, connection: "disconnected" as const, execution: "unknown" as const }
+      : observed;
   const composer = (selected === null ? undefined : composers[selected]) ?? {
     message: selected === null ? "" : saved(`pi-composer:${selected}`),
     pending: false,
-    feedback: null,
+    feedback:
+      selected !== null && saved(`pi-submitting:${selected}`)
+        ? {
+            kind: "error" as const,
+            message:
+              "The submission may have been rejected or its outcome is uncertain; it was not retried.",
+          }
+        : null,
   };
   function updateComposer(key: SessionKey, change: Partial<ComposerState>): void {
     setComposers((current) => ({
@@ -113,17 +110,20 @@ export function SessionScreen(): ReactElement {
   }
   function edit(message: string): void {
     if (selected === null) return;
+    sessionStorage.removeItem(`pi-submitting:${selected}`);
     remember(`pi-composer:${selected}`, message);
-    updateComposer(selected, { message });
+    updateComposer(selected, { message, feedback: null });
   }
   async function submit(mode: Prompt["mode"]): Promise<void> {
     const key = selected;
     if (key === null) return;
     const message = composer.message;
+    remember(`pi-submitting:${key}`, "pending");
     updateComposer(key, { pending: true, feedback: null });
     try {
       const disposition = await workspace.prompt({ key, message, mode });
       remember(`pi-composer:${key}`, "");
+      sessionStorage.removeItem(`pi-submitting:${key}`);
       updateComposer(key, { message: "", feedback: { kind: "accepted", disposition } });
     } catch (error) {
       updateComposer(key, { feedback: { kind: "error", message: errorMessage(error) } });
@@ -167,43 +167,60 @@ export function SessionScreen(): ReactElement {
           selected={selected}
           onSelect={setSelected}
         />
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              void native
-                .chooseDirectory()
-                .then((cwd) => {
-                  if (cwd) {
-                    setDirectory(cwd);
-                    setFeedback(null);
-                  }
-                })
-                .catch((error: unknown) => {
-                  setFeedback(errorMessage(error));
-                });
+        <form
+          className="my-3 space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void workspace
+              .directory(directoryInput)
+              .then((cwd) => {
+                setDirectory(cwd);
+                setDirectoryInput(cwd);
+                setFeedback(null);
+              })
+              .catch((error: unknown) => {
+                setFeedback(errorMessage(error));
+              });
+          }}
+        >
+          <label htmlFor="working-directory" className="block text-xs text-muted-foreground">
+            Working directory
+          </label>
+          <input
+            id="working-directory"
+            value={directoryInput}
+            onChange={(event) => {
+              setDirectoryInput(event.target.value);
             }}
-          >
-            <FolderOpenIcon aria-hidden="true" />
-            Choose directory
-          </Button>
-          <Button
-            aria-label="Refresh sessions"
-            size="icon"
-            variant="outline"
-            disabled={!connected}
-            onClick={() => {
-              void refreshCatalog();
-            }}
-          >
-            <RefreshCwIcon aria-hidden="true" />
-          </Button>
-        </div>
+            className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              type="submit"
+              disabled={!transportConnected || !directoryInput.trim()}
+            >
+              Use directory
+            </Button>
+            <Button
+              aria-label="Refresh sessions"
+              size="icon"
+              variant="outline"
+              type="button"
+              disabled={!connected || !transportConnected}
+              onClick={() => {
+                void refreshCatalog();
+              }}
+            >
+              <RefreshCwIcon aria-hidden="true" />
+            </Button>
+          </div>
+        </form>
         <p className="my-3 break-all text-xs text-muted-foreground">
           {directory || "Opening directory…"}
         </p>
         <Button
-          disabled={!directory || opening}
+          disabled={!directory || opening || !transportConnected}
           onClick={() => {
             void open(async () => workspace.create(directory));
           }}
@@ -226,7 +243,9 @@ export function SessionScreen(): ReactElement {
               <span className="min-w-0">
                 <span className="block truncate">{session.name || "New session"}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {session.connection} · {session.execution}
+                  {transportConnected
+                    ? `${session.connection} · ${session.execution}`
+                    : "disconnected · unknown"}
                 </span>
               </span>
             </Button>
@@ -241,7 +260,7 @@ export function SessionScreen(): ReactElement {
             <Button
               key={session.path}
               variant="ghost"
-              disabled={opening}
+              disabled={opening || !transportConnected}
               className="h-auto w-full justify-start whitespace-normal text-left"
               onClick={() => {
                 void open(async () => workspace.open(session.cwd, session.path));
@@ -266,6 +285,11 @@ export function SessionScreen(): ReactElement {
         )}
       </aside>
       <div className="min-w-0 p-5 lg:px-10">
+        {!transportConnected && (
+          <p role="alert" className="mb-4 text-sm text-destructive">
+            Backend connection unavailable. Execution state is unknown; reconnecting…
+          </p>
+        )}
         {snapshot ? (
           <SessionView
             key={snapshot.key}

@@ -3,8 +3,6 @@
 ## Concepts and ownership
 
 - **Session:** a Pi session with its history tree, active branch, and persisted configuration.
-  Pagoda opens sessions to execute work and display their state; saved history survives app
-  shutdown.
 - **History entry:** a node in a session's persisted history tree.
 - **Branch:** a path through that tree; navigation changes the active branch within the same
   session.
@@ -15,57 +13,33 @@
 The workspace is the app's collection of open sessions.
 
 Pi owns tools, model access, context management, retries, compaction, queues, history, and session
-files. The desktop owns process lifecycle, navigation, drafts, and graphical presentation. `ai/pi/`
-remains the source of truth for agent configuration and credentials.
+files. The backend owns Pi process lifecycle and shared session state; each client owns navigation,
+drafts, and graphical presentation. `ai/pi/` remains the source of truth for agent configuration and
+credentials.
 
-## Connection and execution
+## Invariants
 
-Connection and execution are separate. Disconnection does not establish success, failure, or
-cancellation; displayed execution becomes unknown until fresh state confirms it. Activity describes
-current work, such as a running tool.
+- Each active session has one execution owner, shared by clients. Separate owners must never write
+  the same session concurrently.
+- Prompt acceptance is not completion. Work may start, queue, or be handled by an extension; a tool
+  error does not necessarily end execution.
+- Connection and execution are independent. Disconnection makes execution unknown, not cancelled,
+  failed, or complete.
+- Branch navigation preserves history within a session; a fork preserves native Pi format in an
+  independent session.
 
-Prompt acceptance is not completion. A Pi response can mean started, queued, or handled by an
-extension. `agent_end` may precede retries or queued work; `agent_settled` marks the end of
-automatic continuation. A tool error does not necessarily end execution.
-
-Display command rejection, provider/tool errors, extension failures, and child-process exit
-distinctly where the runtime exposes them. Preserve drafts on failed or uncertain submission; do not
-automatically retry potentially accepted input.
-
-## Lifecycle
-
-Renderer refresh, hot updates, and view changes end observation, not execution. Reattach using
-current main-process state and ignore stale observations. Stop requests Pi cancellation and stays
-stopping until Pi confirms it; unknown cancellation is not success.
-
-Quitting the desktop closes its RPC children and their active work. There is no background daemon or
-automatic replay/resumption after an app or machine crash. Existing session history remains
-reopenable through Pi; reopening history is not recovery of unfinished execution.
-
-Each active session has one execution owner. CLI/GUI handoff is sequential; never open the same
-session for concurrent writes. A profile is fixed for the child lifetime; changing the selected
-profile for later launches does not retarget existing work.
-
-Session navigation and native Pi branching must preserve original history and target commands to the
-explicitly selected session. Follow-up and steering remain distinct, using Pi's native semantics
-rather than an application queue.
-
-Forks preserve Pi's session format and do not interrupt the source. They exclude unfinished
-streaming output and do not invoke Pi's runtime fork lifecycle hooks. Branch navigation remains a
-native Pi operation and requires an idle session.
+The [workspace specification](specs/workspace.md) owns command, draft, history, and lifecycle
+behavior.
 
 ## Configuration and interaction compatibility
 
-Share configuration and session formats with the terminal launcher, not terminal widgets. Changes
-take effect at Pi's native boundaries or the next child launch as appropriate. Do not change
-process-global directory or profile environment to retarget another running session.
-
-When supported, graphical controls for Pi interactions use React. Cancel unsupported RPC dialogs
-explicitly and display a notice; never silently approve them. Supporting custom terminal UI and
-tools that disable themselves outside TUI mode requires graphical adaptation.
+Share Pi configuration and session formats, not terminal widgets. Configuration changes take effect
+at Pi's native boundaries or the next child launch; later profile selection cannot retarget existing
+work. Custom terminal UI and TUI-only tools require graphical adaptation.
 
 ## Execution authority
 
 Tools run unsandboxed on the host under the user's permissions, without approval gates. The working
 directory is not a filesystem boundary. [Architecture](architecture.md#security-and-execution)
-defines how the desktop protects the renderer and credentials without restricting tool authority.
+defines how the backend and shell protect clients and credentials without restricting tool
+authority.

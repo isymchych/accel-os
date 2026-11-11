@@ -222,6 +222,13 @@ async function prompt(
     return;
   }
   if (running && command.streamingBehavior) {
+    if (command.message === "__deliver_queued__") {
+      const delivered = queue.shift();
+      if (!delivered) throw new Error("No queued message to deliver");
+      await message("user", delivered);
+      respond({ disposition: "handled" });
+      return;
+    }
     await appendFile(
       path.join(stateDirectory, "queue.jsonl"),
       `${JSON.stringify({

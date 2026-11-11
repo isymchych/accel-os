@@ -2,7 +2,7 @@ import type { Static } from "typebox";
 
 import type { StateSchema } from "../src/backend/protocol.ts";
 import type {
-  DesktopApi,
+  WorkspaceApi,
   EntrySchema,
   HistoryEntryId,
   SessionId,
@@ -18,7 +18,7 @@ export type SessionKeySchemaType = Assert<Equal<Static<typeof TargetSchema>["key
 export type EntrySchemaType = Assert<Equal<Static<typeof EntrySchema>["entryId"], HistoryEntryId>>;
 export type SessionIdStateType = Assert<Equal<Static<typeof StateSchema>["sessionId"], SessionId>>;
 export type NavigateParameters = Assert<
-  Equal<Parameters<DesktopApi["navigate"]>, [key: SessionKey, entryId: HistoryEntryId]>
+  Equal<Parameters<WorkspaceApi["navigate"]>, [key: SessionKey, entryId: HistoryEntryId]>
 >;
 export type KeyRejectsSessionId = Assert<Equal<Assignable<SessionId, SessionKey>, false>>;
 export type KeyRejectsEntryId = Assert<Equal<Assignable<HistoryEntryId, SessionKey>, false>>;

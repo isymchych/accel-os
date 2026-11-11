@@ -86,7 +86,7 @@ function ModelControls({
   sessionKey: SessionKey;
   change: (operation: () => Promise<void>) => Promise<void>;
 }): ReactElement {
-  const { workspace } = useApi();
+  const workspace = useApi();
   if (!controls) return <p className="text-xs text-muted-foreground">Loading model controls…</p>;
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -168,22 +168,42 @@ function RuntimeControls({
   onFork: (entryId: HistoryEntryId) => void;
   onNavigateText: (key: SessionKey, text: string) => void;
 }): ReactElement {
-  const { workspace } = useApi();
+  const workspace = useApi();
   const [controls, setControls] = useState<SessionControls | null>(null);
   const [history, setHistory] = useState<SessionHistory | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [entry, setEntry] = useState<HistoryEntryId | null>(null);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [refreshRequest, setRefreshRequest] = useState(0);
   const { key, connection, execution } = snapshot;
+  const { controlsRevision, historyRevision } = snapshot;
 
   useEffect(() => {
     if (connection !== "connected") return undefined;
     let active = true;
-    void Promise.all([workspace.controls(key), workspace.history(key)])
-      .then(([next, tree]) => {
+    void workspace
+      .controls(key)
+      .then((next) => {
         if (!active) return;
         setControls(next);
+      })
+      .catch((error: unknown) => {
+        if (active) setFeedback(errorText(error));
+      });
+    return (): void => {
+      active = false;
+    };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- The revision invalidates server-owned controls.
+  }, [workspace, key, connection, controlsRevision]);
+
+  useEffect(() => {
+    if (connection !== "connected" || !historyOpen) return undefined;
+    let active = true;
+    void workspace
+      .history(key)
+      .then((tree) => {
+        if (!active) return;
         setHistory(tree);
         setEntry((current) =>
           tree.entries.some((item) => item.id === current) ? current : tree.leafId,
@@ -195,8 +215,8 @@ function RuntimeControls({
     return (): void => {
       active = false;
     };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- These revisions explicitly invalidate the fetched data.
-  }, [workspace, key, connection, snapshot.runtimeRevision, refreshRequest]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- The revision and manual refresh invalidate server-owned history.
+  }, [workspace, key, connection, historyOpen, historyRevision, refreshRequest]);
 
   async function change(operation: () => Promise<void>): Promise<void> {
     setPending(true);
@@ -212,7 +232,7 @@ function RuntimeControls({
   return (
     <section aria-label="Session controls" className="space-y-3 border-b border-border py-4">
       <ModelControls controls={controls} idle={idle} sessionKey={key} change={change} />
-      <Collapsible>
+      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
         <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
           <GitBranchIcon aria-hidden="true" />
           History and branches
@@ -314,7 +334,7 @@ function SessionComposer({
   composerRef,
   onExitComposer,
 }: ComposerProps): ReactElement {
-  const { workspace } = useApi();
+  const workspace = useApi();
   const [stopError, setStopError] = useState<string | null>(null);
   const ready = snapshot.connection === "connected";
   const busy = snapshot.execution === "running" || snapshot.execution === "stopping";
@@ -413,7 +433,7 @@ function SessionComposer({
       {snapshot.notice && <output className="mt-3 block text-sm">{snapshot.notice}</output>}
       <p className="mt-6 text-xs text-muted-foreground">
         Pi tools run on your host without a sandbox. Unsupported dialogs are cancelled. Refreshing
-        keeps work running; quitting stops all sessions.
+        keeps work running; closing this client does too. Stop the backend to end all sessions.
       </p>
     </section>
   );

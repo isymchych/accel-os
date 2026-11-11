@@ -12,22 +12,25 @@
     }
   },
   "scripts": {
-    "dev": "tsc --project tsconfig.build.json && node scripts/launch.ts --dev",
+    "dev": "tsc --project tsconfig.build.json && node scripts/server.ts --dev",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && vite build",
     "check": "pnpm run fmt:check && pnpm run lint && pnpm run typecheck && pnpm test",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
-    "start": "node scripts/launch.ts",
+    "start": "node scripts/server.ts",
     "test": "node --experimental-test-module-mocks --test tests/integration/*.test.ts",
     "test:e2e": "pnpm run build && node scripts/test-e2e.ts",
+    "test:e2e:browser": "pnpm run build && playwright test tests/e2e/browser.spec.ts",
     "typecheck": "tsc --project tsconfig.json && tsc --project src/renderer/tsconfig.json"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@hono/node-server": "^2.1.6",
     "@tanstack/react-hotkeys": "^0.23.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
+    "hono": "^4.13.17",
     "lucide-react": "^1.71.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

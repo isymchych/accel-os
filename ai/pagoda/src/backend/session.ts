@@ -91,7 +91,8 @@ export class DesktopSession {
     this.state = {
       key: ownerKey,
       revision: 0,
-      runtimeRevision: 0,
+      controlsRevision: 0,
+      historyRevision: 0,
       connection: "starting",
       execution: "unknown",
       cwd: launch.cwd,
@@ -153,7 +154,8 @@ export class DesktopSession {
       messages: messages.data.messages.map(transcriptMessage),
       streaming: "",
       tools: [],
-      runtimeRevision: this.state.runtimeRevision + 1,
+      controlsRevision: this.state.controlsRevision + 1,
+      historyRevision: this.state.historyRevision + 1,
     });
   }
 
@@ -161,6 +163,7 @@ export class DesktopSession {
     message: string,
     mode: "prompt" | "steer" | "follow_up" = "prompt",
   ): Promise<string> {
+    if (message.trim().length === 0) throw new Error("Enter a message.");
     if (
       this.state.connection !== "connected" ||
       this.submitting ||
@@ -192,7 +195,7 @@ export class DesktopSession {
       throw error;
     } finally {
       this.submitting = false;
-      this.invalidateRuntime();
+      this.invalidateControls();
     }
   }
 
@@ -208,7 +211,7 @@ export class DesktopSession {
       throw error;
     } finally {
       this.stopping = false;
-      this.invalidateRuntime();
+      this.invalidateControls();
     }
   }
 
@@ -298,7 +301,10 @@ export class DesktopSession {
       return await operation();
     } finally {
       this.mutating = false;
-      this.invalidateRuntime();
+      this.update({
+        controlsRevision: this.state.controlsRevision + 1,
+        historyRevision: this.state.historyRevision + 1,
+      });
     }
   }
 
@@ -319,7 +325,8 @@ export class DesktopSession {
           this.update({
             execution: "idle",
             activity: null,
-            runtimeRevision: this.state.runtimeRevision + 1,
+            controlsRevision: this.state.controlsRevision + 1,
+            historyRevision: this.state.historyRevision + 1,
           });
         break;
       case "message_end":
@@ -327,7 +334,8 @@ export class DesktopSession {
         this.update({
           messages: [...this.state.messages, transcriptMessage(record.message)],
           streaming: record.message.role === "assistant" ? "" : this.state.streaming,
-          runtimeRevision: this.state.runtimeRevision + 1,
+          historyRevision: this.state.historyRevision + 1,
+          controlsRevision: this.state.controlsRevision + (record.message.role === "user" ? 1 : 0),
         });
         break;
       case "message_update":
@@ -402,8 +410,8 @@ export class DesktopSession {
     } else this.notify();
   }
 
-  private invalidateRuntime(): void {
-    this.update({ runtimeRevision: this.state.runtimeRevision + 1 });
+  private invalidateControls(): void {
+    this.update({ controlsRevision: this.state.controlsRevision + 1 });
   }
 
   private notify(): void {

@@ -6,6 +6,7 @@ export interface LauncherArgs {
   showHelp: boolean;
   useAccountSwitcher: boolean;
   useUi: boolean;
+  browser: boolean;
 }
 
 export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
@@ -14,6 +15,7 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
   let showHelp = false;
   let useAccountSwitcher = false;
   let useUi = false;
+  let browser = false;
   let modifierCount = 0;
 
   for (const arg of args) {
@@ -29,6 +31,8 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
       useAccountSwitcher = true;
     } else if (arg === "ui") {
       useUi = true;
+    } else if (arg === "--browser" && useUi) {
+      browser = true;
     } else {
       break;
     }
@@ -36,10 +40,10 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
   }
 
   if (useUi && useAccountSwitcher) {
-    throw new Error("select an account with `ai account` before opening `ai ui`");
+    throw new Error("select an account with `ai account` before opening Pagoda");
   }
   if (useUi && args.length > modifierCount) {
-    throw new Error("`ai ui` does not accept Pi arguments yet");
+    throw new Error("`ai ui` does not accept Pi arguments");
   }
 
   return {
@@ -48,5 +52,6 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
     showHelp,
     useAccountSwitcher,
     useUi,
+    browser,
   };
 }

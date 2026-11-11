@@ -15,6 +15,7 @@ Examples:
   ai tilth
   ai account
   ai ui
+  ai ui --browser
   ai -- --help
 
 Notes:
@@ -27,7 +28,8 @@ Notes:
   - ai excludes built-in tools superseded by this configuration: write, grep, find, and ls.
   - \`account\` selects an isolated OpenAI Codex credential profile and then opens Pi.
   - Each profile has its own auth.json, so changing accounts does not affect existing chats.
-  - \`ui\` opens the local Electron app with the selected profile and current working directory.
+  - \`ui\` starts Pagoda and Electron; quitting Electron stops active work.
+  - \`ui --browser\` opens a browser and runs until Ctrl+C.
   - Build the app first with \`pnpm --dir "$ACCEL_OS/ai/pagoda" run build\`.
   - Use \`ai -- --help\` to show Pi CLI docs.`;
 
@@ -40,9 +42,8 @@ function requireAccelOs(): string {
 }
 
 async function main(): Promise<void> {
-  const { codeNavigation, passthrough, showHelp, useAccountSwitcher, useUi } = parseLauncherArgs(
-    process.argv.slice(2),
-  );
+  const { codeNavigation, passthrough, showHelp, useAccountSwitcher, useUi, browser } =
+    parseLauncherArgs(process.argv.slice(2));
   if (showHelp) {
     process.stdout.write(`${usage}\n`);
     return;
@@ -54,7 +55,7 @@ async function main(): Promise<void> {
     ? await selectAccountProfile(configDir)
     : await resolveAccountProfile(configDir);
   if (useUi) {
-    await launchUi(accelOs, profile, codeNavigation);
+    await launchUi(accelOs, profile, codeNavigation, browser);
   } else {
     await launchPi(accelOs, profile, passthrough, codeNavigation);
   }

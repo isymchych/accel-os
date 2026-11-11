@@ -1,25 +1,20 @@
 import { createContext, createElement, useContext, type ReactElement, type ReactNode } from "react";
 
-import type { NativeApi, WorkspaceApi } from "../desktop-api.ts";
+import type { WorkspaceApi } from "../desktop-api.ts";
 
-interface ApplicationApi {
-  workspace: WorkspaceApi;
-  native: NativeApi;
-}
-
-const ApiContext = createContext<ApplicationApi | null>(null);
+const ApiContext = createContext<WorkspaceApi | null>(null);
 
 export function ApiProvider({
   api,
   children,
 }: {
-  api: ApplicationApi;
+  api: WorkspaceApi;
   children: ReactNode;
 }): ReactElement {
   return createElement(ApiContext.Provider, { value: api }, children);
 }
 
-export function useApi(): ApplicationApi {
+export function useApi(): WorkspaceApi {
   const api = useContext(ApiContext);
   if (!api) throw new Error("Application API is unavailable");
   return api;

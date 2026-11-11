@@ -6,17 +6,13 @@ import test from "node:test";
 
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/desktop-api.ts";
+import { fakePiLaunch, waitForSession } from "./fixtures/helpers.ts";
 
 async function fixture(
   t: test.TestContext,
 ): Promise<{ session: DesktopSession; directory: string }> {
   const directory = await mkdtemp(path.join(tmpdir(), "pi-desktop-"));
-  const session = new DesktopSession({
-    executable: process.execPath,
-    args: [path.resolve(import.meta.dirname, "fixtures/fake-pi.ts")],
-    cwd: directory,
-    env: { HOME: directory, FAKE_PI_STATE: directory },
-  });
+  const session = new DesktopSession(fakePiLaunch(directory));
   t.after(async () => {
     await session.close();
     await rm(directory, { recursive: true, force: true });
@@ -25,25 +21,14 @@ async function fixture(
   return { session, directory };
 }
 
-async function observe(
+const observe = (
   session: DesktopSession,
-  predicate: (snapshot: SessionSnapshot) => boolean,
-): Promise<SessionSnapshot> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      unsubscribe();
-      reject(new Error("Expected session state was not observed"));
-    }, 5_000);
-    const receive = (snapshot: SessionSnapshot): void => {
-      if (!predicate(snapshot)) return;
-      clearTimeout(timer);
-      unsubscribe();
-      resolve(snapshot);
-    };
-    const unsubscribe = session.subscribe(receive);
-    receive(session.snapshot());
+  predicate: Parameters<typeof waitForSession>[1],
+): Promise<SessionSnapshot> =>
+  waitForSession(session, predicate, {
+    timeout: 5_000,
+    description: "Expected session state was not observed",
   });
-}
 
 test("preserves Unicode JSONL and replaces partial text with the authoritative message", async (t) => {
   const { session } = await fixture(t);
