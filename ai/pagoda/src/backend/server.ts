@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { once } from "node:events";
-import { createServer } from "node:http";
+import { createServer, type RequestListener } from "node:http";
 
-import { getRequestListener } from "@hono/node-server";
+import { NodeHttpServer } from "@effect/platform-node";
+import { Effect, Exit, Scope } from "effect";
 
 import { createHttpApp } from "./http.ts";
 import type { PiLaunch } from "./rpc.ts";
@@ -34,6 +35,7 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
   const shutdown = new AbortController();
   const token = randomBytes(32).toString("hex");
   let origin = "";
+  const scope = Scope.makeUnsafe();
   const app = createHttpApp({
     workspace,
     origins: () => [origin, ...(options.developmentOrigin ? [options.developmentOrigin] : [])],
@@ -42,28 +44,42 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
     shutdown: shutdown.signal,
     ...(options.clientDirectory ? { clientDirectory: options.clientDirectory } : {}),
   });
-  const handle = getRequestListener(app.fetch);
-  const server = createServer((request, response) => {
-    void handle(request, response).catch(() => {
-      response.destroy();
-    });
-  });
+  let handle: RequestListener;
+  try {
+    handle = await Effect.runPromise(
+      Effect.flatMap(app, (httpEffect) => NodeHttpServer.makeHandler(httpEffect, { scope })).pipe(
+        Effect.provide(NodeHttpServer.layerHttpServices),
+        Scope.provide(scope),
+      ),
+    );
+  } catch (error) {
+    await Effect.runPromise(Scope.close(scope, Exit.void));
+    throw error;
+  }
+  const server = createServer(handle);
+  await Effect.runPromise(
+    Scope.addFinalizer(
+      scope,
+      Effect.callback<undefined>((resume) => {
+        if (!server.listening) {
+          resume(Effect.succeed(undefined));
+          return;
+        }
+        server.close((error) => {
+          if (error) resume(Effect.die(error));
+          else resume(Effect.succeed(undefined));
+        });
+      }),
+    ),
+  );
   let closing: Promise<void> | undefined;
   const close = async (): Promise<void> => {
     closing ??= (async (): Promise<void> => {
       shutdown.abort();
       options.signal?.removeEventListener("abort", abort);
-      const closed = server.listening
-        ? new Promise<void>((resolve, reject) => {
-            server.close((error) => {
-              if (error) reject(error);
-              else resolve();
-            });
-          })
-        : Promise.resolve();
       // A closed/slow observer must not hold process shutdown hostage.
       server.closeAllConnections();
-      await Promise.all([closed, workspace.close()]);
+      await Promise.all([workspace.close(), Effect.runPromise(Scope.close(scope, Exit.void))]);
     })();
     return closing;
   };

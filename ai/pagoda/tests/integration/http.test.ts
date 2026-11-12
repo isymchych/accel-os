@@ -32,6 +32,7 @@ test("authenticated HTTP preserves execution independently of observers and clea
     });
   const unauthenticated = await fetch(`${backend.origin}/api/workspace`);
   assert.equal(unauthenticated.status, 401);
+  assert.equal(unauthenticated.headers.get("referrer-policy"), "no-referrer");
   assert.equal((await fetch(`${backend.origin}/api/events`)).status, 401);
   assert.equal((await post("prompt", {})).status, 401);
   assert.equal(
@@ -125,9 +126,29 @@ test("authenticated HTTP preserves execution independently of observers and clea
     await fetch(`${backend.origin}/api/workspace`, { headers: { cookie } })
   ).json();
   assert.ok(Schema.is(WorkspaceSchema)(workspace));
+  const workspaceResponse = await fetch(`${backend.origin}/api/workspace`, { headers: { cookie } });
+  assert.equal(workspaceResponse.headers.get("referrer-policy"), "no-referrer");
+  assert.equal(workspaceResponse.headers.get("cross-origin-resource-policy"), "same-origin");
+  assert.equal(workspaceResponse.headers.get("content-security-policy"), "frame-ancestors 'none'");
+  assert.equal(
+    (await fetch(`${backend.origin}/api/not-an-operation`, { headers: { cookie } })).status,
+    404,
+  );
+  assert.equal(
+    (
+      await fetch(`${backend.origin}/api/stop`, {
+        method: "POST",
+        headers: { origin: backend.origin, "content-type": "text/plain", cookie },
+        body: "{}",
+      })
+    ).status,
+    415,
+  );
   const key = workspace.initialKey;
   for (const invalid of [{}, { key: "" }, { key, extra: true }])
     assert.equal((await post("stop", invalid, cookie)).status, 400);
+  const invalidRequest = await post("stop", {}, cookie);
+  assert.equal(invalidRequest.headers.get("cross-origin-resource-policy"), "same-origin");
   assert.equal(
     (await post("prompt", { key, mode: "prompt", message: "x".repeat(100_001) }, cookie)).status,
     400,
@@ -136,13 +157,13 @@ test("authenticated HTTP preserves execution independently of observers and clea
     (await post("prompt", { key, mode: "prompt", message: " \n " }, cookie)).status,
     400,
   );
-  const oversized = await fetch(`${backend.origin}/api/prompt`, {
+  const largeRequest = await fetch(`${backend.origin}/api/list-all`, {
     method: "POST",
     headers: { origin: backend.origin, "content-type": "application/json", cookie },
-    body: JSON.stringify({ key, mode: "prompt", message: "x".repeat(1024 * 1024) }),
+    body: JSON.stringify({ extra: "x".repeat(1024 * 1024) }),
   });
-  assert.equal(oversized.status, 413);
-  await oversized.text();
+  assert.equal(largeRequest.status, 200);
+  await largeRequest.text();
   assert.equal(
     (
       await fetch(`${backend.origin}/api/stop`, {

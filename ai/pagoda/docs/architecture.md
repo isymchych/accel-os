@@ -9,14 +9,16 @@ implementation detail here is not automatically a requirement to preserve during
 ```text
 React frontend (Vite), in browser or sandboxed Electron
        ↕ authenticated HTTP commands / SSE snapshots
-Hono / Node foreground backend (session state, lifecycle)
+Effect HTTP / Node foreground backend (session state, lifecycle)
        ↕ Pi RPC: JSONL commands, responses, events
 Node child: ai/pi/runtime/rpc-entry.ts
        └─ existing Pi launcher configuration and native sessions
 ```
 
 The backend owns Pi children and shared presentation state. Both clients use the same HTTP API;
-Electron is only a window shell, with no preload or application IPC.
+Electron is only a window shell, with no preload or application IPC. Shared HttpApi declarations and
+Effect schemas define the client contract. Pi execution belongs to the backend, independently of
+individual requests and observation connections.
 
 ## Dependency boundaries
 
@@ -72,11 +74,10 @@ Confirmation timeout leaves submission uncertain, not safe to retry.
 
 ### Known implementation gap
 
-The current HTTP/RPC transports still impose request-size limits and terminate malformed or
-oversized RPC connections. SSE still uses custom pending-queue limits and write-deadline eviction
-for slow observers. These mechanisms remain in code but are
-[rejected target policies](specs/workspace.md#excluded-transport-policies), not migration
-requirements. Their removal has not been implemented.
+The
+[Effect migration plan](../plans/effect-4-migration.md#3-scoped-execution-ownership-and-pi-transport)
+tracks the remaining Pi RPC gap against the spec's
+[excluded transport policies](specs/workspace.md#excluded-transport-policies).
 
 ## Security and execution
 

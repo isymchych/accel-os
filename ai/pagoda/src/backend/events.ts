@@ -1,86 +1,82 @@
-import type { SSEStreamingApi } from "hono/streaming";
+import { Stream } from "effect";
+import { HttpServerResponse } from "effect/http";
 
 import type { SessionMetadata, SessionSnapshot } from "../contracts/index.ts";
 import type { DesktopWorkspace } from "./workspace.ts";
 
-/**
- * Observers receive current snapshots on every connection; event replay is not
- * execution replay. Coalesce pending updates and evict slow observers, not work.
- */
-export async function observeWorkspace(
+/** Each connection observes current state without owning the underlying executions. */
+export function observeWorkspace(
   workspace: DesktopWorkspace,
-  stream: SSEStreamingApi,
   shutdown: AbortSignal,
-): Promise<void> {
+): HttpServerResponse.HttpServerResponse {
+  const encoder = new TextEncoder();
   const pending = new Map<string, SessionSnapshot>();
   let metadata: SessionMetadata[] | undefined;
-  let wake: (() => void) | undefined;
-  const isStopped = (): boolean => stream.aborted;
-  const stop = (): void => {
-    wake?.();
-    stream.abort();
-  };
-  const enqueue = (snapshot: SessionSnapshot): void => {
-    if (isStopped()) return;
-    // Keep only the latest object per session, not serialized copies of every
-    // delta. Individual histories retain their existing size contract.
-    pending.set(snapshot.key, snapshot);
-    if (pending.size > 256) stop();
-    else wake?.();
-  };
-  stream.onAbort(stop);
-  shutdown.addEventListener("abort", stop, { once: true });
-  const unsubscribe = workspace.subscribe(enqueue);
-  const unsubscribeMetadata = workspace.subscribeMetadata((next) => {
-    metadata = next;
-    wake?.();
-  });
-  const heartbeat = setInterval(() => wake?.(), 15_000);
-  const wait = async (): Promise<void> => {
-    await new Promise<void>((resolve) => {
-      wake = resolve;
-    });
-    wake = undefined;
-  };
-  const flush = async (): Promise<void> => {
-    if (isStopped()) return;
-    const batch = [...pending.values()];
-    pending.clear();
-    const nextMetadata = metadata;
-    metadata = undefined;
-    const deadline = setTimeout(stop, 10_000);
-    try {
-      if (batch.length === 0 && nextMetadata === undefined)
-        await stream.writeSSE({ event: "heartbeat", data: "{}" });
-      if (nextMetadata !== undefined)
-        await stream.writeSSE({ event: "metadata", data: JSON.stringify(nextMetadata) });
-      for (const snapshot of batch) {
-        if (isStopped()) break;
-        await stream.writeSSE({ event: "snapshot", data: JSON.stringify(snapshot) });
+  let stopped = false;
+  let cleanup = (): void => {};
+  let flush = (): void => {};
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller): void {
+      const send = (event: string, value: unknown): void => {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(value)}\n\n`));
+      };
+      flush = (): void => {
+        if (stopped) return;
+        while ((controller.desiredSize ?? 0) > 0) {
+          if (metadata !== undefined) {
+            const next = metadata;
+            metadata = undefined;
+            send("metadata", next);
+            continue;
+          }
+          const next = pending.entries().next();
+          if (next.done) break;
+          pending.delete(next.value[0]);
+          send("snapshot", next.value[1]);
+        }
+      };
+      const stop = (): void => {
+        if (stopped) return;
+        stopped = true;
+        cleanup();
+        controller.close();
+      };
+      const unsubscribe = workspace.subscribe((snapshot) => {
+        pending.set(snapshot.key, snapshot);
+        flush();
+      });
+      const unsubscribeMetadata = workspace.subscribeMetadata((next) => {
+        metadata = next;
+        flush();
+      });
+      const heartbeat = setInterval(() => {
+        if (!stopped && (controller.desiredSize ?? 0) > 0) send("heartbeat", {});
+      }, 15_000);
+      cleanup = (): void => {
+        clearInterval(heartbeat);
+        shutdown.removeEventListener("abort", stop);
+        unsubscribe();
+        unsubscribeMetadata();
+      };
+      shutdown.addEventListener("abort", stop, { once: true });
+      if (shutdown.aborted) {
+        stop();
+        return;
       }
-    } finally {
-      clearTimeout(deadline);
-    }
-  };
-  try {
-    if (shutdown.aborted) return;
-    const initial = workspace.snapshot();
-    // Subscription and snapshot capture are synchronous; subsequent updates
-    // queue while the initial workspace is being written.
-    const readyDeadline = setTimeout(stop, 10_000);
-    try {
-      await stream.writeSSE({ event: "ready", data: JSON.stringify(initial) });
-    } finally {
-      clearTimeout(readyDeadline);
-    }
-    while (!isStopped()) {
-      if (pending.size === 0 && metadata === undefined) await wait();
-      await flush();
-    }
-  } finally {
-    clearInterval(heartbeat);
-    shutdown.removeEventListener("abort", stop);
-    unsubscribe();
-    unsubscribeMetadata();
-  }
+      send("ready", workspace.snapshot());
+    },
+    pull(): void {
+      flush();
+    },
+    cancel(): void {
+      if (stopped) return;
+      stopped = true;
+      cleanup();
+    },
+  });
+  return HttpServerResponse.stream(
+    Stream.fromReadableStream({ evaluate: () => stream, onError: (error) => error }),
+    { contentType: "text/event-stream", headers: { "cache-control": "no-cache" } },
+  );
 }

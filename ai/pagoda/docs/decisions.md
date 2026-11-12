@@ -41,7 +41,9 @@ transport. Reconsider upstream reuse when its public API covers this boundary.
 
 ## ADR-012: One local HTTP application with browser and Electron clients
 
-Status: accepted. Supersedes ADR-011's renderer IPC and app-lifetime execution choices.
+Status: accepted. Supersedes ADR-011's renderer IPC and app-lifetime execution choices. The Hono
+implementation described below has since been replaced by Effect HTTP; the transport decision
+remains.
 
 Hono on Node owns a foreground backend. HTTP commands and SSE observations are the sole application
 transport; the configured Pi JSONL RPC integration remains unchanged. React runs in a browser or a

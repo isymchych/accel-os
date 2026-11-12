@@ -1,6 +1,6 @@
 # Pagoda agent guide
 
-Local-only Hono/React app with browser and Electron clients in private pnpm workspace
+Local-only Effect/React app with browser and Electron clients in private pnpm workspace
 `@accel-os/pagoda`. Root `../../AGENTS.md` governs this workspace.
 
 ## Intent Ledger

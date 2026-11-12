@@ -26,13 +26,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
-    "@hono/node-server": "^2.1.6",
+    "@effect/platform-node": "4.1.4",
     "@tanstack/markdown": "^1.2.0",
     "@tanstack/react-hotkeys": "^0.23.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "effect": "4.1.4",
-    "hono": "^4.13.17",
     "lucide-react": "^1.71.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

@@ -1,7 +1,8 @@
 # Effect 4 backend migration
 
-Status: slice 1 implemented; later slices not started. This plan was recorded on November 12, 2026.
-The user authorized slice 1 only; obtain scoped authorization before later slices or watchers.
+Status: slices 1 and 2 implemented; later slices not started. This plan was recorded on November
+12, 2026. The user authorized slices 1 and 2; obtain scoped authorization before later slices or
+watchers.
 
 ## Purpose and authority
 
@@ -165,6 +166,11 @@ changing other workspaces' TypeBox use.
 Verify: typecheck and focused HTTP, RPC, session-metadata, and session integration tests.
 
 ### 2. Effect HTTP, HttpApi, and the generated client
+
+Implemented: Effect HTTP and HttpApi now serve workspace commands, static assets, and SSE; the
+renderer uses a generated command client. The existing Promise workspace remains the execution
+owner. HTTP body limits and custom SSE observer eviction were removed; Pi RPC policies remain for
+slice 3. Node listener and request resources are closed through the HTTP scope.
 
 - Define endpoint groups and public errors; replace Hono with Effect HTTP handlers, composition, and
   server lifetime. Adapt existing Promise owners instead of rewriting them in the same step.

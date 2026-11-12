@@ -15,7 +15,6 @@
       "env": {
         "PATH": "${ACCEL_OS}/ai/pi/node_modules/.bin:${ACCEL_OS}/node_modules/.bin:${PATH}"
       },
-      "enabled": false,
       "exposure": "codemode"
     }
   }

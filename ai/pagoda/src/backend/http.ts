@@ -1,22 +1,18 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import path from "node:path";
 
-import { serveStatic } from "@hono/node-server/serve-static";
-import { Schema } from "effect";
-import { Hono, type Context } from "hono";
-import { bodyLimit } from "hono/body-limit";
-import { getCookie, setCookie } from "hono/cookie";
-import { streamSSE } from "hono/streaming";
-
+import { Effect, Layer, type FileSystem, type Path, type Scope } from "effect";
 import {
-  DirectorySchema,
-  EntrySchema,
-  MetadataFlagSchema,
-  ModelSchema,
-  OpenSchema,
-  PromptSchema,
-  TargetSchema,
-  ThinkingSchema,
-} from "../contracts/index.ts";
+  HttpEffect,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse,
+  type Etag,
+  type HttpPlatform,
+  type HttpServerError,
+} from "effect/http";
+
+import { workspaceApi } from "./api.ts";
 import { observeWorkspace } from "./events.ts";
 import type { DesktopWorkspace } from "./workspace.ts";
 
@@ -36,166 +32,153 @@ function matches(value: string | undefined, expected: string): boolean {
   return actual.length === target.length && timingSafeEqual(actual, target);
 }
 
-/** The sole application transport, shared by browser and Electron clients. */
-export function createHttpApp(options: HttpOptions): Hono {
-  const app = new Hono();
-  const credential = randomBytes(32).toString("hex");
-  app.use("*", async (c, next) => {
-    const origin = `http://${c.req.header("host") ?? ""}`;
-    if (!options.origins().includes(origin)) return c.json({ error: "Untrusted host" }, 403);
-    const suppliedOrigin = c.req.header("origin");
-    if (
-      (suppliedOrigin !== undefined && suppliedOrigin !== origin) ||
-      c.req.header("sec-fetch-site") === "cross-site"
-    ) {
-      return c.json({ error: "Untrusted origin" }, 403);
+function error(message: string, status: number): HttpServerResponse.HttpServerResponse {
+  return HttpServerResponse.jsonUnsafe({ error: message }, { status });
+}
+
+async function proxyImage(raw: string | null): Promise<Response> {
+  if (!raw || raw.length > 8192)
+    return Response.json({ error: "Invalid image URL" }, { status: 400 });
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return Response.json({ error: "Invalid image URL" }, { status: 400 });
+  }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
+    return Response.json({ error: "Invalid image URL" }, { status: 400 });
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    const type = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    if (!response.ok || !type?.startsWith("image/") || !response.body)
+      return Response.json({ error: "Image could not be loaded" }, { status: 502 });
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      size += chunk.value.length;
+      if (size > 16 * 1024 * 1024) {
+        await reader.cancel();
+        return Response.json({ error: "Image exceeds 16 MiB" }, { status: 413 });
+      }
+      chunks.push(chunk.value);
     }
-    c.header("X-Content-Type-Options", "nosniff");
-    c.header("Referrer-Policy", "no-referrer");
-    c.header("Cross-Origin-Resource-Policy", "same-origin");
-    c.header("Content-Security-Policy", "frame-ancestors 'none'");
-    c.header("Cache-Control", "no-store");
-    return next();
-  });
-  app.use("/api/*", async (c: Context, next) => {
-    if (options.shutdown.aborted) return c.json({ error: "Backend is shutting down" }, 503);
-    if (c.req.method !== "GET") {
-      if (c.req.header("origin") !== `http://${c.req.header("host") ?? ""}`)
-        return c.json({ error: "A same-origin request is required" }, 403);
-      if (c.req.header("content-type")?.split(";")[0] !== "application/json")
-        return c.json({ error: "JSON is required" }, 415);
-    }
-    const authenticating = c.req.path === "/api/auth" && c.req.method === "POST";
-    if (!authenticating && !matches(getCookie(c, options.cookieName), credential))
-      return c.json(
-        { error: "Open the connection URL printed by the backend to authenticate." },
-        401,
-      );
-    return next();
-  });
-  app.use(
-    "/api/*",
-    bodyLimit({
-      // Covers worst-case JSON escaping of the existing 100,000-character prompt.
-      maxSize: 1024 * 1024,
-      onError: (c) => {
-        c.header("Connection", "close");
-        return c.json({ error: "Request exceeds 1 MiB" }, 413);
+    return new Response(Buffer.concat(chunks), {
+      headers: {
+        "Content-Type": type,
+        "Content-Security-Policy": "sandbox; default-src 'none'; frame-ancestors 'none'",
       },
+    });
+  } catch {
+    return Response.json({ error: "Image could not be loaded" }, { status: 502 });
+  }
+}
+
+/** Effect routes and the shared local-client security policy. */
+export function createHttpApp(
+  options: HttpOptions,
+): Effect.Effect<
+  Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    HttpServerError.HttpServerError,
+    HttpPlatform.HttpPlatform | HttpServerRequest.HttpServerRequest | Scope.Scope
+  >,
+  never,
+  FileSystem.FileSystem | Etag.Generator | HttpPlatform.HttpPlatform | Path.Path | Scope.Scope
+> {
+  const credential = randomBytes(32).toString("hex");
+  const authPost = HttpRouter.add("POST", "/api/auth", (request) =>
+    Effect.sync(() => {
+      if (!matches(request.headers["authorization"], `Bearer ${options.bootstrapToken}`))
+        return error("Invalid connection token", 401);
+      return HttpServerResponse.setCookieUnsafe(
+        HttpServerResponse.jsonUnsafe(null),
+        options.cookieName,
+        credential,
+        { httpOnly: true, sameSite: "strict", path: "/api" },
+      );
     }),
   );
-  app.post("/api/auth", (c) => {
-    if (!matches(c.req.header("authorization"), `Bearer ${options.bootstrapToken}`))
-      return c.json({ error: "Invalid connection token" }, 401);
-    setCookie(c, options.cookieName, credential, {
-      httpOnly: true,
-      sameSite: "Strict",
-      path: "/api",
+  const authGet = HttpRouter.add("GET", "/api/auth", HttpServerResponse.jsonUnsafe(null));
+  const image = HttpRouter.add("GET", "/api/image", (request) =>
+    Effect.promise(async () =>
+      HttpServerResponse.fromWeb(
+        await proxyImage(new URL(request.url, "http://localhost").searchParams.get("url")),
+      ),
+    ),
+  );
+  const events = HttpRouter.add("GET", "/api/events", () =>
+    Effect.sync(() => observeWorkspace(options.workspace, options.shutdown)),
+  );
+  const unknownApi = HttpRouter.add("*", "/api/*", error("Unknown API operation", 404));
+  const asset = (
+    request: HttpServerRequest.HttpServerRequest,
+  ): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpPlatform.HttpPlatform> =>
+    Effect.gen(function* () {
+      if (!options.clientDirectory) return HttpServerResponse.empty({ status: 404 });
+      let name: string;
+      try {
+        name = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
+      } catch {
+        return HttpServerResponse.empty({ status: 400 });
+      }
+      const root = path.resolve(options.clientDirectory);
+      const file = path.resolve(root, `.${name === "/" ? "/index.html" : name}`);
+      if (file !== root && !file.startsWith(`${root}${path.sep}`))
+        return HttpServerResponse.empty({ status: 404 });
+      return yield* HttpServerResponse.file(file).pipe(
+        Effect.catch(() => Effect.succeed(HttpServerResponse.empty({ status: 404 }))),
+      );
     });
-    return c.json(null);
-  });
-  app.get("/api/auth", (c) => c.json(null));
-  app.get("/api/image", async (c) => {
-    const query: unknown = c.req.query();
-    const schema = Schema.Struct({ url: Schema.String.check(Schema.isMaxLength(8192)) });
-    if (!Schema.is(schema)(query)) return c.json({ error: "Invalid image URL" }, 400);
-    let url: URL;
-    try {
-      url = new URL(query.url);
-    } catch {
-      return c.json({ error: "Invalid image URL" }, 400);
-    }
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
-      return c.json({ error: "Invalid image URL" }, 400);
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-      const type = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
-      if (!response.ok || !type?.startsWith("image/") || !response.body)
-        return c.json({ error: "Image could not be loaded" }, 502);
-      const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.length;
-        if (size > 16 * 1024 * 1024) {
-          await reader.cancel();
-          return c.json({ error: "Image exceeds 16 MiB" }, 413);
+  const assets = Layer.merge(HttpRouter.add("GET", "/", asset), HttpRouter.add("GET", "/*", asset));
+  const routes = Layer.mergeAll(
+    workspaceApi(options.workspace),
+    authPost,
+    authGet,
+    image,
+    events,
+    unknownApi,
+    assets,
+  );
+  return Effect.map(HttpRouter.toHttpEffect(routes), (router) =>
+    Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest;
+      yield* HttpEffect.appendPreResponseHandler((_request, response) =>
+        Effect.succeed(
+          HttpServerResponse.setHeaders(response, {
+            "x-content-type-options": "nosniff",
+            "referrer-policy": "no-referrer",
+            "cross-origin-resource-policy": "same-origin",
+            "content-security-policy":
+              response.headers["content-security-policy"] ?? "frame-ancestors 'none'",
+            "cache-control": "no-store",
+          }),
+        ),
+      );
+      const origin = `http://${request.headers["host"] ?? ""}`;
+      if (!options.origins().includes(origin)) return error("Untrusted host", 403);
+      const suppliedOrigin = request.headers["origin"];
+      if (
+        (suppliedOrigin !== undefined && suppliedOrigin !== origin) ||
+        request.headers["sec-fetch-site"] === "cross-site"
+      ) {
+        return error("Untrusted origin", 403);
+      }
+      const pathname = new URL(request.url, origin).pathname;
+      if (pathname.startsWith("/api/")) {
+        if (options.shutdown.aborted) return error("Backend is shutting down", 503);
+        if (request.method !== "GET") {
+          if (suppliedOrigin !== origin) return error("A same-origin request is required", 403);
+          if (request.headers["content-type"]?.split(";")[0] !== "application/json")
+            return error("JSON is required", 415);
         }
-        chunks.push(value);
+        const authenticating = pathname === "/api/auth" && request.method === "POST";
+        if (!authenticating && !matches(request.cookies[options.cookieName], credential))
+          return error("Open the connection URL printed by the backend to authenticate.", 401);
       }
-      return new Response(Buffer.concat(chunks), {
-        headers: {
-          "Content-Type": type,
-          "Content-Security-Policy": "sandbox; default-src 'none'; frame-ancestors 'none'",
-        },
-      });
-    } catch {
-      return c.json({ error: "Image could not be loaded" }, 502);
-    }
-  });
-  const workspace = options.workspace;
-  app.get("/api/workspace", (c) => c.json(workspace.snapshot()));
-  app.get("/api/events", (c) =>
-    streamSSE(c, async (stream) => observeWorkspace(workspace, stream, options.shutdown)),
+      return yield* router;
+    }),
   );
-  function command<T extends Schema.ConstraintDecoder<unknown>>(
-    name: string,
-    schema: T,
-    action: (request: T["Type"]) => unknown,
-  ): void {
-    app.post(`/api/${name}`, async (c) => {
-      let request: unknown;
-      try {
-        request = await c.req.json();
-      } catch {
-        return c.json({ error: "Invalid JSON" }, 400);
-      }
-      let decoded: T["Type"];
-      try {
-        decoded = Schema.decodeUnknownSync(schema, {
-          onExcessProperty: name === "list-all" ? "ignore" : "error",
-        })(request);
-      } catch {
-        return c.json({ error: `Invalid ${name} request` }, 400);
-      }
-      try {
-        return c.json((await action(decoded)) ?? null);
-      } catch (error) {
-        // Operation rejections are user-facing; infrastructure exceptions below are not.
-        return c.json({ error: error instanceof Error ? error.message : "Operation failed" }, 400);
-      }
-    });
-  }
-  command("directory", DirectorySchema, async ({ cwd }) => workspace.directory(cwd));
-  command("list", DirectorySchema, async ({ cwd }) => workspace.list(cwd));
-  command("list-all", Schema.Struct({}), async () => workspace.listAll());
-  command("metadata-flag", MetadataFlagSchema, async ({ id, flag, value }) =>
-    workspace.setMetadataFlag(id, flag, value),
-  );
-  command("create", DirectorySchema, async ({ cwd }) => workspace.create(cwd));
-  command("open", OpenSchema, async ({ cwd, path }) => workspace.open(cwd, path));
-  command("snapshot", TargetSchema, ({ key }) => workspace.session(key).snapshot());
-  command("prompt", PromptSchema, async (request) => workspace.prompt(request));
-  command("stop", TargetSchema, async ({ key }) => workspace.session(key).stop());
-  command("history", TargetSchema, async ({ key }) => workspace.session(key).history());
-  command("navigate", EntrySchema, async ({ key, entryId }) =>
-    workspace.session(key).navigate(entryId),
-  );
-  command("fork", EntrySchema, async ({ key, entryId }) => workspace.fork(key, entryId));
-  command("controls", TargetSchema, async ({ key }) => workspace.session(key).controls());
-  command("model", ModelSchema, async ({ key, provider, modelId }) =>
-    workspace.session(key).model(provider, modelId),
-  );
-  command("thinking", ThinkingSchema, async ({ key, level }) =>
-    workspace.session(key).thinking(level),
-  );
-  // Never let unknown API routes fall through to static files.
-  app.all("/api/*", (c) => c.json({ error: "Unknown API operation" }, 404));
-  if (options.clientDirectory) {
-    app.get("*", serveStatic({ root: options.clientDirectory }));
-  }
-  app.onError((_error, c) => c.json({ error: "Backend request failed" }, 500));
-  return app;
 }

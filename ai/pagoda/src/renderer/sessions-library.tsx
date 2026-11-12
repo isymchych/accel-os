@@ -1,7 +1,12 @@
 import { PinIcon, StarIcon } from "lucide-react";
 import { useState, type ReactElement } from "react";
 
-import type { SessionId, SessionMetadata, SessionSummary, StoredSession } from "../contracts/index.ts";
+import type {
+  SessionId,
+  SessionMetadata,
+  SessionSummary,
+  StoredSession,
+} from "../contracts/index.ts";
 import { Button } from "./components/ui/button.tsx";
 
 export function SessionsLibrary({
