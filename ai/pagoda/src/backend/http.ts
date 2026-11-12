@@ -110,7 +110,7 @@ export function createHttpApp(
     ),
   );
   const events = HttpRouter.add("GET", "/api/events", () =>
-    Effect.sync(() => observeWorkspace(options.workspace, options.shutdown)),
+    Effect.sync(() => observeWorkspace(options.workspace.observations, options.shutdown)),
   );
   const unknownApi = HttpRouter.add("*", "/api/*", error("Unknown API operation", 404));
   const asset = (

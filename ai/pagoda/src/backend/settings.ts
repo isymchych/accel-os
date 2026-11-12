@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-
-import { Schema } from "effect";
+import { Effect, FileSystem, Predicate, Schema } from "effect";
 
 const SettingsSchema = Schema.Struct({
   sidebar: Schema.optionalKey(
@@ -11,21 +9,30 @@ const SettingsSchema = Schema.Struct({
 });
 const decodeSettings = Schema.decodeUnknownSync(SettingsSchema, { onExcessProperty: "error" });
 
-export async function readInactivityHours(file?: string): Promise<number> {
-  if (!file) return 48;
-  let contents: string;
-  try {
-    contents = await readFile(file, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return 48;
-    throw error;
-  }
-  const value: unknown = JSON.parse(contents);
-  let settings: typeof SettingsSchema.Type;
-  try {
-    settings = decodeSettings(value);
-  } catch {
-    throw new Error("Invalid Pagoda settings");
-  }
-  return settings.sidebar?.inactivityHours ?? 48;
+export function readInactivityHours(
+  file?: string,
+): Effect.Effect<number, unknown, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    if (!file) return 48;
+    const fs = yield* FileSystem.FileSystem;
+    const contents = yield* fs
+      .readFileString(file)
+      .pipe(
+        Effect.catch((error) =>
+          Predicate.isTagged(error.reason, "NotFound")
+            ? Effect.succeed(undefined)
+            : Effect.fail(error),
+        ),
+      );
+    if (contents === undefined) return 48;
+    const value: unknown = yield* Effect.try({
+      try: (): unknown => JSON.parse(contents),
+      catch: (error) => error,
+    });
+    const settings = yield* Effect.try({
+      try: () => decodeSettings(value),
+      catch: () => new Error("Invalid Pagoda settings"),
+    });
+    return settings.sidebar?.inactivityHours ?? 48;
+  });
 }

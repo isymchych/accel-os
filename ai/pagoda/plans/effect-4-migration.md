@@ -1,6 +1,6 @@
 # Effect 4 backend migration
 
-Status: slices 1–3 implemented; slices 4–5 remain. This plan was recorded on November 12, 2026 and
+Status: slices 1–4 implemented; slice 5 remains. This plan was recorded on November 12, 2026 and
 subsequently revised after the user dropped terminal runtime/extension parity. Slice 3
 implementation is authorized under the direct SDK approach. Watchers remain a separate proposal.
 
@@ -290,6 +290,16 @@ cancellation/disposal where needed. Keep fake boundaries useful for application 
 mistake them for SDK integration checks. No separate prerequisite evaluation phase is needed.
 
 ### 4. Finish backend responsibility boundaries
+
+Implemented: backend observations are separate from SSE encoding; the response scope interrupts a
+pending snapshot on disconnect. Metadata, settings, and workspace metadata coordination use Effect
+operations. Snapshot and metadata publication are ordered within the backend, without cross-backend
+locking or filesystem freshness.
+
+Promise-based workspace and SDK calls remain at their actual boundaries: HTTP handlers adapt them
+without making requests own execution, and the Pi owner bridges its Promise-facing lifecycle to its
+Effect resource scope. These are not adapters to the removed RPC integration. SSE snapshot execution
+now uses the response's Effect scope rather than starting a separate runtime.
 
 - Finish any responsibility separation left after slice 3's SDK/catalog integration, without
   introducing a second session engine.

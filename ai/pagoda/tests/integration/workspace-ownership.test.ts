@@ -4,6 +4,8 @@ import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
 
+import { Effect } from "effect";
+
 import type { PiSessionOptions } from "../../src/backend/pi/session.ts";
 import type {
   SessionId,
@@ -135,7 +137,7 @@ test("concurrent cold opens reserve one owner before startup completes", async (
   const [a, b] = await Promise.all([first, second]);
   assert.equal(a.key, b.key);
   assert.equal(a.sessionId, "stored");
-  assert.equal(workspace.snapshot().sessions.length, 2);
+  assert.equal((await Effect.runPromise(workspace.snapshot())).sessions.length, 2);
 });
 
 test("a failed cold open releases its reservation so an explicit retry can succeed", async (t) => {

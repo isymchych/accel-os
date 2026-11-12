@@ -1,17 +1,19 @@
 import { realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { Effect, Semaphore } from "effect";
+
 import type {
   HistoryEntryId,
   Prompt,
   SessionId,
   SessionKey,
-  SessionMetadata,
   SessionSnapshot,
   StoredSession,
   WorkspaceState,
 } from "../contracts/index.ts";
 import { SessionCatalog } from "./catalog.ts";
+import { WorkspaceObservations } from "./observation.ts";
 import { listPiAccounts } from "./pi/accounts.ts";
 import type { PiSessionOptions, PiSessionFactory } from "./pi/session.ts";
 import type { SessionMetadataStore } from "./session-metadata.ts";
@@ -21,9 +23,8 @@ import { DesktopSession } from "./session.ts";
 export class DesktopWorkspace {
   private readonly sessions = new Map<SessionKey, DesktopSession>();
   private readonly opening = new Map<string, Promise<SessionSnapshot>>();
-  private readonly listeners = new Set<(snapshot: SessionSnapshot) => void>();
-  private readonly metadataListeners = new Set<(metadata: SessionMetadata[]) => void>();
-  private readonly accountListeners = new Set<(profile: string) => void>();
+  private readonly metadataLock = Semaphore.makeUnsafe(1);
+  public readonly observations = new WorkspaceObservations(() => this.observedSnapshot());
   private closing = false;
   private selectedAccount: string | undefined;
   public readonly initialKey: SessionKey;
@@ -60,14 +61,24 @@ export class DesktopWorkspace {
     }
     await this.initial.start(this.selectedProfileDir());
   }
-  public snapshot(): WorkspaceState {
-    return {
-      initialKey: this.initialKey,
-      sessions: [...this.sessions.values()].map((session) => session.snapshot()),
-      metadata: this.metadataStore?.list() ?? [],
-      selectedAccount: this.selectedAccount ?? null,
-      inactivityHours: this.inactivityHours,
-    };
+  public snapshot(): Effect.Effect<WorkspaceState, unknown> {
+    return this.observedSnapshot().pipe(Effect.map(({ state }) => state));
+  }
+  private observedSnapshot(): Effect.Effect<{ state: WorkspaceState; revision: number }, unknown> {
+    // Serialize metadata reads with publication so the revision describes the returned state.
+    return this.metadataLock.withPermits(1)(
+      Effect.gen({ self: this }, function* () {
+        const metadata = this.metadataStore ? yield* this.metadataStore.list() : [];
+        const state: WorkspaceState = {
+          initialKey: this.initialKey,
+          sessions: [...this.sessions.values()].map((session) => session.snapshot()),
+          metadata,
+          selectedAccount: this.selectedAccount ?? null,
+          inactivityHours: this.inactivityHours,
+        };
+        return { state, revision: this.observations.currentRevision() };
+      }),
+    );
   }
   public session(key: SessionKey): DesktopSession {
     const session = this.sessions.get(key);
@@ -88,13 +99,7 @@ export class DesktopWorkspace {
     if (!(await this.accounts()).some((account) => account.profile === profile))
       throw new Error("Choose an available Pi account");
     this.selectedAccount = profile;
-    for (const listener of this.accountListeners) listener(profile);
-  }
-  public subscribeAccount(listener: (profile: string) => void): () => void {
-    this.accountListeners.add(listener);
-    return () => {
-      this.accountListeners.delete(listener);
-    };
+    this.observations.publish({ type: "account", value: profile });
   }
   private selectedProfileDir(): string | undefined {
     if (!this.accountConfigDir || !this.selectedAccount) return undefined;
@@ -105,38 +110,35 @@ export class DesktopWorkspace {
     if (!(await stat(directory)).isDirectory()) throw new Error("Choose a directory");
     return directory;
   }
-  public subscribe(listener: (snapshot: SessionSnapshot) => void): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  }
-  public subscribeMetadata(listener: (metadata: SessionMetadata[]) => void): () => void {
-    this.metadataListeners.add(listener);
-    return () => {
-      this.metadataListeners.delete(listener);
-    };
-  }
-  public async setMetadataFlag(
+  public setMetadataFlag(
     id: SessionId,
     flag: "pinned" | "favourite",
     value: boolean,
-  ): Promise<void> {
-    if (!this.metadataStore) throw new Error("Session metadata is unavailable");
-    if (!(await this.listAll()).some((session) => session.id === id)) {
-      throw new Error("Session is not in the catalog");
-    }
-    this.metadataStore.setFlag(id, flag, value);
-    this.publishMetadata();
-  }
-  private publishMetadata(): void {
-    const metadata = this.metadataStore?.list() ?? [];
-    for (const listener of this.metadataListeners) listener(metadata);
+  ): Effect.Effect<void, unknown> {
+    return Effect.gen({ self: this }, function* () {
+      if (!this.metadataStore)
+        return yield* Effect.fail(new Error("Session metadata is unavailable"));
+      const sessions = yield* Effect.tryPromise({
+        try: () => this.listAll(),
+        catch: (error) => error,
+      });
+      if (!sessions.some((session) => session.id === id)) {
+        return yield* Effect.fail(new Error("Session is not in the catalog"));
+      }
+      const store = this.metadataStore;
+      yield* this.metadataLock.withPermits(1)(
+        Effect.gen({ self: this }, function* () {
+          const metadata = yield* store.setFlag(id, flag, value);
+          this.observations.publish({ type: "metadata", value: metadata });
+        }),
+      );
+      return undefined;
+    });
   }
   private attach(session: DesktopSession): DesktopSession {
     this.sessions.set(session.summary().key, session);
     session.subscribe((snapshot) => {
-      for (const listener of this.listeners) listener(snapshot);
+      this.observations.publish({ type: "snapshot", value: snapshot });
     });
     return session;
   }
@@ -208,9 +210,7 @@ export class DesktopWorkspace {
     const results = await Promise.allSettled(
       [...this.sessions.values()].map(async (session) => session.close()),
     );
-    this.listeners.clear();
-    this.metadataListeners.clear();
-    this.accountListeners.clear();
+    this.observations.close();
     const failures = results.filter((result) => result.status === "rejected");
     if (failures.length > 0) throw new Error("Could not close every Pi session");
   }

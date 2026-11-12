@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { Effect } from "effect";
 
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import { contentText, fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
@@ -80,7 +81,7 @@ test("independent owners survive view changes, reopen deduplicates, and forks pr
   ]);
   assert.equal(first.key, workspace.initialKey);
   assert.equal(second.key, first.key);
-  assert.equal(workspace.snapshot().sessions.length, 2);
+  assert.equal((await Effect.runPromise(workspace.snapshot())).sessions.length, 2);
   await assert.rejects(workspace.open(other, stored.path), /catalog/u);
   assert.equal(a.summary().execution, "running");
 

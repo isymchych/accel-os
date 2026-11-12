@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { NodeFileSystem } from "@effect/platform-node";
+import { Effect, FileSystem } from "effect";
+
 import { startBackend } from "../../src/backend/server.ts";
 import { SessionMetadataStore } from "../../src/backend/session-metadata.ts";
 import { readInactivityHours } from "../../src/backend/settings.ts";
@@ -11,30 +14,41 @@ import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import type { SessionId } from "../../src/contracts/index.ts";
 import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
 
+const fs = await Effect.runPromise(
+  FileSystem.FileSystem.pipe(Effect.provide(NodeFileSystem.layer)),
+);
+
 test("session metadata persists independent flags", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-metadata-"));
   t.after(async () => rm(directory, { recursive: true, force: true }));
   const file = path.join(directory, "state.json");
-  const store = new SessionMetadataStore(file);
+  const store = new SessionMetadataStore(fs, file);
   const id = "example-session" as SessionId;
-  store.setFlag(id, "pinned", true);
-  store.setFlag(id, "favourite", true);
+  await Promise.all([
+    Effect.runPromise(store.setFlag(id, "pinned", true)),
+    Effect.runPromise(store.setFlag(id, "favourite", true)),
+  ]);
 
-  const reopened = new SessionMetadataStore(file);
-  assert.deepEqual(reopened.list(), [{ id, pinned: true, favourite: true }]);
-  reopened.setFlag(id, "pinned", false);
-  assert.deepEqual(store.list(), [{ id, pinned: false, favourite: true }]);
-  assert.deepEqual(JSON.parse(await readFile(file, "utf8")), reopened.list());
+  const reopened = new SessionMetadataStore(fs, file);
+  assert.deepEqual(await Effect.runPromise(reopened.list()), [
+    { id, pinned: true, favourite: true },
+  ]);
+  await Effect.runPromise(reopened.setFlag(id, "pinned", false));
+  assert.deepEqual(await Effect.runPromise(store.list()), [{ id, pinned: false, favourite: true }]);
+  assert.deepEqual(
+    JSON.parse(await readFile(file, "utf8")),
+    await Effect.runPromise(reopened.list()),
+  );
   await writeFile(file, JSON.stringify([{ id, pinned: true, favourite: false, lastActivity: 10 }]));
-  assert.deepEqual(reopened.list(), [{ id, pinned: true, favourite: false }]);
-  reopened.setFlag(id, "favourite", true);
+  assert.deepEqual(await Effect.runPromise(reopened.list()), [
+    { id, pinned: true, favourite: false },
+  ]);
+  await Effect.runPromise(reopened.setFlag(id, "favourite", true));
   assert.deepEqual(JSON.parse(await readFile(file, "utf8")), [
     { id, pinned: true, favourite: true },
   ]);
   await writeFile(file, "{broken");
-  assert.throws(() => {
-    reopened.setFlag(id, "pinned", true);
-  });
+  await assert.rejects(Effect.runPromise(reopened.setFlag(id, "pinned", true)));
   assert.equal(await readFile(file, "utf8"), "{broken");
 });
 
@@ -42,13 +56,17 @@ test("sidebar inactivity configuration defaults and validates", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-settings-"));
   t.after(async () => rm(directory, { recursive: true, force: true }));
   const file = path.join(directory, "settings.json");
-  assert.equal(await readInactivityHours(file), 48);
+  const readSettings = (): Promise<number> =>
+    Effect.runPromise(
+      readInactivityHours(file).pipe(Effect.provideService(FileSystem.FileSystem, fs)),
+    );
+  assert.equal(await readSettings(), 48);
   await writeFile(file, JSON.stringify({ sidebar: { inactivityHours: 2 } }));
-  assert.equal(await readInactivityHours(file), 2);
+  assert.equal(await readSettings(), 2);
   await writeFile(file, JSON.stringify({ sidebar: { inactivityHours: 0 } }));
-  await assert.rejects(readInactivityHours(file), /Invalid Pagoda settings/u);
+  await assert.rejects(readSettings(), /Invalid Pagoda settings/u);
   await writeFile(file, JSON.stringify({ sidebar: { inactivityHours: 2, extra: true } }));
-  await assert.rejects(readInactivityHours(file), /Invalid Pagoda settings/u);
+  await assert.rejects(readSettings(), /Invalid Pagoda settings/u);
 });
 
 test("backend exposes the configured inactivity period", async (t) => {
@@ -92,7 +110,7 @@ test("workspace restores pins and favourites without reopening the session", asy
   const file = path.join(directory, "state.json");
   const first = new DesktopWorkspace(
     fakePiOptions(directory),
-    new SessionMetadataStore(file),
+    new SessionMetadataStore(fs, file),
     48,
     undefined,
     fakeSessionFactory,
@@ -102,21 +120,22 @@ test("workspace restores pins and favourites without reopening the session", asy
   await first.prompt({ key, message: "retained session", mode: "prompt" });
   const [stored] = await first.list(directory);
   assert.ok(stored);
-  await first.setMetadataFlag(stored.id, "pinned", true);
-  await first.setMetadataFlag(stored.id, "favourite", true);
+  await Effect.runPromise(first.setMetadataFlag(stored.id, "pinned", true));
+  await Effect.runPromise(first.setMetadataFlag(stored.id, "favourite", true));
   await first.close();
 
   const second = new DesktopWorkspace(
     fakePiOptions(directory),
-    new SessionMetadataStore(file),
+    new SessionMetadataStore(fs, file),
     48,
     undefined,
     fakeSessionFactory,
   );
   try {
     await second.start();
-    assert.equal(second.snapshot().sessions.length, 1);
-    const marks = second.snapshot().metadata.find((entry) => entry.id === stored.id);
+    const snapshot = await Effect.runPromise(second.snapshot());
+    assert.equal(snapshot.sessions.length, 1);
+    const marks = snapshot.metadata.find((entry) => entry.id === stored.id);
     assert.equal(marks?.pinned, true);
     assert.equal(marks.favourite, true);
     assert.ok((await second.listAll()).some((session) => session.id === stored.id));

@@ -1,21 +1,25 @@
-import { Stream } from "effect";
+import { Effect, Stream } from "effect";
 import { HttpServerResponse } from "effect/http";
 
-import type { SessionMetadata, SessionSnapshot } from "../contracts/index.ts";
-import type { DesktopWorkspace } from "./workspace.ts";
+import type { SessionMetadata, SessionSnapshot, WorkspaceState } from "../contracts/index.ts";
+import type { WorkspaceObservation, WorkspaceObservations } from "./observation.ts";
 
 /** Each connection observes current state without owning the underlying executions. */
 export function observeWorkspace(
-  workspace: DesktopWorkspace,
+  observations: WorkspaceObservations,
   shutdown: AbortSignal,
 ): HttpServerResponse.HttpServerResponse {
   const encoder = new TextEncoder();
   const pending = new Map<string, SessionSnapshot>();
   let metadata: SessionMetadata[] | undefined;
   let account: string | undefined;
+  let ready = false;
+  const beforeReady = new Map<string, { event: WorkspaceObservation; revision: number }>();
   let stopped = false;
   let cleanup = (): void => {};
   let flush = (): void => {};
+  let deliverSnapshot = (_snapshot: { state: WorkspaceState; revision: number }): void => {};
+  let failSnapshot = (_error: unknown): void => {};
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller): void {
@@ -23,7 +27,7 @@ export function observeWorkspace(
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(value)}\n\n`));
       };
       flush = (): void => {
-        if (stopped) return;
+        if (stopped || !ready) return;
         while ((controller.desiredSize ?? 0) > 0) {
           if (account !== undefined) {
             const next = account;
@@ -49,34 +53,58 @@ export function observeWorkspace(
         cleanup();
         controller.close();
       };
-      const unsubscribe = workspace.subscribe((snapshot) => {
-        pending.set(snapshot.key, snapshot);
+      const receive = (event: WorkspaceObservation): void => {
+        switch (event.type) {
+          case "snapshot":
+            pending.set(event.value.key, event.value);
+            break;
+          case "metadata":
+            metadata = event.value;
+            break;
+          case "account":
+            account = event.value;
+            break;
+          default:
+            event satisfies never;
+        }
         flush();
-      });
-      const unsubscribeMetadata = workspace.subscribeMetadata((next) => {
-        metadata = next;
-        flush();
-      });
-      const unsubscribeAccount = workspace.subscribeAccount((next) => {
-        account = next;
-        flush();
+      };
+      const unsubscribe = observations.subscribe((event, revision) => {
+        if (ready) receive(event);
+        else {
+          const key = event.type === "snapshot" ? `snapshot:${event.value.key}` : event.type;
+          beforeReady.set(key, { event, revision });
+        }
       });
       const heartbeat = setInterval(() => {
-        if (!stopped && (controller.desiredSize ?? 0) > 0) send("heartbeat", {});
+        if (ready && !stopped && (controller.desiredSize ?? 0) > 0) send("heartbeat", {});
       }, 15_000);
       cleanup = (): void => {
         clearInterval(heartbeat);
         shutdown.removeEventListener("abort", stop);
         unsubscribe();
-        unsubscribeMetadata();
-        unsubscribeAccount();
       };
       shutdown.addEventListener("abort", stop, { once: true });
       if (shutdown.aborted) {
         stop();
         return;
       }
-      send("ready", workspace.snapshot());
+      deliverSnapshot = ({ state, revision }): void => {
+        if (stopped) return;
+        send("ready", state);
+        ready = true;
+        for (const item of beforeReady.values()) {
+          if (item.revision > revision) receive(item.event);
+        }
+        beforeReady.clear();
+        flush();
+      };
+      failSnapshot = (error: unknown): void => {
+        if (stopped) return;
+        stopped = true;
+        cleanup();
+        controller.error(error);
+      };
     },
     pull(): void {
       flush();
@@ -88,7 +116,17 @@ export function observeWorkspace(
     },
   });
   return HttpServerResponse.stream(
-    Stream.fromReadableStream({ evaluate: () => stream, onError: (error) => error }),
+    Stream.unwrap(
+      Effect.gen(function* () {
+        yield* observations
+          .snapshot()
+          .pipe(
+            Effect.match({ onSuccess: deliverSnapshot, onFailure: failSnapshot }),
+            Effect.forkScoped,
+          );
+        return Stream.fromReadableStream({ evaluate: () => stream, onError: (error) => error });
+      }),
+    ),
     { contentType: "text/event-stream", headers: { "cache-control": "no-cache" } },
   );
 }

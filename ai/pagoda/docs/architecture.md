@@ -14,8 +14,8 @@ skills, prompts, system instructions, and credential files; ADR-015 changes acco
 backend-wide choice for new owners, independent of the terminal switcher. The
 [specification](specs/workspace.md#launch-and-configuration) owns that behavior.
 
-Normal startup and application fixtures use SDK sessions. Browser/Electron HTTP/SSE transport is
-unchanged; further backend responsibility separation is tracked in the migration plan.
+Normal startup and application fixtures use SDK sessions. Browser/Electron clients use the same
+HTTP/SSE transport; backend observation is independent of SSE encoding and connection lifetime.
 
 ## Current structure
 
@@ -56,6 +56,12 @@ credentials, and model configuration; clients receive neither credentials nor ra
 connected execution owner. Fork publication preserves lineage and is atomic without overwriting
 another file; the [specification](specs/workspace.md#history-navigation-and-forks) defines
 source-history protection.
+
+The workspace owns execution owners and publishes backend observations; `events.ts` encodes those
+observations for each SSE connection. Initial snapshots and subsequent observations are ordered so
+an asynchronous metadata read cannot hide a concurrent update. Metadata and settings use Effect's
+filesystem service. Metadata operations within one backend are serialized; separate backends still
+have the collision and live-update limitations in the specification.
 
 Verify compatibility against installed Pi declarations and documentation. Check the revision of any
 reference checkout before using its source, and validate upgrades with integration checks.

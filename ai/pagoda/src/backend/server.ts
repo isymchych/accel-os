@@ -2,8 +2,8 @@ import { randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { createServer, type RequestListener } from "node:http";
 
-import { NodeHttpServer } from "@effect/platform-node";
-import { Effect, Exit, Scope } from "effect";
+import { NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
+import { Effect, Exit, FileSystem, Scope } from "effect";
 
 import { createHttpApp } from "./http.ts";
 import type { PiSessionOptions, PiSessionFactory } from "./pi/session.ts";
@@ -31,8 +31,15 @@ export interface Backend {
 /** One foreground backend owns execution; clients only observe and send commands. */
 export async function startBackend(options: BackendOptions): Promise<Backend> {
   options.signal?.throwIfAborted();
-  const inactivityHours = await readInactivityHours(options.settingsFile);
-  const metadata = new SessionMetadataStore(options.stateFile);
+  const fs = await Effect.runPromise(
+    FileSystem.FileSystem.pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+  const inactivityHours = await Effect.runPromise(
+    readInactivityHours(options.settingsFile).pipe(
+      Effect.provideService(FileSystem.FileSystem, fs),
+    ),
+  );
+  const metadata = new SessionMetadataStore(fs, options.stateFile);
   const workspace = new DesktopWorkspace(
     options.pi,
     metadata,

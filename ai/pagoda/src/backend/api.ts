@@ -28,7 +28,7 @@ export function workspaceApi(
 
   const handlers = HttpApiBuilder.group(PagodaApi, "workspace", (group) =>
     group
-      .handle("workspace", () => Effect.sync(() => workspace.snapshot()))
+      .handle("workspace", () => workspace.snapshot().pipe(Effect.orDie))
       .handle("accounts", () => operation(() => workspace.accounts()))
       .handle("selectAccount", ({ payload }) =>
         operation(async () => {
@@ -40,10 +40,13 @@ export function workspaceApi(
       .handle("list", ({ payload }) => operation(() => workspace.list(payload.cwd)))
       .handle("listAll", () => operation(() => workspace.listAll()))
       .handle("metadataFlag", ({ payload }) =>
-        operation(async () => {
-          await workspace.setMetadataFlag(payload.id, payload.flag, payload.value);
-          return null;
-        }),
+        workspace.setMetadataFlag(payload.id, payload.flag, payload.value).pipe(
+          Effect.as(null),
+          Effect.mapError((error) => ({
+            error: error instanceof Error ? error.message : "Operation failed",
+          })),
+          Effect.uninterruptible,
+        ),
       )
       .handle("create", ({ payload }) => operation(() => workspace.create(payload.cwd)))
       .handle("open", ({ payload }) => operation(() => workspace.open(payload.cwd, payload.path)))
