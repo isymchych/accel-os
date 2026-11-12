@@ -2,8 +2,9 @@
 
 ## ADR-011: Local Electron interface to the existing Pi setup
 
-Status: UI transport and app-lifetime execution superseded by ADR-012 below. The configured Pi
-subprocess, native-session, and local Pi RPC transport decisions remain applicable.
+Status: UI transport and app-lifetime execution superseded by ADR-012 below. Configured Pi
+subprocesses and the local RPC transport are superseded by ADR-013; native-session compatibility
+remains applicable. The rationale below records the earlier choices.
 
 ### Why Electron and plain Vite
 
@@ -43,7 +44,7 @@ transport. Reconsider upstream reuse when its public API covers this boundary.
 
 Status: accepted. Supersedes ADR-011's renderer IPC and app-lifetime execution choices. The Hono
 implementation described below has since been replaced by Effect HTTP; the transport decision
-remains.
+remains. ADR-013 supersedes the Pi RPC integration retained by this decision.
 
 Hono on Node owns a foreground backend. HTTP commands and SSE observations are the sole application
 transport; the configured Pi JSONL RPC integration remains unchanged. React runs in a browser or a
@@ -61,3 +62,31 @@ configuration belongs to backend startup, and clients use directory-path entry i
 dialogs. Local HTTP also introduces an
 [authentication and origin-security boundary](architecture.md#security-and-execution); remote access
 remains outside scope.
+
+## ADR-013: Direct Pi SDK sessions with native history compatibility
+
+Status: accepted, not implemented. Supersedes ADR-011's configured-subprocess/local-RPC choices and
+the Pi RPC integration retained in ADR-012. HTTP/SSE client transport and launcher-owned backend
+lifetime remain unchanged.
+
+Pagoda will host Pi SDK sessions directly in its backend, with Pagoda-owned execution configuration,
+tools, and extensions. Native terminal session history remains discoverable and reopenable; sharing
+history does not require reproducing the terminal runtime or extension environment. The
+[workspace specification](specs/workspace.md#launch-and-configuration) owns that compatibility
+contract and the unresolved credential/account and project-resource choices.
+
+The original reason for RPC was reuse of the terminal launcher and isolation of its process-global
+configuration. Terminal parity is no longer required, so retaining a subprocess protocol would add
+transport and lifecycle machinery without serving that goal. Direct SDK calls replace protocol
+framing, response correlation, and the desktop command bridge.
+
+Retaining RPC was the alternative. Hosting the SDK in separate workers would preserve process
+isolation but require another interprocess protocol. Neither is the selected design. In-process
+sessions share the backend process and its failure boundary; their cwd and configuration are
+explicit rather than implemented by switching process-global state.
+
+Use the documented SDK contracts and verify Pagoda's integration during implementation, without a
+separate SDK feasibility or terminal-extension compatibility evaluation. The
+[migration plan](../plans/effect-4-migration.md#3-direct-sdk-integration-and-scoped-execution-ownership)
+tracks delivery. This decision records the target, not permission to change code or a claim that the
+current RPC implementation has already been removed.

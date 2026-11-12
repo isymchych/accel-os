@@ -14,8 +14,8 @@ Local-only Effect/React app with browser and Electron clients in private pnpm wo
 - For behavior changes, read [DOMAIN.md](docs/domain.md) and the
   [workspace specification](docs/specs/workspace.md).
 - For integration changes, read [ARCHITECTURE.md](docs/architecture.md): it owns process, import,
-  HTTP, and security boundaries, including reuse of the `ai/pi/` RPC entry rather than private
-  imports.
+  HTTP, and security boundaries and distinguishes the current RPC implementation from the accepted
+  SDK target. Do not preserve terminal-runtime or extension parity as a migration requirement.
 - Before expanding scope, read [VISION.md](docs/vision.md); [DECISIONS.md](docs/decisions.md)
   explains the consequential tradeoffs.
 
@@ -58,7 +58,7 @@ for startup and explicit restart rules that protect active work.
 Use Node's test runner for focused/integration checks and Playwright browser tests for full
 frontend/HTTP/backend journeys; keep Electron checks focused on its shell. Follow
 [development checks](docs/development.md#checks) for isolated, credential-free execution and the
-distinction between fake RPC wiring and real Pi compatibility.
+distinction between fake integration wiring and real Pi compatibility.
 
 Choose focused checks according to the root validation guidance. `pnpm run check` runs the full
 workspace verification suite. `pnpm run test:e2e` covers frontend/HTTP/backend and Electron journeys

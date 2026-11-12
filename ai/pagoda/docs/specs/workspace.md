@@ -5,24 +5,32 @@ current implementation gaps are identified in [architecture](../architecture.md)
 
 ## Launch and configuration
 
-`ai ui` starts the local backend with the selected account profile, working directory, and
-code-navigation choice, then opens Electron. Closing Electron stops the backend and active work.
-`ai ui --browser` opens the browser instead and keeps the backend foreground until Ctrl+C. The
-terminal launcher retains its ordinary argument passthrough and account selection behavior.
-Unsupported UI arguments are rejected rather than forwarded to Pi. Remote access is outside scope.
+`ai ui` starts the local backend with the selected working directory, then opens Electron. Closing
+Electron stops the backend and active work. `ai ui --browser` opens the browser instead and keeps
+the backend foreground until Ctrl+C. The terminal launcher retains its ordinary argument passthrough
+and account selection behavior. Unsupported UI arguments are rejected rather than forwarded to Pi.
+Remote access is outside scope.
 
-Execution uses the canonical Pi RPC entry and existing configuration, credentials, resources, and
-session storage. Each child keeps its own directory and profile environment; process-global changes
+Execution uses direct, in-process Pi SDK sessions with Pagoda-owned configuration, tools, and
+extensions, not the terminal's `ai/pi/runtime` launcher or its extension list. Each execution owner
+has an explicit working directory and session configuration; process-global cwd/environment changes
 must not retarget another session.
+
+Credential/account reuse and which project resources Pagoda loads remain unresolved. The current
+launcher accepts profile and code-navigation selections; their SDK semantics must be decided before
+changing that wiring. SDK adoption alone neither removes existing credential selection nor requires
+loading a terminal profile's resources wholesale.
 
 ## Session selection and concurrent work
 
 Users can enter validated directory paths and browse, create, and reopen native Pi sessions.
 Selecting a session displays its transcript, draft, and activity. Reopening an active session reuses
-its execution owner; reopening saved history after child exit creates a new owner. The Sessions
-library lists native sessions across working directories in the shared Pi session store, with search
-and directory filtering. The selected account supplies execution credentials when a session is
-reopened; session history is not separated by account profile.
+its execution owner; reopening saved history after its execution owner is disposed creates a new
+owner. The Sessions library lists native sessions across working directories in the shared Pi
+session store, with search and directory filtering. Session history is not separated by account
+profile. Viewing regular terminal history does not require its original extensions; resuming it uses
+Pagoda's tools, instructions, and execution configuration rather than recreating its original
+environment.
 
 The sidebar shows pinned sessions and recently active sessions. Recent uses native Pi session
 activity, including work performed in the CLI; reopening history alone does not renew it. Refresh
@@ -47,8 +55,8 @@ execution owners, while their drafts and selections remain independent.
 ## Input, follow-ups, and steering
 
 Users can submit input, queue explicit follow-ups, and steer active work using Pi's native
-semantics. Follow-ups and steering are distinct actions. Model and thinking-level controls use Pi's
-existing configuration and runtime, apply to the selected idle session, and do not change global
+semantics. Follow-ups and steering are distinct actions. Model and thinking-level controls use the
+selected Pi SDK session's configuration, apply to that idle session, and do not change global
 defaults. When idle, follow-up and steering both start work immediately.
 
 Drafts and pending commands stay with their originating session across view changes and page
@@ -65,12 +73,12 @@ and native message/tool images are displayed in content order. Thinking streams 
 sections at its original position and remains available in completed messages and reopened history.
 Transient streaming updates coalesce; completed messages and lifecycle changes appear immediately.
 
-Command rejection, provider/tool errors, extension failures, and child exit remain distinguishable
-where Pi exposes them. Agent output is displayed as untrusted content under the
+Command rejection, provider/tool errors, extension failures, and execution-owner failures remain
+distinguishable where Pi exposes them. Agent output is displayed as untrusted content under the
 [local client boundaries](#local-client-boundaries).
 
-Pi notifications are displayed. Unsupported RPC dialogs receive explicit cancellation and a visible
-notice, never silent approval; other presentation-only records are not rendered.
+Pi notifications are displayed. Unsupported extension dialogs receive explicit cancellation and a
+visible notice, never silent approval; other presentation-only records are not rendered.
 
 ## History navigation and forks
 

@@ -1,13 +1,13 @@
 # Pagoda vision
 
-A local web workspace, with an optional Electron client, for the existing Pi coding-agent setup. It
-provides a graphical way to follow agent work, manage sessions, and explore history without creating
-a second agent configuration or execution system.
+A local web workspace, with an optional Electron client, built on the Pi SDK. It provides a
+graphical way to follow agent work, manage sessions, and explore native Pi history.
 
 ## Product direction
 
-- **One Pi setup.** Terminal and graphical clients use the same profiles, resources, and native
-  sessions. Moving between them should not require maintaining parallel settings.
+- **Native Pi sessions, Pagoda's execution environment.** View regular terminal Pi histories and
+  continue them using Pagoda's tools and instructions. Share native session format and storage,
+  without requiring terminal runtime, configuration, or extension parity.
 - **A workspace for agent work.** Make ongoing activity, results, and failures understandable, with
   direct controls for input, cancellation, and session navigation.
 - **Local, single-user.** Serve the user on their own machine, without a managed background service.

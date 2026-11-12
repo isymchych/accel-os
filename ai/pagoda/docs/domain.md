@@ -12,10 +12,11 @@
 
 The workspace is the app's collection of open sessions.
 
-Pi owns tools, model access, context management, retries, compaction, queues, history, and session
-files. The backend owns Pi process lifecycle and shared session state; each client owns navigation,
-drafts, and graphical presentation. `ai/pi/` remains the source of truth for agent configuration and
-credentials.
+Pi owns agent execution machinery, model access, context management, retries, compaction, queues,
+native history, and session files. Pagoda owns its execution configuration, tool/extension
+selection, SDK session lifecycle, and shared presentation state; each client owns navigation,
+drafts, and graphical presentation. Credential/account reuse and project-resource loading remain
+open choices in the [workspace specification](specs/workspace.md#launch-and-configuration).
 
 ## Invariants
 
@@ -33,9 +34,11 @@ behavior.
 
 ## Configuration and interaction compatibility
 
-Share Pi configuration and session formats, not terminal widgets. Configuration changes take effect
-at Pi's native boundaries or the next child launch; later profile selection cannot retarget existing
-work. Custom terminal UI and TUI-only tools require graphical adaptation.
+Native history compatibility does not imply the same execution environment. Viewing terminal history
+does not require its original extensions; continuing it uses Pagoda's available tools and
+instructions. Pagoda does not promise to reproduce terminal-only behavior or load terminal
+extensions. Configuration changes apply at Pi's supported boundaries or new session creation,
+without retargeting existing work.
 
 ## Execution authority
 
