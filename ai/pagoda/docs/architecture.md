@@ -46,6 +46,11 @@ reference checkout before using its source, and validate upgrades with integrati
 HTTP requests are validated at the server and JSON/SSE responses at the client. Typed SDK calls and
 events are projected into Pagoda presentation data.
 
+Application operations use shared schema-backed errors: rejected requests return HTTP 400 and
+operational failures return HTTP 500, both retaining the `{ error }` response shape. External
+failures are normalized at the backend boundary, preserving their causes internally; HTTP handlers
+compose application effects without reclassifying errors.
+
 The backend publishes snapshots including partial output; completed Pi messages replace
 reconstructed output. Clients resynchronize from current state rather than replaying commands. Pi's
 `agent_end` may precede retries or queued work; `agent_settled` marks the end of automatic
@@ -55,6 +60,10 @@ Commands and observations target an execution-owner key, distinct from the persi
 and file. Client session storage keys drafts to that owner. Execution-owner scopes own SDK sessions,
 subscriptions, and active work; HTTP connection scopes own observation only. Snapshots and
 subsequent observations are ordered to preserve concurrent updates.
+
+Workspace scopes own command execution; HTTP request scopes own reads and observations.
+Non-cancellable SDK calls run in session-owned Effect fibers, independently of callers waiting for
+their results. A Deferred confirms prompt acceptance while its execution fiber continues.
 
 SDK prompt acceptance uses Pi's declared internal `preflightResult` callback, an approved
 integration exception tested separately from execution completion. Lost HTTP confirmation remains
@@ -74,7 +83,9 @@ requests. These controls protect the client boundary; tool execution remains
 
 ## Process lifetime
 
-Backend shutdown closes observers, waits for SDK acquisition, aborts active SDK work, disposes
-sessions, and settles credential writes. The launcher owns backend lifetime: Electron mode ends with
-its window, while browser mode runs until interrupted. Clients attach through an explicit connection
-URL; startup has no automatic backend discovery, daemon, or crash replay.
+Backend shutdown closes observers, waits for SDK acquisition, binding, and pending prompt preflight,
+then aborts active SDK work, drains session operation fibers, disposes sessions, and settles
+credential writes. Pi cannot abort prompt preflight before a run exists. The launcher owns backend
+lifetime: Electron mode ends with its window, while browser mode runs until interrupted. Clients
+attach through an explicit connection URL; startup has no automatic backend discovery, daemon, or
+crash replay.

@@ -1,15 +1,118 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
+import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
+import { HttpApiClient } from "effect/http-api";
 
 import { startBackend } from "../../src/backend/server.ts";
+import { PagodaApi } from "../../src/contracts/api.ts";
+import { OperationFailed, OperationRejected } from "../../src/contracts/errors.ts";
 import { SnapshotSchema, WorkspaceSchema } from "../../src/contracts/index.ts";
 import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+
+test("HTTP distinguishes rejected commands from operational failures, including workspace reads", async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "pagoda-http-errors-"));
+  const stateFile = path.join(directory, "state.json");
+  const backend = await startBackend({
+    port: 0,
+    pi: fakePiOptions(directory),
+    stateFile,
+    sessionFactory: async (options) => {
+      const sdk = await fakeSessionFactory(options);
+      sdk.modelRuntime.getAvailable = async (): Promise<never> => {
+        throw new Error("Model discovery failed");
+      };
+      return sdk;
+    },
+  });
+  t.after(async () => {
+    await backend.close();
+    await rm(directory, { recursive: true, force: true });
+  });
+  const token = new URLSearchParams(new URL(backend.connectionUrl).hash.slice(1)).get("token");
+  assert.ok(token);
+  const auth = await fetch(`${backend.origin}/api/auth`, {
+    method: "POST",
+    headers: {
+      origin: backend.origin,
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: "{}",
+  });
+  const cookie = auth.headers.getSetCookie()[0]?.split(";")[0];
+  assert.ok(cookie);
+  const response = await fetch(`${backend.origin}/api/workspace`, { headers: { cookie } });
+  const workspace: unknown = await response.json();
+  assert.ok(Schema.is(WorkspaceSchema)(workspace));
+  const post = (operation: string, payload: unknown): Promise<Response> =>
+    fetch(`${backend.origin}/api/${operation}`, {
+      method: "POST",
+      headers: { origin: backend.origin, "content-type": "application/json", cookie },
+      body: JSON.stringify(payload),
+    });
+  for (const [operation, payload, message] of [
+    [
+      "model",
+      { key: workspace.initialKey, provider: "missing", modelId: "missing" },
+      "Unknown Pi model",
+    ],
+    [
+      "prompt",
+      { key: workspace.initialKey, message: "reject", mode: "prompt" },
+      "Rejected test prompt",
+    ],
+  ] as const) {
+    const rejected = await post(operation, payload);
+    assert.equal(rejected.status, 400);
+    assert.deepEqual(await rejected.json(), { error: message });
+  }
+  const failed = await post("controls", { key: workspace.initialKey });
+  assert.equal(failed.status, 500);
+  assert.deepEqual(await failed.json(), { error: "Model discovery failed" });
+
+  const missingDirectory = await post("directory", { cwd: path.join(directory, "missing") });
+  assert.equal(missingDirectory.status, 400);
+
+  const client = await Effect.runPromise(
+    HttpApiClient.make(PagodaApi, {
+      baseUrl: backend.origin,
+      transformClient: (httpClient) =>
+        HttpClient.mapRequest(
+          httpClient,
+          HttpClientRequest.setHeaders({ cookie, origin: backend.origin }),
+        ),
+    }).pipe(Effect.provide(FetchHttpClient.layer)),
+  );
+  const rejection = await Effect.runPromise(
+    client.workspace
+      .model({
+        payload: { key: workspace.initialKey, provider: "missing", modelId: "missing" },
+      })
+      .pipe(Effect.flip),
+  );
+  assert.ok(rejection instanceof OperationRejected);
+  assert.equal(rejection.message, "Unknown Pi model");
+  const failure = await Effect.runPromise(
+    client.workspace.controls({ payload: { key: workspace.initialKey } }).pipe(Effect.flip),
+  );
+  assert.ok(failure instanceof OperationFailed);
+  assert.equal(failure.message, "Model discovery failed");
+
+  await writeFile(stateFile, JSON.stringify({ invalid: "metadata" }));
+  const unreadable = await fetch(`${backend.origin}/api/workspace`, { headers: { cookie } });
+  assert.equal(unreadable.status, 500);
+  assert.deepEqual(await unreadable.json(), { error: "Invalid Pagoda session metadata" });
+  await writeFile(stateFile, "{broken");
+  const invalidJson = await fetch(`${backend.origin}/api/workspace`, { headers: { cookie } });
+  assert.equal(invalidJson.status, 500);
+  assert.deepEqual(await invalidJson.json(), { error: "Invalid Pagoda session metadata" });
+});
 
 test("authenticated HTTP preserves execution independently of observers and cleans up on shutdown", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-http-"));
@@ -147,6 +250,15 @@ test("authenticated HTTP preserves execution independently of observers and clea
   const key = workspace.initialKey;
   for (const invalid of [{}, { key: "" }, { key, extra: true }])
     assert.equal((await post("stop", invalid, cookie)).status, 400);
+  for (const [operation, payload] of [
+    ["prompt", { key: "missing-owner", mode: "prompt", message: "hello" }],
+    ["history", { key: "missing-owner" }],
+    ["fork", { key: "missing-owner", entryId: "missing-entry" }],
+  ] as const) {
+    const response = await post(operation, payload, cookie);
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "This session is unavailable" });
+  }
   const invalidRequest = await post("stop", {}, cookie);
   assert.equal(invalidRequest.headers.get("cross-origin-resource-policy"), "same-origin");
   assert.equal(

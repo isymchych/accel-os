@@ -5,11 +5,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 
 import { SessionCatalog } from "../../src/backend/catalog.ts";
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/contracts/index.ts";
+import { runScoped } from "./fixtures/helpers.ts";
 import { contentText, waitForSession } from "./fixtures/helpers.ts";
 
 const RequestSchema = Schema.Struct({
@@ -163,12 +164,12 @@ test(
       sessionDir: path.join(config, "sessions"),
       sharedDir: path.join(directory, "ai"),
     };
-    const session = new DesktopSession(launch);
+    const session = await runScoped(t, DesktopSession.make(launch));
     let destination: DesktopSession | undefined;
     t.after(async () => {
       releaseQueue.resolve(undefined);
-      await session.close();
-      await destination?.close();
+      await Effect.runPromise(session.close());
+      if (destination) await Effect.runPromise(destination.close());
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
@@ -178,8 +179,8 @@ test(
       });
       await rm(directory, { recursive: true, force: true });
     });
-    await session.start();
-    await session.model("desktop-fixture", "fixture");
+
+    await Effect.runPromise(session.model("desktop-fixture", "fixture"));
     await t.test("Pagoda configuration executes the actual SDK read tool", async () => {
       const settled = observe(
         session,
@@ -187,7 +188,7 @@ test(
           snapshot.execution === "idle" &&
           snapshot.messages.some((message) => message.role === "assistant"),
       );
-      await session.prompt("Read fixture.txt and report the result.");
+      await Effect.runPromise(session.prompt("Read fixture.txt and report the result."));
       await settled;
       assert.equal(providerError, undefined);
       assert.equal(requests, 2);
@@ -215,41 +216,43 @@ test(
     const original = catalog[0];
     assert.ok(original);
     assert.ok((await discovery.list()).some((item) => item.id === original.id));
-    const history = await session.history();
+    const history = await Effect.runPromise(session.history());
     const first = history.entries.find((entry) => entry.label.startsWith("user:"));
     assert.ok(first && history.leafId);
     const leafId = history.leafId;
     await t.test("current user leaf navigation is a no-op without restored text", async () => {
-      const forkPath = await session.fork(first.id);
-      const fork = new DesktopSession({ ...launch, sessionFile: forkPath });
+      const forkPath = await Effect.runPromise(session.fork(first.id));
+      const fork = await runScoped(t, DesktopSession.make({ ...launch, sessionFile: forkPath }));
       try {
-        await fork.start();
         const before = fork.snapshot().messages;
-        assert.equal((await fork.history()).leafId, first.id);
-        assert.equal(await fork.navigate(first.id), undefined);
-        assert.equal((await fork.history()).leafId, first.id);
+        assert.equal((await Effect.runPromise(fork.history())).leafId, first.id);
+        assert.equal(await Effect.runPromise(fork.navigate(first.id)), undefined);
+        assert.equal((await Effect.runPromise(fork.history())).leafId, first.id);
         assert.deepEqual(fork.snapshot().messages, before);
       } finally {
-        await fork.close();
+        await Effect.runPromise(fork.close());
         await rm(forkPath, { force: true });
       }
     });
     await t.test(
       "native navigation preserves entries and model controls omit credentials",
       async () => {
-        assert.equal(await session.navigate(first.id), "Read fixture.txt and report the result.");
+        assert.equal(
+          await Effect.runPromise(session.navigate(first.id)),
+          "Read fixture.txt and report the result.",
+        );
         assert.ok(!session.snapshot().messages.some((message) => message.role === "user"));
-        await session.navigate(leafId);
+        await Effect.runPromise(session.navigate(leafId));
         assert.deepEqual(
-          (await session.history()).entries,
+          (await Effect.runPromise(session.history())).entries,
           history.entries,
           "Navigation preserves every original entry",
         );
-        const controls = await session.controls();
+        const controls = await Effect.runPromise(session.controls());
         assert.deepEqual(controls.model, { provider: "desktop-fixture", id: "fixture" });
         assert.ok(!JSON.stringify(controls).includes("synthetic-test-key"));
-        await session.model("desktop-fixture", "fixture");
-        await session.thinking("off");
+        await Effect.runPromise(session.model("desktop-fixture", "fixture"));
+        await Effect.runPromise(session.thinking("off"));
       },
     );
 
@@ -257,18 +260,21 @@ test(
       "snapshot execution leaves the streaming source and its persisted history untouched",
       async () => {
         const active = observe(session, (snapshot) => snapshot.streaming.length > 0);
-        await session.prompt("HOLD_SOURCE");
+        await Effect.runPromise(session.prompt("HOLD_SOURCE"));
         await active;
         const sourceBytes = await readFile(original.path, "utf8");
-        const forkPath = await session.fork(leafId);
+        const forkPath = await Effect.runPromise(session.fork(leafId));
         assert.equal(await readFile(original.path, "utf8"), sourceBytes);
         assert.equal(session.snapshot().execution, "running");
-        await assert.rejects(session.navigate(first.id), /idle/u);
-        destination = new DesktopSession({
-          ...launch,
-          sessionFile: forkPath,
-        });
-        await destination.start();
+        await assert.rejects(Effect.runPromise(session.navigate(first.id)), /idle/u);
+        destination = await runScoped(
+          t,
+          DesktopSession.make({
+            ...launch,
+            sessionFile: forkPath,
+          }),
+        );
+
         assert.notEqual(destination.snapshot().sessionId, session.snapshot().sessionId);
         assert.ok(
           !destination
@@ -283,14 +289,14 @@ test(
               contentText(message.content).includes("Independent fork"),
             ),
         );
-        await destination.prompt("Independent fork");
+        await Effect.runPromise(destination.prompt("Independent fork"));
         await forkSettled;
         assert.equal(
           session.snapshot().execution,
           "running",
           "Destination execution does not retarget the source",
         );
-        await session.stop();
+        await Effect.runPromise(session.stop());
       },
     );
     await t.test("Stop terminates an actual configured shell process", async () => {
@@ -299,11 +305,11 @@ test(
           (tool) => tool.name === "bash" && contentText(tool.content).includes("NATIVE_WAIT_READY"),
         ),
       );
-      await session.prompt("RUN_HARMLESS_TOOL");
+      await Effect.runPromise(session.prompt("RUN_HARMLESS_TOOL"));
       await toolRunning;
       const nativeToolPid = Number(await readFile(path.join(project, "native-tool-pid"), "utf8"));
       process.kill(nativeToolPid, 0);
-      await session.stop();
+      await Effect.runPromise(session.stop());
       assert.throws(() => process.kill(nativeToolPid, 0), { code: "ESRCH" });
       assert.equal(providerError, undefined);
       assert.equal(requests, 5);
@@ -322,25 +328,28 @@ test(
               snapshot.messages.at(-1)?.role === "assistant" &&
               snapshot.messages.some((message) => contentText(message.content) === text),
           );
-          assert.equal(await session.prompt(text, mode), "started");
+          assert.equal(await Effect.runPromise(session.prompt(text, mode)), "started");
           await complete;
-          assert.equal((await session.controls()).pendingMessageCount, 0);
+          assert.equal((await Effect.runPromise(session.controls())).pendingMessageCount, 0);
         }
       },
     );
     await t.test(
       "native steering runs before follow-up without interrupting the current response",
       async () => {
-        await session.prompt("QUEUE_RUN");
+        await Effect.runPromise(session.prompt("QUEUE_RUN"));
         await queueStarted.promise;
-        assert.equal(await session.prompt("QUEUE_FOLLOW", "follow_up"), "queued");
-        assert.equal(await session.prompt("QUEUE_STEER", "steer"), "queued");
+        assert.equal(
+          await Effect.runPromise(session.prompt("QUEUE_FOLLOW", "follow_up")),
+          "queued",
+        );
+        assert.equal(await Effect.runPromise(session.prompt("QUEUE_STEER", "steer")), "queued");
         assert.deepEqual(
           queueInputs,
           ["QUEUE_RUN"],
           "Queued inputs must not launch another provider request while the response is held",
         );
-        assert.equal((await session.controls()).pendingMessageCount, 2);
+        assert.equal((await Effect.runPromise(session.controls())).pendingMessageCount, 2);
         const complete = observe(
           session,
           (snapshot) =>
@@ -362,11 +371,11 @@ test(
             .map((message) => contentText(message.content)),
           ["QUEUE_RUN", "QUEUE_STEER", "QUEUE_FOLLOW"],
         );
-        assert.equal((await session.controls()).pendingMessageCount, 0);
+        assert.equal((await Effect.runPromise(session.controls())).pendingMessageCount, 0);
         assert.equal(providerError, undefined);
       },
     );
-    await session.close();
+    await Effect.runPromise(session.close());
     await t.test("native persistence retains the original session after shutdown", async () => {
       const sessionsDirectory = path.join(config, "sessions");
       const sessionFiles = (await readdir(sessionsDirectory, { recursive: true })).filter((file) =>

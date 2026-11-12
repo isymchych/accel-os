@@ -1,13 +1,13 @@
 import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 
+import { OperationFailed, OperationRejected } from "./errors.ts";
 import {
   AccountsSchema,
   AccountSelectionSchema,
   ControlsSchema,
   DirectorySchema,
   EntrySchema,
-  ErrorSchema,
   HistorySchema,
   MetadataFlagSchema,
   ModelSchema,
@@ -20,13 +20,16 @@ import {
   WorkspaceSchema,
 } from "./index.ts";
 
-const OperationError = ErrorSchema.annotate({ httpApiStatus: 400 });
+const OperationError = [OperationRejected, OperationFailed];
 
 /** Shared HTTP command contract; observation remains a separate streaming boundary. */
 export const PagodaApi = HttpApi.make("pagoda")
   .add(
     HttpApiGroup.make("workspace").add(
-      HttpApiEndpoint.get("workspace", "/api/workspace", { success: WorkspaceSchema }),
+      HttpApiEndpoint.get("workspace", "/api/workspace", {
+        success: WorkspaceSchema,
+        error: OperationError,
+      }),
       HttpApiEndpoint.get("accounts", "/api/accounts", {
         success: AccountsSchema,
         error: OperationError,

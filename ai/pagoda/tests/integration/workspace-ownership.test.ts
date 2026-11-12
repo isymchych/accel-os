@@ -4,9 +4,10 @@ import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
 
-import { Effect } from "effect";
+import { Effect, type Scope } from "effect";
 
 import type { PiSessionOptions } from "../../src/backend/pi/session.ts";
+import type { DesktopWorkspace as Workspace } from "../../src/backend/workspace.ts";
 import type {
   SessionId,
   SessionKey,
@@ -14,6 +15,7 @@ import type {
   SessionSummary,
   StoredSession,
 } from "../../src/contracts/index.ts";
+import { runScoped } from "./fixtures/helpers.ts";
 
 // Control only owner startup/disposal. The real workspace handles reservations,
 // catalog validation, target selection, and shutdown across every owner.
@@ -28,6 +30,7 @@ class ControlledOwner {
   public readonly state: MutableSessionSummary;
   public closeCalls = 0;
   private readonly sessionPath: string | null;
+  private closeEffect!: Effect.Effect<void>;
   public constructor(launch: PiSessionOptions) {
     this.sessionPath = launch.sessionFile ?? null;
     this.state = {
@@ -41,6 +44,27 @@ class ControlledOwner {
       sessionFile: null,
     };
     owners.push(this);
+  }
+  public static make(
+    launch: PiSessionOptions,
+  ): Effect.Effect<ControlledOwner, unknown, Scope.Scope> {
+    return Effect.gen(function* () {
+      const owner = new ControlledOwner(launch);
+      owner.closeEffect = yield* Effect.cached(
+        Effect.promise(async () => {
+          owner.closeCalls += 1;
+          await closeOwner(owner);
+          owner.state.connection = "disconnected";
+          owner.state.execution = "unknown";
+        }),
+      );
+      yield* Effect.acquireRelease(Effect.succeed(owner), (session) => session.close());
+      yield* Effect.tryPromise({
+        try: () => owner.start(),
+        catch: (error) => error,
+      }).pipe(Effect.onError(() => owner.close()));
+      return owner;
+    });
   }
   public summary(): SessionSummary {
     return { ...this.state };
@@ -70,14 +94,8 @@ class ControlledOwner {
       this.state.sessionFile ? "stored" : `session-${this.state.key}`
     ) as SessionId;
   }
-  public async list(): Promise<StoredSession[]> {
-    return catalog;
-  }
-  public async close(): Promise<void> {
-    this.closeCalls += 1;
-    await closeOwner(this);
-    this.state.connection = "disconnected";
-    this.state.execution = "unknown";
+  public close(): Effect.Effect<void> {
+    return this.closeEffect;
   }
 }
 
@@ -98,7 +116,7 @@ mock.module(path.resolve(import.meta.dirname, "../../src/backend/catalog.ts"), {
 });
 const { DesktopWorkspace } = await import("../../src/backend/workspace.ts");
 
-async function fixture(t: test.TestContext): Promise<InstanceType<typeof DesktopWorkspace>> {
+async function fixture(t: test.TestContext): Promise<Workspace> {
   owners.length = 0;
   startOwner = async (): Promise<void> => {};
   closeOwner = async (): Promise<void> => {};
@@ -111,18 +129,20 @@ async function fixture(t: test.TestContext): Promise<InstanceType<typeof Desktop
       modified: "2026-01-01T00:00:00.000Z",
     },
   ];
-  const workspace = new DesktopWorkspace({
-    cwd: "/project",
-    agentDir: "/agent",
-    profileDir: "/profile",
-    sessionDir: "/sessions",
-    sharedDir: "/shared",
-  });
+  const workspace = await runScoped(
+    t,
+    DesktopWorkspace.make({
+      cwd: "/project",
+      agentDir: "/agent",
+      profileDir: "/profile",
+      sessionDir: "/sessions",
+      sharedDir: "/shared",
+    }),
+  );
   t.after(async () => {
     closeOwner = async (): Promise<void> => {};
-    await workspace.close();
   });
-  await workspace.start();
+
   return workspace;
 }
 
@@ -130,8 +150,8 @@ test("concurrent cold opens reserve one owner before startup completes", async (
   const workspace = await fixture(t);
   const startup = Promise.withResolvers<undefined>();
   startOwner = async (): Promise<void> => startup.promise;
-  const first = workspace.open("/project", "/project/stored.jsonl");
-  const second = workspace.open("/project", "/project/stored.jsonl");
+  const first = Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
+  const second = Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
   await setImmediate();
   assert.equal(owners.length, 2, "Only the initial owner and one cold-open child exist");
   assert.equal(owners[1]?.state.connection, "starting");
@@ -147,11 +167,11 @@ test("a failed cold open releases its reservation so an explicit retry can succe
   const startup = Promise.withResolvers<undefined>();
   startOwner = async (): Promise<void> => startup.promise;
   const first = assert.rejects(
-    workspace.open("/project", "/project/stored.jsonl"),
+    Effect.runPromise(workspace.open("/project", "/project/stored.jsonl")),
     /startup failed/u,
   );
   const second = assert.rejects(
-    workspace.open("/project", "/project/stored.jsonl"),
+    Effect.runPromise(workspace.open("/project", "/project/stored.jsonl")),
     /startup failed/u,
   );
   await setImmediate();
@@ -159,12 +179,12 @@ test("a failed cold open releases its reservation so an explicit retry can succe
   startup.reject(new Error("startup failed"));
   await Promise.all([first, second]);
   startOwner = async (): Promise<void> => {};
-  const retried = await workspace.open("/project", "/project/stored.jsonl");
+  const retried = await Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
   assert.equal(retried.connection, "connected");
   assert.equal(retried.sessionId, "stored");
   assert.equal(owners.length, 3);
   assert.equal(
-    (await workspace.open("/project", "/project/stored.jsonl")).key,
+    (await Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"))).key,
     retried.key,
     "The successful retry becomes the sole reusable writer",
   );
@@ -172,7 +192,7 @@ test("a failed cold open releases its reservation so an explicit retry can succe
 
 test("reopening waits for a disconnected writer and shares the replacement", async (t) => {
   const workspace = await fixture(t);
-  const original = await workspace.open("/project", "/project/stored.jsonl");
+  const original = await Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
   const owner = owners[1];
   assert.ok(owner);
   owner.state.connection = "disconnected";
@@ -180,8 +200,8 @@ test("reopening waits for a disconnected writer and shares the replacement", asy
   closeOwner = async (item): Promise<void> => {
     if (item === owner) await disposed.promise;
   };
-  const first = workspace.open("/project", "/project/stored.jsonl");
-  const second = workspace.open("/project", "/project/stored.jsonl");
+  const first = Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
+  const second = Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
   await setImmediate();
   assert.equal(owners.length, 2, "No new writer starts before disposal");
   disposed.resolve(undefined);
@@ -194,11 +214,11 @@ test("reopening waits for a disconnected writer and shares the replacement", asy
 
 test("reopening after every owner disconnects uses independent discovery and shares the replacement", async (t) => {
   const workspace = await fixture(t);
-  const original = await workspace.open("/project", "/project/stored.jsonl");
+  const original = await Effect.runPromise(workspace.open("/project", "/project/stored.jsonl"));
   for (const owner of owners) owner.state.connection = "disconnected";
   const [first, second] = await Promise.all([
-    workspace.open("/project", "/project/stored.jsonl"),
-    workspace.open("/project", "/project/stored.jsonl"),
+    Effect.runPromise(workspace.open("/project", "/project/stored.jsonl")),
+    Effect.runPromise(workspace.open("/project", "/project/stored.jsonl")),
   ]);
   assert.notEqual(first.key, original.key);
   assert.equal(first.key, second.key);
@@ -212,7 +232,7 @@ test("quit during cold-open startup disposes every attached owner and rejects th
   const startup = Promise.withResolvers<undefined>();
   startOwner = async (): Promise<void> => startup.promise;
   const opened = assert.rejects(
-    workspace.open("/project", "/project/stored.jsonl"),
+    Effect.runPromise(workspace.open("/project", "/project/stored.jsonl")),
     /closed during startup/u,
   );
   await setImmediate();
@@ -220,27 +240,27 @@ test("quit during cold-open startup disposes every attached owner and rejects th
   closeOwner = async (owner): Promise<void> => {
     if (owner === owners[1]) startup.reject(new Error("closed during startup"));
   };
-  await workspace.close();
+  await Effect.runPromise(workspace.close());
   await opened;
   assert.deepEqual(
     owners.map((owner) => owner.closeCalls),
     [1, 1],
   );
-  await assert.rejects(workspace.create("/project"), /shutting down/u);
-  assert.throws(() => workspace.session(workspace.initialKey), /unavailable/u);
+  await assert.rejects(Effect.runPromise(workspace.create("/project")), /shutting down/u);
+  await assert.rejects(Effect.runPromise(workspace.session(workspace.initialKey)), /unavailable/u);
   assert.equal(owners.length, 2, "Shutdown cannot create another child");
 });
 
 test("one disposal failure does not skip shutdown of the other owners", async (t) => {
   const workspace = await fixture(t);
-  await workspace.create("/project");
-  await workspace.create("/other");
+  await Effect.runPromise(workspace.create("/project"));
+  await Effect.runPromise(workspace.create("/other"));
   const attempted: string[] = [];
   closeOwner = async (owner): Promise<void> => {
     attempted.push(owner.state.key);
     if (owner === owners[1]) throw new Error("disposal failed");
   };
-  await assert.rejects(workspace.close(), /Could not close every Pi session/u);
+  await assert.rejects(Effect.runPromise(workspace.close()), /disposal failed/u);
   assert.deepEqual(attempted.sort(), owners.map((owner) => owner.state.key).sort());
   assert.equal(owners[0]?.state.connection, "disconnected");
   assert.equal(owners[2]?.state.connection, "disconnected");

@@ -5,7 +5,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { Effect } from "effect";
+
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
+import { runScoped } from "./fixtures/helpers.ts";
 
 test(
   "SDK workspace executes, observes, and navigates native history",
@@ -77,20 +80,23 @@ test(
         },
       }),
     );
-    const workspace = new DesktopWorkspace(
-      {
-        cwd: project,
-        agentDir: agent,
-        profileDir: profile,
-        sessionDir,
-        sharedDir: shared,
-      },
-      undefined,
-      48,
-      agent,
+    const workspace = await runScoped(
+      t,
+      DesktopWorkspace.make(
+        {
+          cwd: project,
+          agentDir: agent,
+          profileDir: profile,
+          sessionDir,
+          sharedDir: shared,
+        },
+        undefined,
+        48,
+        agent,
+      ),
     );
     t.after(async () => {
-      await workspace.close();
+      await Effect.runPromise(workspace.close());
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
@@ -100,11 +106,11 @@ test(
       });
       await rm(root, { recursive: true, force: true });
     });
-    await workspace.start();
+
     assert.equal(workspace.account(), ".pi-account-a");
-    const owner = workspace.session(workspace.initialKey);
-    await owner.model("sdk-fixture", "fixture");
-    assert.equal((await owner.controls()).model?.id, "fixture");
+    const owner = await Effect.runPromise(workspace.session(workspace.initialKey));
+    await Effect.runPromise(owner.model("sdk-fixture", "fixture"));
+    assert.equal((await Effect.runPromise(owner.controls())).model?.id, "fixture");
     const settled = Promise.withResolvers<undefined>();
     owner.subscribe((snapshot) => {
       if (
@@ -116,26 +122,30 @@ test(
         settled.resolve(undefined);
       }
     });
-    assert.equal(await owner.prompt("First prompt"), "started");
+    assert.equal(await Effect.runPromise(owner.prompt("First prompt")), "started");
     await settled.promise;
     assert.equal(owner.snapshot().connection, "connected");
     const persisted = owner.snapshot().sessionFile;
     assert.ok(persisted);
     const reopened = await Promise.all([
-      workspace.open(project, persisted),
-      workspace.open(project, persisted),
+      Effect.runPromise(workspace.open(project, persisted)),
+      Effect.runPromise(workspace.open(project, persisted)),
     ]);
     assert.ok(reopened.every((snapshot) => snapshot.key === workspace.initialKey));
-    assert.ok((await workspace.list(project)).some((stored) => stored.path === persisted));
-    const history = await owner.history();
+    assert.ok(
+      (await Effect.runPromise(workspace.list(project))).some(
+        (stored) => stored.path === persisted,
+      ),
+    );
+    const history = await Effect.runPromise(owner.history());
     const firstUser = history.entries.find((entry) => entry.label.startsWith("user: First prompt"));
     assert.ok(firstUser);
-    assert.equal(await owner.navigate(firstUser.id), "First prompt");
+    assert.equal(await Effect.runPromise(owner.navigate(firstUser.id)), "First prompt");
     assert.ok(!owner.snapshot().messages.some((message) => message.role === "user"));
-    await workspace.selectAccount(".pi-account-b");
-    const created = await workspace.create(project);
-    const next = workspace.session(created.key);
-    await next.model("sdk-fixture", "fixture");
+    await Effect.runPromise(workspace.selectAccount(".pi-account-b"));
+    const created = await Effect.runPromise(workspace.create(project));
+    const next = await Effect.runPromise(workspace.session(created.key));
+    await Effect.runPromise(next.model("sdk-fixture", "fixture"));
     const nextSettled = Promise.withResolvers<undefined>();
     next.subscribe((snapshot) => {
       if (
@@ -144,7 +154,7 @@ test(
       )
         nextSettled.resolve(undefined);
     });
-    assert.equal(await next.prompt("Second prompt"), "started");
+    assert.equal(await Effect.runPromise(next.prompt("Second prompt")), "started");
     await nextSettled.promise;
     const originalSettled = Promise.withResolvers<undefined>();
     owner.subscribe((snapshot) => {
@@ -156,18 +166,18 @@ test(
       )
         originalSettled.resolve(undefined);
     });
-    assert.equal(await owner.prompt("Original owner again"), "started");
+    assert.equal(await Effect.runPromise(owner.prompt("Original owner again")), "started");
     await originalSettled.promise;
     assert.deepEqual(credentials, ["Bearer account-a", "Bearer account-b", "Bearer account-a"]);
-    await owner.close();
+    await Effect.runPromise(owner.close());
     const replacements = await Promise.all([
-      workspace.open(project, persisted),
-      workspace.open(project, persisted),
+      Effect.runPromise(workspace.open(project, persisted)),
+      Effect.runPromise(workspace.open(project, persisted)),
     ]);
     const replacement = replacements[0];
     assert.notEqual(replacement.key, workspace.initialKey);
     assert.ok(replacements.every((snapshot) => snapshot.key === replacement.key));
-    const freshOwner = workspace.session(replacement.key);
+    const freshOwner = await Effect.runPromise(workspace.session(replacement.key));
     const freshSettled = Promise.withResolvers<undefined>();
     freshOwner.subscribe((snapshot) => {
       if (
@@ -178,7 +188,7 @@ test(
       )
         freshSettled.resolve(undefined);
     });
-    assert.equal(await freshOwner.prompt("Freshly reopened owner"), "started");
+    assert.equal(await Effect.runPromise(freshOwner.prompt("Freshly reopened owner")), "started");
     await freshSettled.promise;
     assert.deepEqual(credentials, [
       "Bearer account-a",
@@ -186,6 +196,9 @@ test(
       "Bearer account-a",
       "Bearer account-b",
     ]);
-    await assert.rejects(workspace.selectAccount("../invalid"), /available Pi account/u);
+    await assert.rejects(
+      Effect.runPromise(workspace.selectAccount("../invalid")),
+      /available Pi account/u,
+    );
   },
 );

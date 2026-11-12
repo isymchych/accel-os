@@ -12,6 +12,7 @@ import { SessionMetadataStore } from "../../src/backend/session-metadata.ts";
 import { readInactivityHours } from "../../src/backend/settings.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import type { SessionId } from "../../src/contracts/index.ts";
+import { runScoped } from "./fixtures/helpers.ts";
 import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
 
 const fs = await Effect.runPromise(
@@ -108,38 +109,45 @@ test("workspace restores pins and favourites without reopening the session", asy
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-marks-restart-"));
   t.after(async () => rm(directory, { recursive: true, force: true }));
   const file = path.join(directory, "state.json");
-  const first = new DesktopWorkspace(
-    fakePiOptions(directory),
-    new SessionMetadataStore(fs, file),
-    48,
-    undefined,
-    fakeSessionFactory,
+  const first = await runScoped(
+    t,
+    DesktopWorkspace.make(
+      fakePiOptions(directory),
+      new SessionMetadataStore(fs, file),
+      48,
+      undefined,
+      fakeSessionFactory,
+    ),
   );
-  await first.start();
+
   const key = first.initialKey;
-  await first.prompt({ key, message: "retained session", mode: "prompt" });
-  const [stored] = await first.list(directory);
+  await Effect.runPromise(first.prompt({ key, message: "retained session", mode: "prompt" }));
+  const [stored] = await Effect.runPromise(first.list(directory));
   assert.ok(stored);
   await Effect.runPromise(first.setMetadataFlag(stored.id, "pinned", true));
   await Effect.runPromise(first.setMetadataFlag(stored.id, "favourite", true));
-  await first.close();
+  await Effect.runPromise(first.close());
 
-  const second = new DesktopWorkspace(
-    fakePiOptions(directory),
-    new SessionMetadataStore(fs, file),
-    48,
-    undefined,
-    fakeSessionFactory,
+  const second = await runScoped(
+    t,
+    DesktopWorkspace.make(
+      fakePiOptions(directory),
+      new SessionMetadataStore(fs, file),
+      48,
+      undefined,
+      fakeSessionFactory,
+    ),
   );
   try {
-    await second.start();
     const snapshot = await Effect.runPromise(second.snapshot());
     assert.equal(snapshot.sessions.length, 1);
     const marks = snapshot.metadata.find((entry) => entry.id === stored.id);
     assert.equal(marks?.pinned, true);
     assert.equal(marks.favourite, true);
-    assert.ok((await second.listAll()).some((session) => session.id === stored.id));
+    assert.ok(
+      (await Effect.runPromise(second.listAll())).some((session) => session.id === stored.id),
+    );
   } finally {
-    await second.close();
+    await Effect.runPromise(second.close());
   }
 });

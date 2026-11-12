@@ -4,8 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { Effect } from "effect";
+
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/contracts/index.ts";
+import { runScoped } from "./fixtures/helpers.ts";
 import {
   contentText,
   fakePiOptions,
@@ -17,12 +20,15 @@ async function fixture(
   t: test.TestContext,
 ): Promise<{ session: DesktopSession; directory: string }> {
   const directory = await mkdtemp(path.join(tmpdir(), "pi-desktop-"));
-  const session = new DesktopSession(fakePiOptions(directory), fakeSessionFactory);
+  const session = await runScoped(
+    t,
+    DesktopSession.make(fakePiOptions(directory), fakeSessionFactory),
+  );
   t.after(async () => {
-    await session.close();
+    await Effect.runPromise(session.close());
     await rm(directory, { recursive: true, force: true });
   });
-  await session.start();
+
   return { session, directory };
 }
 
@@ -41,7 +47,7 @@ test("preserves Unicode SDK content and replaces partial text with the authorita
     snapshot.messages.some((message) => message.role === "assistant"),
   );
   const input = "hello \u2028 \u2029 ☕";
-  await session.prompt(input);
+  await Effect.runPromise(session.prompt(input));
   const snapshot = await finished;
   assert.deepEqual(
     snapshot.messages.map((message) => contentText(message.content)),
@@ -54,14 +60,14 @@ test("preserves Unicode SDK content and replaces partial text with the authorita
 test("renderer subscription replacement does not interrupt work; Stop confirms tool termination", async (t) => {
   const { session, directory } = await fixture(t);
   const active = observe(session, (snapshot) => snapshot.activity === "Running harmless-wait");
-  await session.prompt("hold");
+  await Effect.runPromise(session.prompt("hold"));
   await active;
   const unsubscribe = session.subscribe(() => {});
   unsubscribe();
   assert.equal(session.snapshot().execution, "running");
   const toolPid = Number(await readFile(path.join(directory, "tool-pid"), "utf8"));
   process.kill(toolPid, 0);
-  await session.stop();
+  await Effect.runPromise(session.stop());
   assert.equal(session.snapshot().execution, "idle");
   assert.throws(() => process.kill(toolPid, 0), { code: "ESRCH" });
 });
@@ -69,17 +75,17 @@ test("renderer subscription replacement does not interrupt work; Stop confirms t
 test("shutdown disposes the SDK owner and cleans up active tool work", async (t) => {
   const { session, directory } = await fixture(t);
   const active = observe(session, (snapshot) => snapshot.activity !== null);
-  await session.prompt("hold");
+  await Effect.runPromise(session.prompt("hold"));
   await active;
   const toolPid = Number(await readFile(path.join(directory, "tool-pid"), "utf8"));
-  await session.close();
+  await Effect.runPromise(session.close());
   assert.equal(await readFile(path.join(directory, "closed"), "utf8"), "clean");
   assert.throws(() => process.kill(toolPid, 0), { code: "ESRCH" });
 });
 
 test("unsupported dialogs are explicitly cancelled and do not hang command acceptance", async (t) => {
   const { session } = await fixture(t);
-  await session.prompt("/dialog");
+  await Effect.runPromise(session.prompt("/dialog"));
   assert.equal(
     session.snapshot().notice,
     "Pi requested a confirm dialog. It was cancelled because this dialog is not yet supported.",
@@ -89,9 +95,12 @@ test("unsupported dialogs are explicitly cancelled and do not hang command accep
 
 test("SDK command rejections remain visible without disconnecting the owner", async (t) => {
   const { session } = await fixture(t);
-  await assert.rejects(session.prompt("reject"), /Rejected test prompt/u);
+  await assert.rejects(Effect.runPromise(session.prompt("reject")), /Rejected test prompt/u);
   assert.equal(session.snapshot().execution, "idle");
-  await assert.rejects(session.prompt("crash"), /Synthetic SDK execution failure/u);
+  await assert.rejects(
+    Effect.runPromise(session.prompt("crash")),
+    /Synthetic SDK execution failure/u,
+  );
   assert.equal(session.snapshot().error, "Synthetic SDK execution failure");
   assert.equal(session.snapshot().connection, "connected");
 });

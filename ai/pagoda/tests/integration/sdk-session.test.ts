@@ -5,9 +5,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import { Effect, Exit, Scope } from "effect";
 
-import { PiSessionOwner, scopedPiSession, submitPiPrompt } from "../../src/backend/pi/session.ts";
+import { createPiSession } from "../../src/backend/pi/session.ts";
+import { DesktopSession } from "../../src/backend/session.ts";
 
 test("SDK owners load shared resources and preserve per-owner cwd and session storage", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-sdk-"));
@@ -47,23 +49,37 @@ test("SDK owners load shared resources and preserve per-owner cwd and session st
       JSON.stringify({ anthropic: { type: "api_key", key: "synthetic-second" } }),
     ),
   ]);
-  const session = await Effect.runPromise(
-    scopedPiSession({
-      cwd: project,
-      agentDir: agent,
-      profileDir: profile,
-      sessionDir: storage,
-      sharedDir: shared,
-    }).pipe(Scope.provide(scope)),
+  let session!: AgentSession;
+  await Effect.runPromise(
+    DesktopSession.make(
+      {
+        cwd: project,
+        agentDir: agent,
+        profileDir: profile,
+        sessionDir: storage,
+        sharedDir: shared,
+      },
+      async (options) => {
+        session = await createPiSession(options);
+        return session;
+      },
+    ).pipe(Scope.provide(scope)),
   );
-  const otherSession = await Effect.runPromise(
-    scopedPiSession({
-      cwd: project,
-      agentDir: agent,
-      profileDir: otherProfile,
-      sessionDir: storage,
-      sharedDir: shared,
-    }).pipe(Scope.provide(scope)),
+  let otherSession!: AgentSession;
+  await Effect.runPromise(
+    DesktopSession.make(
+      {
+        cwd: project,
+        agentDir: agent,
+        profileDir: otherProfile,
+        sessionDir: storage,
+        sharedDir: shared,
+      },
+      async (options) => {
+        otherSession = await createPiSession(options);
+        return otherSession;
+      },
+    ).pipe(Scope.provide(scope)),
   );
   assert.equal(session.sessionManager.getCwd(), project);
   assert.equal(session.sessionManager.getSessionDir(), storage);
@@ -79,22 +95,6 @@ test("SDK owners load shared resources and preserve per-owner cwd and session st
     (await otherSession.modelRuntime.getAuth("anthropic"))?.auth.apiKey,
     "synthetic-second",
   );
-
-  const owner = await PiSessionOwner.create({
-    cwd: project,
-    agentDir: agent,
-    profileDir: profile,
-    sessionDir: storage,
-    sharedDir: shared,
-  });
-  t.after(async () => owner.close());
-  const names: string[] = [];
-  owner.subscribe((event) => {
-    if (event.type === "session_info_changed" && event.name) names.push(event.name);
-  });
-  owner.session.setSessionName("Owner event");
-  assert.deepEqual(names, ["Owner event"]);
-  await owner.close();
 });
 
 test(
@@ -130,9 +130,9 @@ test(
     });
     const address = server.address();
     assert.ok(address !== null && typeof address !== "string");
-    let owner: PiSessionOwner | undefined;
+    const scope = Scope.makeUnsafe();
     t.after(async () => {
-      await owner?.close();
+      await Effect.runPromise(Scope.close(scope, Exit.void));
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
@@ -155,31 +155,33 @@ test(
         },
       }),
     );
-    owner = await PiSessionOwner.create({
-      cwd: project,
-      agentDir: agent,
-      profileDir: profile,
-      sessionDir: path.join(root, "sessions"),
-      sharedDir: shared,
-    });
-    const session = owner.session;
-    const model = session.modelRuntime.getModel("sdk-fixture", "fixture");
-    assert.ok(model);
-    await session.setModel(model);
-    const executionErrors: unknown[] = [];
-    const onError = (error: unknown): void => {
-      executionErrors.push(error);
-    };
-    const accepted = await owner.prompt("Hold this response.", "prompt", onError);
+    let session!: AgentSession;
+    const owner = await Effect.runPromise(
+      DesktopSession.make(
+        {
+          cwd: project,
+          agentDir: agent,
+          profileDir: profile,
+          sessionDir: path.join(root, "sessions"),
+          sharedDir: shared,
+        },
+        async (options) => {
+          session = await createPiSession(options);
+          return session;
+        },
+      ).pipe(Scope.provide(scope)),
+    );
+    await Effect.runPromise(owner.model("sdk-fixture", "fixture"));
+    const accepted = await Effect.runPromise(owner.prompt("Hold this response."));
     assert.equal(accepted, "started");
     await requested.promise;
     assert.equal(session.isStreaming, true);
-    assert.equal(await owner.prompt("Queued input", "follow_up", onError), "queued");
-    await assert.rejects(owner.prompt("Not queued", "prompt", onError), /already processing/u);
-    await owner.close();
+    assert.equal(await Effect.runPromise(owner.prompt("Queued input", "follow_up")), "queued");
+    await assert.rejects(session.prompt("Not queued"), /already processing/u);
+    await Effect.runPromise(Scope.close(scope, Exit.void));
     await disconnected.promise;
     assert.equal(session.isIdle, true);
-    assert.deepEqual(executionErrors, []);
+    assert.equal(owner.snapshot().error, null);
     const file = session.sessionFile;
     assert.ok(file);
     assert.match(await readFile(file, "utf8"), /Hold this response/u);
@@ -272,18 +274,23 @@ test(
         },
       }),
     );
-    const session = await Effect.runPromise(
-      scopedPiSession({
-        cwd: project,
-        agentDir: agent,
-        profileDir: profile,
-        sessionDir: path.join(root, "sessions"),
-        sharedDir: shared,
-      }).pipe(Scope.provide(scope)),
+    let session!: AgentSession;
+    const owner = await Effect.runPromise(
+      DesktopSession.make(
+        {
+          cwd: project,
+          agentDir: agent,
+          profileDir: profile,
+          sessionDir: path.join(root, "sessions"),
+          sharedDir: shared,
+        },
+        async (options) => {
+          session = await createPiSession(options);
+          return session;
+        },
+      ).pipe(Scope.provide(scope)),
     );
-    const model = session.modelRuntime.getModel("sdk-fixture", "fixture");
-    assert.ok(model);
-    await session.setModel(model);
+    await Effect.runPromise(owner.model("sdk-fixture", "fixture"));
     const ready = Promise.withResolvers<undefined>();
     session.subscribe((event) => {
       if (
@@ -293,19 +300,13 @@ test(
         ready.resolve(undefined);
       }
     });
-    const errors: unknown[] = [];
-    assert.equal(
-      await submitPiPrompt(session, "Run the tool", "prompt", (error) => {
-        errors.push(error);
-      }),
-      "started",
-    );
+    assert.equal(await Effect.runPromise(owner.prompt("Run the tool")), "started");
     await ready.promise;
     const pid = Number(await readFile(path.join(project, "tool-pid"), "utf8"));
     process.kill(pid, 0);
     await Effect.runPromise(Scope.close(scope, Exit.void));
     assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
     assert.equal(session.isIdle, true);
-    assert.deepEqual(errors, []);
+    assert.equal(owner.snapshot().error, null);
   },
 );

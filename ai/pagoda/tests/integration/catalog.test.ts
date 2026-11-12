@@ -5,10 +5,12 @@ import path from "node:path";
 import test from "node:test";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { Effect } from "effect";
 
 import { SessionCatalog } from "../../src/backend/catalog.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
-import { fakePiOptions } from "./fixtures/helpers.ts";
+import { runScoped } from "./fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
 
 test("catalog discovers activity and snapshots legacy history without modifying its source", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-catalog-"));
@@ -58,14 +60,26 @@ test("workspace discovers native sessions without a connected execution owner", 
   const storage = path.join(root, "sessions");
   const session = SessionManager.create(root, storage);
   session.appendMessage({ role: "user", content: "saved", timestamp: 1_000 });
-  const workspace = new DesktopWorkspace({ ...fakePiOptions(root), sessionDir: storage });
-  t.after(async () => workspace.close());
+  const workspace = await runScoped(
+    t,
+    DesktopWorkspace.make(
+      { ...fakePiOptions(root), sessionDir: storage },
+      undefined,
+      48,
+      undefined,
+      fakeSessionFactory,
+    ),
+  );
+  t.after(async () => Effect.runPromise(workspace.close()));
+  await Effect.runPromise(
+    workspace.session(workspace.initialKey).pipe(Effect.flatMap((owner) => owner.close())),
+  );
   assert.deepEqual(
-    (await workspace.list(root)).map((item) => item.id),
+    (await Effect.runPromise(workspace.list(root))).map((item) => item.id),
     [session.getSessionId()],
   );
   assert.deepEqual(
-    (await workspace.listAll()).map((item) => item.id),
+    (await Effect.runPromise(workspace.listAll())).map((item) => item.id),
     [session.getSessionId()],
   );
 });
