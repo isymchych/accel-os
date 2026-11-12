@@ -82,7 +82,7 @@ export function SessionScreen(): ReactElement {
   const [library, setLibrary] = useState(false);
   const [inactivityHours, setInactivityHours] = useState(48);
   const [now, setNow] = useState(Date.now);
-  const [catalog, setCatalog] = useState<StoredSession[]>([]);
+  const [catalog, setCatalog] = useState<readonly StoredSession[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});

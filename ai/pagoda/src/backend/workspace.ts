@@ -142,12 +142,12 @@ export class DesktopWorkspace {
     });
     return session;
   }
-  public async list(cwd: string): Promise<StoredSession[]> {
+  public async list(cwd: string): Promise<readonly StoredSession[]> {
     const directory = await realpath(cwd);
     if (this.closing) throw new Error("The backend is shutting down");
     return this.catalog.list(directory);
   }
-  public async listAll(): Promise<StoredSession[]> {
+  public async listAll(): Promise<readonly StoredSession[]> {
     if (this.closing) throw new Error("The backend is shutting down");
     return this.catalog.list();
   }

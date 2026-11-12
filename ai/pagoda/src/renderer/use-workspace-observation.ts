@@ -35,13 +35,13 @@ export function useWorkspaceObservation(
 ): {
   sessions: ObservedSessions;
   receive: (snapshot: SessionSnapshot) => void;
-  metadata: SessionMetadata[];
+  metadata: readonly SessionMetadata[];
   selectedAccount: string | null;
   transportConnected: boolean;
 } {
   const workspace = useApi();
   const [sessions, dispatch] = useReducer(mergeObservation, {});
-  const [metadata, setMetadata] = useState<SessionMetadata[]>([]);
+  const [metadata, setMetadata] = useState<readonly SessionMetadata[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [transportConnected, setTransportConnected] = useState(false);
   const receive = useCallback((snapshot: SessionSnapshot): void => {

@@ -2,7 +2,7 @@ import type { DesktopSession } from "../../../src/backend/session.ts";
 import type { ContentBlock, SessionSnapshot } from "../../../src/contracts/index.ts";
 
 export { fakePiOptions, fakeSessionFactory } from "./fake-sdk.ts";
-export function contentText(content: ContentBlock[] | undefined): string {
+export function contentText(content: readonly ContentBlock[] | undefined): string {
   return (content ?? []).flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
 }
 

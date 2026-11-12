@@ -123,7 +123,7 @@ function Content({
   blocks,
   markdown = false,
 }: {
-  blocks: ContentBlock[];
+  blocks: readonly ContentBlock[];
   markdown?: boolean;
 }): ReactElement {
   return (

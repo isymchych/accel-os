@@ -22,8 +22,10 @@ let catalog: StoredSession[] = [];
 let startOwner: (owner: ControlledOwner) => Promise<void> = async () => {};
 let closeOwner: (owner: ControlledOwner) => Promise<void> = async () => {};
 
+type MutableSessionSummary = { -readonly [Key in keyof SessionSummary]: SessionSummary[Key] };
+
 class ControlledOwner {
-  public readonly state: SessionSummary;
+  public readonly state: MutableSessionSummary;
   public closeCalls = 0;
   private readonly sessionPath: string | null;
   public constructor(launch: PiSessionOptions) {

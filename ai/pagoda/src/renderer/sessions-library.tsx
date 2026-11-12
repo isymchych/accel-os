@@ -17,10 +17,10 @@ export function SessionsLibrary({
   onOpen,
   onFlag,
 }: {
-  catalog: StoredSession[];
+  catalog: readonly StoredSession[];
   sessions: SessionSummary[];
   disabled: boolean;
-  metadata: SessionMetadata[];
+  metadata: readonly SessionMetadata[];
   onOpen: (session: StoredSession) => void;
   onFlag: (id: SessionId, flag: "pinned" | "favourite", value: boolean) => void;
 }): ReactElement {

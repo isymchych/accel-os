@@ -25,7 +25,7 @@ export function AccountSelector({
   connected: boolean;
 }): ReactElement | null {
   const workspace = useApi();
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<readonly Account[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {

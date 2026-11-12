@@ -14,7 +14,7 @@ export class SessionCatalog {
     this.sessionDir = sessionDir;
   }
 
-  public async list(cwd?: string): Promise<StoredSession[]> {
+  public async list(cwd?: string): Promise<readonly StoredSession[]> {
     const sessions = cwd
       ? await SessionManager.list(cwd, this.sessionDir)
       : await SessionManager.listAll(this.sessionDir);
