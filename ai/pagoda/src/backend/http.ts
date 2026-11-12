@@ -5,7 +5,7 @@ import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
-import type { Static, TSchema } from "typebox";
+import { Type, type Static, type TSchema } from "typebox";
 import { Value } from "typebox/value";
 
 import {
@@ -95,6 +95,46 @@ export function createHttpApp(options: HttpOptions): Hono {
     return c.json(null);
   });
   app.get("/api/auth", (c) => c.json(null));
+  app.get("/api/image", async (c) => {
+    const query: unknown = c.req.query();
+    const schema = Type.Object({ url: Type.String({ maxLength: 8192 }) });
+    if (!Value.Check(schema, query)) return c.json({ error: "Invalid image URL" }, 400);
+    let url: URL;
+    try {
+      url = new URL(query.url);
+    } catch {
+      return c.json({ error: "Invalid image URL" }, 400);
+    }
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
+      return c.json({ error: "Invalid image URL" }, 400);
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+      const type = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+      if (!response.ok || !type?.startsWith("image/") || !response.body)
+        return c.json({ error: "Image could not be loaded" }, 502);
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.length;
+        if (size > 16 * 1024 * 1024) {
+          await reader.cancel();
+          return c.json({ error: "Image exceeds 16 MiB" }, 413);
+        }
+        chunks.push(value);
+      }
+      return new Response(Buffer.concat(chunks), {
+        headers: {
+          "Content-Type": type,
+          "Content-Security-Policy": "sandbox; default-src 'none'; frame-ancestors 'none'",
+        },
+      });
+    } catch {
+      return c.json({ error: "Image could not be loaded" }, 502);
+    }
+  });
   const workspace = options.workspace;
   app.get("/api/workspace", (c) => c.json(workspace.snapshot()));
   app.get("/api/events", (c) =>

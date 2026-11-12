@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
-import { fakePiLaunch } from "./fixtures/helpers.ts";
+import { contentText, fakePiLaunch } from "./fixtures/helpers.ts";
 
 async function fixture(
   t: test.TestContext,
@@ -62,14 +62,14 @@ test("reopening and navigation render native summary messages", async (t) => {
   const session = workspace.session(opened.key);
   await assert.rejects(session.prompt(" \n"), /Enter a message/u);
   assert.deepEqual(
-    opened.messages.map((message) => message.text),
+    opened.messages.map((message) => contentText(message.content)),
     ["Compacted history", "Previous branch", "Latest"],
   );
   const branch = (await session.history()).entries.find((entry) => entry.id === "branch");
   assert.ok(branch);
   await session.navigate(branch.id);
   assert.deepEqual(
-    session.snapshot().messages.map((message) => message.text),
+    session.snapshot().messages.map((message) => contentText(message.content)),
     ["Compacted history", "Previous branch"],
   );
 });
@@ -106,7 +106,7 @@ test("independent owners survive view changes, reopen deduplicates, and forks pr
   assert.notEqual(fork.sessionId, a.summary().sessionId);
   assert.equal(a.summary().execution, "running");
   assert.deepEqual(
-    fork.messages.map((message) => message.text),
+    fork.messages.map((message) => contentText(message.content)),
     ["hold"],
   );
   await workspace.session(fork.key).prompt("fork prompt");
@@ -136,7 +136,7 @@ test("model and thinking changes invalidate history; delivered queue entries inv
   const before = session.snapshot().controlsRevision;
   let deliveredRevision = 0;
   const unsubscribe = session.subscribe((snapshot) => {
-    if (snapshot.messages.some((message) => message.text === "queued message")) {
+    if (snapshot.messages.some((message) => contentText(message.content) === "queued message")) {
       deliveredRevision ||= snapshot.controlsRevision;
     }
   });

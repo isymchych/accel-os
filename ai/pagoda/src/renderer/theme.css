@@ -111,6 +111,104 @@
   }
 }
 
+.transcript-markdown {
+  overflow-wrap: anywhere;
+  font-size: 0.9375rem;
+  line-height: 1.75;
+
+  > :first-child {
+    margin-top: 0;
+  }
+  > :last-child {
+    margin-bottom: 0;
+  }
+  p,
+  ul,
+  ol,
+  blockquote,
+  pre,
+  table {
+    margin-block: 1em;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-block: 1.5em 0.5em;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  h1 {
+    font-size: 1.5em;
+  }
+  h2 {
+    font-size: 1.25em;
+  }
+  h3 {
+    font-size: 1.1em;
+  }
+  ul,
+  ol {
+    padding-left: 1.5em;
+  }
+  ul {
+    list-style: disc;
+  }
+  ol {
+    list-style: decimal;
+  }
+  li + li {
+    margin-top: 0.35em;
+  }
+  blockquote {
+    border-left: 2px solid var(--border);
+    padding-left: 1em;
+    color: var(--muted-foreground);
+  }
+  a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  :not(pre) > code {
+    border-radius: 0.3rem;
+    background: var(--muted);
+    padding: 0.15em 0.35em;
+    font-size: 0.875em;
+  }
+  pre {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--muted);
+    padding: 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    overflow-wrap: normal;
+  }
+  table {
+    border-collapse: collapse;
+    font-size: 0.875em;
+  }
+  th,
+  td {
+    border: 1px solid var(--border);
+    padding: 0.5em 0.75em;
+    text-align: left;
+  }
+  th {
+    background: var(--muted);
+    font-weight: 600;
+  }
+  hr {
+    margin-block: 1.5em;
+    border-color: var(--border);
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: oklch(0.141 0.005 285.823);

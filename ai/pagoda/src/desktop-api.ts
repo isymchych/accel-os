@@ -37,16 +37,26 @@ export const ThinkingSchema = Type.Object(
 
 // HTTP JSON and SSE are external boundaries. Derive the presentation types from
 // their schemas so the wire contract and the client checks cannot drift apart.
+export const ImageBlockSchema = Type.Object({
+  type: Type.Literal("image"),
+  data: Type.String(),
+  mimeType: Type.String({ pattern: "^image/(png|jpeg|gif|webp)$" }),
+});
+const ContentBlockSchema = Type.Union([
+  Type.Object({ type: Type.Literal("text"), text: Type.String() }),
+  Type.Object({ type: Type.Literal("thinking"), text: Type.String() }),
+  ImageBlockSchema,
+]);
 const TranscriptMessageSchema = Type.Object({
   role: Type.String(),
-  text: Type.String(),
+  content: Type.Array(ContentBlockSchema),
   isError: Type.Boolean(),
 });
 const ToolActivitySchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
   arguments: Type.String(),
-  output: Type.String(),
+  content: Type.Array(ContentBlockSchema),
   state: Type.Union([Type.Literal("running"), Type.Literal("completed"), Type.Literal("error")]),
 });
 export const SummarySchema = Type.Object({
@@ -75,7 +85,7 @@ export const SnapshotSchema = Type.Object({
   controlsRevision: Type.Integer({ minimum: 0 }),
   historyRevision: Type.Integer({ minimum: 0 }),
   messages: Type.Array(TranscriptMessageSchema),
-  streaming: Type.String(),
+  streaming: Type.Array(ContentBlockSchema),
   tools: Type.Array(ToolActivitySchema),
   activity: Type.Union([Type.String(), Type.Null()]),
   error: Type.Union([Type.String(), Type.Null()]),
@@ -117,6 +127,7 @@ export const ControlsSchema = Type.Object({
 export const ErrorSchema = Type.Object({ error: Type.String() });
 
 export type Prompt = Static<typeof PromptSchema>;
+export type ContentBlock = Static<typeof ContentBlockSchema>;
 export type TranscriptMessage = Static<typeof TranscriptMessageSchema>;
 export type ToolActivity = Static<typeof ToolActivitySchema>;
 export type SessionSummary = Static<typeof SummarySchema>;

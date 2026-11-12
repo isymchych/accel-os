@@ -1,22 +1,16 @@
-import { GitBranchIcon, SendIcon, SquareIcon } from "lucide-react";
-import { memo, useEffect, useState, type ReactElement, type RefObject } from "react";
+import { Menu } from "@base-ui/react/menu";
+import { ArrowUpIcon, ChevronDownIcon, SquareIcon } from "lucide-react";
+import { useEffect, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 
 import type {
   HistoryEntryId,
   Prompt,
   SessionControls,
-  SessionHistory,
   SessionKey,
   SessionSnapshot,
-  TranscriptMessage,
 } from "../desktop-api.ts";
 import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "./components/ui/collapsible.tsx";
 import {
   Select,
   SelectContent,
@@ -25,55 +19,12 @@ import {
   SelectValue,
 } from "./components/ui/select.tsx";
 import { Textarea } from "./components/ui/textarea.tsx";
+import { SessionHistoryBrowser } from "./session-history.tsx";
+import { TranscriptPane } from "./transcript.tsx";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Pi did not confirm this operation.";
 }
-
-function LongText({ text }: { text: string }): ReactElement {
-  const style = "whitespace-pre-wrap break-words font-sans [overflow-wrap:anywhere]";
-  if (text.length <= 4_000) return <pre className={style}>{text}</pre>;
-  return (
-    <Collapsible>
-      <pre className={style}>{text.slice(0, 1_000)}…</pre>
-      <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
-        Show full content ({text.length.toLocaleString()} characters)
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <pre className={style}>{text}</pre>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-const Message = memo(function Message({ message }: { message: TranscriptMessage }): ReactElement {
-  return (
-    <article
-      aria-label={`${message.role} message`}
-      className={`rounded-lg border border-border p-4 [content-visibility:auto] [contain-intrinsic-size:auto_120px] ${message.isError ? "text-destructive" : ""}`}
-    >
-      <h2 className="mb-2 text-sm font-semibold">{message.role}</h2>
-      <LongText text={message.text} />
-    </article>
-  );
-});
-
-const Transcript = memo(function Transcript({
-  messages,
-}: {
-  messages: TranscriptMessage[];
-}): ReactElement {
-  return (
-    <>
-      {messages
-        .filter((message) => message.text.length > 0)
-        .map((message, index) => (
-          // oxlint-disable-next-line react/no-array-index-key -- Pi message snapshots are append-only between explicit history replacements.
-          <Message key={index} message={message} />
-        ))}
-    </>
-  );
-});
 
 function ModelControls({
   controls,
@@ -89,9 +40,9 @@ function ModelControls({
   const workspace = useApi();
   if (!controls) return <p className="text-xs text-muted-foreground">Loading model controls…</p>;
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <div className="space-y-1">
-        <span id="model-label" className="text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-1">
+      <div className="min-w-0">
+        <span id="model-label" className="sr-only">
           Model
         </span>
         <Select
@@ -109,7 +60,10 @@ function ModelControls({
               });
           }}
         >
-          <SelectTrigger aria-labelledby="model-label" className="max-w-80">
+          <SelectTrigger
+            aria-labelledby="model-label"
+            className="max-w-[min(18rem,60vw)] border-transparent bg-transparent text-xs text-muted-foreground hover:text-foreground dark:bg-transparent"
+          >
             <SelectValue placeholder="Select model">
               {controls.model ? `${controls.model.provider}/${controls.model.id}` : "Select model"}
             </SelectValue>
@@ -126,8 +80,8 @@ function ModelControls({
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-1">
-        <span id="thinking-label" className="text-xs text-muted-foreground">
+      <div>
+        <span id="thinking-label" className="sr-only">
           Thinking
         </span>
         <Select
@@ -140,8 +94,13 @@ function ModelControls({
               });
           }}
         >
-          <SelectTrigger aria-labelledby="thinking-label">
-            <SelectValue placeholder="Thinking level" />
+          <SelectTrigger
+            aria-labelledby="thinking-label"
+            className="border-transparent bg-transparent text-xs text-muted-foreground hover:text-foreground dark:bg-transparent"
+          >
+            <SelectValue placeholder="Thinking level">
+              Thinking: {controls.thinkingLevel}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {controls.levels.map((level) => (
@@ -152,32 +111,65 @@ function ModelControls({
           </SelectContent>
         </Select>
       </div>
-      <span className="text-xs text-muted-foreground">
-        {controls.pendingMessageCount} queued inputs
-      </span>
     </div>
   );
 }
 
-function RuntimeControls({
+function SessionHeader({
   snapshot,
-  onFork,
-  onNavigateText,
+  queued,
+  children,
 }: {
   snapshot: SessionSnapshot;
-  onFork: (entryId: HistoryEntryId) => void;
-  onNavigateText: (key: SessionKey, text: string) => void;
+  queued: number;
+  children: ReactNode;
 }): ReactElement {
+  const { connection, execution } = snapshot;
+  return (
+    <header className="shrink-0 border-b border-border px-5 py-4 lg:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-base font-semibold tracking-tight">
+            {snapshot.name || "New session"}
+          </h2>
+          <p title={snapshot.cwd} className="mt-1 truncate text-xs text-muted-foreground">
+            {snapshot.cwd}
+          </p>
+        </div>
+        <output className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${connection !== "connected" || execution === "unknown" ? "bg-destructive" : execution === "running" || execution === "stopping" ? "bg-primary" : "bg-muted-foreground/50"}`}
+          />
+          <span className="sr-only">Connection: </span>
+          {connection}
+          <span aria-hidden="true">·</span>
+          <span className="sr-only">Execution: </span>
+          {execution}
+          {queued > 0 && (
+            <span className="rounded-md bg-muted px-2 py-1">{queued} queued inputs</span>
+          )}
+        </output>
+      </div>
+      {children}
+    </header>
+  );
+}
+
+export function SessionView(
+  props: ComposerProps & {
+    transcriptRef: RefObject<HTMLDivElement | null>;
+    onFork: (entryId: HistoryEntryId) => Promise<void>;
+    onNavigateText: (key: SessionKey, text: string) => void;
+  },
+): ReactElement {
+  const { snapshot, onFork, onNavigateText, transcriptRef } = props;
   const workspace = useApi();
   const [controls, setControls] = useState<SessionControls | null>(null);
-  const [history, setHistory] = useState<SessionHistory | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [entry, setEntry] = useState<HistoryEntryId | null>(null);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [refreshRequest, setRefreshRequest] = useState(0);
   const { key, connection, execution } = snapshot;
-  const { controlsRevision, historyRevision } = snapshot;
+  const { controlsRevision } = snapshot;
 
   useEffect(() => {
     if (connection !== "connected") return undefined;
@@ -197,27 +189,6 @@ function RuntimeControls({
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- The revision invalidates server-owned controls.
   }, [workspace, key, connection, controlsRevision]);
 
-  useEffect(() => {
-    if (connection !== "connected" || !historyOpen) return undefined;
-    let active = true;
-    void workspace
-      .history(key)
-      .then((tree) => {
-        if (!active) return;
-        setHistory(tree);
-        setEntry((current) =>
-          tree.entries.some((item) => item.id === current) ? current : tree.leafId,
-        );
-      })
-      .catch((error: unknown) => {
-        if (active) setFeedback(errorText(error));
-      });
-    return (): void => {
-      active = false;
-    };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- The revision and manual refresh invalidate server-owned history.
-  }, [workspace, key, connection, historyOpen, historyRevision, refreshRequest]);
-
   async function change(operation: () => Promise<void>): Promise<void> {
     setPending(true);
     setFeedback(null);
@@ -230,88 +201,47 @@ function RuntimeControls({
   }
   const idle = connection === "connected" && execution === "idle" && !pending;
   return (
-    <section aria-label="Session controls" className="space-y-3 border-b border-border py-4">
-      <ModelControls controls={controls} idle={idle} sessionKey={key} change={change} />
-      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-        <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
-          <GitBranchIcon aria-hidden="true" />
-          History and branches
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-3 pt-3">
-          <p className="text-xs text-muted-foreground">
-            Navigate when idle. Fork copies persisted history through the selected entry without
-            stopping the source. Unfinished output and runtime fork hooks are excluded.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={entry}
-              onValueChange={(value) => {
-                setEntry(history?.entries.find((item) => item.id === value)?.id ?? null);
-              }}
-              disabled={(history?.entries.length ?? 0) === 0}
-            >
-              <SelectTrigger aria-label="History entry" className="max-w-full">
-                <SelectValue placeholder="Choose history entry">
-                  {history?.entries.find((item) => item.id === entry)?.label ??
-                    "Choose history entry"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {history?.entries.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.id === history.leafId ? "Current · " : ""}
-                    {item.label} [{item.id} ← {item.parentId ?? "root"}]
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              disabled={!idle || !entry}
-              onClick={() => {
-                if (entry)
-                  void change(async () => {
-                    const text = await workspace.navigate(key, entry);
-                    if (text !== undefined) onNavigateText(key, text);
-                  });
-              }}
-            >
-              Navigate
-            </Button>
-            <Button
-              variant="outline"
-              disabled={connection !== "connected" || !entry || pending}
-              onClick={() => {
-                if (entry) onFork(entry);
-              }}
-            >
-              Fork session
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={connection !== "connected" || pending}
-              onClick={() => {
-                setFeedback(null);
-                setRefreshRequest((current) => current + 1);
-              }}
-            >
-              Refresh history
-            </Button>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-      {feedback && (
-        <p role="alert" className="text-sm text-destructive">
-          {feedback}
-        </p>
-      )}
-    </section>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <SessionHeader snapshot={snapshot} queued={controls?.pendingMessageCount ?? 0}>
+        <SessionHistoryBrowser
+          snapshot={snapshot}
+          controlsPending={pending}
+          onFork={onFork}
+          onNavigateText={onNavigateText}
+        />
+      </SessionHeader>
+      <TranscriptPane snapshot={snapshot} transcriptRef={transcriptRef} />
+      <div className="shrink-0 px-4 pb-4 pt-2 lg:px-8 lg:pb-6">
+        <div className="mx-auto max-w-4xl">
+          {snapshot.activity && (
+            <p className="mb-2 px-2 text-xs text-muted-foreground">{snapshot.activity}</p>
+          )}
+          <SessionComposer
+            {...props}
+            modelControls={
+              <section
+                aria-label="Session controls"
+                className="min-w-0 basis-full lg:basis-auto lg:flex-1"
+              >
+                <ModelControls controls={controls} idle={idle} sessionKey={key} change={change} />
+                {feedback && (
+                  <p role="alert" className="px-2 py-1 text-sm text-destructive">
+                    {feedback}
+                  </p>
+                )}
+              </section>
+            }
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
-export type ComposerFeedback =
-  | { kind: "accepted"; disposition: string }
-  | { kind: "error"; message: string };
+export interface ComposerFeedback {
+  kind: "error";
+  message: string;
+}
 
 interface ComposerProps {
   snapshot: SessionSnapshot;
@@ -333,35 +263,42 @@ function SessionComposer({
   onSubmit,
   composerRef,
   onExitComposer,
-}: ComposerProps): ReactElement {
+  modelControls,
+}: ComposerProps & { modelControls: ReactElement }): ReactElement {
   const workspace = useApi();
   const [stopError, setStopError] = useState<string | null>(null);
+  const [stopPending, setStopPending] = useState(false);
   const ready = snapshot.connection === "connected";
-  const busy = snapshot.execution === "running" || snapshot.execution === "stopping";
+  const stopping = stopPending || snapshot.execution === "stopping";
+  const busy = snapshot.execution === "running" || stopping;
   const canInput =
-    ready &&
-    !pending &&
-    snapshot.execution !== "unknown" &&
-    snapshot.execution !== "stopping" &&
-    message.trim().length > 0;
-  const submissionError = feedback?.kind === "error" ? feedback.message : null;
-  const visibleError = stopError ?? submissionError ?? snapshot.error;
+    ready && !pending && !stopping && snapshot.execution !== "unknown" && message.trim().length > 0;
+  const submissionError = feedback?.message;
+  const errors = [...new Set([submissionError, stopError, snapshot.error].filter(Boolean))];
+  // Acceptance is not completion. Execution and queue length live in the header.
+  // Keep extension notices, not duplicate RPC receipts.
+  const notice = ["Input: started.", "Input: queued."].includes(snapshot.notice ?? "")
+    ? null
+    : snapshot.notice === "Input: handled."
+      ? "Input handled by Pi. This does not confirm that work completed."
+      : snapshot.notice;
   return (
     <section aria-label="Direct agent">
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit("prompt");
+          if (canInput && !busy) onSubmit("prompt");
         }}
-        className="border-t border-border pt-4"
+        className="rounded-2xl border border-input bg-card p-2 shadow-sm transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/15"
       >
-        <label htmlFor="message" className="mb-2 block text-sm font-medium">
+        <label htmlFor="message" className="sr-only">
           Message
         </label>
         <Textarea
           ref={composerRef}
           id="message"
-          className="min-h-28 resize-y"
+          className="max-h-[25dvh] min-h-24 resize-none overflow-y-auto rounded-xl border-0 bg-transparent px-3 py-3 text-sm shadow-none focus-visible:ring-0 md:text-sm dark:bg-transparent"
+          placeholder="Ask Pi…"
           maxLength={100_000}
           readOnly={pending}
           required
@@ -377,113 +314,126 @@ function SessionComposer({
             }
           }}
         />
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button disabled={!canInput || busy} type="submit">
-            <SendIcon aria-hidden="true" />
-            {pending ? "Sending…" : "Send"}
-          </Button>
-          <Button
-            disabled={!canInput}
-            type="button"
-            variant="outline"
-            onClick={() => {
-              onSubmit("follow_up");
-            }}
-          >
-            Follow up
-          </Button>
-          <Button
-            disabled={!canInput}
-            type="button"
-            variant="outline"
-            onClick={() => {
-              onSubmit("steer");
-            }}
-          >
-            Steer
-          </Button>
-          <Button
-            disabled={!ready || !busy || snapshot.execution === "stopping"}
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setStopError(null);
-              void workspace.stop(snapshot.key).catch((error: unknown) => {
-                setStopError(errorText(error));
-              });
-            }}
-          >
-            <SquareIcon aria-hidden="true" />
-            {snapshot.execution === "stopping" ? "Stopping…" : "Stop"}
-          </Button>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          {modelControls}
+          <div className="ml-auto flex items-center gap-1">
+            {busy ? (
+              <>
+                <Button
+                  disabled={!canInput}
+                  type="button"
+                  variant="secondary"
+                  title="Queue input until current work finishes"
+                  onClick={() => {
+                    onSubmit("follow_up");
+                  }}
+                >
+                  Follow up
+                </Button>
+                <Button
+                  disabled={!canInput}
+                  type="button"
+                  variant="secondary"
+                  title="Deliver input at Pi's next steering boundary"
+                  onClick={() => {
+                    onSubmit("steer");
+                  }}
+                >
+                  Steer
+                </Button>
+                <Button
+                  disabled={!ready || stopping}
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => {
+                    setStopError(null);
+                    setStopPending(true);
+                    void workspace
+                      .stop(snapshot.key)
+                      .catch((error: unknown) => {
+                        setStopError(errorText(error));
+                      })
+                      .finally(() => {
+                        setStopPending(false);
+                      });
+                  }}
+                >
+                  <SquareIcon aria-hidden="true" />
+                  {stopping ? "Stopping…" : "Stop"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button disabled={!canInput} type="submit" className="gap-2 rounded-xl px-4">
+                  {pending ? "Sending…" : "Send"}
+                  <ArrowUpIcon aria-hidden="true" />
+                </Button>
+                <Menu.Root>
+                  <Menu.Trigger
+                    render={<Button variant="ghost" size="icon" aria-label="More input actions" />}
+                  >
+                    <ChevronDownIcon aria-hidden="true" />
+                  </Menu.Trigger>
+                  <Menu.Portal>
+                    <Menu.Positioner side="top" align="end" sideOffset={8} className="z-50">
+                      <Menu.Popup className="w-72 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+                        <Menu.Item
+                          disabled={!canInput}
+                          onClick={() => {
+                            onSubmit("follow_up");
+                          }}
+                          className="cursor-default rounded-lg px-3 py-2 text-sm outline-none data-highlighted:bg-accent data-disabled:opacity-50"
+                        >
+                          <span className="block font-medium">Follow up</span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            Wait until current work finishes.
+                          </span>
+                        </Menu.Item>
+                        <Menu.Item
+                          disabled={!canInput}
+                          onClick={() => {
+                            onSubmit("steer");
+                          }}
+                          className="cursor-default rounded-lg px-3 py-2 text-sm outline-none data-highlighted:bg-accent data-disabled:opacity-50"
+                        >
+                          <span className="block font-medium">Steer</span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            Deliver at Pi&apos;s next steering boundary.
+                          </span>
+                        </Menu.Item>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.Root>
+              </>
+            )}
+          </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Follow up waits until current work finishes; steering is delivered at Pi&apos;s next
-          steering boundary.
-        </p>
       </form>
-      {visibleError && (
-        <p role="alert" className="mt-4 text-destructive">
-          {visibleError}
-        </p>
+      <output className="mt-2 block min-h-4 max-h-[15dvh] overflow-y-auto px-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+        {pending ? "Waiting for Pi to confirm input… Acceptance does not mean completion." : notice}
+      </output>
+      {errors.length > 0 && (
+        <div className="mt-3 max-h-[20dvh] space-y-2 overflow-y-auto rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm [overflow-wrap:anywhere]">
+          {errors.map((error) => (
+            <p key={error} role="alert" className="text-destructive">
+              {error}
+            </p>
+          ))}
+          {submissionError && (
+            <p className="text-xs text-muted-foreground">
+              Draft preserved. If acceptance is uncertain, review the conversation before sending
+              again. Input is never retried automatically.
+            </p>
+          )}
+          {snapshot.execution === "unknown" && (
+            <p className="text-xs text-muted-foreground">
+              Execution is unknown. Do not assume work completed or cancellation succeeded.
+            </p>
+          )}
+        </div>
       )}
-      {feedback?.kind === "accepted" && (
-        <output className="mt-3 block text-sm">Input: {feedback.disposition}.</output>
-      )}
-      {snapshot.notice && <output className="mt-3 block text-sm">{snapshot.notice}</output>}
-      <p className="mt-6 text-xs text-muted-foreground">
-        Pi tools run on your host without a sandbox. Unsupported dialogs are cancelled. Refreshing
-        keeps work running; closing this client does too. Stop the backend to end all sessions.
-      </p>
     </section>
-  );
-}
-
-export function SessionView(
-  props: ComposerProps & {
-    onFork: (entryId: HistoryEntryId) => void;
-    onNavigateText: (key: SessionKey, text: string) => void;
-  },
-): ReactElement {
-  const { snapshot, onFork } = props;
-  return (
-    <div className="mx-auto max-w-4xl">
-      <header>
-        <h2 className="text-xl font-semibold">{snapshot.name || "New session"}</h2>
-        <p className="mt-2 break-all text-sm text-muted-foreground">{snapshot.cwd}</p>
-        <output className="mt-2 block text-sm">
-          Connection: {snapshot.connection} · Execution: {snapshot.execution}
-        </output>
-        {snapshot.activity && <p className="mt-2 text-sm">{snapshot.activity}</p>}
-      </header>
-      <RuntimeControls snapshot={snapshot} onFork={onFork} onNavigateText={props.onNavigateText} />
-      <section aria-label="Session transcript" className="space-y-4 py-5">
-        <Transcript messages={snapshot.messages} />
-        {snapshot.streaming && (
-          <article aria-label="Streaming response" className="rounded-lg border border-border p-4">
-            <h2 className="mb-2 text-sm font-semibold">assistant</h2>
-            <LongText text={snapshot.streaming} />
-          </article>
-        )}
-        {snapshot.tools.length > 0 && (
-          <section aria-label="Tool activity" className="space-y-2">
-            {snapshot.tools.map((tool) => (
-              <Collapsible key={tool.id} className="rounded-lg border border-border p-3">
-                <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
-                  {tool.name} · {tool.state}
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-3 pt-3">
-                  <h3 className="text-xs font-semibold">Arguments</h3>
-                  <LongText text={tool.arguments} />
-                  <h3 className="text-xs font-semibold">Result</h3>
-                  <LongText text={tool.output || "Waiting for output…"} />
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
-          </section>
-        )}
-      </section>
-      <SessionComposer {...props} />
-    </div>
   );
 }

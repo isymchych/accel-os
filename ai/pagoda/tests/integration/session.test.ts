@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/desktop-api.ts";
-import { fakePiLaunch, waitForSession } from "./fixtures/helpers.ts";
+import { contentText, fakePiLaunch, waitForSession } from "./fixtures/helpers.ts";
 
 async function fixture(
   t: test.TestContext,
@@ -39,10 +39,10 @@ test("preserves Unicode JSONL and replaces partial text with the authoritative m
   await session.prompt(input);
   const snapshot = await finished;
   assert.deepEqual(
-    snapshot.messages.map((message) => message.text),
+    snapshot.messages.map((message) => contentText(message.content)),
     [input, "Hello from fake Pi."],
   );
-  assert.equal(snapshot.streaming, "");
+  assert.deepEqual(snapshot.streaming, []);
   assert.ok(session.snapshot().sessionId);
 });
 

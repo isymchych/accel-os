@@ -3,6 +3,7 @@ import test from "node:test";
 
 import type { SessionKey, SessionSnapshot } from "../../src/desktop-api.ts";
 import { mergeObservation } from "../../src/renderer/use-workspace-observation.ts";
+import { contentText } from "./fixtures/helpers.ts";
 
 const key = "owner-a" as SessionKey;
 const otherKey = "owner-b" as SessionKey;
@@ -19,8 +20,8 @@ function snapshot(revision: number, text: string, sessionKey = key): SessionSnap
     name: text,
     controlsRevision: 0,
     historyRevision: 0,
-    messages: [{ role: "assistant", text, isError: false }],
-    streaming: "",
+    messages: [{ role: "assistant", content: [{ type: "text", text }], isError: false }],
+    streaming: [],
     tools: [],
     activity: null,
     error: null,
@@ -38,13 +39,13 @@ test("workspace initialization preserves newer command results and fills other s
       sessions: [snapshot(2, "stale"), snapshot(1, "other", otherKey)],
     },
   });
-  assert.equal(result[key]?.messages[0]?.text, "live");
-  assert.equal(result[otherKey]?.messages[0]?.text, "other");
+  assert.equal(contentText(result[key]?.messages[0]?.content), "live");
+  assert.equal(contentText(result[otherKey]?.messages[0]?.content), "other");
 });
 
 test("late command snapshots cannot overwrite newer streaming observations", () => {
   const observed = mergeObservation({}, { type: "snapshot", snapshot: snapshot(4, "new") });
   const result = mergeObservation(observed, { type: "snapshot", snapshot: snapshot(2, "old") });
   assert.equal(result, observed);
-  assert.equal(result[key]?.messages[0]?.text, "new");
+  assert.equal(contentText(result[key]?.messages[0]?.content), "new");
 });

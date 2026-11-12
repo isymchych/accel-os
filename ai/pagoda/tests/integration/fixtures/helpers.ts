@@ -2,7 +2,11 @@ import path from "node:path";
 
 import type { PiLaunch } from "../../../src/backend/rpc.ts";
 import type { DesktopSession } from "../../../src/backend/session.ts";
-import type { SessionSnapshot } from "../../../src/desktop-api.ts";
+import type { ContentBlock, SessionSnapshot } from "../../../src/desktop-api.ts";
+
+export function contentText(content: ContentBlock[] | undefined): string {
+  return (content ?? []).flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
+}
 
 export function fakePiLaunch(directory: string): PiLaunch {
   return {

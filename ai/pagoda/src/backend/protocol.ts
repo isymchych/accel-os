@@ -42,6 +42,8 @@ export const ContentSchema = Type.Union([
       type: Type.String(),
       text: Type.Optional(Type.String()),
       thinking: Type.Optional(Type.String()),
+      data: Type.Optional(Type.String()),
+      mimeType: Type.Optional(Type.String()),
       name: Type.Optional(Type.String()),
       arguments: Type.Optional(Type.Unknown()),
     }),
@@ -81,6 +83,8 @@ export const DeltaSchema = Type.Object({
   assistantMessageEvent: Type.Object({
     type: Type.String(),
     delta: Type.Optional(Type.String()),
+    content: Type.Optional(Type.String()),
+    contentIndex: Type.Optional(Type.Integer({ minimum: 0 })),
   }),
 });
 export const ToolSchema = Type.Object({

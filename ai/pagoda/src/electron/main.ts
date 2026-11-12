@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 
 export interface DesktopOptions {
   url: string;
@@ -43,7 +43,22 @@ export async function startDesktop({ url, userData }: DesktopOptions): Promise<v
       webSecurity: true,
     },
   });
-  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.setWindowOpenHandler(({ url: externalUrl }) => {
+    try {
+      const external = new URL(externalUrl);
+      if (
+        (external.protocol === "https:" || external.protocol === "http:") &&
+        !external.username &&
+        !external.password
+      )
+        void shell.openExternal(external.href).catch((error: unknown) => {
+          console.error("Could not open external link:", error);
+        });
+    } catch {
+      // Reject invalid URLs.
+    }
+    return { action: "deny" };
+  });
   window.webContents.on("will-navigate", (event) => {
     event.preventDefault();
   });

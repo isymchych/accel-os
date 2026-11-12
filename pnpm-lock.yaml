@@ -199,6 +199,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.6
         version: 2.1.6(hono@4.13.17)
+      '@tanstack/markdown':
+        specifier: ^1.2.0
+        version: 1.2.0(react@19.3.1)
       '@tanstack/react-hotkeys':
         specifier: ^0.23.0
         version: 0.23.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1085,6 +1088,17 @@ packages:
   '@tanstack/hotkeys@0.27.0':
     resolution: {integrity: sha512-nFg/Shd0MHECBgi+R2p8ct7qFrQVRW7+buIJgq63YrDdQpsetFwttKJOWhyesalJtBK9igEISRjk49N1q77fqw==}
     engines: {node: '>=20'}
+
+  '@tanstack/markdown@1.2.0':
+    resolution: {integrity: sha512-8ZaMDLvp7iUuo7R5Ot+yvX/h1ZN8Cq2p38iL+X9uOkIKVFw3IjgP62dXT6+dp/Nk522qsuSDCJNdt2F4fZvVXQ==}
+    peerDependencies:
+      octane: '>=0.1.12'
+      react: '>=18'
+    peerDependenciesMeta:
+      octane:
+        optional: true
+      react:
+        optional: true
 
   '@tanstack/react-hotkeys@0.23.0':
     resolution: {integrity: sha512-RfzJhJrzXLt/9l29Se5ZhEvANPSooF8IAymlFR/JKHdrf7+tWl2Vd3GpJt3PdIbztMAml4EbnjWVmwF/aqgfxg==}
@@ -2718,6 +2732,10 @@ snapshots:
       vite: 8.3.7(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1)
 
   '@tanstack/hotkeys@0.27.0': {}
+
+  '@tanstack/markdown@1.2.0(react@19.3.1)':
+    optionalDependencies:
+      react: 19.3.1
 
   '@tanstack/react-hotkeys@0.23.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:

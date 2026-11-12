@@ -7,6 +7,7 @@ Local-only Hono/React app with browser and Electron clients in private pnpm work
 
 - Assume the normal configured local environment. Do not add compatibility checks, fallback
   behavior, or recovery paths for hypothetical environment failures without an evidenced need.
+- I prefer tanstack ecosystem
 
 ## Read before changing
 

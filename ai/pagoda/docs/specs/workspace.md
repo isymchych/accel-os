@@ -41,10 +41,15 @@ submission uncertain; input must not be resent automatically.
 
 Sessions display history, streaming text, meaningful tool activity and results, connection and
 execution state, errors, and interaction notices. Long text and tool results expand on demand.
+Collapsed previews preserve complete content without cutting Markdown syntax. User and assistant
+messages render Markdown; tool arguments and ordinary tool output remain literal. Markdown images
+and native message/tool images are displayed in content order. Thinking streams in collapsible
+sections at its original position and remains available in completed messages and reopened history.
 Transient streaming updates coalesce; completed messages and lifecycle changes appear immediately.
 
 Command rejection, provider/tool errors, extension failures, and child exit remain distinguishable
-where Pi exposes them. Agent output is displayed as untrusted text.
+where Pi exposes them. Agent output is displayed as untrusted content under the
+[rendering and security boundaries](../architecture.md#security-and-execution).
 
 Pi notifications are displayed. Unsupported RPC dialogs receive explicit cancellation and a visible
 notice, never silent approval; other presentation-only records are not rendered.

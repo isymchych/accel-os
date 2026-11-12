@@ -48,7 +48,7 @@ class ControlledOwner {
       controlsRevision: 0,
       historyRevision: 0,
       messages: [],
-      streaming: "",
+      streaming: [],
       tools: [],
       activity: null,
       notice: null,

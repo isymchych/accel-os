@@ -10,7 +10,7 @@ import { Value } from "typebox/value";
 
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/desktop-api.ts";
-import { waitForSession } from "./fixtures/helpers.ts";
+import { contentText, waitForSession } from "./fixtures/helpers.ts";
 
 const RequestSchema = Type.Object({
   tools: Type.Array(Type.Object({ function: Type.Object({ name: Type.String() }) })),
@@ -218,11 +218,12 @@ test(
           .snapshot()
           .messages.some(
             (message) =>
-              message.role === "toolResult" && message.text.includes("isolated tool result"),
+              message.role === "toolResult" &&
+              contentText(message.content).includes("isolated tool result"),
           ),
       );
       assert.equal(
-        session.snapshot().messages.at(-1)?.text,
+        contentText(session.snapshot().messages.at(-1)?.content),
         "Configured Pi completed the isolated read.",
       );
       assert.equal(
@@ -290,13 +291,17 @@ test(
         await destination.start();
         assert.notEqual(destination.snapshot().sessionId, session.snapshot().sessionId);
         assert.ok(
-          !destination.snapshot().messages.some((message) => message.text.includes("HOLD_SOURCE")),
+          !destination
+            .snapshot()
+            .messages.some((message) => contentText(message.content).includes("HOLD_SOURCE")),
         );
         const forkSettled = observe(
           destination,
           (snapshot) =>
             snapshot.execution === "idle" &&
-            snapshot.messages.some((message) => message.text.includes("Independent fork")),
+            snapshot.messages.some((message) =>
+              contentText(message.content).includes("Independent fork"),
+            ),
         );
         await destination.prompt("Independent fork");
         await forkSettled;
@@ -311,7 +316,7 @@ test(
     await t.test("Stop terminates an actual configured shell process", async () => {
       const toolRunning = observe(session, (snapshot) =>
         snapshot.tools.some(
-          (tool) => tool.name === "bash" && tool.output.includes("NATIVE_WAIT_READY"),
+          (tool) => tool.name === "bash" && contentText(tool.content).includes("NATIVE_WAIT_READY"),
         ),
       );
       await session.prompt("RUN_HARMLESS_TOOL");
@@ -335,7 +340,7 @@ test(
               snapshot.execution === "idle" &&
               snapshot.messages.length > messages &&
               snapshot.messages.at(-1)?.role === "assistant" &&
-              snapshot.messages.some((message) => message.text === text),
+              snapshot.messages.some((message) => contentText(message.content) === text),
           );
           assert.equal(await session.prompt(text, mode), "started");
           await complete;
@@ -360,7 +365,9 @@ test(
           session,
           (snapshot) =>
             snapshot.execution === "idle" &&
-            snapshot.messages.some((message) => message.text === "Queue response 3"),
+            snapshot.messages.some(
+              (message) => contentText(message.content) === "Queue response 3",
+            ),
         );
         releaseQueue.resolve(undefined);
         await complete;
@@ -369,9 +376,10 @@ test(
           session
             .snapshot()
             .messages.filter(
-              (message) => message.role === "user" && message.text.startsWith("QUEUE_"),
+              (message) =>
+                message.role === "user" && contentText(message.content).startsWith("QUEUE_"),
             )
-            .map((message) => message.text),
+            .map((message) => contentText(message.content)),
           ["QUEUE_RUN", "QUEUE_STEER", "QUEUE_FOLLOW"],
         );
         assert.equal((await session.controls()).pendingMessageCount, 0);

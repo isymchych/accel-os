@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { watch } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { request as httpRequest } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -76,6 +76,46 @@ test("authenticated HTTP preserves execution independently of observers and clea
   assert.match(setCookie, /SameSite=Strict/u);
   const cookie = setCookie.split(";")[0];
   assert.ok(cookie);
+  let forwardedCookie: string | undefined;
+  let forwardedReferrer: string | undefined;
+  const imageServer = createServer((request, response) => {
+    forwardedCookie = request.headers.cookie;
+    forwardedReferrer = request.headers.referer;
+    response.writeHead(200, { "content-type": "image/png" });
+    response.end("image bytes");
+  });
+  await new Promise<void>((resolve) => {
+    imageServer.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        imageServer.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      }),
+  );
+  const address = imageServer.address();
+  assert.ok(address !== null && typeof address !== "string");
+  const imageUrl = `${backend.origin}/api/image?url=${encodeURIComponent(`http://127.0.0.1:${address.port}/image`)}`;
+  assert.equal((await fetch(imageUrl)).status, 401);
+  const imageResponse = await fetch(imageUrl, {
+    headers: { cookie, referer: "http://private.invalid/" },
+  });
+  assert.equal(imageResponse.status, 200);
+  assert.equal(imageResponse.headers.get("content-type"), "image/png");
+  assert.equal(await imageResponse.text(), "image bytes");
+  assert.equal(forwardedCookie, undefined);
+  assert.equal(forwardedReferrer, undefined);
+  assert.equal(
+    (
+      await fetch(`${backend.origin}/api/image?url=file%3A%2F%2F%2Fetc%2Fpasswd`, {
+        headers: { cookie },
+      })
+    ).status,
+    400,
+  );
   const request = async (operation: string, payload: unknown): Promise<unknown> => {
     const response = await post(operation, payload, cookie);
     assert.equal(response.status, 200, await response.clone().text());

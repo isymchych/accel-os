@@ -5,13 +5,15 @@ import test, { mock } from "node:test";
 import type { BrowserWindowConstructorOptions } from "electron";
 
 const windows: FakeWindow[] = [];
+const opened: string[] = [];
+let openHandler: (details: { url: string }) => { action: string };
 const app = Object.assign(new EventEmitter(), { whenReady: async () => {}, quit: () => {} });
 class FakeWindow {
   public readonly options: BrowserWindowConstructorOptions;
   public url = "";
   public readonly webContents = Object.assign(new EventEmitter(), {
-    setWindowOpenHandler: (handler: () => { action: string }) => {
-      assert.equal(handler().action, "deny");
+    setWindowOpenHandler: (handler: (details: { url: string }) => { action: string }) => {
+      openHandler = handler;
     },
     session: {
       setPermissionRequestHandler: () => {},
@@ -28,7 +30,17 @@ class FakeWindow {
     this.url = url;
   }
 }
-mock.module("electron", { exports: { app, BrowserWindow: FakeWindow } });
+mock.module("electron", {
+  exports: {
+    app,
+    BrowserWindow: FakeWindow,
+    shell: {
+      openExternal: async (url: string) => {
+        opened.push(url);
+      },
+    },
+  },
+});
 const { startDesktop } = await import("../../src/electron/main.ts");
 
 test("the shell only accepts loopback connection URLs and retains Chromium security boundaries", async (t) => {
@@ -56,6 +68,10 @@ test("the shell only accepts loopback connection URLs and retains Chromium secur
   const window = windows[0];
   assert.ok(window);
   assert.equal(window.url, url);
+  assert.equal(openHandler({ url: "https://example.com/path" }).action, "deny");
+  assert.equal(openHandler({ url: "file:///etc/passwd" }).action, "deny");
+  assert.equal(openHandler({ url: "https://user:pass@example.com/" }).action, "deny");
+  assert.deepEqual(opened, ["https://example.com/path"]);
   assert.deepEqual(window.options.webPreferences, {
     contextIsolation: true,
     nodeIntegration: false,

@@ -73,7 +73,10 @@ uncertain, not safe to retry.
 The backend binds only to `127.0.0.1`. Validate Host against explicit backend/development origins;
 reject foreign Origin and cross-site requests. All API reads, commands, and streams require an
 authenticated session, except the credential exchange. Writes require same-origin JSON requests.
-There is no permissive CORS or arbitrary shell, filesystem, environment, or credential API.
+There is no permissive CORS or arbitrary shell, filesystem, environment, or credential API. The
+authenticated image endpoint fetches HTTP(S) URLs from transcript content without browser cookies or
+referrers, including URLs on local networks; it limits response size and duration and sandboxes
+successful responses, including when opened directly.
 
 The connection URL carries a backend-lifetime credential in its fragment. The frontend removes it
 and authenticates through an HttpOnly, SameSite=Strict cookie. Do not log the credential beyond
@@ -81,10 +84,11 @@ explicit startup output or persist it in app storage. Backend restart invalidate
 reconnect through the new connection URL.
 
 Electron loads only an explicit loopback connection URL. Keep sandboxing, context isolation, and no
-Node integration; there is no preload bridge. Deny new windows, renderer navigation, webviews, and
-permission requests. Render agent output as untrusted text; later Markdown must not enable raw HTML
-or executable content. Production loads same-origin assets with a restrictive CSP and same-origin
-API connections. Development alone loads Vite from explicit loopback and permits its hot-update
+Node integration; there is no preload bridge. Open validated HTTP(S) links without embedded
+credentials in the system browser. Deny in-app new windows, renderer navigation, webviews, and
+permission requests. Render agent output as untrusted content; Markdown must not enable raw HTML or
+executable content. Production loads same-origin assets with a restrictive CSP and same-origin API
+connections. Development alone loads Vite from explicit loopback and permits its hot-update
 connection and injected scripts.
 
 These controls protect the UI boundary, not Pi tools; see

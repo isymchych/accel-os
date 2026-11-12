@@ -19,7 +19,21 @@ const CommandSchema = Type.Object({
   level: Type.Optional(Type.String()),
 });
 const MessageSchema = Type.Union([
-  Type.Object({ role: Type.String(), content: Type.String() }),
+  Type.Object({
+    role: Type.String(),
+    content: Type.Union([
+      Type.String(),
+      Type.Array(
+        Type.Object({
+          type: Type.String(),
+          text: Type.Optional(Type.String()),
+          thinking: Type.Optional(Type.String()),
+          data: Type.Optional(Type.String()),
+          mimeType: Type.Optional(Type.String()),
+        }),
+      ),
+    ]),
+  }),
   Type.Object({
     role: Type.Union([Type.Literal("compactionSummary"), Type.Literal("branchSummary")]),
     summary: Type.String(),
@@ -90,7 +104,12 @@ async function persist(): Promise<void> {
   await writeFile(temporary, JSON.stringify(stored));
   await rename(temporary, file);
 }
-async function message(role: string, content: string): Promise<void> {
+async function message(
+  role: string,
+  content:
+    | string
+    | { type: string; text?: string; thinking?: string; data?: string; mimeType?: string }[],
+): Promise<void> {
   const entry = {
     id: randomUUID(),
     parentId: stored.leafId,
@@ -201,6 +220,75 @@ async function control(messageText: string): Promise<void> {
   }
   controlResult({ type: "workspace_result", id: value.id, success: true, data });
 }
+function completedText(promptText: string | undefined): string {
+  if (promptText === "long-output")
+    return `Large output\n${"x".repeat(50_000)}\nEND_OF_LONG_OUTPUT`;
+  if (promptText !== "transcript-demo") return "Hello from fake Pi.";
+  for (const [id, name, args, output, isError] of [
+    ["read-demo", "read", { path: "src/renderer/session-view.tsx" }, "Read 120 lines.", false],
+    [
+      "bash-demo",
+      "bash",
+      { command: "pnpm run check" },
+      "Typecheck failed: missing fixture.\n<img src=x onerror=alert(1)>",
+      true,
+    ],
+  ] as const) {
+    send({ type: "tool_execution_start", toolCallId: id, toolName: name, args });
+    send({
+      type: "tool_execution_end",
+      toolCallId: id,
+      toolName: name,
+      isError,
+      result: { content: [{ type: "text", text: output }] },
+    });
+  }
+  return [
+    "## Workspace review",
+    "Keep **session ownership** explicit and preserve `drafts`.",
+    "- Read configuration\n- Verify behavior",
+    `\`\`\`ts\nconst path = "${"long-path/".repeat(35)}";\n\`\`\``,
+    "| Check | Result |\n| --- | --- |\n| Draft | Preserved |",
+    "[Documentation](https://example.com/docs)",
+    "[Unsafe link](javascript:alert%281%29)",
+    "![Remote image](https://example.com/private.png)",
+    "<img src=x onerror=alert(1)>",
+    "<script>alert(1)</script>",
+  ].join("\n\n");
+}
+
+async function activePrompt(command: Static<typeof CommandSchema>): Promise<string> {
+  if (command.message === "__transcript_chunk__") {
+    send({
+      type: "message_update",
+      assistantMessageEvent: {
+        type: "text_delta",
+        delta:
+          "\n\nAnother finding: the draft belongs to its session and must survive navigation.\n\n".repeat(
+            4,
+          ),
+      },
+    });
+    return "handled";
+  }
+  if (command.message === "__deliver_queued__") {
+    const delivered = queue.shift();
+    if (!delivered) throw new Error("No queued message to deliver");
+    await message("user", delivered);
+    return "handled";
+  }
+  await appendFile(
+    path.join(stateDirectory, "queue.jsonl"),
+    `${JSON.stringify({
+      sessionId: stored.id,
+      type: command.streamingBehavior === "followUp" ? "follow_up" : "steer",
+      message: command.message,
+    })}\n`,
+  );
+  queue.push(command.message ?? "");
+  return "queued";
+}
+
 async function prompt(
   command: Static<typeof CommandSchema>,
   respond: (data?: unknown) => void,
@@ -222,23 +310,7 @@ async function prompt(
     return;
   }
   if (running && command.streamingBehavior) {
-    if (command.message === "__deliver_queued__") {
-      const delivered = queue.shift();
-      if (!delivered) throw new Error("No queued message to deliver");
-      await message("user", delivered);
-      respond({ disposition: "handled" });
-      return;
-    }
-    await appendFile(
-      path.join(stateDirectory, "queue.jsonl"),
-      `${JSON.stringify({
-        sessionId: stored.id,
-        type: command.streamingBehavior === "followUp" ? "follow_up" : "steer",
-        message: command.message,
-      })}\n`,
-    );
-    queue.push(command.message ?? "");
-    respond({ disposition: "queued" });
+    respond({ disposition: await activePrompt(command) });
     return;
   }
   await appendFile(
@@ -277,7 +349,15 @@ async function prompt(
   running = true;
   send({ type: "agent_start" });
   await message("user", command.message ?? "");
-  if (command.message === "hold") {
+  if (command.message === "transcript-stream") {
+    send({
+      type: "message_update",
+      assistantMessageEvent: {
+        type: "text_delta",
+        delta: `## Investigation\n\n${"Reading the workspace and checking session ownership before changing the renderer.\n\n".repeat(16)}`,
+      },
+    });
+  } else if (command.message === "hold") {
     tool = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
     await writeFile(path.join(stateDirectory, "tool-pid"), String(tool.pid));
     send({
@@ -305,9 +385,18 @@ async function prompt(
     process.stdout.write(record.subarray(record.length - 4));
     await message(
       "assistant",
-      command.message === "long-output"
-        ? `Large output\n${"x".repeat(50_000)}\nEND_OF_LONG_OUTPUT`
-        : "Hello from fake Pi.",
+      command.message === "ordered-content"
+        ? [
+            { type: "text", text: "First text" },
+            { type: "thinking", thinking: "Private reasoning" },
+            {
+              type: "image",
+              mimeType: "image/png",
+              data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aAAAAABJRU5ErkJggg==",
+            },
+            { type: "text", text: "Last text" },
+          ]
+        : completedText(command.message),
     );
     send({ type: "agent_end", messages: [] });
     running = false;

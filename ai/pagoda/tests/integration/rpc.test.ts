@@ -8,6 +8,7 @@ import { Type, type Static } from "typebox";
 import { Value } from "typebox/value";
 
 import type { HistoryEntryId } from "../../src/desktop-api.ts";
+import { contentText } from "./fixtures/helpers.ts";
 
 const CommandSchema = Type.Object({
   id: Type.String(),
@@ -263,7 +264,7 @@ test("streaming bursts coalesce history snapshots and final messages flush immed
   child.send({ type: "message_end", message: { role: "user", content: "history".repeat(10_000) } });
   const snapshots: string[] = [];
   session.subscribe((snapshot) => {
-    snapshots.push(snapshot.streaming);
+    snapshots.push(contentText(snapshot.streaming));
   });
   for (let index = 0; index < 1_000; index += 1) {
     child.send({
@@ -284,7 +285,7 @@ test("streaming bursts coalesce history snapshots and final messages flush immed
     message: { role: "assistant", content: "authoritative output" },
   });
   assert.deepEqual(snapshots, ["x".repeat(1_000), ""]);
-  assert.equal(session.snapshot().messages.at(-1)?.text, "authoritative output");
+  assert.equal(contentText(session.snapshot().messages.at(-1)?.content), "authoritative output");
   t.mock.timers.tick(80);
   assert.deepEqual(snapshots, ["x".repeat(1_000), ""], "Completion cancels pending publication");
 });
@@ -471,11 +472,84 @@ test("native bash messages on active and abandoned branches remain readable", as
   });
   await session.refresh();
   assert.deepEqual(session.snapshot().messages, [
-    { role: "bashExecution", text: "$ printf fixture\nfixture", isError: false },
+    {
+      role: "bashExecution",
+      content: [{ type: "text", text: "$ printf fixture\nfixture" }],
+      isError: false,
+    },
   ]);
   child.send({ type: "message_end", message: { ...bash, exitCode: 1 } });
   assert.equal(session.snapshot().messages.at(-1)?.isError, true);
   assert.equal(session.snapshot().connection, "connected");
+});
+
+test("ordered content survives streaming, tool events and history refresh", async (t) => {
+  const session = await sessionFixture(t);
+  const image = { type: "image", mimeType: "image/png", data: "aW1hZ2U=" };
+  child.send({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "Before" },
+  });
+  child.send({
+    type: "message_update",
+    assistantMessageEvent: { type: "thinking_delta", contentIndex: 1, delta: "Reasoning" },
+  });
+  child.send({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_delta", contentIndex: 2, delta: "After" },
+  });
+  assert.deepEqual(session.snapshot().streaming, [
+    { type: "text", text: "Before" },
+    { type: "thinking", text: "Reasoning" },
+    { type: "text", text: "After" },
+  ]);
+  const message = {
+    role: "assistant",
+    content: [
+      { type: "text", text: "Before" },
+      { type: "thinking", thinking: "Reasoning" },
+      image,
+      { type: "text", text: "After" },
+    ],
+  };
+  child.send({ type: "message_end", message });
+  assert.deepEqual(session.snapshot().streaming, []);
+  assert.deepEqual(session.snapshot().messages.at(-1), {
+    role: "assistant",
+    content: [
+      { type: "text", text: "Before" },
+      { type: "thinking", text: "Reasoning" },
+      image,
+      { type: "text", text: "After" },
+    ],
+    isError: false,
+  });
+  child.send({
+    type: "tool_execution_end",
+    toolCallId: "image-tool",
+    toolName: "read",
+    result: { content: [{ type: "text", text: "Before" }, image, { type: "text", text: "After" }] },
+  });
+  assert.deepEqual(session.snapshot().tools.at(-1)?.content, [
+    { type: "text", text: "Before" },
+    image,
+    { type: "text", text: "After" },
+  ]);
+  child.onCommand = (command): void => {
+    if (command.type === "get_state")
+      child.respond(command, {
+        data: { sessionId: "controlled-session", isStreaming: false, isCompacting: false },
+      });
+    else if (command.type === "get_messages")
+      child.respond(command, { data: { messages: [message] } });
+  };
+  await session.refresh();
+  assert.deepEqual(session.snapshot().messages[0]?.content, [
+    { type: "text", text: "Before" },
+    { type: "thinking", text: "Reasoning" },
+    image,
+    { type: "text", text: "After" },
+  ]);
 });
 
 test("agent_end does not complete execution before agent_settled", async (t) => {
@@ -529,7 +603,7 @@ test("lost prompt confirmation times out without resending accepted input", asyn
   assert.equal(session.snapshot().execution, "running");
   assert.match(session.snapshot().error ?? "", /did not confirm prompt within 30 seconds/u);
   assert.deepEqual(
-    session.snapshot().messages.map((message) => message.text),
+    session.snapshot().messages.map((message) => contentText(message.content)),
     ["accepted once"],
   );
   t.mock.timers.tick(60_000);

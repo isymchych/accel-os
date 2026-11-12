@@ -4,6 +4,7 @@ import path from "node:path";
 import { Type } from "typebox";
 import { Value } from "typebox/value";
 
+import { ImageBlockSchema, type ContentBlock } from "../desktop-api.ts";
 import type {
   HistoryEntryId,
   SessionControls,
@@ -37,39 +38,49 @@ import {
 import { PiRpc, type PiLaunch } from "./rpc.ts";
 
 const ResultSchema = Type.Object({ content: ContentSchema });
-function resultText(result: unknown): string {
-  if (!Value.Check(ResultSchema, result)) return result === undefined ? "" : JSON.stringify(result);
-  return typeof result.content === "string"
-    ? result.content
-    : result.content
-        .map((part) => part.text ?? (part.type === "image" ? "[Image result]" : ""))
-        .join("\n");
+function textBlock(text: string): ContentBlock[] {
+  return text ? [{ type: "text", text }] : [];
+}
+function projectContent(content: StaticContent): ContentBlock[] {
+  if (typeof content === "string") return textBlock(content);
+  return content.flatMap((part): ContentBlock[] => {
+    if (Value.Check(ImageBlockSchema, part))
+      return [{ type: "image", data: part.data, mimeType: part.mimeType }];
+    if (part.type === "thinking")
+      return part.thinking ? [{ type: "thinking", text: part.thinking }] : [];
+    if (part.type === "image") return [];
+    if (part.type === "toolCall")
+      return textBlock(
+        `Tool: ${part.name ?? "unknown"}\n${JSON.stringify(part.arguments, null, 2)}`,
+      );
+    return textBlock(part.text ?? "");
+  });
+}
+type StaticContent = import("typebox").Static<typeof ContentSchema>;
+function resultContent(result: unknown): ContentBlock[] {
+  if (!Value.Check(ResultSchema, result))
+    return textBlock(result === undefined ? "" : JSON.stringify(result));
+  return projectContent(result.content);
+}
+function contentText(content: ContentBlock[]): string {
+  return content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
 }
 function transcriptMessage(message: PiMessage): TranscriptMessage {
-  if ("summary" in message) return { role: message.role, text: message.summary, isError: false };
+  if ("summary" in message)
+    return { role: message.role, content: textBlock(message.summary), isError: false };
   if ("command" in message)
     return {
       role: message.role,
-      text: `$ ${message.command}\n${message.output}`,
+      content: textBlock(`$ ${message.command}\n${message.output}`),
       isError: message.cancelled === true || (message.exitCode ?? 0) !== 0,
     };
-  const content =
-    typeof message.content === "string"
-      ? message.content
-      : message.content
-          .map((part) => {
-            if (part.type === "toolCall")
-              return `Tool: ${part.name ?? "unknown"}\n${JSON.stringify(part.arguments, null, 2)}`;
-            if (part.type === "thinking") return part.thinking ? `Thinking:\n${part.thinking}` : "";
-            if (part.type === "image") return "[Image content]";
-            return part.text ?? "";
-          })
-          .join("\n");
   return {
     role: message.role,
-    text: [message.toolName ? `Tool: ${message.toolName}` : "", content, message.errorMessage]
-      .filter((part) => part !== undefined && part.length > 0)
-      .join("\n"),
+    content: [
+      ...textBlock(message.toolName ? `Tool: ${message.toolName}` : ""),
+      ...projectContent(message.content),
+      ...textBlock(message.errorMessage ?? ""),
+    ],
     isError: message.isError === true || message.stopReason === "error",
   };
 }
@@ -82,6 +93,7 @@ export class DesktopSession {
   private stopping = false;
   private mutating = false;
   private notification: ReturnType<typeof setTimeout> | undefined;
+  private streamingBlocks = new Map<number, ContentBlock>();
   private state: SessionSnapshot;
 
   public constructor(launch: PiLaunch, key?: SessionKey) {
@@ -100,7 +112,7 @@ export class DesktopSession {
       sessionFile: null,
       name: path.basename(launch.cwd),
       messages: [],
-      streaming: "",
+      streaming: [],
       tools: [],
       activity: null,
       error: null,
@@ -145,6 +157,7 @@ export class DesktopSession {
     if (!Value.Check(StateSchema, response.data)) throw new Error("Invalid Pi session state");
     const messages = await this.rpc.request("get_messages");
     if (!Value.Check(MessagesSchema, messages.data)) throw new Error("Invalid Pi message history");
+    this.streamingBlocks.clear();
     this.update({
       connection: "connected",
       sessionId: response.data.sessionId,
@@ -152,7 +165,7 @@ export class DesktopSession {
       name: response.data.sessionName ?? this.state.name,
       execution: response.data.isStreaming || response.data.isCompacting ? "running" : "idle",
       messages: messages.data.messages.map(transcriptMessage),
-      streaming: "",
+      streaming: [],
       tools: [],
       controlsRevision: this.state.controlsRevision + 1,
       historyRevision: this.state.historyRevision + 1,
@@ -230,7 +243,7 @@ export class DesktopSession {
         id: entry.id,
         parentId: entry.parentId,
         label: entry.message
-          ? `${entry.message.role}: ${transcriptMessage(entry.message).text.slice(0, 140)}`
+          ? `${entry.message.role}: ${contentText(transcriptMessage(entry.message).content).slice(0, 140)}`
           : `${entry.type}: ${entry.summary?.slice(0, 100) ?? entry.id}`,
       })),
     };
@@ -331,21 +344,16 @@ export class DesktopSession {
         break;
       case "message_end":
         if (!Value.Check(MessageEndSchema, record)) throw new Error("Invalid completed message");
+        if (record.message.role === "assistant") this.streamingBlocks.clear();
         this.update({
           messages: [...this.state.messages, transcriptMessage(record.message)],
-          streaming: record.message.role === "assistant" ? "" : this.state.streaming,
+          streaming: record.message.role === "assistant" ? [] : this.state.streaming,
           historyRevision: this.state.historyRevision + 1,
           controlsRevision: this.state.controlsRevision + (record.message.role === "user" ? 1 : 0),
         });
         break;
       case "message_update":
-        if (!Value.Check(DeltaSchema, record)) throw new Error("Invalid message update");
-        if (record.assistantMessageEvent.type === "text_delta") {
-          this.update(
-            { streaming: this.state.streaming + (record.assistantMessageEvent.delta ?? "") },
-            true,
-          );
-        }
+        this.receiveDelta(record);
         break;
       case "tool_execution_start":
       case "tool_execution_update":
@@ -364,6 +372,34 @@ export class DesktopSession {
     }
   }
 
+  private receiveDelta(record: PiRecord): void {
+    if (!Value.Check(DeltaSchema, record)) throw new Error("Invalid message update");
+    const { type, delta = "", content, contentIndex } = record.assistantMessageEvent;
+    const kind = type.startsWith("text_")
+      ? "text"
+      : type.startsWith("thinking_")
+        ? "thinking"
+        : null;
+    if (!kind || !["_start", "_delta", "_end"].some((suffix) => type.endsWith(suffix))) return;
+    const last = [...this.streamingBlocks.keys()].at(-1) ?? -1;
+    const index =
+      contentIndex ??
+      (type.endsWith("_start") || this.streamingBlocks.get(last)?.type !== kind ? last + 1 : last);
+    const previous = this.streamingBlocks.get(index);
+    const text = type.endsWith("_end")
+      ? (content ?? "")
+      : `${previous && previous.type !== "image" ? previous.text : ""}${delta}`;
+    this.streamingBlocks.set(index, { type: kind, text });
+    this.update(
+      {
+        streaming: [...this.streamingBlocks.entries()]
+          .sort(([a], [b]) => a - b)
+          .map(([, block]) => block),
+      },
+      true,
+    );
+  }
+
   private receiveTool(record: PiRecord): void {
     if (!Value.Check(ToolSchema, record)) throw new Error("Invalid tool event");
     const previous = this.state.tools.find((tool) => tool.id === record.toolCallId);
@@ -375,7 +411,7 @@ export class DesktopSession {
         record.args === undefined
           ? (previous?.arguments ?? "")
           : JSON.stringify(record.args, null, 2),
-      output: output === undefined ? (previous?.output ?? "") : resultText(output),
+      content: output === undefined ? (previous?.content ?? []) : resultContent(output),
       state:
         record.type === "tool_execution_end" ? (record.isError ? "error" : "completed") : "running",
     };

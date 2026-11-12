@@ -27,6 +27,7 @@
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@hono/node-server": "^2.1.6",
+    "@tanstack/markdown": "^1.2.0",
     "@tanstack/react-hotkeys": "^0.23.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",

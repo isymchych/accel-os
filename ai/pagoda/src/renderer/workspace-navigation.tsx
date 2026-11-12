@@ -9,12 +9,14 @@ import { Button } from "./components/ui/button.tsx";
 export function WorkspaceNavigation({
   target,
   composer,
+  transcript,
   sessionKeys,
   selected,
   onSelect,
 }: {
   target: RefObject<HTMLElement | null>;
   composer: RefObject<HTMLTextAreaElement | null>;
+  transcript: RefObject<HTMLDivElement | null>;
   sessionKeys: SessionKey[];
   selected: SessionKey | null;
   onSelect: (key: SessionKey) => void;
@@ -31,7 +33,7 @@ export function WorkspaceNavigation({
       label: "j",
       description: "Scroll down",
       callback: () => {
-        window.scrollBy({ top: 80 });
+        transcript.current?.scrollBy({ top: 80 });
       },
       options: { requireReset: false },
     },
@@ -40,7 +42,7 @@ export function WorkspaceNavigation({
       label: "k",
       description: "Scroll up",
       callback: () => {
-        window.scrollBy({ top: -80 });
+        transcript.current?.scrollBy({ top: -80 });
       },
       options: { requireReset: false },
     },
@@ -49,7 +51,8 @@ export function WorkspaceNavigation({
       label: "Ctrl+d",
       description: "Half-page down",
       callback: () => {
-        window.scrollBy({ top: window.innerHeight / 2 });
+        if (transcript.current)
+          transcript.current.scrollBy({ top: transcript.current.clientHeight / 2 });
       },
     },
     {
@@ -57,7 +60,8 @@ export function WorkspaceNavigation({
       label: "Ctrl+u",
       description: "Half-page up",
       callback: () => {
-        window.scrollBy({ top: -window.innerHeight / 2 });
+        if (transcript.current)
+          transcript.current.scrollBy({ top: -transcript.current.clientHeight / 2 });
       },
     },
     {
@@ -65,7 +69,7 @@ export function WorkspaceNavigation({
       label: "gg",
       description: "Page start",
       callback: () => {
-        window.scrollTo({ top: 0 });
+        transcript.current?.scrollTo({ top: 0 });
       },
     },
     {
@@ -73,7 +77,8 @@ export function WorkspaceNavigation({
       label: "G",
       description: "Page end",
       callback: () => {
-        window.scrollTo({ top: document.documentElement.scrollHeight });
+        if (transcript.current)
+          transcript.current.scrollTo({ top: transcript.current.scrollHeight });
       },
     },
     {
@@ -116,7 +121,15 @@ export function WorkspaceNavigation({
 
   return (
     <Dialog.Root open={helpOpen} onOpenChange={setHelpOpen}>
-      <Dialog.Trigger render={<Button variant="ghost" size="sm" />}>
+      <Dialog.Trigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground"
+          />
+        }
+      >
         <KeyboardIcon aria-hidden="true" />
         Keyboard shortcuts
       </Dialog.Trigger>

@@ -8,7 +8,11 @@ export default defineConfig({
   root: path.join(import.meta.dirname, "src/renderer"),
   base: "./",
   resolve: { alias: { "@": path.join(import.meta.dirname, "src/renderer") } },
-  build: { outDir: path.join(import.meta.dirname, "dist/client"), emptyOutDir: true },
+  build: {
+    outDir: path.join(import.meta.dirname, "dist/client"),
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,
