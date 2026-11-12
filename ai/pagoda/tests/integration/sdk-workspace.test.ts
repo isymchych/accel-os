@@ -107,7 +107,7 @@ test(
       await rm(root, { recursive: true, force: true });
     });
 
-    assert.equal(workspace.account(), ".pi-account-a");
+    assert.equal((await Effect.runPromise(workspace.snapshot())).selectedAccount, ".pi-account-a");
     const owner = await Effect.runPromise(workspace.session(workspace.initialKey));
     await Effect.runPromise(owner.model("sdk-fixture", "fixture"));
     assert.equal((await Effect.runPromise(owner.controls())).model?.id, "fixture");

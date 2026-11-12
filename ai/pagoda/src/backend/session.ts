@@ -272,12 +272,7 @@ export class DesktopSession {
                 }
                 if (!this.closed) {
                   this.update({
-                    error:
-                      error instanceof Error
-                        ? error.message
-                        : rejected
-                          ? "Pi did not accept the input."
-                          : "Pi execution failed.",
+                    error: error.message,
                     controlsRevision: this.state.controlsRevision + (rejected ? 1 : 0),
                   });
                 }

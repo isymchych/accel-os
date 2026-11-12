@@ -20,6 +20,7 @@ import { listPiAccounts } from "./pi/accounts.ts";
 import type { PiSessionOptions, PiSessionFactory } from "./pi/session.ts";
 import type { SessionMetadataStore } from "./session-metadata.ts";
 import { DesktopSession } from "./session.ts";
+import { DEFAULT_INACTIVITY_HOURS } from "./settings.ts";
 
 /** Owns session scopes and backend commands; clients own only their reads and observations. */
 export class DesktopWorkspace {
@@ -59,7 +60,7 @@ export class DesktopWorkspace {
   public static make(
     launch: PiSessionOptions,
     metadataStore?: SessionMetadataStore,
-    inactivityHours = 48,
+    inactivityHours = DEFAULT_INACTIVITY_HOURS,
     accountConfigDir?: string,
     sessionFactory?: PiSessionFactory,
   ): Effect.Effect<DesktopWorkspace, OperationError, Scope.Scope> {
@@ -173,10 +174,6 @@ export class DesktopWorkspace {
         catch: operationError,
       });
     });
-  }
-
-  public account(): string | undefined {
-    return this.selectedAccount;
   }
 
   public selectAccount(profile: string): Effect.Effect<void, OperationError> {

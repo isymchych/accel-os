@@ -2,6 +2,8 @@ import { Effect, FileSystem, Predicate, Schema } from "effect";
 
 import { operationError, OperationFailed, type OperationError } from "./errors.ts";
 
+export const DEFAULT_INACTIVITY_HOURS = 48;
+
 const SettingsSchema = Schema.Struct({
   sidebar: Schema.optionalKey(
     Schema.Struct({
@@ -15,7 +17,7 @@ export function readInactivityHours(
   file?: string,
 ): Effect.Effect<number, OperationError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    if (!file) return 48;
+    if (!file) return DEFAULT_INACTIVITY_HOURS;
     const fs = yield* FileSystem.FileSystem;
     const contents = yield* fs
       .readFileString(file)
@@ -26,7 +28,7 @@ export function readInactivityHours(
             : Effect.fail(error),
         ),
       );
-    if (contents === undefined) return 48;
+    if (contents === undefined) return DEFAULT_INACTIVITY_HOURS;
     const value: unknown = yield* Effect.try({
       try: (): unknown => JSON.parse(contents),
       catch: (cause) =>
@@ -37,6 +39,6 @@ export function readInactivityHours(
       catch: (cause) =>
         Object.assign(new OperationFailed({ error: "Invalid Pagoda settings" }), { cause }),
     });
-    return settings.sidebar?.inactivityHours ?? 48;
+    return settings.sidebar?.inactivityHours ?? DEFAULT_INACTIVITY_HOURS;
   }).pipe(Effect.mapError(operationError));
 }
