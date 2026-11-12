@@ -17,13 +17,14 @@ after shell edits. Source watchers must not restart active agent work.
 
 ### Startup options
 
-Production uses `pnpm run build` then `pnpm run start`. The server accepts `--cwd`, `--profile-dir`,
-`--code-navigation`, and `--port` (default 4317). Launch selections are explicit process arguments,
-not frontend settings. Normal startup does not expose test fake-execution overrides.
+Production uses `pnpm run build` then `pnpm run start`. The server accepts `--cwd` and `--port`
+(default 4317). Normal startup creates in-process SDK sessions and does not expose test
+fake-execution overrides.
 
-Through the terminal launcher, `ai ui` uses the selected account profile; `ai ui tilth` selects the
-navigation backend and `ai ui --browser` opens a browser. `AI_CWD` retains its launch-directory
-override. Closing Electron or interrupting browser mode stops active work.
+Through the terminal launcher, `ai ui` opens Electron and `ai ui --browser` opens a browser. Select
+the account for new execution owners inside Pagoda; this does not change terminal Pi's selection or
+existing owners. Terminal navigation selections are rejected for UI launches. `AI_CWD` retains its
+launch-directory override. Closing Electron or interrupting browser mode stops active work.
 
 The Electron npm package downloads its matching binary on first execution if it is not cached.
 
@@ -35,9 +36,12 @@ pnpm run test:e2e
 ```
 
 `check` runs formatting, lint, TypeScript checks, and Node integration tests. `test:e2e` includes
-the production build. Browser journeys exercise the real frontend and HTTP/SSE backend with a fake
-Pi child; Electron checks cover shell isolation, shared state, and quit behavior. Ordinary journeys
-do not mock the application API; targeted fault tests cover stale responses and rejection.
+the production build. Browser journeys exercise the real frontend and HTTP/SSE backend with fake SDK
+execution and native persistence; Electron checks cover shell isolation, shared state, and quit
+behavior. Ordinary journeys do not mock the application API; targeted fault tests cover stale
+responses and rejection. `tests/e2e/sdk.spec.ts` additionally exercises the built frontend,
+HTTP/SSE, and actual SDK against a local synthetic provider, including shared account selection and
+owner credential affinity.
 
 For browser-only iteration without a graphical display or Xvfb, run `pnpm run test:e2e:browser`. The
 full `test:e2e` command also checks Electron.
@@ -51,9 +55,9 @@ Workspace `Justfile` recipes are optional wrappers around pnpm commands.
 Use fake providers or deterministic execution, harmless tools, and isolated temporary state. Never
 use real provider credentials in automated tests.
 
-Fake RPC checks establish application wiring, not Pi compatibility. Configured-Pi checks use
-synthetic credentials and a local fake model to exercise actual extensions, tools, native history,
-and concurrent fork execution. They establish compatibility only for what they exercise.
+Fake SDK checks establish application wiring, not Pi compatibility. Configured-Pi checks use
+synthetic credentials and a local fake model to exercise actual SDK tools, native history, and
+concurrent fork execution. They establish compatibility only for what they exercise.
 
 Verify actual configured tool-process termination as well as fake cancellation. Report tool and
 extension coverage limits explicitly.

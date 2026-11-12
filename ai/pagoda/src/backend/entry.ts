@@ -7,8 +7,6 @@ import { startBackend, type Backend } from "./server.ts";
 const { values } = parseArgs({
   options: {
     cwd: { type: "string" },
-    "profile-dir": { type: "string" },
-    "code-navigation": { type: "string" },
     port: { type: "string", default: "4317" },
     dev: { type: "boolean", default: false },
   },
@@ -18,11 +16,8 @@ if (!accelOs) throw new Error("ACCEL_OS must identify the existing Pi configurat
 const port = Number(values.port);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid backend port");
 const cwd = await realpath(values.cwd ?? process.env["AI_CWD"] ?? process.cwd());
-const args = [path.join(accelOs, "ai/pi/runtime/rpc-entry.ts")];
-for (const name of ["profile-dir", "code-navigation"] as const) {
-  const value = values[name];
-  if (value !== undefined) args.push(`--${name}`, value);
-}
+const agentDir = path.join(accelOs, "ai/pi");
+const sessionDir = path.join(agentDir, "sessions");
 const shutdown = new AbortController();
 let backend: Backend | undefined;
 let stopping = false;
@@ -44,10 +39,18 @@ process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 process.on("disconnect", stop);
 backend = await startBackend({
-  pi: { executable: process.execPath, args, cwd, env: { ...process.env, AI_CWD: cwd } },
+  pi: {
+    cwd,
+    agentDir,
+    // The workspace replaces this with its selected profile before acquisition.
+    profileDir: agentDir,
+    sessionDir,
+    sharedDir: path.join(accelOs, "ai"),
+  },
   port,
   stateFile: path.join(accelOs, "ai/pi/pagoda-state.json"),
   settingsFile: path.join(accelOs, "ai/pi/pagoda-settings.json"),
+  accountConfigDir: path.join(accelOs, "ai/pi"),
   signal: shutdown.signal,
   ...(values.dev
     ? { developmentOrigin: "http://127.0.0.1:5173" as const }

@@ -6,6 +6,7 @@ import { PagodaApi } from "../contracts/api.ts";
 import {
   ErrorSchema,
   MetadataSchema,
+  SelectedAccountSchema,
   SnapshotSchema,
   WorkspaceSchema,
   type WorkspaceApi,
@@ -68,6 +69,10 @@ export async function connectApi(): Promise<WorkspaceApi> {
     throw new Error("Backend request failed");
   }
   return {
+    accounts: async () => command(client.workspace.accounts()),
+    selectAccount: async (profile) => {
+      await command(client.workspace.selectAccount({ payload: { profile } }));
+    },
     directory: async (cwd) => command(client.workspace.directory({ payload: { cwd } })),
     list: async (cwd) => command(client.workspace.list({ payload: { cwd } })),
     listAll: async () => command(client.workspace.listAll({ payload: {} })),
@@ -113,6 +118,7 @@ export async function connectApi(): Promise<WorkspaceApi> {
       observe("ready", WorkspaceSchema, (workspace) => ({ type: "workspace", workspace }));
       observe("snapshot", SnapshotSchema, (snapshot) => ({ type: "snapshot", snapshot }));
       observe("metadata", MetadataSchema, (metadata) => ({ type: "metadata", metadata }));
+      observe("account", SelectedAccountSchema, (profile) => ({ type: "account", profile }));
       events.onerror = (): void => {
         connection?.(false);
       };

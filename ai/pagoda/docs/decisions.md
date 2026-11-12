@@ -65,15 +65,15 @@ remains outside scope.
 
 ## ADR-013: Direct Pi SDK sessions with native history compatibility
 
-Status: accepted, not implemented. Supersedes ADR-011's configured-subprocess/local-RPC choices and
-the Pi RPC integration retained in ADR-012. HTTP/SSE client transport and launcher-owned backend
-lifetime remain unchanged.
+Status: implemented. Supersedes ADR-011's configured-subprocess/local-RPC choices and the Pi RPC
+integration retained in ADR-012. HTTP/SSE client transport and launcher-owned backend lifetime
+remain unchanged.
 
 Pagoda will host Pi SDK sessions directly in its backend, with Pagoda-owned execution configuration,
 tools, and extensions. Native terminal session history remains discoverable and reopenable; sharing
 history does not require reproducing the terminal runtime or extension environment. The
 [workspace specification](specs/workspace.md#launch-and-configuration) owns that compatibility
-contract and the unresolved credential/account and project-resource choices.
+contract. ADR-014 below settles shared resources and account selection.
 
 The original reason for RPC was reuse of the terminal launcher and isolation of its process-global
 configuration. Terminal parity is no longer required, so retaining a subprocess protocol would add
@@ -88,5 +88,52 @@ explicit rather than implemented by switching process-global state.
 Use the documented SDK contracts and verify Pagoda's integration during implementation, without a
 separate SDK feasibility or terminal-extension compatibility evaluation. The
 [migration plan](../plans/effect-4-migration.md#3-direct-sdk-integration-and-scoped-execution-ownership)
-tracks delivery. This decision records the target, not permission to change code or a claim that the
-current RPC implementation has already been removed.
+tracks delivery.
+
+Exception: the installed SDK declares the `prompt` option `preflightResult` as an internal hook. Its
+RPC mode uses that hook for authoritative started/queued/handled confirmation before execution
+finishes. Pagoda may use it for the same contract, with focused regression coverage, rather than
+guessing acceptance from execution events. Revisit this exception if a supported public equivalent
+becomes available.
+
+## ADR-014: Shared Pi resources and per-session account selection
+
+Status: shared-resource and credential-storage choices implemented. Per-session account selection is
+superseded by ADR-015. Refines ADR-013 without restoring terminal-runtime or extension parity.
+
+Pagoda shares `ai/skills/`, `ai/prompts/`, and the appended `ai/SYSTEM.md` with terminal Pi, while
+retaining normal per-working-directory project instruction discovery. Tools and extensions remain
+Pagoda-owned.
+
+Reuse the existing isolated account credential files and their storage format, but not the terminal
+account switcher. All existing accounts are available in Pagoda, and account selection belongs to
+each session. This permits concurrent work with different accounts without changing terminal Pi's
+active profile. The [specification](specs/workspace.md#accounts) owns switching boundaries and
+credential exposure rules. Login and account creation stay in terminal Pi initially.
+
+Copying credentials into a separate Pagoda store would duplicate refresh state; using the terminal's
+single active-account selection would prevent independent session choices. Neither is selected. The
+SDK storage remains responsible for credential reads and refresh writes to the original files.
+
+A small shared module for account discovery and safe metadata is a suitable implementation option;
+terminal selection stays separate. Do not turn reuse of account storage into reuse of the terminal
+execution launcher. The UI launch path must no longer require resolving one terminal account before
+starting Pagoda. The exact SDK wiring for idle-session account changes remains an implementation
+choice, subject to the existing single-writer and disposal-before-replacement constraints.
+
+This records configuration decisions, not authorization to implement them or redesign terminal
+account storage.
+
+## ADR-015: Global account selection for new execution owners
+
+Status: implemented. Supersedes ADR-014's per-session account-selection and idle switching design;
+its shared resource and credential-storage choices remain.
+
+Pagoda presents one backend-wide selection and initially chooses the first discovered account. Each
+new execution owner captures that selection. A later selection applies to new owners, not existing
+sessions or their active and queued work. Consequently sessions started at different times can use
+different accounts without changing the terminal's selection. The
+[workspace specification](specs/workspace.md#accounts) owns the behavioral contract.
+
+This is a simpler initial UI than per-session switching, while keeping credential contexts stable
+for the lifetime of each owner. Reopening an already active session retains its owner and account.

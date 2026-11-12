@@ -29,6 +29,13 @@ export function workspaceApi(
   const handlers = HttpApiBuilder.group(PagodaApi, "workspace", (group) =>
     group
       .handle("workspace", () => Effect.sync(() => workspace.snapshot()))
+      .handle("accounts", () => operation(() => workspace.accounts()))
+      .handle("selectAccount", ({ payload }) =>
+        operation(async () => {
+          await workspace.selectAccount(payload.profile);
+          return null;
+        }),
+      )
       .handle("directory", ({ payload }) => operation(() => workspace.directory(payload.cwd)))
       .handle("list", ({ payload }) => operation(() => workspace.list(payload.cwd)))
       .handle("listAll", () => operation(() => workspace.listAll()))

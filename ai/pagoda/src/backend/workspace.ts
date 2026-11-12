@@ -1,4 +1,5 @@
 import { realpath, stat } from "node:fs/promises";
+import path from "node:path";
 
 import type {
   HistoryEntryId,
@@ -10,43 +11,61 @@ import type {
   StoredSession,
   WorkspaceState,
 } from "../contracts/index.ts";
-import type { PiLaunch } from "./rpc.ts";
+import { SessionCatalog } from "./catalog.ts";
+import { listPiAccounts } from "./pi/accounts.ts";
+import type { PiSessionOptions, PiSessionFactory } from "./pi/session.ts";
 import type { SessionMetadataStore } from "./session-metadata.ts";
 import { DesktopSession } from "./session.ts";
 
-/** One backend-owned child per open session; view selection is never execution state. */
+/** One backend-owned SDK owner per open session; view selection is never execution state. */
 export class DesktopWorkspace {
   private readonly sessions = new Map<SessionKey, DesktopSession>();
   private readonly opening = new Map<string, Promise<SessionSnapshot>>();
   private readonly listeners = new Set<(snapshot: SessionSnapshot) => void>();
   private readonly metadataListeners = new Set<(metadata: SessionMetadata[]) => void>();
+  private readonly accountListeners = new Set<(profile: string) => void>();
   private closing = false;
+  private selectedAccount: string | undefined;
   public readonly initialKey: SessionKey;
   private readonly initial: DesktopSession;
+  private readonly catalog: SessionCatalog;
+  private readonly sessionFactory: PiSessionFactory | undefined;
 
   public constructor(
-    privateLaunch: PiLaunch,
+    privateLaunch: PiSessionOptions,
     privateMetadata?: SessionMetadataStore,
     inactivityHours = 48,
+    accountConfigDir?: string,
+    sessionFactory?: PiSessionFactory,
   ) {
+    this.sessionFactory = sessionFactory;
     this.launch = privateLaunch;
+    this.catalog = new SessionCatalog(privateLaunch.sessionDir);
     this.metadataStore = privateMetadata;
     this.inactivityHours = inactivityHours;
-    this.initial = this.attach(new DesktopSession(privateLaunch));
+    this.accountConfigDir = accountConfigDir;
+    this.initial = this.attach(new DesktopSession(privateLaunch, sessionFactory));
     this.initialKey = this.initial.summary().key;
   }
-  private readonly launch: PiLaunch;
+  private readonly launch: PiSessionOptions;
   private readonly metadataStore: SessionMetadataStore | undefined;
   private readonly inactivityHours: number;
+  private readonly accountConfigDir: string | undefined;
 
   public async start(): Promise<void> {
-    await this.initial.start();
+    if (this.accountConfigDir) {
+      const accounts = await this.accounts();
+      this.selectedAccount = accounts[0]?.profile;
+      if (!this.selectedAccount) throw new Error("No Pi accounts are available");
+    }
+    await this.initial.start(this.selectedProfileDir());
   }
   public snapshot(): WorkspaceState {
     return {
       initialKey: this.initialKey,
       sessions: [...this.sessions.values()].map((session) => session.snapshot()),
       metadata: this.metadataStore?.list() ?? [],
+      selectedAccount: this.selectedAccount ?? null,
       inactivityHours: this.inactivityHours,
     };
   }
@@ -57,6 +76,29 @@ export class DesktopWorkspace {
   }
   public async prompt(request: Prompt): Promise<string> {
     return this.session(request.key).prompt(request.message, request.mode);
+  }
+  public async accounts(): ReturnType<typeof listPiAccounts> {
+    if (!this.accountConfigDir) throw new Error("Account configuration is unavailable");
+    return listPiAccounts(this.accountConfigDir);
+  }
+  public account(): string | undefined {
+    return this.selectedAccount;
+  }
+  public async selectAccount(profile: string): Promise<void> {
+    if (!(await this.accounts()).some((account) => account.profile === profile))
+      throw new Error("Choose an available Pi account");
+    this.selectedAccount = profile;
+    for (const listener of this.accountListeners) listener(profile);
+  }
+  public subscribeAccount(listener: (profile: string) => void): () => void {
+    this.accountListeners.add(listener);
+    return () => {
+      this.accountListeners.delete(listener);
+    };
+  }
+  private selectedProfileDir(): string | undefined {
+    if (!this.accountConfigDir || !this.selectedAccount) return undefined;
+    return path.join(this.accountConfigDir, "profiles", this.selectedAccount);
   }
   public async directory(cwd: string): Promise<string> {
     const directory = await realpath(cwd);
@@ -100,18 +142,12 @@ export class DesktopWorkspace {
   }
   public async list(cwd: string): Promise<StoredSession[]> {
     const directory = await realpath(cwd);
-    const owner = [...this.sessions.values()].find(
-      (session) => session.summary().connection === "connected",
-    );
-    if (!owner || this.closing) throw new Error("No connected Pi session is available");
-    return owner.list(directory);
+    if (this.closing) throw new Error("The backend is shutting down");
+    return this.catalog.list(directory);
   }
   public async listAll(): Promise<StoredSession[]> {
-    const owner = [...this.sessions.values()].find(
-      (session) => session.summary().connection === "connected",
-    );
-    if (!owner || this.closing) throw new Error("No connected Pi session is available");
-    return owner.listAll();
+    if (this.closing) throw new Error("The backend is shutting down");
+    return this.catalog.list();
   }
   public async create(cwd: string): Promise<SessionSnapshot> {
     return this.launchSession(await realpath(cwd));
@@ -131,12 +167,6 @@ export class DesktopWorkspace {
     }
   }
   private async openStored(cwd: string, sessionPath: string): Promise<SessionSnapshot> {
-    // Discovery requires a connected Pi child, even after all previous owners exit.
-    if (
-      ![...this.sessions.values()].some((session) => session.summary().connection === "connected")
-    ) {
-      await this.launchSession(cwd);
-    }
     const catalog = await this.list(cwd);
     const stored = catalog.find((entry) => entry.path === sessionPath);
     if (!stored) throw new Error("Choose a native session from this directory's catalog");
@@ -146,22 +176,25 @@ export class DesktopWorkspace {
     });
     const existing = matching.find((session) => session.summary().connection === "connected");
     if (existing) return existing.snapshot();
-    // A broken transport can precede process exit; wait for disposal before
-    // opening another writer for the same native session.
+    // Release the previous owner before opening another writer for this native session.
     await Promise.all(matching.map(async (session) => session.close()));
     return this.launchSession(cwd, sessionPath);
   }
   private async launchSession(cwd: string, sessionPath?: string): Promise<SessionSnapshot> {
     if (this.closing) throw new Error("The backend is shutting down");
     const session = this.attach(
-      new DesktopSession({
-        ...this.launch,
-        cwd,
-        env: { ...this.launch.env, AI_CWD: cwd },
-        args: [...this.launch.args, ...(sessionPath ? ["--session", sessionPath] : [])],
-      }),
+      new DesktopSession(
+        {
+          ...this.launch,
+          cwd,
+          ...(sessionPath ? { sessionFile: sessionPath } : {}),
+        },
+        this.sessionFactory,
+      ),
     );
-    await session.start();
+    await session.start(this.selectedProfileDir());
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- Shutdown can begin during SDK acquisition.
+    if (this.closing) throw new Error("The backend is shutting down");
     return session.snapshot();
   }
   public async fork(key: SessionKey, entryId: HistoryEntryId): Promise<SessionSnapshot> {
@@ -177,6 +210,7 @@ export class DesktopWorkspace {
     );
     this.listeners.clear();
     this.metadataListeners.clear();
+    this.accountListeners.clear();
     const failures = results.filter((result) => result.status === "rejected");
     if (failures.length > 0) throw new Error("Could not close every Pi session");
   }

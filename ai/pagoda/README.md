@@ -25,10 +25,11 @@ ai ui
 ai ui --browser
 ```
 
-Both use the selected account profile; choose another with `ai account` first. Electron requires a
-graphical desktop; closing it stops the backend and active work. Browser mode keeps the backend in
-the foreground until Ctrl+C, even after tabs close. Its printed URL contains a local access
-credential: do not share it. Remote access is unsupported. Rebuild after source changes; see
+Choose the account for new sessions inside Pagoda; existing sessions retain their original account.
+Login and account creation remain in terminal Pi (`ai account`). Electron requires a graphical
+desktop; closing it stops the backend and active work. Browser mode keeps the backend in the
+foreground until Ctrl+C, even after tabs close. Its printed URL contains a local access credential:
+do not share it. Remote access is unsupported. Rebuild after source changes; see
 [development](docs/development.md).
 
 ## Working with sessions
@@ -68,9 +69,10 @@ sessions leave Recent; the default is 48 hours. Restart the backend after changi
 native Pi activity, including CLI work after refreshing the session catalog. Pins and favourites are
 stored separately in the ignored `ai/pi/pagoda-state.json`.
 
-Pi notifications are displayed, but select/confirm/input/editor dialogs are cancelled with a visible
-notice. Terminal components need graphical adaptations; the existing `ask_user_question` disables
-itself outside TUI mode.
+Pagoda loads the shared skills, prompt templates, and system instructions, but uses its own SDK
+tools rather than terminal Pi's extensions. Terminal code-navigation selections (`srcwalk` and
+`tilth`) are not accepted by `ai ui`. SDK notification/dialog bindings are still a migration gap;
+see [architecture](docs/architecture.md#known-implementation-gap).
 
 Agents have unsandboxed host filesystem and shell access; the working directory is not a security
 boundary. See [execution authority](docs/domain.md#execution-authority).

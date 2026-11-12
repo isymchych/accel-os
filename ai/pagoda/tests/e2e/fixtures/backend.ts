@@ -5,7 +5,7 @@ import path from "node:path";
 import { test as base } from "@playwright/test";
 
 import { startBackend, type Backend } from "../../../src/backend/server.ts";
-import { fakePiLaunch } from "../../integration/fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory } from "../../integration/fixtures/helpers.ts";
 
 export interface TestBackend {
   backend: Backend;
@@ -23,7 +23,8 @@ export const test = base.extend<{ testBackend: TestBackend }>({
         port: 0,
         stateFile: path.join(directory, "pagoda-state.json"),
         clientDirectory: path.resolve(import.meta.dirname, "../../../dist/client"),
-        pi: fakePiLaunch(directory),
+        pi: fakePiOptions(directory),
+        sessionFactory: fakeSessionFactory,
       });
       await use({ backend, directory });
     } finally {

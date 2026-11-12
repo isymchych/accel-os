@@ -211,7 +211,7 @@ test("session library search filters history without changing open sessions", as
   await expect(
     page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button"),
   ).toHaveCount(1);
-  await search.fill("TEST SESSION");
+  await search.fill("SAVED HISTORY");
   await expect(saved.getByRole("listitem")).toHaveCount(1);
   await search.clear();
   await saved.getByRole("listitem").getByRole("button").first().click();
@@ -266,11 +266,11 @@ test("pin and favourite changes are shared between clients", async ({
     await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
     const library = page.getByRole("region", { name: "Sessions" });
     await expect(library.getByRole("listitem")).toHaveCount(1);
-    await library.getByRole("button", { name: "Pin Test session" }).click();
+    await library.getByRole("button", { name: "Pin important work" }).click();
     await expect(other.getByRole("navigation", { name: "Pinned sessions" })).toContainText(
-      "Test session",
+      "important work",
     );
-    await library.getByRole("button", { name: "Favourite Test session" }).click();
+    await library.getByRole("button", { name: "Favourite important work" }).click();
     await other.getByRole("button", { name: "Browse sessions", exact: true }).click();
     await other.getByLabel("Favourites only").check();
     await expect(other.getByRole("region", { name: "Sessions" }).getByRole("listitem")).toHaveCount(
@@ -278,7 +278,7 @@ test("pin and favourite changes are shared between clients", async ({
     );
     await page.reload();
     await expect(page.getByRole("navigation", { name: "Pinned sessions" })).toContainText(
-      "Test session",
+      "important work",
     );
   } finally {
     await context.close();
@@ -300,7 +300,7 @@ test("inactive sessions leave Recent without deleting history, while pinned sess
   await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
   const library = page.getByRole("region", { name: "Sessions" });
   await expect(library.getByRole("listitem")).toHaveCount(1);
-  await library.getByRole("button", { name: "Pin Test session" }).click();
+  await library.getByRole("button", { name: "Pin older work" }).click();
   const pinned = page.getByRole("navigation", { name: "Pinned sessions" });
   await expect(pinned.getByRole("button")).toHaveCount(1);
   await pinned.getByRole("button").click();
@@ -312,15 +312,33 @@ test("Recent follows refreshed native activity without renewing on reopen", asyn
 }) => {
   const recent = page.getByRole("navigation", { name: "Recent sessions" });
   const file = path.join(directory, "native", "external.jsonl");
-  const external = {
-    id: "external-session",
-    cwd: directory,
-    name: "External session",
-    modified: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
-    leafId: null,
-    entries: [],
-  };
-  await writeFile(file, JSON.stringify(external));
+  const nativeHistory = (time: number): string =>
+    [
+      {
+        type: "session",
+        version: 3,
+        id: "external-session",
+        cwd: directory,
+        timestamp: new Date(time).toISOString(),
+      },
+      {
+        type: "message",
+        id: "external-message",
+        parentId: null,
+        timestamp: new Date(time).toISOString(),
+        message: { role: "user", content: "External history", timestamp: time },
+      },
+      {
+        type: "session_info",
+        id: "external-name",
+        parentId: "external-message",
+        timestamp: new Date(time).toISOString(),
+        name: "External session",
+      },
+    ]
+      .map((entry) => JSON.stringify(entry))
+      .join("\n") + "\n";
+  await writeFile(file, nativeHistory(Date.now() - 49 * 60 * 60 * 1000));
   await page.getByRole("button", { name: "Refresh sessions" }).click();
   await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(0);
   await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
@@ -331,7 +349,7 @@ test("Recent follows refreshed native activity without renewing on reopen", asyn
   await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(1);
   await page.getByRole("button", { name: "New session", exact: true }).click();
   await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(0);
-  await writeFile(file, JSON.stringify({ ...external, modified: new Date().toISOString() }));
+  await writeFile(file, nativeHistory(Date.now()));
   await page.getByRole("button", { name: "Refresh sessions" }).click();
   await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(1);
 });
@@ -376,15 +394,18 @@ test("accepted input with a lost acknowledgement preserves its draft without rep
   desktop: { page, directory },
 }) => {
   const message = page.getByLabel("Message", { exact: true });
+  await page.route("**/api/prompt", async (route) => {
+    await route.fetch();
+    await route.abort("connectionreset");
+  });
   await message.fill("uncertain");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("region", { name: "Direct agent" }).getByRole("alert")).toContainText(
-    "Pi exited",
+    "outcome is uncertain",
   );
   await expect(message).toHaveValue("uncertain");
-  await expect(page.getByRole("status").first()).toContainText("unknown");
   await page.reload();
-  await expect(page.getByRole("status").first()).toContainText("disconnected");
+  await expect(page.getByRole("status").first()).toContainText("connected");
   await expect(message).toHaveValue("uncertain");
   const prompts = (await readFile(path.join(directory, "prompts.jsonl"), "utf8"))
     .trim()
@@ -893,13 +914,12 @@ test("long transcript content remains available through the shadcn disclosure", 
   await expect(clipped).toHaveCount(1);
 });
 
-test("native content renders text, thinking, and images in their original order", async ({
+test("native assistant thinking and tool images preserve content order", async ({
   desktop: { page },
 }) => {
   await page.getByLabel("Message", { exact: true }).fill("ordered-content");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   const output = page.getByRole("article", { name: "assistant message" });
-  await expect(output.getByRole("img", { name: "Attached content" })).toBeVisible();
   await expect(output.getByRole("button", { name: "Thinking" })).toBeVisible();
   const order = await output
     .locator(":scope > div > div")
@@ -908,9 +928,19 @@ test("native content renders text, thinking, and images in their original order"
         element.querySelector("img") ? "image" : element.textContent.trim(),
       ),
     );
-  expect(order).toEqual(["First text", "Thinking", "image", "Last text"]);
+  expect(order).toEqual(["First text", "Thinking", "Last text"]);
   await output.getByRole("button", { name: "Thinking" }).click();
   await expect(output).toContainText("Private reasoning");
+  const result = page.getByRole("article", { name: "toolResult message" });
+  await expect(result.getByRole("img", { name: "Attached content" })).toBeVisible();
+  const toolOrder = await result
+    .locator(":scope > div > div")
+    .evaluateAll((elements) =>
+      elements.map((element) =>
+        element.querySelector("img") ? "image" : element.textContent.trim(),
+      ),
+    );
+  expect(toolOrder).toEqual(["Tool: image-fixture", "Before image", "image", "After image"]);
 });
 
 test("assistant Markdown and compact tools remain readable without executing content", async ({

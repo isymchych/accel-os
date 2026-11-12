@@ -4,15 +4,11 @@ import path from "node:path";
 
 export const backendOptions = {
   cwd: { type: "string" },
-  "profile-dir": { type: "string" },
-  "code-navigation": { type: "string" },
   port: { type: "string", default: "4317" },
 } as const;
 
 interface LaunchOptions {
   cwd?: string;
-  "profile-dir"?: string;
-  "code-navigation"?: string;
   port: string;
   dev?: boolean;
   browser?: boolean;
@@ -28,10 +24,6 @@ export async function runApplication(values: LaunchOptions, client: boolean): Pr
     "--port",
     values.port,
   ];
-  for (const name of ["profile-dir", "code-navigation"] as const) {
-    const value = values[name];
-    if (value !== undefined) args.push(`--${name}`, value);
-  }
   if (values.dev) args.push("--dev");
   const env = {
     ...process.env,

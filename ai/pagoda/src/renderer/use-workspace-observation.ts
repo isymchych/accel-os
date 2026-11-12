@@ -16,7 +16,7 @@ export function mergeObservation(
   current: ObservedSessions,
   observation: WorkspaceObservation,
 ): ObservedSessions {
-  if (observation.type === "metadata") return current;
+  if (observation.type === "metadata" || observation.type === "account") return current;
   const snapshots =
     observation.type === "workspace" ? observation.workspace.sessions : [observation.snapshot];
   let next = current;
@@ -36,11 +36,13 @@ export function useWorkspaceObservation(
   sessions: ObservedSessions;
   receive: (snapshot: SessionSnapshot) => void;
   metadata: SessionMetadata[];
+  selectedAccount: string | null;
   transportConnected: boolean;
 } {
   const workspace = useApi();
   const [sessions, dispatch] = useReducer(mergeObservation, {});
   const [metadata, setMetadata] = useState<SessionMetadata[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [transportConnected, setTransportConnected] = useState(false);
   const receive = useCallback((snapshot: SessionSnapshot): void => {
     dispatch({ type: "snapshot", snapshot });
@@ -52,9 +54,12 @@ export function useWorkspaceObservation(
         dispatch(observation);
         if (observation.type === "workspace") {
           setMetadata(observation.workspace.metadata);
+          setSelectedAccount(observation.workspace.selectedAccount);
           onWorkspace(observation.workspace);
         } else if (observation.type === "metadata") {
           setMetadata(observation.metadata);
+        } else if (observation.type === "account") {
+          setSelectedAccount(observation.profile);
         } else {
           onSnapshot(observation.snapshot);
         }
@@ -62,5 +67,5 @@ export function useWorkspaceObservation(
     [workspace, onWorkspace, onSnapshot],
   );
 
-  return { sessions, receive, metadata, transportConnected };
+  return { sessions, receive, metadata, selectedAccount, transportConnected };
 }

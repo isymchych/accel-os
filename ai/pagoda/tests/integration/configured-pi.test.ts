@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -7,6 +7,7 @@ import test from "node:test";
 
 import { Schema } from "effect";
 
+import { SessionCatalog } from "../../src/backend/catalog.ts";
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/contracts/index.ts";
 import { contentText, waitForSession } from "./fixtures/helpers.ts";
@@ -30,7 +31,7 @@ const observe = (
   });
 
 test(
-  "configured Pi compatibility with isolated native sessions and a local fake provider",
+  "Pagoda SDK compatibility with isolated native sessions and a local fake provider",
   { timeout: 30_000 },
   async (t) => {
     const directory = await mkdtemp(path.join(tmpdir(), "configured-pi-ui-"));
@@ -38,26 +39,12 @@ test(
     const profile = path.join(directory, "profile");
     const project = path.join(directory, "project");
     await Promise.all([mkdir(config, { recursive: true }), mkdir(profile), mkdir(project)]);
-    await symlink(
-      path.resolve(import.meta.dirname, "../../../pi/extensions"),
-      path.join(config, "extensions"),
-    );
     await writeFile(
       path.join(directory, "ai/SYSTEM.md"),
       "SYSTEM_FIXTURE: use only harmless fixture tools.",
     );
     await writeFile(path.join(project, "fixture.txt"), "isolated tool result");
     await writeFile(path.join(profile, "auth.json"), "{}");
-    await writeFile(
-      path.join(profile, "settings.json"),
-      JSON.stringify({
-        defaultProvider: "desktop-fixture",
-        defaultModel: "fixture",
-        defaultTools: ["read", "bash", "apply_patch", "codemode"],
-        retry: { enabled: false },
-        enableInstallTelemetry: false,
-      }),
-    );
 
     let requests = 0;
     let providerError: unknown;
@@ -75,9 +62,11 @@ test(
         assert.ok(Schema.is(RequestSchema)(value));
         const names = value.tools.map((tool) => tool.function.name);
         assert.ok(names.includes("read"));
-        assert.ok(names.includes("apply_patch"));
-        assert.ok(names.includes("codemode"));
-        assert.ok(!names.includes("write"));
+        assert.ok(names.includes("bash"));
+        assert.ok(names.includes("edit"));
+        assert.ok(names.includes("write"));
+        assert.ok(!names.includes("apply_patch"));
+        assert.ok(!names.includes("codemode"));
         assert.ok(!names.includes("grep"));
         assert.ok(JSON.stringify(value.messages).includes("SYSTEM_FIXTURE"));
         assert.equal(request.headers.authorization, "Bearer synthetic-test-key");
@@ -108,7 +97,7 @@ test(
                             command:
                               "printf '%s' \"$$\" > native-tool-pid; printf 'NATIVE_WAIT_READY\\n'; exec sleep 60",
                           }
-                        : { targets: [{ path: "fixture.txt" }] },
+                        : { path: "fixture.txt" },
                     ),
                   },
                 },
@@ -155,7 +144,7 @@ test(
     const address = server.address();
     assert.ok(address !== null && typeof address !== "string");
     await writeFile(
-      path.join(profile, "models.json"),
+      path.join(config, "models.json"),
       JSON.stringify({
         providers: {
           "desktop-fixture": {
@@ -168,22 +157,11 @@ test(
       }),
     );
     const launch = {
-      executable: process.execPath,
-      args: [
-        path.resolve(import.meta.dirname, "../../../pi/runtime/rpc-entry.ts"),
-        "--profile-dir",
-        profile,
-      ],
       cwd: project,
-      env: {
-        PATH: process.env["PATH"] ?? "",
-        HOME: directory,
-        XDG_RUNTIME_DIR: directory,
-        XDG_CONFIG_HOME: directory,
-        XDG_DATA_HOME: directory,
-        ACCEL_OS: directory,
-        PI_OFFLINE: "1",
-      },
+      agentDir: config,
+      profileDir: profile,
+      sessionDir: path.join(config, "sessions"),
+      sharedDir: path.join(directory, "ai"),
     };
     const session = new DesktopSession(launch);
     let destination: DesktopSession | undefined;
@@ -201,7 +179,8 @@ test(
       await rm(directory, { recursive: true, force: true });
     });
     await session.start();
-    await t.test("canonical configuration executes the actual read tool", async () => {
+    await session.model("desktop-fixture", "fixture");
+    await t.test("Pagoda configuration executes the actual SDK read tool", async () => {
       const settled = observe(
         session,
         (snapshot) =>
@@ -230,18 +209,19 @@ test(
         "isolated tool result",
       );
     });
-    const catalog = await session.list(project);
+    const discovery = new SessionCatalog(launch.sessionDir);
+    const catalog = await discovery.list(project);
     assert.equal(catalog.length, 1);
     const original = catalog[0];
     assert.ok(original);
-    assert.ok((await session.listAll()).some((item) => item.id === original.id));
+    assert.ok((await discovery.list()).some((item) => item.id === original.id));
     const history = await session.history();
     const first = history.entries.find((entry) => entry.label.startsWith("user:"));
     assert.ok(first && history.leafId);
     const leafId = history.leafId;
     await t.test("current user leaf navigation is a no-op without restored text", async () => {
       const forkPath = await session.fork(first.id);
-      const fork = new DesktopSession({ ...launch, args: [...launch.args, "--session", forkPath] });
+      const fork = new DesktopSession({ ...launch, sessionFile: forkPath });
       try {
         await fork.start();
         const before = fork.snapshot().messages;
@@ -258,7 +238,7 @@ test(
       "native navigation preserves entries and model controls omit credentials",
       async () => {
         assert.equal(await session.navigate(first.id), "Read fixture.txt and report the result.");
-        assert.equal(session.snapshot().messages.length, 1);
+        assert.ok(!session.snapshot().messages.some((message) => message.role === "user"));
         await session.navigate(leafId);
         assert.deepEqual(
           (await session.history()).entries,
@@ -286,7 +266,7 @@ test(
         await assert.rejects(session.navigate(first.id), /idle/u);
         destination = new DesktopSession({
           ...launch,
-          args: [...launch.args, "--session", forkPath],
+          sessionFile: forkPath,
         });
         await destination.start();
         assert.notEqual(destination.snapshot().sessionId, session.snapshot().sessionId);

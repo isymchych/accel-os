@@ -78,12 +78,13 @@ test("routes ui to the desktop or browser with execution configuration", () => {
     useUi: true,
     browser: false,
   });
-  assert.throws(() => parseLauncherArgs(["ui", "account"]), /select an account/u);
+  assert.throws(() => parseLauncherArgs(["ui", "account"]), /selects accounts inside Pagoda/u);
   assert.throws(
     () => parseLauncherArgs(["ui", "--model", "test"]),
     /does not accept Pi arguments/u,
   );
-  assert.equal(parseLauncherArgs(["ui", "tilth", "--browser"]).browser, true);
-  assert.equal(parseLauncherArgs(["ui", "tilth"]).codeNavigation, "tilth");
+  assert.equal(parseLauncherArgs(["ui", "--browser"]).browser, true);
+  assert.throws(() => parseLauncherArgs(["ui", "tilth"]), /does not accept a code navigation/u);
+  assert.throws(() => parseLauncherArgs(["srcwalk", "ui"]), /does not accept a code navigation/u);
   assert.deepEqual(parseLauncherArgs(["--browser"]).passthrough, ["--browser"]);
 });

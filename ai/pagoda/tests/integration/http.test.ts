@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { watch } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer, request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
@@ -10,13 +9,14 @@ import { Schema } from "effect";
 
 import { startBackend } from "../../src/backend/server.ts";
 import { SnapshotSchema, WorkspaceSchema } from "../../src/contracts/index.ts";
-import { fakePiLaunch } from "./fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
 
 test("authenticated HTTP preserves execution independently of observers and cleans up on shutdown", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-http-"));
   const backend = await startBackend({
     port: 0,
-    pi: fakePiLaunch(directory),
+    pi: fakePiOptions(directory),
+    sessionFactory: fakeSessionFactory,
   });
   t.after(async () => {
     await backend.close();
@@ -218,47 +218,3 @@ test("authenticated HTTP preserves execution independently of observers and clea
   assert.equal(await readFile(path.join(directory, "closed"), "utf8"), "clean");
   assert.throws(() => process.kill(nextToolPid, 0), { code: "ESRCH" });
 });
-
-test(
-  "cancelling backend startup disposes a Pi child that has not acknowledged readiness",
-  { timeout: 10_000 },
-  async (t) => {
-    const directory = await mkdtemp(path.join(tmpdir(), "pagoda-startup-"));
-    const marker = path.join(directory, "started");
-    const controller = new AbortController();
-    const started = Promise.withResolvers<undefined>();
-    const watcher = watch(directory, (_event, name) => {
-      if (name === "started") started.resolve(undefined);
-    });
-    t.after(async () => {
-      controller.abort();
-      watcher.close();
-      await rm(directory, { recursive: true, force: true });
-    });
-    const rejected = assert.rejects(
-      startBackend({
-        port: 0,
-        signal: controller.signal,
-        pi: {
-          executable: process.execPath,
-          args: [
-            "-e",
-            `const fs = require("node:fs");
-           fs.writeFileSync(process.env.STARTED + ".tmp", String(process.pid));
-           fs.renameSync(process.env.STARTED + ".tmp", process.env.STARTED);
-           process.stdin.on("end", () => process.exit(0));
-           process.stdin.resume();`,
-          ],
-          cwd: directory,
-          env: { STARTED: marker },
-        },
-      }),
-      /Pi exited|closed|abort/iu,
-    );
-    await started.promise;
-    const pid = Number(await readFile(marker, "utf8"));
-    controller.abort();
-    await rejected;
-    assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
-  },
-);

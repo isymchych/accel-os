@@ -6,13 +6,18 @@ import test from "node:test";
 
 import { DesktopSession } from "../../src/backend/session.ts";
 import type { SessionSnapshot } from "../../src/contracts/index.ts";
-import { contentText, fakePiLaunch, waitForSession } from "./fixtures/helpers.ts";
+import {
+  contentText,
+  fakePiOptions,
+  fakeSessionFactory,
+  waitForSession,
+} from "./fixtures/helpers.ts";
 
 async function fixture(
   t: test.TestContext,
 ): Promise<{ session: DesktopSession; directory: string }> {
   const directory = await mkdtemp(path.join(tmpdir(), "pi-desktop-"));
-  const session = new DesktopSession(fakePiLaunch(directory));
+  const session = new DesktopSession(fakePiOptions(directory), fakeSessionFactory);
   t.after(async () => {
     await session.close();
     await rm(directory, { recursive: true, force: true });
@@ -30,7 +35,7 @@ const observe = (
     description: "Expected session state was not observed",
   });
 
-test("preserves Unicode JSONL and replaces partial text with the authoritative message", async (t) => {
+test("preserves Unicode SDK content and replaces partial text with the authoritative message", async (t) => {
   const { session } = await fixture(t);
   const finished = observe(session, (snapshot) =>
     snapshot.messages.some((message) => message.role === "assistant"),
@@ -61,7 +66,7 @@ test("renderer subscription replacement does not interrupt work; Stop confirms t
   assert.throws(() => process.kill(toolPid, 0), { code: "ESRCH" });
 });
 
-test("shutdown closes stdin and cleans up active child work", async (t) => {
+test("shutdown disposes the SDK owner and cleans up active tool work", async (t) => {
   const { session, directory } = await fixture(t);
   const active = observe(session, (snapshot) => snapshot.activity !== null);
   await session.prompt("hold");
@@ -82,11 +87,11 @@ test("unsupported dialogs are explicitly cancelled and do not hang command accep
   assert.equal(session.snapshot().execution, "idle");
 });
 
-test("command rejection and unexpected child exit remain visible", async (t) => {
+test("SDK command rejections remain visible without disconnecting the owner", async (t) => {
   const { session } = await fixture(t);
   await assert.rejects(session.prompt("reject"), /Rejected test prompt/u);
   assert.equal(session.snapshot().execution, "idle");
-  const disconnected = observe(session, (snapshot) => snapshot.connection === "disconnected");
-  await assert.rejects(session.prompt("crash"), /Pi exited/u);
-  assert.equal((await disconnected).execution, "unknown");
+  await assert.rejects(session.prompt("crash"), /Synthetic SDK execution failure/u);
+  assert.equal(session.snapshot().error, "Synthetic SDK execution failure");
+  assert.equal(session.snapshot().connection, "connected");
 });

@@ -1,17 +1,25 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { SessionManager } from "@earendil-works/pi-coding-agent";
+
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
-import { contentText, fakePiLaunch } from "./fixtures/helpers.ts";
+import { contentText, fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
 
 async function fixture(
   t: test.TestContext,
 ): Promise<{ workspace: DesktopWorkspace; directory: string }> {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-"));
-  const workspace = new DesktopWorkspace(fakePiLaunch(directory));
+  const workspace = new DesktopWorkspace(
+    fakePiOptions(directory),
+    undefined,
+    48,
+    undefined,
+    fakeSessionFactory,
+  );
   t.after(async () => {
     try {
       await workspace.close();
@@ -25,53 +33,25 @@ async function fixture(
 test("reopening and navigation render native summary messages", async (t) => {
   const { workspace, directory } = await fixture(t);
   const native = path.join(directory, "native");
-  await mkdir(native);
-  const file = path.join(native, "summary.jsonl");
-  await writeFile(
-    file,
-    JSON.stringify({
-      id: "summary-session",
-      cwd: directory,
-      name: "Summaries",
-      modified: "2026-01-01T00:00:00.000Z",
-      leafId: "last",
-      entries: [
-        {
-          id: "compact",
-          parentId: null,
-          type: "message",
-          message: { role: "compactionSummary", summary: "Compacted history" },
-        },
-        {
-          id: "branch",
-          parentId: "compact",
-          type: "message",
-          message: { role: "branchSummary", summary: "Previous branch" },
-        },
-        {
-          id: "last",
-          parentId: "branch",
-          type: "message",
-          message: { role: "assistant", content: "Latest" },
-        },
-      ],
-    }),
-  );
+  const manager = SessionManager.create(directory, native);
+  const first = manager.appendMessage({ role: "user", content: "retained", timestamp: 1 });
+  const compact = manager.appendCompaction("Compacted history", first, 100);
+  const branchId = manager.branchWithSummary(compact, "Previous branch");
+  manager.appendCustomMessageEntry("fixture", "Latest", true);
+  const file = manager.getSessionFile();
+  assert.ok(file);
   await workspace.start();
   const opened = await workspace.open(directory, file);
   const session = workspace.session(opened.key);
   await assert.rejects(session.prompt(" \n"), /Enter a message/u);
-  assert.deepEqual(
-    opened.messages.map((message) => contentText(message.content)),
-    ["Compacted history", "Previous branch", "Latest"],
-  );
-  const branch = (await session.history()).entries.find((entry) => entry.id === "branch");
+  const texts = opened.messages.map((message) => contentText(message.content));
+  assert.ok(texts.includes("Compacted history"));
+  assert.ok(texts.includes("Previous branch"));
+  assert.equal(texts.at(-1), "Latest");
+  const branch = (await session.history()).entries.find((entry) => entry.id === branchId);
   assert.ok(branch);
   await session.navigate(branch.id);
-  assert.deepEqual(
-    session.snapshot().messages.map((message) => contentText(message.content)),
-    ["Compacted history", "Previous branch"],
-  );
+  assert.equal(contentText(session.snapshot().messages.at(-1)?.content), "Previous branch");
 });
 
 test("independent owners survive view changes, reopen deduplicates, and forks preserve active work", async (t) => {
@@ -85,7 +65,7 @@ test("independent owners survive view changes, reopen deduplicates, and forks pr
   assert.notEqual(a.summary().key, b.key);
   await workspace.session(b.key).prompt("B prompt");
   const historyA = await a.history();
-  const entry = historyA.entries[0];
+  const entry = historyA.entries.find((item) => item.label.startsWith("user: hold"));
   assert.ok(entry);
   assert.equal(a.summary().execution, "running");
   const catalog = await workspace.list(directory);

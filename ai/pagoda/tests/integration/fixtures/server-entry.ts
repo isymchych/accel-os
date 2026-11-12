@@ -8,9 +8,9 @@ let closeCalls = 0;
 mock.module(path.resolve(import.meta.dirname, "../../../src/backend/server.ts"), {
   exports: {
     startBackend: async (options: BackendOptions): Promise<Backend> => {
-      console.log(`executable:${options.pi.executable}`);
-      console.log(`args:${JSON.stringify(options.pi.args)}`);
       console.log(`cwd:${options.pi.cwd}`);
+      console.log(`sdk:${JSON.stringify(options.pi)}`);
+      console.log(`accounts:${options.accountConfigDir}`);
       console.log(`port:${options.port}`);
       console.log(`renderer:${options.developmentOrigin ?? "built"}`);
       return {

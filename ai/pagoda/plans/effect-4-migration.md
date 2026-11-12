@@ -1,9 +1,8 @@
 # Effect 4 backend migration
 
-Status: slices 1 and 2 implemented; slice 3 revised for direct Pi SDK integration, not implemented.
-This plan was recorded on November 12, 2026 and subsequently revised after the user dropped terminal
-runtime/extension parity. The current authorization covers documentation updates; it does not resume
-code implementation under the superseded RPC approach. Watchers remain a separate proposal.
+Status: slices 1–3 implemented; slices 4–5 remain. This plan was recorded on November 12, 2026 and
+subsequently revised after the user dropped terminal runtime/extension parity. Slice 3
+implementation is authorized under the direct SDK approach. Watchers remain a separate proposal.
 
 ## Purpose and authority
 
@@ -34,8 +33,7 @@ resolve that decision rather than silently expanding this plan.
 
 The SDK direction supersedes this plan's original requirement to reuse `../pi/runtime`. The vision,
 domain, workspace spec, architecture, and agent guidance now record that target; ADR-013 supersedes
-the previous subprocess/RPC rationale. Architecture still describes the running RPC implementation
-explicitly. Keep those documents aligned during implementation without restoring old parity
+the previous subprocess/RPC rationale. Keep those documents aligned without restoring old parity
 requirements or rewriting unrelated product requirements.
 
 ## Background and constraints
@@ -46,9 +44,8 @@ fetch/EventSource client in `src/renderer/http-api.ts`, and Promise-based backen
 subscriptions and timers; `rpc.ts` owns Pi children and pending commands. `workspace.ts` currently
 combines execution-owner management, metadata notifications, and native catalog discovery.
 
-Slices 1 and 2 have since replaced Hono/TypeBox with Effect HTTP, HttpApi, and Effect Schema. The
-remaining backend still launches `ai/pi/runtime/rpc-entry.ts`, with discovery/history operations
-through `../pi/runtime/desktop-extension.ts` and `../pi/runtime/desktop-sessions.ts`.
+Slices 1 and 2 replaced Hono/TypeBox with Effect HTTP, HttpApi, and Effect Schema. Slice 3 replaced
+the terminal RPC and desktop bridge integration with direct SDK execution and native discovery.
 
 The revised target does not depend on that runtime. Pagoda owns its SDK configuration, resources,
 and future tools/extensions, using public Pi APIs. Do not copy the terminal extension list or
@@ -95,10 +92,16 @@ Viewing and execution are distinct: viewing a saved terminal history does not re
 extensions; resuming uses Pagoda's available tools and instructions, not a promise to recreate the
 old environment. Preserve sequential terminal/Pagoda handoff and avoid a second history format.
 
-Credential/account reuse and which project resources Pagoda loads are not fully decided by dropping
-extension parity. Resolve consequential choices before their configuration wiring; do not silently
-import terminal profiles wholesale, discard existing credential selection, or add credential
-management UI. This is a configuration decision, not an SDK-evaluation prerequisite.
+Resource and account configuration is settled in the
+[workspace specification](../docs/specs/workspace.md#launch-and-configuration) and
+[ADR-014](../docs/decisions.md#adr-014-shared-pi-resources-and-per-session-account-selection): share
+`ai/skills/`, `ai/prompts/`, the appended `ai/SYSTEM.md`, normal project instruction discovery, and
+existing per-profile credential files. As refined by
+[ADR-015](../docs/decisions.md#adr-015-global-account-selection-for-new-execution-owners), expose
+all accounts through one global selection for new execution owners, not terminal account switching.
+Keep tools/extensions Pagoda-owned and login/account creation in terminal Pi initially. Pagoda
+rejects terminal code-navigation selection; terminal Pi retains it. No SDK-evaluation prerequisite
+is needed.
 
 ## Agreed target boundaries
 
@@ -230,12 +233,27 @@ authentication rejection, reconnect, image handling, and uncertain submissions w
 This replaces the originally planned scoped RPC rewrite. The earlier malformed-record handling
 question no longer blocks this slice: the private Pi transport is removed, not redesigned.
 
-- Keep the owning documents aligned with implementation of the approved SDK direction. Preserve
-  unrelated behavior and leave unresolved credential/project-resource choices explicit until
-  decided.
+Implemented: SDK execution, typed presentation, UI bindings, native catalog and scoped ownership
+replace the RPC transport and fixtures. The backend-wide account selection is captured by new
+owners; existing owners retain their account. The launcher no longer resolves terminal selection.
+The approved internal `preflightResult` hook distinguishes acceptance from completion.
+
+The SDK factory fixture exercises application wiring with native persistence; actual SDK tests use
+synthetic credentials and a local provider, including active tool cancellation. Workspace checks
+pass 56 integration tests; the production build and all 34 browser/Electron journeys pass. These
+checks do not establish compatibility with terminal extensions or real providers.
+
+- Keep the owning documents aligned with implementation of the approved SDK direction and resource/
+  account configuration. Preserve unrelated behavior.
 - Add Pi as a direct Pagoda runtime dependency. Create SDK sessions through public APIs with
   explicit cwd, session storage, resource configuration, and Pagoda-owned tool/extension selection.
   Do not inherit terminal extensions or mutate process-global state for each owner.
+- Load the agreed shared resources and existing credential stores. Expose account metadata and a
+  global account selection captured by each new execution owner; keep existing owners and their
+  active/queued work on their originating accounts. Remove the UI launch path's requirement to
+  resolve one terminal account without changing terminal selection behavior. Reuse the
+  credential-directory format; a small shared discovery/metadata module is an option, not a
+  terminal-runtime dependency.
 - Bind SDK session creation, work, event subscriptions, and disposal to backend/execution-owner
   Effect scopes. Requests and observation connections do not own accepted execution.
 - Replace RPC commands/events with direct SDK calls and projection into the existing presentation
@@ -265,10 +283,11 @@ work; concurrent reopen shares one execution owner.
 Verify during implementation: extend existing server, session, workspace-ownership, history/fork,
 and configured-Pi coverage for the changed integration. Assert that Pagoda passes the intended cwd,
 storage/resources, and configuration, does not load terminal extensions accidentally, and releases
-subscriptions/work on shutdown. Exercise actual SDK execution with synthetic credentials and
-harmless tools for cancellation/disposal where needed. Keep fake boundaries useful for application
-logic but do not mistake them for SDK integration checks. No separate prerequisite evaluation phase
-is needed.
+subscriptions/work on shutdown. Verify account listing, global selection for new owners, unchanged
+accounts for existing owners and their work, and unchanged terminal selection using isolated
+profiles. Exercise actual SDK execution with synthetic credentials and harmless tools for
+cancellation/disposal where needed. Keep fake boundaries useful for application logic but do not
+mistake them for SDK integration checks. No separate prerequisite evaluation phase is needed.
 
 ### 4. Finish backend responsibility boundaries
 
@@ -343,6 +362,6 @@ the development guide's display prerequisites and explicit-restart rules; do not
 backend with active work. Full Electron checks on this Linux host use isolated Xvfb.
 
 At resumption, inspect the current working tree and dependencies. Obtain authorization to implement
-the revised slice 3 if absent, resolve consequential configuration choices before dependent wiring,
-and use the documented SDK contracts directly. Preserve unrelated changes and report unrelated
-failures rather than fixing them.
+the revised slice 3 if absent, apply the agreed resource/account configuration and launcher-option
+decision, and use the documented SDK contracts directly. Preserve unrelated changes and report
+unrelated failures rather than fixing them.

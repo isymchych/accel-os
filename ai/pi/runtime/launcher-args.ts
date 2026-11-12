@@ -40,7 +40,10 @@ export function parseLauncherArgs(args: readonly string[]): LauncherArgs {
   }
 
   if (useUi && useAccountSwitcher) {
-    throw new Error("select an account with `ai account` before opening Pagoda");
+    throw new Error("`ai ui` selects accounts inside Pagoda, not with `account`");
+  }
+  if (useUi && codeNavigationWasSelected) {
+    throw new Error("`ai ui` does not accept a code navigation selection");
   }
   if (useUi && args.length > modifierCount) {
     throw new Error("`ai ui` does not accept Pi arguments");

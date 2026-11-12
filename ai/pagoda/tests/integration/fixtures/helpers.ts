@@ -1,20 +1,9 @@
-import path from "node:path";
-
-import type { PiLaunch } from "../../../src/backend/rpc.ts";
 import type { DesktopSession } from "../../../src/backend/session.ts";
 import type { ContentBlock, SessionSnapshot } from "../../../src/contracts/index.ts";
 
+export { fakePiOptions, fakeSessionFactory } from "./fake-sdk.ts";
 export function contentText(content: ContentBlock[] | undefined): string {
   return (content ?? []).flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
-}
-
-export function fakePiLaunch(directory: string): PiLaunch {
-  return {
-    executable: process.execPath,
-    args: [path.join(import.meta.dirname, "fake-pi.ts")],
-    cwd: directory,
-    env: { HOME: directory, FAKE_PI_STATE: directory },
-  };
 }
 
 export async function waitForSession(

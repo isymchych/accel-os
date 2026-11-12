@@ -6,19 +6,21 @@ import { NodeHttpServer } from "@effect/platform-node";
 import { Effect, Exit, Scope } from "effect";
 
 import { createHttpApp } from "./http.ts";
-import type { PiLaunch } from "./rpc.ts";
+import type { PiSessionOptions, PiSessionFactory } from "./pi/session.ts";
 import { SessionMetadataStore } from "./session-metadata.ts";
 import { readInactivityHours } from "./settings.ts";
 import { DesktopWorkspace } from "./workspace.ts";
 
 export interface BackendOptions {
-  pi: PiLaunch;
+  pi: PiSessionOptions;
+  sessionFactory?: PiSessionFactory;
   port?: number;
   clientDirectory?: string;
   developmentOrigin?: "http://127.0.0.1:5173";
   signal?: AbortSignal;
   stateFile?: string;
   settingsFile?: string;
+  accountConfigDir?: string;
 }
 export interface Backend {
   origin: string;
@@ -31,7 +33,13 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
   options.signal?.throwIfAborted();
   const inactivityHours = await readInactivityHours(options.settingsFile);
   const metadata = new SessionMetadataStore(options.stateFile);
-  const workspace = new DesktopWorkspace(options.pi, metadata, inactivityHours);
+  const workspace = new DesktopWorkspace(
+    options.pi,
+    metadata,
+    inactivityHours,
+    options.accountConfigDir,
+    options.sessionFactory,
+  );
   const shutdown = new AbortController();
   const token = randomBytes(32).toString("hex");
   let origin = "";

@@ -8,6 +8,7 @@ import type {
   StoredSession,
   WorkspaceState,
 } from "../contracts/index.ts";
+import { AccountSelector } from "./account-selector.tsx";
 import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
 import { SessionView, type ComposerFeedback } from "./session-view.tsx";
@@ -118,10 +119,8 @@ export function SessionScreen(): ReactElement {
     setDirectoryInput(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
     setInactivityHours(initial.inactivityHours);
   }, []);
-  const { sessions, receive, metadata, transportConnected } = useWorkspaceObservation(
-    onWorkspace,
-    onSnapshot,
-  );
+  const { sessions, receive, metadata, selectedAccount, transportConnected } =
+    useWorkspaceObservation(onWorkspace, onSnapshot);
   useEffect(() => {
     if (selected !== null) remember("pi-selected", selected);
   }, [selected]);
@@ -253,6 +252,7 @@ export function SessionScreen(): ReactElement {
       className="grid h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-hidden outline-none md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-1"
     >
       <WorkspaceSidebar>
+        <AccountSelector selected={selectedAccount} connected={transportConnected} />
         <form
           className="space-y-2 px-4 py-3"
           onSubmit={(event) => {

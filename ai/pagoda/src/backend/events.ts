@@ -12,6 +12,7 @@ export function observeWorkspace(
   const encoder = new TextEncoder();
   const pending = new Map<string, SessionSnapshot>();
   let metadata: SessionMetadata[] | undefined;
+  let account: string | undefined;
   let stopped = false;
   let cleanup = (): void => {};
   let flush = (): void => {};
@@ -24,6 +25,12 @@ export function observeWorkspace(
       flush = (): void => {
         if (stopped) return;
         while ((controller.desiredSize ?? 0) > 0) {
+          if (account !== undefined) {
+            const next = account;
+            account = undefined;
+            send("account", next);
+            continue;
+          }
           if (metadata !== undefined) {
             const next = metadata;
             metadata = undefined;
@@ -50,6 +57,10 @@ export function observeWorkspace(
         metadata = next;
         flush();
       });
+      const unsubscribeAccount = workspace.subscribeAccount((next) => {
+        account = next;
+        flush();
+      });
       const heartbeat = setInterval(() => {
         if (!stopped && (controller.desiredSize ?? 0) > 0) send("heartbeat", {});
       }, 15_000);
@@ -58,6 +69,7 @@ export function observeWorkspace(
         shutdown.removeEventListener("abort", stop);
         unsubscribe();
         unsubscribeMetadata();
+        unsubscribeAccount();
       };
       shutdown.addEventListener("abort", stop, { once: true });
       if (shutdown.aborted) {

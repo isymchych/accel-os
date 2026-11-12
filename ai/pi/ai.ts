@@ -50,15 +50,15 @@ async function main(): Promise<void> {
   }
 
   const accelOs = requireAccelOs();
+  if (useUi) {
+    await launchUi(accelOs, browser);
+    return;
+  }
   const configDir = path.join(accelOs, "ai", "pi");
   const profile = useAccountSwitcher
     ? await selectAccountProfile(configDir)
     : await resolveAccountProfile(configDir);
-  if (useUi) {
-    await launchUi(accelOs, profile, codeNavigation, browser);
-  } else {
-    await launchPi(accelOs, profile, passthrough, codeNavigation);
-  }
+  await launchPi(accelOs, profile, passthrough, codeNavigation);
 }
 
 try {

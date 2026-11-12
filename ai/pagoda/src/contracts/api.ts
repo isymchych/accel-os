@@ -2,6 +2,8 @@ import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 
 import {
+  AccountsSchema,
+  AccountSelectionSchema,
   ControlsSchema,
   DirectorySchema,
   EntrySchema,
@@ -25,6 +27,15 @@ export const PagodaApi = HttpApi.make("pagoda")
   .add(
     HttpApiGroup.make("workspace").add(
       HttpApiEndpoint.get("workspace", "/api/workspace", { success: WorkspaceSchema }),
+      HttpApiEndpoint.get("accounts", "/api/accounts", {
+        success: AccountsSchema,
+        error: OperationError,
+      }),
+      HttpApiEndpoint.post("selectAccount", "/api/account", {
+        payload: AccountSelectionSchema,
+        success: Schema.Null,
+        error: OperationError,
+      }),
       HttpApiEndpoint.post("directory", "/api/directory", {
         payload: DirectorySchema,
         success: Schema.String,

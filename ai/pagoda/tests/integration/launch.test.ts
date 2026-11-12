@@ -71,14 +71,7 @@ test("client entry and launcher reject fake overrides", async () => {
 });
 
 test("server launcher owns configuration and development Vite lifetime", async () => {
-  const context = [
-    "--cwd",
-    source,
-    "--profile-dir",
-    "/selected profile",
-    "--code-navigation",
-    "tilth",
-  ];
+  const context = ["--cwd", source];
   const { stdout } = await runFixture("launcher", ["--dev", ...context, "--port", "4321"], {
     TEST_LAUNCHER_TARGET: "server",
     ACCEL_OS: "/repository",
@@ -90,7 +83,6 @@ test("server launcher owns configuration and development Vite lifetime", async (
         ...context.slice(0, 2),
         "--port",
         "4321",
-        ...context.slice(2),
         "--dev",
       ])}`,
     ),
@@ -100,30 +92,32 @@ test("server launcher owns configuration and development Vite lifetime", async (
   assert.ok(stdout.includes("vite:closed"));
 });
 
-test("server entry forwards profile and navigation to the canonical Node RPC entry", async () => {
-  const { stdout } = await runFixture(
-    "server-entry",
-    ["--cwd", source, "--profile-dir", "/selected profile", "--code-navigation", "tilth"],
-    { ACCEL_OS: "/repository" },
-  );
-  assert.ok(stdout.includes(`executable:${process.execPath}`));
+test("server entry configures native SDK execution and shared account discovery", async () => {
+  const { stdout } = await runFixture("server-entry", ["--cwd", source], {
+    ACCEL_OS: "/repository",
+  });
   assert.ok(
     stdout.includes(
-      `args:${JSON.stringify([
-        "/repository/ai/pi/runtime/rpc-entry.ts",
-        "--profile-dir",
-        "/selected profile",
-        "--code-navigation",
-        "tilth",
-      ])}`,
+      `sdk:${JSON.stringify({
+        cwd: source,
+        agentDir: "/repository/ai/pi",
+        profileDir: "/repository/ai/pi",
+        sessionDir: "/repository/ai/pi/sessions",
+        sharedDir: "/repository/ai",
+      })}`,
     ),
   );
   assert.ok(stdout.includes(`cwd:${source}`));
   assert.ok(stdout.includes("renderer:built"));
-  await assert.rejects(
-    runFixture("server-entry", ["--pi-entry", "/fake.ts"], { ACCEL_OS: "/repository" }),
-    /Unknown option/u,
-  );
+  assert.ok(stdout.includes("accounts:/repository/ai/pi"));
+  assert.doesNotMatch(stdout, /rpc-entry/u);
+  for (const option of ["--pi-entry", "--profile-dir", "--code-navigation"]) {
+    await assert.rejects(
+      runFixture("server-entry", [option, "/unused"], { ACCEL_OS: "/repository" }),
+      /Unknown option/u,
+    );
+    await assert.rejects(runFixture("launcher", [option, "/unused"]), /Unknown option/u);
+  }
 });
 
 test("backend shutdown stays idempotent when the terminal and launchers forward multiple signals", async () => {

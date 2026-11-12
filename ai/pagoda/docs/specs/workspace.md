@@ -16,10 +16,29 @@ extensions, not the terminal's `ai/pi/runtime` launcher or its extension list. E
 has an explicit working directory and session configuration; process-global cwd/environment changes
 must not retarget another session.
 
-Credential/account reuse and which project resources Pagoda loads remain unresolved. The current
-launcher accepts profile and code-navigation selections; their SDK semantics must be decided before
-changing that wiring. SDK adoption alone neither removes existing credential selection nor requires
-loading a terminal profile's resources wholesale.
+### Shared resources
+
+Load skills from `ai/skills/` and prompt templates from `ai/prompts/`, and append `ai/SYSTEM.md` to
+Pi's normal system prompt, as terminal Pi does. Preserve normal project instruction discovery for
+each session's working directory. These shared resources do not imply loading terminal extensions or
+inheriting their tool selection. Pagoda rejects the terminal's code-navigation selection; terminal
+Pi continues to support it.
+
+### Accounts
+
+Expose all existing `ai/pi/profiles/` accounts for selection when Pagoda opens, with email and plan
+where available. Availability does not require eagerly creating an execution session per account.
+Pagoda has one backend-wide account selection, initially the first discovered account. New sessions
+and saved sessions opened with a new execution owner use the selected account. Changing the
+selection affects subsequent owners only; existing owners, including their active and queued work,
+retain their original account. Reopening an already active session reuses its existing owner.
+Changing the selection does not change terminal Pi's selection or write `ai/pi/active-account.json`.
+Launching Pagoda does not require selecting a single terminal account.
+
+Reuse the existing per-profile `auth.json` files through SDK credential storage, including
+credential refresh writes. Do not copy credentials into Pagoda settings or expose tokens to the
+renderer. Login and account creation remain in terminal Pi initially; Pagoda lists and selects
+existing accounts rather than adding credential-management UI.
 
 ## Session selection and concurrent work
 

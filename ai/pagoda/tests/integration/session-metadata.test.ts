@@ -9,7 +9,7 @@ import { SessionMetadataStore } from "../../src/backend/session-metadata.ts";
 import { readInactivityHours } from "../../src/backend/settings.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import type { SessionId } from "../../src/contracts/index.ts";
-import { fakePiLaunch } from "./fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
 
 test("session metadata persists independent flags", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-metadata-"));
@@ -57,7 +57,8 @@ test("backend exposes the configured inactivity period", async (t) => {
   const settings = path.join(directory, "settings.json");
   await writeFile(settings, JSON.stringify({ sidebar: { inactivityHours: 2 } }));
   const backend = await startBackend({
-    pi: fakePiLaunch(directory),
+    pi: fakePiOptions(directory),
+    sessionFactory: fakeSessionFactory,
     port: 0,
     settingsFile: settings,
     stateFile: path.join(directory, "state.json"),
@@ -89,7 +90,13 @@ test("workspace restores pins and favourites without reopening the session", asy
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-marks-restart-"));
   t.after(async () => rm(directory, { recursive: true, force: true }));
   const file = path.join(directory, "state.json");
-  const first = new DesktopWorkspace(fakePiLaunch(directory), new SessionMetadataStore(file));
+  const first = new DesktopWorkspace(
+    fakePiOptions(directory),
+    new SessionMetadataStore(file),
+    48,
+    undefined,
+    fakeSessionFactory,
+  );
   await first.start();
   const key = first.initialKey;
   await first.prompt({ key, message: "retained session", mode: "prompt" });
@@ -99,7 +106,13 @@ test("workspace restores pins and favourites without reopening the session", asy
   await first.setMetadataFlag(stored.id, "favourite", true);
   await first.close();
 
-  const second = new DesktopWorkspace(fakePiLaunch(directory), new SessionMetadataStore(file));
+  const second = new DesktopWorkspace(
+    fakePiOptions(directory),
+    new SessionMetadataStore(file),
+    48,
+    undefined,
+    fakeSessionFactory,
+  );
   try {
     await second.start();
     assert.equal(second.snapshot().sessions.length, 1);

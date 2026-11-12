@@ -38,6 +38,7 @@ test("workspace initialization preserves newer command results and fills other s
       initialKey: key,
       sessions: [snapshot(2, "stale"), snapshot(1, "other", otherKey)],
       metadata: [],
+      selectedAccount: null,
       inactivityHours: 48,
     },
   });
@@ -50,4 +51,9 @@ test("late command snapshots cannot overwrite newer streaming observations", () 
   const result = mergeObservation(observed, { type: "snapshot", snapshot: snapshot(2, "old") });
   assert.equal(result, observed);
   assert.equal(contentText(result[key]?.messages[0]?.content), "new");
+});
+
+test("account observations do not change session snapshots", () => {
+  const observed = mergeObservation({}, { type: "snapshot", snapshot: snapshot(4, "live") });
+  assert.equal(mergeObservation(observed, { type: "account", profile: "second" }), observed);
 });

@@ -115,10 +115,25 @@ export const SessionMetadataSchema = Schema.Struct({
   favourite: Schema.Boolean,
 }).mapFields(Struct.map(Schema.mutableKey));
 export const MetadataSchema = Schema.mutable(Schema.Array(SessionMetadataSchema));
+export const AccountsSchema = Schema.mutable(
+  Schema.Array(
+    Schema.Struct({
+      profile: Schema.String,
+      accountId: Schema.optionalKey(Schema.String),
+      email: Schema.optionalKey(Schema.String),
+      plan: Schema.optionalKey(Schema.String),
+    }).mapFields(Struct.map(Schema.mutableKey)),
+  ),
+);
+export const AccountSelectionSchema = Schema.Struct({ profile: Key }).mapFields(
+  Struct.map(Schema.mutableKey),
+);
+export const SelectedAccountSchema = Schema.Union([Schema.String, Schema.Null]);
 export const WorkspaceSchema = Schema.Struct({
   initialKey: SessionKeySchema,
   sessions: Schema.mutable(Schema.Array(SnapshotSchema)),
   metadata: MetadataSchema,
+  selectedAccount: SelectedAccountSchema,
   inactivityHours: Schema.Number.check(Schema.isGreaterThan(0)),
 }).mapFields(Struct.map(Schema.mutableKey));
 const StoredSessionSchema = Schema.Struct({
@@ -167,6 +182,7 @@ export type SessionSummary = typeof SummarySchema.Type;
 export type SessionSnapshot = typeof SnapshotSchema.Type;
 export type WorkspaceState = typeof WorkspaceSchema.Type;
 export type SessionMetadata = typeof SessionMetadataSchema.Type;
+export type Account = (typeof AccountsSchema.Type)[number];
 export type StoredSession = typeof StoredSessionSchema.Type;
 export type HistoryEntry = typeof HistoryEntrySchema.Type;
 export type SessionHistory = typeof HistorySchema.Type;
@@ -176,9 +192,12 @@ export type SessionControls = typeof ControlsSchema.Type;
 export type WorkspaceObservation =
   | { type: "workspace"; workspace: WorkspaceState }
   | { type: "snapshot"; snapshot: SessionSnapshot }
+  | { type: "account"; profile: string | null }
   | { type: "metadata"; metadata: SessionMetadata[] };
 
 export interface WorkspaceApi {
+  accounts(): Promise<Account[]>;
+  selectAccount(profile: string): Promise<void>;
   directory(cwd: string): Promise<string>;
   list(cwd: string): Promise<StoredSession[]>;
   listAll(): Promise<StoredSession[]>;

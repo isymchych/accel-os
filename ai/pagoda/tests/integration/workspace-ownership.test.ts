@@ -4,7 +4,7 @@ import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
 
-import type { PiLaunch } from "../../src/backend/rpc.ts";
+import type { PiSessionOptions } from "../../src/backend/pi/session.ts";
 import type {
   SessionId,
   SessionKey,
@@ -24,9 +24,8 @@ class ControlledOwner {
   public readonly state: SessionSummary;
   public closeCalls = 0;
   private readonly sessionPath: string | null;
-  public constructor(launch: PiLaunch) {
-    const index = launch.args.indexOf("--session");
-    this.sessionPath = index < 0 ? null : (launch.args[index + 1] ?? null);
+  public constructor(launch: PiSessionOptions) {
+    this.sessionPath = launch.sessionFile ?? null;
     this.state = {
       key: `owner-${owners.length}` as SessionKey,
       revision: 0,
@@ -84,6 +83,15 @@ mock.module("node:fs/promises", {
 mock.module(path.resolve(import.meta.dirname, "../../src/backend/session.ts"), {
   exports: { DesktopSession: ControlledOwner },
 });
+mock.module(path.resolve(import.meta.dirname, "../../src/backend/catalog.ts"), {
+  exports: {
+    SessionCatalog: class {
+      public async list(): Promise<StoredSession[]> {
+        return catalog;
+      }
+    },
+  },
+});
 const { DesktopWorkspace } = await import("../../src/backend/workspace.ts");
 
 async function fixture(t: test.TestContext): Promise<InstanceType<typeof DesktopWorkspace>> {
@@ -100,10 +108,11 @@ async function fixture(t: test.TestContext): Promise<InstanceType<typeof Desktop
     },
   ];
   const workspace = new DesktopWorkspace({
-    executable: "/unused/node",
-    args: [],
     cwd: "/project",
-    env: {},
+    agentDir: "/agent",
+    profileDir: "/profile",
+    sessionDir: "/sessions",
+    sharedDir: "/shared",
   });
   t.after(async () => {
     closeOwner = async (): Promise<void> => {};
@@ -179,7 +188,7 @@ test("reopening waits for a disconnected writer and shares the replacement", asy
   assert.equal(owners[0]?.state.connection, "connected");
 });
 
-test("reopening after every owner disconnects starts discovery and shares the replacement", async (t) => {
+test("reopening after every owner disconnects uses independent discovery and shares the replacement", async (t) => {
   const workspace = await fixture(t);
   const original = await workspace.open("/project", "/project/stored.jsonl");
   for (const owner of owners) owner.state.connection = "disconnected";
@@ -190,7 +199,7 @@ test("reopening after every owner disconnects starts discovery and shares the re
   assert.notEqual(first.key, original.key);
   assert.equal(first.key, second.key);
   assert.equal(first.sessionId, "stored");
-  assert.equal(owners.length, 4);
+  assert.equal(owners.length, 3);
   assert.equal(owners[1]?.closeCalls, 1);
 });
 

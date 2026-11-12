@@ -1,31 +1,13 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
-import type { AccountProfile } from "./account-profiles.ts";
-import type { CodeNavigationBackend } from "./launcher-args.ts";
-
-export function serverLaunchArgs(
-  profile: Pick<AccountProfile, "directory">,
-  codeNavigation: CodeNavigationBackend,
-): string[] {
-  return [
-    "--cwd",
-    process.env["AI_CWD"] ?? process.cwd(),
-    "--profile-dir",
-    profile.directory,
-    "--code-navigation",
-    codeNavigation,
-  ];
+export function serverLaunchArgs(): string[] {
+  return ["--cwd", process.env["AI_CWD"] ?? process.cwd()];
 }
 
-export async function launchUi(
-  accelOs: string,
-  profile: AccountProfile,
-  codeNavigation: CodeNavigationBackend,
-  browser: boolean,
-): Promise<void> {
+export async function launchUi(accelOs: string, browser: boolean): Promise<void> {
   await runUiProcess(accelOs, "launch.ts", [
-    ...serverLaunchArgs(profile, codeNavigation),
+    ...serverLaunchArgs(),
     ...(browser ? ["--browser"] : []),
   ]);
 }

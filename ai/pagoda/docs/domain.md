@@ -8,15 +8,19 @@
   session.
 - **Fork:** a new, independent session copied from persisted history through a selected entry.
 - **Working directory:** the local starting context for project resources and tools.
-- **Account profile:** an existing `ai/pi/` profile with isolated credentials and shared resources.
+- **Account profile:** an existing `ai/pi/` profile with isolated credentials. Pagoda's global
+  selection supplies the account for new execution owners, independently of terminal Pi's active
+  profile; each existing owner retains its original account.
 
 The workspace is the app's collection of open sessions.
 
 Pi owns agent execution machinery, model access, context management, retries, compaction, queues,
 native history, and session files. Pagoda owns its execution configuration, tool/extension
 selection, SDK session lifecycle, and shared presentation state; each client owns navigation,
-drafts, and graphical presentation. Credential/account reuse and project-resource loading remain
-open choices in the [workspace specification](specs/workspace.md#launch-and-configuration).
+drafts, and graphical presentation. Pagoda reuses terminal Pi's credential files and shared skills,
+prompts, and system instructions, without inheriting terminal account switching or extension
+selection. The [workspace specification](specs/workspace.md#launch-and-configuration) owns resource
+loading and account-switching behavior.
 
 ## Invariants
 

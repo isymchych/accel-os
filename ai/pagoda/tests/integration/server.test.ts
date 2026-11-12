@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import * as childProcess from "node:child_process";
 import { once } from "node:events";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import * as http from "node:http";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test, { mock } from "node:test";
 
+import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+
 let server: http.Server | undefined;
-let onSpawn: () => void = () => {};
-const children: childProcess.ChildProcess[] = [];
 mock.module("node:http", {
   exports: {
     ...http,
@@ -16,67 +18,43 @@ mock.module("node:http", {
     },
   },
 });
-mock.module("node:child_process", {
-  exports: {
-    ...childProcess,
-    spawn: (...args: Parameters<typeof childProcess.spawn>) => {
-      const child = childProcess.spawn(...args);
-      children.push(child);
-      queueMicrotask(onSpawn);
-      return child;
-    },
-  },
-});
 const { startBackend } = await import("../../src/backend/server.ts");
 
-(["binding", "Pi initialization"] as const).forEach((phase) => {
-  test(`cancellation during ${phase} closes the listener and Pi child`, async (t) => {
-    children.length = 0;
+for (const phase of ["binding", "SDK initialization"] as const) {
+  // The mocked server is shared with the module factory.
+  // eslint-disable-next-line no-loop-func
+  test(`cancellation during ${phase} closes the listener and releases acquired SDK resources`, async (t) => {
+    const root = await mkdtemp(path.join(tmpdir(), "pagoda-server-startup-"));
     const controller = new AbortController();
-    const reason = new Error("Startup cancelled");
-    onSpawn = (): void => {
-      if (phase === "Pi initialization") controller.abort(reason);
-    };
+    let acquired = false;
     t.after(async () => {
-      // Also clean up the deliberately reproduced leak when running against a broken build.
-      await Promise.all(
-        children.map(async (child) => {
-          if (child.exitCode !== null || child.signalCode !== null) return;
-          const closed = once(child, "close");
-          child.kill("SIGKILL");
-          await closed;
-        }),
-      );
-      if (server?.listening) {
+      if (server?.listening)
         await new Promise<void>((resolve, reject) => {
           server?.close((error) => {
             if (error) reject(error);
             else resolve();
           });
         });
-      }
+      await rm(root, { recursive: true, force: true });
     });
     const starting = startBackend({
       port: 0,
       signal: controller.signal,
-      pi: {
-        executable: process.execPath,
-        args: ["-e", "process.stdin.resume()"],
-        cwd: process.cwd(),
-        env: {},
+      pi: fakePiOptions(root),
+      sessionFactory: async (options) => {
+        acquired = true;
+        controller.abort(new Error("Startup cancelled"));
+        return fakeSessionFactory(options);
       },
     });
-    if (phase === "binding") controller.abort(reason);
+    if (phase === "binding") controller.abort(new Error("Startup cancelled"));
     await assert.rejects(starting);
     assert.ok(server);
     assert.equal(server.listening, false);
-    if (phase === "binding") assert.equal(children.length, 0);
-    else assert.equal(children.length, 1);
-    for (const child of children) {
-      assert.ok(child.exitCode !== null || child.signalCode !== null);
-    }
-    // Rebinding the same listener also checks that no pending bind survives cleanup.
+    assert.equal(acquired, phase === "SDK initialization");
+    if (phase === "SDK initialization")
+      assert.equal(await readFile(path.join(root, "closed"), "utf8"), "clean");
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
   });
-});
+}
