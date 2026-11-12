@@ -8,7 +8,7 @@ import { startBackend } from "../../src/backend/server.ts";
 import { SessionMetadataStore } from "../../src/backend/session-metadata.ts";
 import { readInactivityHours } from "../../src/backend/settings.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
-import type { SessionId } from "../../src/desktop-api.ts";
+import type { SessionId } from "../../src/contracts/index.ts";
 import { fakePiLaunch } from "./fixtures/helpers.ts";
 
 test("session metadata persists independent flags", async (t) => {
@@ -46,6 +46,8 @@ test("sidebar inactivity configuration defaults and validates", async (t) => {
   await writeFile(file, JSON.stringify({ sidebar: { inactivityHours: 2 } }));
   assert.equal(await readInactivityHours(file), 2);
   await writeFile(file, JSON.stringify({ sidebar: { inactivityHours: 0 } }));
+  await assert.rejects(readInactivityHours(file), /Invalid Pagoda settings/u);
+  await writeFile(file, JSON.stringify({ sidebar: { inactivityHours: 2, extra: true } }));
   await assert.rejects(readInactivityHours(file), /Invalid Pagoda settings/u);
 });
 

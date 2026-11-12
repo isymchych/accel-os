@@ -8,7 +8,7 @@ import type {
   SessionHistory,
   SessionKey,
   SessionSnapshot,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
 

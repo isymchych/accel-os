@@ -6,10 +6,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
 import { startBackend } from "../../src/backend/server.ts";
-import { SnapshotSchema, WorkspaceSchema } from "../../src/desktop-api.ts";
+import { SnapshotSchema, WorkspaceSchema } from "../../src/contracts/index.ts";
 import { fakePiLaunch } from "./fixtures/helpers.ts";
 
 test("authenticated HTTP preserves execution independently of observers and cleans up on shutdown", async (t) => {
@@ -124,7 +124,7 @@ test("authenticated HTTP preserves execution independently of observers and clea
   const workspace: unknown = await (
     await fetch(`${backend.origin}/api/workspace`, { headers: { cookie } })
   ).json();
-  assert.ok(Value.Check(WorkspaceSchema, workspace));
+  assert.ok(Schema.is(WorkspaceSchema)(workspace));
   const key = workspace.initialKey;
   for (const invalid of [{}, { key: "" }, { key, extra: true }])
     assert.equal((await post("stop", invalid, cookie)).status, 400);
@@ -181,7 +181,7 @@ test("authenticated HTTP preserves execution independently of observers and clea
   await Promise.all([first.cancel(), second.cancel()]);
   process.kill(toolPid, 0);
   const snapshot = await request("snapshot", { key });
-  assert.ok(Value.Check(SnapshotSchema, snapshot));
+  assert.ok(Schema.is(SnapshotSchema)(snapshot));
   assert.equal(snapshot.execution, "running");
   const reconnected = await observe();
   await untilRunning(reconnected);

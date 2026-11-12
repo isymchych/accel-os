@@ -1,151 +1,148 @@
-import { Type, type Static } from "typebox";
-import { Value } from "typebox/value";
-
-import type { HistoryEntryId, SessionId } from "../desktop-api.ts";
+import { Schema } from "effect";
 
 // Pi owns these records; extra provider/extension fields are intentionally allowed.
-const SessionIdSchema = Type.Unsafe<SessionId>(Type.String());
-const HistoryEntryIdSchema = Type.Unsafe<HistoryEntryId>(Type.String());
-export const RecordSchema = Type.Object({ type: Type.String() });
-export const ResponseSchema = Type.Object({
-  type: Type.Literal("response"),
-  id: Type.Optional(Type.String()),
-  command: Type.String(),
-  success: Type.Boolean(),
-  data: Type.Optional(Type.Unknown()),
-  error: Type.Optional(Type.String()),
+const SessionIdSchema = Schema.String.pipe(Schema.brand("SessionId"));
+const HistoryEntryIdSchema = Schema.String.pipe(Schema.brand("HistoryEntryId"));
+export const RecordSchema = Schema.Struct({ type: Schema.String });
+export const ResponseSchema = Schema.Struct({
+  type: Schema.Literal("response"),
+  id: Schema.optionalKey(Schema.String),
+  command: Schema.String,
+  success: Schema.Boolean,
+  data: Schema.optionalKey(Schema.Unknown),
+  error: Schema.optionalKey(Schema.String),
 });
-export const StateSchema = Type.Object({
+export const StateSchema = Schema.Struct({
   sessionId: SessionIdSchema,
-  isStreaming: Type.Boolean(),
-  isCompacting: Type.Boolean(),
-  sessionFile: Type.Optional(Type.String()),
-  sessionName: Type.Optional(Type.String()),
-  model: Type.Optional(Type.Object({ provider: Type.String(), id: Type.String() })),
-  thinkingLevel: Type.Optional(Type.String()),
-  pendingMessageCount: Type.Optional(Type.Number()),
+  isStreaming: Schema.Boolean,
+  isCompacting: Schema.Boolean,
+  sessionFile: Schema.optionalKey(Schema.String),
+  sessionName: Schema.optionalKey(Schema.String),
+  model: Schema.optionalKey(Schema.Struct({ provider: Schema.String, id: Schema.String })),
+  thinkingLevel: Schema.optionalKey(Schema.String),
+  pendingMessageCount: Schema.optionalKey(Schema.Number),
 });
-export const CommandsSchema = Type.Object({
-  commands: Type.Array(Type.Object({ name: Type.String() })),
+export const CommandsSchema = Schema.Struct({
+  commands: Schema.Array(Schema.Struct({ name: Schema.String })),
 });
-export const ControlResultSchema = Type.Object({
-  type: Type.Literal("workspace_result"),
-  id: Type.String(),
-  success: Type.Boolean(),
-  data: Type.Optional(Type.Unknown()),
-  error: Type.Optional(Type.String()),
+export const ControlResultSchema = Schema.Struct({
+  type: Schema.Literal("workspace_result"),
+  id: Schema.String,
+  success: Schema.Boolean,
+  data: Schema.optionalKey(Schema.Unknown),
+  error: Schema.optionalKey(Schema.String),
 });
-export const ContentSchema = Type.Union([
-  Type.String(),
-  Type.Array(
-    Type.Object({
-      type: Type.String(),
-      text: Type.Optional(Type.String()),
-      thinking: Type.Optional(Type.String()),
-      data: Type.Optional(Type.String()),
-      mimeType: Type.Optional(Type.String()),
-      name: Type.Optional(Type.String()),
-      arguments: Type.Optional(Type.Unknown()),
+export const ContentSchema = Schema.Union([
+  Schema.String,
+  Schema.Array(
+    Schema.Struct({
+      type: Schema.String,
+      text: Schema.optionalKey(Schema.String),
+      thinking: Schema.optionalKey(Schema.String),
+      data: Schema.optionalKey(Schema.String),
+      mimeType: Schema.optionalKey(Schema.String),
+      name: Schema.optionalKey(Schema.String),
+      arguments: Schema.optionalKey(Schema.Unknown),
     }),
   ),
 ]);
-const ContentMessageSchema = Type.Object({
-  role: Type.String(),
+const ContentMessageSchema = Schema.Struct({
+  role: Schema.String,
   content: ContentSchema,
-  isError: Type.Optional(Type.Boolean()),
-  errorMessage: Type.Optional(Type.String()),
-  stopReason: Type.Optional(Type.String()),
-  toolName: Type.Optional(Type.String()),
+  isError: Schema.optionalKey(Schema.Boolean),
+  errorMessage: Schema.optionalKey(Schema.String),
+  stopReason: Schema.optionalKey(Schema.String),
+  toolName: Schema.optionalKey(Schema.String),
 });
-const BashMessageSchema = Type.Object({
-  role: Type.Literal("bashExecution"),
-  command: Type.String(),
-  output: Type.String(),
-  exitCode: Type.Optional(Type.Number()),
-  cancelled: Type.Optional(Type.Boolean()),
+const BashMessageSchema = Schema.Struct({
+  role: Schema.Literal("bashExecution"),
+  command: Schema.String,
+  output: Schema.String,
+  exitCode: Schema.optionalKey(Schema.Number),
+  cancelled: Schema.optionalKey(Schema.Boolean),
 });
-const SummaryMessageSchema = Type.Object({
-  role: Type.Union([Type.Literal("compactionSummary"), Type.Literal("branchSummary")]),
-  summary: Type.String(),
+const SummaryMessageSchema = Schema.Struct({
+  role: Schema.Union([Schema.Literal("compactionSummary"), Schema.Literal("branchSummary")]),
+  summary: Schema.String,
 });
-export const MessageSchema = Type.Union([
+export const MessageSchema = Schema.Union([
   ContentMessageSchema,
   BashMessageSchema,
   SummaryMessageSchema,
 ]);
-export const MessagesSchema = Type.Object({ messages: Type.Array(MessageSchema) });
-export const MessageEndSchema = Type.Object({
-  type: Type.Literal("message_end"),
+export const MessagesSchema = Schema.Struct({ messages: Schema.Array(MessageSchema) });
+export const MessageEndSchema = Schema.Struct({
+  type: Schema.Literal("message_end"),
   message: MessageSchema,
 });
-export const DeltaSchema = Type.Object({
-  type: Type.Literal("message_update"),
-  assistantMessageEvent: Type.Object({
-    type: Type.String(),
-    delta: Type.Optional(Type.String()),
-    content: Type.Optional(Type.String()),
-    contentIndex: Type.Optional(Type.Integer({ minimum: 0 })),
+export const DeltaSchema = Schema.Struct({
+  type: Schema.Literal("message_update"),
+  assistantMessageEvent: Schema.Struct({
+    type: Schema.String,
+    delta: Schema.optionalKey(Schema.String),
+    content: Schema.optionalKey(Schema.String),
+    contentIndex: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
   }),
 });
-export const ToolSchema = Type.Object({
-  type: Type.String(),
-  toolName: Type.String(),
-  toolCallId: Type.String(),
-  args: Type.Optional(Type.Unknown()),
-  partialResult: Type.Optional(Type.Unknown()),
-  result: Type.Optional(Type.Unknown()),
-  isError: Type.Optional(Type.Boolean()),
+export const ToolSchema = Schema.Struct({
+  type: Schema.String,
+  toolName: Schema.String,
+  toolCallId: Schema.String,
+  args: Schema.optionalKey(Schema.Unknown),
+  partialResult: Schema.optionalKey(Schema.Unknown),
+  result: Schema.optionalKey(Schema.Unknown),
+  isError: Schema.optionalKey(Schema.Boolean),
 });
-export const CatalogSchema = Type.Array(
-  Type.Object({
-    path: Type.String(),
+export const CatalogSchema = Schema.Array(
+  Schema.Struct({
+    path: Schema.String,
     id: SessionIdSchema,
-    cwd: Type.String(),
-    name: Type.String(),
-    modified: Type.String(),
+    cwd: Schema.String,
+    name: Schema.String,
+    modified: Schema.String,
   }),
 );
-export const EntriesSchema = Type.Object({
-  entries: Type.Array(
-    Type.Object({
+export const EntriesSchema = Schema.Struct({
+  entries: Schema.Array(
+    Schema.Struct({
       id: HistoryEntryIdSchema,
-      parentId: Type.Union([HistoryEntryIdSchema, Type.Null()]),
-      type: Type.String(),
-      message: Type.Optional(MessageSchema),
-      summary: Type.Optional(Type.String()),
+      parentId: Schema.Union([HistoryEntryIdSchema, Schema.Null]),
+      type: Schema.String,
+      message: Schema.optionalKey(MessageSchema),
+      summary: Schema.optionalKey(Schema.String),
     }),
   ),
-  leafId: Type.Union([HistoryEntryIdSchema, Type.Null()]),
+  leafId: Schema.Union([HistoryEntryIdSchema, Schema.Null]),
 });
-export const ModelsSchema = Type.Object({
-  models: Type.Array(
-    Type.Object({ provider: Type.String(), id: Type.String(), name: Type.String() }),
+export const ModelsSchema = Schema.Struct({
+  models: Schema.Array(
+    Schema.Struct({ provider: Schema.String, id: Schema.String, name: Schema.String }),
   ),
 });
-export const LevelsSchema = Type.Object({ levels: Type.Array(Type.String()) });
-export const PathSchema = Type.Object({ path: Type.String() });
-export const NavigationSchema = Type.Object({
-  cancelled: Type.Boolean(),
-  editorText: Type.Optional(Type.String()),
+export const LevelsSchema = Schema.Struct({ levels: Schema.Array(Schema.String) });
+export const PathSchema = Schema.Struct({ path: Schema.String });
+export const NavigationSchema = Schema.Struct({
+  cancelled: Schema.Boolean,
+  editorText: Schema.optionalKey(Schema.String),
 });
-export const DispositionSchema = Type.Object({ disposition: Type.String() });
-export const UiSchema = Type.Object({
-  type: Type.Literal("extension_ui_request"),
-  id: Type.String(),
-  method: Type.String(),
-  message: Type.Optional(Type.String()),
+export const DispositionSchema = Schema.Struct({ disposition: Schema.String });
+export const UiSchema = Schema.Struct({
+  type: Schema.Literal("extension_ui_request"),
+  id: Schema.String,
+  method: Schema.String,
+  message: Schema.optionalKey(Schema.String),
 });
-export const ExtensionErrorSchema = Type.Object({
-  type: Type.Literal("extension_error"),
-  error: Type.String(),
+export const ExtensionErrorSchema = Schema.Struct({
+  type: Schema.Literal("extension_error"),
+  error: Schema.String,
 });
 
-export type PiMessage = Static<typeof MessageSchema>;
-export type PiResponse = Static<typeof ResponseSchema>;
-export type PiRecord = Static<typeof RecordSchema>;
+export type PiMessage = typeof MessageSchema.Type;
+export type PiResponse = typeof ResponseSchema.Type;
+export type PiRecord = typeof RecordSchema.Type;
 
 export function parseRecord(line: string): PiRecord {
   const value: unknown = JSON.parse(line);
-  if (!Value.Check(RecordSchema, value)) throw new Error("Invalid Pi RPC record");
+  if (!Schema.is(RecordSchema)(value)) throw new Error("Invalid Pi RPC record");
   return value;
 }

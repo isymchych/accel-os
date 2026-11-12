@@ -1,4 +1,5 @@
 import { Markdown, type MarkdownComponents } from "@tanstack/markdown/react";
+import { Schema } from "effect";
 import {
   ArrowDownIcon,
   CheckIcon,
@@ -9,15 +10,13 @@ import {
   TerminalIcon,
 } from "lucide-react";
 import { memo, useLayoutEffect, useRef, useState, type ReactElement, type RefObject } from "react";
-import { Type } from "typebox";
-import { Value } from "typebox/value";
 
 import type {
   ContentBlock,
   SessionSnapshot,
   ToolActivity,
   TranscriptMessage,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 import { Button } from "./components/ui/button.tsx";
 import {
   Collapsible,
@@ -168,17 +167,17 @@ const Message = memo(function Message({ message }: { message: TranscriptMessage 
   );
 });
 
-const ToolContextSchema = Type.Object({
-  command: Type.Optional(Type.String()),
-  path: Type.Optional(Type.String()),
-  file_path: Type.Optional(Type.String()),
+const ToolContextSchema = Schema.Struct({
+  command: Schema.optionalKey(Schema.String),
+  path: Schema.optionalKey(Schema.String),
+  file_path: Schema.optionalKey(Schema.String),
 });
 
 function toolContext(argumentsText: string): string {
   // Arguments are arbitrary tool-owned JSON; only use known string fields for a hint.
   try {
     const args: unknown = JSON.parse(argumentsText);
-    if (Value.Check(ToolContextSchema, args))
+    if (Schema.is(ToolContextSchema)(args))
       return args.command ?? args.path ?? args.file_path ?? "";
   } catch {
     // Full original arguments remain available in the disclosure.

@@ -1,5 +1,9 @@
 # Pagoda architecture
 
+This document explains current structure and implementation choices. The
+[workspace specification](specs/workspace.md) owns approved behavior and local client policies; an
+implementation detail here is not automatically a requirement to preserve during migration.
+
 ## Structure
 
 ```text
@@ -44,7 +48,7 @@ reference checkout before using its source, and validate upgrades with integrati
 ## RPC and state
 
 Validate HTTP requests at the server and JSON/SSE responses at the client. Validate Pi RPC with
-permissive TypeBox schemas for consumed fields, accepting extra Pi/provider fields. Expose only the
+permissive Effect schemas for consumed fields, accepting extra Pi/provider fields. Expose only the
 data clients need, never credentials or raw configuration.
 
 The local RPC transport handles typed commands/events, extension responses, and child exit.
@@ -52,10 +56,9 @@ The local RPC transport handles typed commands/events, extension responses, and 
 upstream `RpcClient`.
 
 The backend publishes snapshots including partial output; completed Pi messages replace
-reconstructed output. Slow observers are disconnected through bounded buffering and write deadlines
-without cancelling execution. Clients resynchronize from current state rather than replaying
-commands. Pi's `agent_end` may precede retries or queued work; `agent_settled` marks the end of
-automatic continuation.
+reconstructed output. Clients resynchronize from current state rather than replaying commands. Pi's
+`agent_end` may precede retries or queued work; `agent_settled` marks the end of automatic
+continuation.
 
 Commands and observations target an execution-owner key, distinct from the persisted Pi session ID
 and file. Client session storage keys drafts to that owner. The
@@ -64,32 +67,28 @@ and file. Client session storage keys drafts to that owner. The
 Graphical interactions use Pi's RPC dialog contract; see
 [supported interactions](../README.md#configuration-and-compatibility).
 
-Transports bound request sizes and confirmation waits, fail malformed or oversized RPC connections,
-and honor backpressure. Keep Pi stderr in local diagnostics. Confirmation timeout leaves submission
-uncertain, not safe to retry.
+Transports bound confirmation waits and honor backpressure. Keep Pi stderr in local diagnostics.
+Confirmation timeout leaves submission uncertain, not safe to retry.
+
+### Known implementation gap
+
+The current HTTP/RPC transports still impose request-size limits and terminate malformed or
+oversized RPC connections. SSE still uses custom pending-queue limits and write-deadline eviction
+for slow observers. These mechanisms remain in code but are
+[rejected target policies](specs/workspace.md#excluded-transport-policies), not migration
+requirements. Their removal has not been implemented.
 
 ## Security and execution
 
-The backend binds only to `127.0.0.1`. Validate Host against explicit backend/development origins;
-reject foreign Origin and cross-site requests. All API reads, commands, and streams require an
-authenticated session, except the credential exchange. Writes require same-origin JSON requests.
-There is no permissive CORS or arbitrary shell, filesystem, environment, or credential API. The
-authenticated image endpoint fetches HTTP(S) URLs from transcript content without browser cookies or
-referrers, including URLs on local networks; it limits response size and duration and sandboxes
-successful responses, including when opened directly.
+The HTTP layer implements the spec's
+[local client boundaries](specs/workspace.md#local-client-boundaries): loopback binding, Host/Origin
+checks, cookie authentication, browser response policies, and the authenticated image proxy.
 
-The connection URL carries a backend-lifetime credential in its fragment. The frontend removes it
-and authenticates through an HttpOnly, SameSite=Strict cookie. Do not log the credential beyond
-explicit startup output or persist it in app storage. Backend restart invalidates authentication;
-reconnect through the new connection URL.
-
-Electron loads only an explicit loopback connection URL. Keep sandboxing, context isolation, and no
-Node integration; there is no preload bridge. Open validated HTTP(S) links without embedded
-credentials in the system browser. Deny in-app new windows, renderer navigation, webviews, and
-permission requests. Render agent output as untrusted content; Markdown must not enable raw HTML or
-executable content. Production loads same-origin assets with a restrictive CSP and same-origin API
-connections. Development alone loads Vite from explicit loopback and permits its hot-update
-connection and injected scripts.
+Electron currently loads only an explicit loopback connection URL, with sandboxing, context
+isolation, and no Node integration or preload bridge. It opens validated HTTP(S) links without
+embedded credentials in the system browser and denies in-app new windows, renderer navigation,
+webviews, and permission requests. These are small native settings and handlers; no change to them
+has been decided.
 
 These controls protect the UI boundary, not Pi tools; see
 [execution authority](domain.md#execution-authority).

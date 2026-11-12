@@ -6,7 +6,7 @@ import type {
   SessionSnapshot,
   WorkspaceObservation,
   WorkspaceState,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 import { useApi } from "./api.ts";
 
 type ObservedSessions = Partial<Record<SessionKey, SessionSnapshot>>;

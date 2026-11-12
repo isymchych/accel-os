@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { SessionKey, SessionSnapshot } from "../../src/desktop-api.ts";
+import type { SessionKey, SessionSnapshot } from "../../src/contracts/index.ts";
 import { mergeObservation } from "../../src/renderer/use-workspace-observation.ts";
 import { contentText } from "./fixtures/helpers.ts";
 

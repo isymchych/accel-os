@@ -9,7 +9,7 @@ import type {
   SessionSnapshot,
   StoredSession,
   WorkspaceState,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 import type { PiLaunch } from "./rpc.ts";
 import type { SessionMetadataStore } from "./session-metadata.ts";
 import { DesktopSession } from "./session.ts";

@@ -1,5 +1,8 @@
 # Workspace behavior
 
+This is the agreed behavioral contract, including local client boundaries. It describes the target;
+current implementation gaps are identified in [architecture](../architecture.md).
+
 ## Launch and configuration
 
 `ai ui` starts the local backend with the selected account profile, working directory, and
@@ -64,7 +67,7 @@ Transient streaming updates coalesce; completed messages and lifecycle changes a
 
 Command rejection, provider/tool errors, extension failures, and child exit remain distinguishable
 where Pi exposes them. Agent output is displayed as untrusted content under the
-[rendering and security boundaries](../architecture.md#security-and-execution).
+[local client boundaries](#local-client-boundaries).
 
 Pi notifications are displayed. Unsupported RPC dialogs receive explicit cancellation and a visible
 notice, never silent approval; other presentation-only records are not rendered.
@@ -95,3 +98,35 @@ ignores stale observations. Lost connectivity makes execution unknown, not cance
 
 Stopping the backend ends active Pi work even while clients remain connected. Persisted history
 remains reopenable after a backend or machine crash; unfinished execution requires a fresh run.
+
+## Local client boundaries
+
+The backend binds only to `127.0.0.1`. Validate Host against explicit backend/development origins;
+reject foreign Origin and cross-site requests. All API reads, commands, and streams require an
+authenticated session, except the credential exchange. Writes require same-origin JSON requests.
+There is no permissive CORS or arbitrary shell, filesystem, environment, or credential API.
+
+The connection URL carries a backend-lifetime credential in its fragment. The frontend removes it
+and authenticates through an HttpOnly, SameSite=Strict cookie. Do not log the credential beyond
+explicit startup output or persist it in app storage. Backend restart invalidates authentication;
+reconnect through the new connection URL.
+
+Keep the authenticated image proxy. It fetches HTTP(S) URLs from transcript content without browser
+cookies or referrers, including URLs on local networks; it limits response size and duration and
+sandboxes successful responses, including when opened directly.
+
+Render agent output as untrusted content; Markdown must not enable raw HTML or executable content.
+Keep referrer and cross-origin response policies. Production loads same-origin assets with a
+restrictive CSP and same-origin API connections. Development alone loads Vite from explicit loopback
+and permits its hot-update connection and injected scripts.
+
+These controls protect the UI boundary, not Pi tools; see
+[execution authority](../domain.md#execution-authority).
+
+### Excluded transport policies
+
+Custom slow-observer queue limits and write-deadline eviction, HTTP/RPC request-size limits, and
+connection termination for malformed or oversized Pi RPC records are rejected requirements. Do not
+preserve or recreate them merely for migration parity. The image proxy's response limits are
+retained and are separate from these exclusions. Boundary schema validation and uncertain submission
+handling remain unchanged.

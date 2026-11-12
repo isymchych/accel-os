@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
-import { MetadataSchema, type SessionId, type SessionMetadata } from "../desktop-api.ts";
+import { MetadataSchema, type SessionId, type SessionMetadata } from "../contracts/index.ts";
 
 /** Pagoda presentation metadata, independent of Pi's native session files. */
 export class SessionMetadataStore {
@@ -23,7 +23,7 @@ export class SessionMetadataStore {
       throw error;
     }
     const value: unknown = JSON.parse(contents);
-    if (!Value.Check(MetadataSchema, value)) throw new Error("Invalid Pagoda session metadata");
+    if (!Schema.is(MetadataSchema)(value)) throw new Error("Invalid Pagoda session metadata");
     return value.map(({ id, pinned, favourite }) => ({ id, pinned, favourite }));
   }
 

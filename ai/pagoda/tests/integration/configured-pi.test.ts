@@ -5,20 +5,19 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { Type } from "typebox";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
 import { DesktopSession } from "../../src/backend/session.ts";
-import type { SessionSnapshot } from "../../src/desktop-api.ts";
+import type { SessionSnapshot } from "../../src/contracts/index.ts";
 import { contentText, waitForSession } from "./fixtures/helpers.ts";
 
-const RequestSchema = Type.Object({
-  tools: Type.Array(Type.Object({ function: Type.Object({ name: Type.String() }) })),
-  messages: Type.Array(Type.Object({ role: Type.String(), content: Type.Unknown() })),
+const RequestSchema = Schema.Struct({
+  tools: Schema.Array(Schema.Struct({ function: Schema.Struct({ name: Schema.String }) })),
+  messages: Schema.Array(Schema.Struct({ role: Schema.String, content: Schema.Unknown })),
 });
-const PersistedMessageSchema = Type.Object({
-  type: Type.Literal("message"),
-  message: Type.Object({ role: Type.String(), content: Type.Unknown() }),
+const PersistedMessageSchema = Schema.Struct({
+  type: Schema.Literal("message"),
+  message: Schema.Struct({ role: Schema.String, content: Schema.Unknown }),
 });
 
 const observe = (
@@ -73,7 +72,7 @@ test(
           body += chunk.toString("utf8");
         }
         const value: unknown = JSON.parse(body);
-        assert.ok(Value.Check(RequestSchema, value));
+        assert.ok(Schema.is(RequestSchema)(value));
         const names = value.tools.map((tool) => tool.function.name);
         assert.ok(names.includes("read"));
         assert.ok(names.includes("apply_patch"));
@@ -400,7 +399,7 @@ test(
         .split("\n")
         .flatMap((line) => {
           const entry: unknown = JSON.parse(line);
-          return Value.Check(PersistedMessageSchema, entry) ? [entry.message] : [];
+          return Schema.is(PersistedMessageSchema)(entry) ? [entry.message] : [];
         });
       assert.deepEqual(messages.find((message) => message.role === "user")?.content, [
         { type: "text", text: "Read fixture.txt and report the result." },

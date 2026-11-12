@@ -19,6 +19,30 @@ Local-only Hono/React app with browser and Electron clients in private pnpm work
 - Before expanding scope, read [VISION.md](docs/vision.md); [DECISIONS.md](docs/decisions.md)
   explains the consequential tradeoffs.
 
+## Documentation ownership and updates
+
+- `docs/vision.md` owns product intent, scope, and non-goals. Update it when an approved decision
+  changes product direction or scope; do not add a parallel intent document.
+- `docs/domain.md` owns vocabulary, ownership, and domain invariants. Update it when those meanings
+  or rules change.
+- `docs/specs/workspace.md` owns approved behavior and client-boundary policies. Update it for
+  approved requirement changes, not merely to match existing code. It describes the agreed target,
+  not proof that implementation is complete.
+- `docs/architecture.md` explains current structure, integration boundaries, and consequential
+  implementation choices. Update it when those change; link to the spec for behavioral requirements
+  rather than independently defining them. Mark implementation gaps explicitly.
+- `docs/decisions.md` records significant accepted technical choices and their tradeoffs. Add a
+  decision when rationale matters for future changes; mark superseded decisions rather than
+  rewriting their history.
+- `docs/development.md` and `README.md` own contributor and user instructions respectively. Update
+  them when the affected reader needs different instructions.
+
+Existing code and architecture descriptions do not establish new product requirements. Keep ideas
+and proposals distinct from accepted decisions; ask before adding consequential obligations.
+Rejected behavior must not become a migration requirement just because its code still exists. Update
+the owning document without duplicating its rules elsewhere. Documentation authorization does not
+authorize implementation changes.
+
 ## UI and validation
 
 Use shadcn/ui with Base UI and Lucide icons; `components.json` configures component generation.

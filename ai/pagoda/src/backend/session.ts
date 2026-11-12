@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
-import { Type } from "typebox";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
-import { ImageBlockSchema, type ContentBlock } from "../desktop-api.ts";
+import { ImageBlockSchema, type ContentBlock } from "../contracts/index.ts";
 import type {
   HistoryEntryId,
   SessionControls,
@@ -15,7 +14,7 @@ import type {
   StoredSession,
   ToolActivity,
   TranscriptMessage,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 import {
   CatalogSchema,
   ContentSchema,
@@ -37,14 +36,14 @@ import {
 } from "./protocol.ts";
 import { PiRpc, type PiLaunch } from "./rpc.ts";
 
-const ResultSchema = Type.Object({ content: ContentSchema });
+const ResultSchema = Schema.Struct({ content: ContentSchema });
 function textBlock(text: string): ContentBlock[] {
   return text ? [{ type: "text", text }] : [];
 }
 function projectContent(content: StaticContent): ContentBlock[] {
   if (typeof content === "string") return textBlock(content);
   return content.flatMap((part): ContentBlock[] => {
-    if (Value.Check(ImageBlockSchema, part))
+    if (Schema.is(ImageBlockSchema)(part))
       return [{ type: "image", data: part.data, mimeType: part.mimeType }];
     if (part.type === "thinking")
       return part.thinking ? [{ type: "thinking", text: part.thinking }] : [];
@@ -56,9 +55,9 @@ function projectContent(content: StaticContent): ContentBlock[] {
     return textBlock(part.text ?? "");
   });
 }
-type StaticContent = import("typebox").Static<typeof ContentSchema>;
+type StaticContent = typeof ContentSchema.Type;
 function resultContent(result: unknown): ContentBlock[] {
-  if (!Value.Check(ResultSchema, result))
+  if (!Schema.is(ResultSchema)(result))
     return textBlock(result === undefined ? "" : JSON.stringify(result));
   return projectContent(result.content);
 }
@@ -154,9 +153,9 @@ export class DesktopSession {
 
   public async refresh(): Promise<void> {
     const response = await this.rpc.request("get_state");
-    if (!Value.Check(StateSchema, response.data)) throw new Error("Invalid Pi session state");
+    if (!Schema.is(StateSchema)(response.data)) throw new Error("Invalid Pi session state");
     const messages = await this.rpc.request("get_messages");
-    if (!Value.Check(MessagesSchema, messages.data)) throw new Error("Invalid Pi message history");
+    if (!Schema.is(MessagesSchema)(messages.data)) throw new Error("Invalid Pi message history");
     this.streamingBlocks.clear();
     this.update({
       connection: "connected",
@@ -197,7 +196,7 @@ export class DesktopSession {
           ? {}
           : { streamingBehavior: mode === "follow_up" ? "followUp" : "steer" }),
       });
-      if (!Value.Check(DispositionSchema, response.data))
+      if (!Schema.is(DispositionSchema)(response.data))
         throw new Error("Pi did not confirm how input was handled. Your draft is preserved.");
       this.update({ notice: this.state.notice ?? `Input: ${response.data.disposition}.` });
       return response.data.disposition;
@@ -230,19 +229,19 @@ export class DesktopSession {
 
   public async list(cwd: string): Promise<StoredSession[]> {
     const data = await this.rpc.control("list", cwd);
-    if (!Value.Check(CatalogSchema, data)) throw new Error("Invalid Pi session catalog");
-    return data;
+    if (!Schema.is(CatalogSchema)(data)) throw new Error("Invalid Pi session catalog");
+    return [...data];
   }
 
   public async listAll(): Promise<StoredSession[]> {
     const data = await this.rpc.control("list-all", "");
-    if (!Value.Check(CatalogSchema, data)) throw new Error("Invalid Pi session catalog");
-    return data;
+    if (!Schema.is(CatalogSchema)(data)) throw new Error("Invalid Pi session catalog");
+    return [...data];
   }
 
   public async history(): Promise<SessionHistory> {
     const response = await this.rpc.request("get_entries");
-    if (!Value.Check(EntriesSchema, response.data)) throw new Error("Invalid Pi session history");
+    if (!Schema.is(EntriesSchema)(response.data)) throw new Error("Invalid Pi session history");
     return {
       leafId: response.data.leafId,
       entries: response.data.entries.map((entry) => ({
@@ -258,7 +257,7 @@ export class DesktopSession {
   public async navigate(entryId: HistoryEntryId): Promise<string | undefined> {
     return this.mutate(async () => {
       const data = await this.rpc.control("navigate", entryId);
-      if (!Value.Check(NavigationSchema, data)) throw new Error("Invalid Pi navigation result");
+      if (!Schema.is(NavigationSchema)(data)) throw new Error("Invalid Pi navigation result");
       if (data.cancelled) throw new Error("Pi cancelled history navigation.");
       await this.refresh();
       return data.editorText;
@@ -267,7 +266,7 @@ export class DesktopSession {
 
   public async fork(entryId: HistoryEntryId): Promise<string> {
     const data = await this.rpc.control("snapshot", entryId);
-    if (!Value.Check(PathSchema, data)) throw new Error("Invalid Pi snapshot result");
+    if (!Schema.is(PathSchema)(data)) throw new Error("Invalid Pi snapshot result");
     return data.path;
   }
 
@@ -278,9 +277,9 @@ export class DesktopSession {
       this.rpc.request("get_available_thinking_levels"),
     ]);
     if (
-      !Value.Check(StateSchema, state.data) ||
-      !Value.Check(ModelsSchema, models.data) ||
-      !Value.Check(LevelsSchema, levels.data)
+      !Schema.is(StateSchema)(state.data) ||
+      !Schema.is(ModelsSchema)(models.data) ||
+      !Schema.is(LevelsSchema)(levels.data)
     )
       throw new Error("Invalid Pi model controls");
     return {
@@ -289,7 +288,7 @@ export class DesktopSession {
         ? { provider: state.data.model.provider, id: state.data.model.id }
         : null,
       thinkingLevel: state.data.thinkingLevel ?? "off",
-      levels: levels.data.levels,
+      levels: [...levels.data.levels],
       pendingMessageCount: state.data.pendingMessageCount ?? 0,
     };
   }
@@ -349,7 +348,7 @@ export class DesktopSession {
           });
         break;
       case "message_end":
-        if (!Value.Check(MessageEndSchema, record)) throw new Error("Invalid completed message");
+        if (!Schema.is(MessageEndSchema)(record)) throw new Error("Invalid completed message");
         if (record.message.role === "assistant") this.streamingBlocks.clear();
         this.update({
           messages: [...this.state.messages, transcriptMessage(record.message)],
@@ -367,7 +366,7 @@ export class DesktopSession {
         this.receiveTool(record);
         break;
       case "extension_error":
-        if (!Value.Check(ExtensionErrorSchema, record)) throw new Error("Invalid extension error");
+        if (!Schema.is(ExtensionErrorSchema)(record)) throw new Error("Invalid extension error");
         this.update({ error: `Extension error: ${record.error}` });
         break;
       case "extension_ui_request":
@@ -379,7 +378,7 @@ export class DesktopSession {
   }
 
   private receiveDelta(record: PiRecord): void {
-    if (!Value.Check(DeltaSchema, record)) throw new Error("Invalid message update");
+    if (!Schema.is(DeltaSchema)(record)) throw new Error("Invalid message update");
     const { type, delta = "", content, contentIndex } = record.assistantMessageEvent;
     const kind = type.startsWith("text_")
       ? "text"
@@ -407,7 +406,7 @@ export class DesktopSession {
   }
 
   private receiveTool(record: PiRecord): void {
-    if (!Value.Check(ToolSchema, record)) throw new Error("Invalid tool event");
+    if (!Schema.is(ToolSchema)(record)) throw new Error("Invalid tool event");
     const previous = this.state.tools.find((tool) => tool.id === record.toolCallId);
     const output = record.result === undefined ? record.partialResult : record.result;
     const tool: ToolActivity = {
@@ -430,7 +429,7 @@ export class DesktopSession {
   }
 
   private receiveUi(record: PiRecord): void {
-    if (!Value.Check(UiSchema, record)) throw new Error("Invalid extension UI request");
+    if (!Schema.is(UiSchema)(record)) throw new Error("Invalid extension UI request");
     if (["select", "confirm", "input", "editor"].includes(record.method)) {
       this.update({
         notice: `Pi requested a ${record.method} dialog. It was cancelled because this dialog is not yet supported.`,

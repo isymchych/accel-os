@@ -1,6 +1,6 @@
 import { createContext, createElement, useContext, type ReactElement, type ReactNode } from "react";
 
-import type { WorkspaceApi } from "../desktop-api.ts";
+import type { WorkspaceApi } from "../contracts/index.ts";
 
 const ApiContext = createContext<WorkspaceApi | null>(null);
 

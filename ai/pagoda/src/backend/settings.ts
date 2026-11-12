@@ -1,19 +1,15 @@
 import { readFile } from "node:fs/promises";
 
-import { Type } from "typebox";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
-const SettingsSchema = Type.Object(
-  {
-    sidebar: Type.Optional(
-      Type.Object(
-        { inactivityHours: Type.Optional(Type.Number({ exclusiveMinimum: 0 })) },
-        { additionalProperties: false },
-      ),
-    ),
-  },
-  { additionalProperties: false },
-);
+const SettingsSchema = Schema.Struct({
+  sidebar: Schema.optionalKey(
+    Schema.Struct({
+      inactivityHours: Schema.optionalKey(Schema.Number.check(Schema.isGreaterThan(0))),
+    }),
+  ),
+});
+const decodeSettings = Schema.decodeUnknownSync(SettingsSchema, { onExcessProperty: "error" });
 
 export async function readInactivityHours(file?: string): Promise<number> {
   if (!file) return 48;
@@ -24,7 +20,12 @@ export async function readInactivityHours(file?: string): Promise<number> {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") return 48;
     throw error;
   }
-  const settings: unknown = JSON.parse(contents);
-  if (!Value.Check(SettingsSchema, settings)) throw new Error("Invalid Pagoda settings");
+  const value: unknown = JSON.parse(contents);
+  let settings: typeof SettingsSchema.Type;
+  try {
+    settings = decodeSettings(value);
+  } catch {
+    throw new Error("Invalid Pagoda settings");
+  }
   return settings.sidebar?.inactivityHours ?? 48;
 }

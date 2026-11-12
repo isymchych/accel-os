@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { DesktopSession } from "../../src/backend/session.ts";
-import type { SessionSnapshot } from "../../src/desktop-api.ts";
+import type { SessionSnapshot } from "../../src/contracts/index.ts";
 import { contentText, fakePiLaunch, waitForSession } from "./fixtures/helpers.ts";
 
 async function fixture(

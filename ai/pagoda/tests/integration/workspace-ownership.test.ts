@@ -11,7 +11,7 @@ import type {
   SessionSnapshot,
   SessionSummary,
   StoredSession,
-} from "../../src/desktop-api.ts";
+} from "../../src/contracts/index.ts";
 
 // Control only owner startup/disposal. The real workspace handles reservations,
 // catalog validation, target selection, and shutdown across every owner.

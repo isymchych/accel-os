@@ -1,12 +1,11 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 
 import { serveStatic } from "@hono/node-server/serve-static";
+import { Schema } from "effect";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
-import { Type, type Static, type TSchema } from "typebox";
-import { Value } from "typebox/value";
 
 import {
   DirectorySchema,
@@ -17,7 +16,7 @@ import {
   PromptSchema,
   TargetSchema,
   ThinkingSchema,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 import { observeWorkspace } from "./events.ts";
 import type { DesktopWorkspace } from "./workspace.ts";
 
@@ -98,8 +97,8 @@ export function createHttpApp(options: HttpOptions): Hono {
   app.get("/api/auth", (c) => c.json(null));
   app.get("/api/image", async (c) => {
     const query: unknown = c.req.query();
-    const schema = Type.Object({ url: Type.String({ maxLength: 8192 }) });
-    if (!Value.Check(schema, query)) return c.json({ error: "Invalid image URL" }, 400);
+    const schema = Schema.Struct({ url: Schema.String.check(Schema.isMaxLength(8192)) });
+    if (!Schema.is(schema)(query)) return c.json({ error: "Invalid image URL" }, 400);
     let url: URL;
     try {
       url = new URL(query.url);
@@ -141,10 +140,10 @@ export function createHttpApp(options: HttpOptions): Hono {
   app.get("/api/events", (c) =>
     streamSSE(c, async (stream) => observeWorkspace(workspace, stream, options.shutdown)),
   );
-  function command<T extends TSchema>(
+  function command<T extends Schema.ConstraintDecoder<unknown>>(
     name: string,
     schema: T,
-    action: (request: Static<T>) => unknown,
+    action: (request: T["Type"]) => unknown,
   ): void {
     app.post(`/api/${name}`, async (c) => {
       let request: unknown;
@@ -153,9 +152,16 @@ export function createHttpApp(options: HttpOptions): Hono {
       } catch {
         return c.json({ error: "Invalid JSON" }, 400);
       }
-      if (!Value.Check(schema, request)) return c.json({ error: `Invalid ${name} request` }, 400);
+      let decoded: T["Type"];
       try {
-        return c.json((await action(request)) ?? null);
+        decoded = Schema.decodeUnknownSync(schema, {
+          onExcessProperty: name === "list-all" ? "ignore" : "error",
+        })(request);
+      } catch {
+        return c.json({ error: `Invalid ${name} request` }, 400);
+      }
+      try {
+        return c.json((await action(decoded)) ?? null);
       } catch (error) {
         // Operation rejections are user-facing; infrastructure exceptions below are not.
         return c.json({ error: error instanceof Error ? error.message : "Operation failed" }, 400);
@@ -164,7 +170,7 @@ export function createHttpApp(options: HttpOptions): Hono {
   }
   command("directory", DirectorySchema, async ({ cwd }) => workspace.directory(cwd));
   command("list", DirectorySchema, async ({ cwd }) => workspace.list(cwd));
-  command("list-all", Type.Object({}), async () => workspace.listAll());
+  command("list-all", Schema.Struct({}), async () => workspace.listAll());
   command("metadata-flag", MetadataFlagSchema, async ({ id, flag, value }) =>
     workspace.setMetadataFlag(id, flag, value),
   );

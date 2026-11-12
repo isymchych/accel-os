@@ -2,8 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 
-import type { Static } from "typebox";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
 import {
   CommandsSchema,
@@ -29,7 +28,7 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>;
 }
 
-type ControlResult = Static<typeof ControlResultSchema>;
+type ControlResult = typeof ControlResultSchema.Type;
 
 /**
  * Small RPC transport for the desktop's command subset. The installed upstream
@@ -152,7 +151,7 @@ export class PiRpc {
     // Fail before submitting a slash command if this runtime lacks the bridge.
     const commands = await this.request("get_commands");
     if (
-      !Value.Check(CommandsSchema, commands.data) ||
+      !Schema.is(CommandsSchema)(commands.data) ||
       !commands.data.commands.some((command) => command.name === "workspace-control")
     )
       throw new Error("Pi's desktop bridge is unavailable");
@@ -186,7 +185,7 @@ export class PiRpc {
 
   private receive(record: PiRecord): void {
     if (record.type === "response") {
-      if (!Value.Check(ResponseSchema, record)) throw new Error("Invalid Pi response");
+      if (!Schema.is(ResponseSchema)(record)) throw new Error("Invalid Pi response");
       const pending = record.id ? this.pending.get(record.id) : undefined;
       if (!pending || !record.id) return;
       this.pending.delete(record.id);
@@ -202,12 +201,12 @@ export class PiRpc {
     }
     if (
       record.type === "extension_ui_request" &&
-      Value.Check(UiSchema, record) &&
+      Schema.is(UiSchema)(record) &&
       record.method === "notify" &&
       record.message?.startsWith("workspace-control:")
     ) {
       const result: unknown = JSON.parse(record.message.slice("workspace-control:".length));
-      if (!Value.Check(ControlResultSchema, result))
+      if (!Schema.is(ControlResultSchema)(result))
         throw new Error("Invalid desktop control result");
       this.controls.get(result.id)?.(result);
       return;

@@ -31,11 +31,11 @@
     "@tanstack/react-hotkeys": "^0.23.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
+    "effect": "4.1.4",
     "hono": "^4.13.17",
     "lucide-react": "^1.71.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "typebox": "catalog:"
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

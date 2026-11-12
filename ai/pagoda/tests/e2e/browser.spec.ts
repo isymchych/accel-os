@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import path from "node:path";
 
 import { expect, type Page } from "@playwright/test";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
 import type { Backend } from "../../src/backend/server.ts";
 import {
@@ -13,7 +13,7 @@ import {
   type SessionKey,
   type SessionSnapshot,
   type WorkspaceState,
-} from "../../src/desktop-api.ts";
+} from "../../src/contracts/index.ts";
 import { test as base } from "./fixtures/backend.ts";
 import { createNetwork } from "./fixtures/network.ts";
 
@@ -25,7 +25,7 @@ interface Workspace {
 async function state(page: Page): Promise<WorkspaceState> {
   const response = await page.request.get(`${new URL(page.url()).origin}/api/workspace`);
   const value: unknown = await response.json();
-  assert.ok(Value.Check(WorkspaceSchema, value));
+  assert.ok(Schema.is(WorkspaceSchema)(value));
   return value;
 }
 async function snapshot(page: Page, key: SessionKey): Promise<SessionSnapshot> {
@@ -35,7 +35,7 @@ async function snapshot(page: Page, key: SessionKey): Promise<SessionSnapshot> {
     data: { key },
   });
   const value: unknown = await response.json();
-  assert.ok(Value.Check(SnapshotSchema, value));
+  assert.ok(Schema.is(SnapshotSchema)(value));
   return value;
 }
 

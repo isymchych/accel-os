@@ -1,6 +1,6 @@
 import type { SSEStreamingApi } from "hono/streaming";
 
-import type { SessionMetadata, SessionSnapshot } from "../desktop-api.ts";
+import type { SessionMetadata, SessionSnapshot } from "../contracts/index.ts";
 import type { DesktopWorkspace } from "./workspace.ts";
 
 /**

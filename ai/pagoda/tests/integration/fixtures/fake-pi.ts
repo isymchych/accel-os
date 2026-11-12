@@ -5,67 +5,72 @@ import { watch } from "node:fs";
 import { appendFile, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { Type, type Static } from "typebox";
-import { Value } from "typebox/value";
+import { Schema, Struct } from "effect";
 
-const CommandSchema = Type.Object({
-  type: Type.String(),
-  id: Type.Optional(Type.String()),
-  message: Type.Optional(Type.String()),
-  streamingBehavior: Type.Optional(Type.Union([Type.Literal("steer"), Type.Literal("followUp")])),
-  cancelled: Type.Optional(Type.Boolean()),
-  provider: Type.Optional(Type.String()),
-  modelId: Type.Optional(Type.String()),
-  level: Type.Optional(Type.String()),
-});
-const MessageSchema = Type.Union([
-  Type.Object({
-    role: Type.String(),
-    content: Type.Union([
-      Type.String(),
-      Type.Array(
-        Type.Object({
-          type: Type.String(),
-          text: Type.Optional(Type.String()),
-          thinking: Type.Optional(Type.String()),
-          data: Type.Optional(Type.String()),
-          mimeType: Type.Optional(Type.String()),
-        }),
+const CommandSchema = Schema.Struct({
+  type: Schema.String,
+  id: Schema.optionalKey(Schema.String),
+  message: Schema.optionalKey(Schema.String),
+  streamingBehavior: Schema.optionalKey(
+    Schema.Union([Schema.Literal("steer"), Schema.Literal("followUp")]),
+  ),
+  cancelled: Schema.optionalKey(Schema.Boolean),
+  provider: Schema.optionalKey(Schema.String),
+  modelId: Schema.optionalKey(Schema.String),
+  level: Schema.optionalKey(Schema.String),
+}).mapFields(Struct.map(Schema.mutableKey));
+const MessageSchema = Schema.Union([
+  Schema.Struct({
+    role: Schema.String,
+    content: Schema.Union([
+      Schema.String,
+      Schema.mutable(
+        Schema.Array(
+          Schema.Struct({
+            type: Schema.String,
+            text: Schema.optionalKey(Schema.String),
+            thinking: Schema.optionalKey(Schema.String),
+            data: Schema.optionalKey(Schema.String),
+            mimeType: Schema.optionalKey(Schema.String),
+          }).mapFields(Struct.map(Schema.mutableKey)),
+        ),
       ),
     ]),
-  }),
-  Type.Object({
-    role: Type.Union([Type.Literal("compactionSummary"), Type.Literal("branchSummary")]),
-    summary: Type.String(),
-  }),
+  }).mapFields(Struct.map(Schema.mutableKey)),
+  Schema.Struct({
+    role: Schema.Union([Schema.Literal("compactionSummary"), Schema.Literal("branchSummary")]),
+    summary: Schema.String,
+  }).mapFields(Struct.map(Schema.mutableKey)),
 ]);
-const StoredSchema = Type.Object({
-  id: Type.String(),
-  cwd: Type.String(),
-  name: Type.String(),
-  modified: Type.String(),
-  leafId: Type.Union([Type.String(), Type.Null()]),
-  entries: Type.Array(
-    Type.Object({
-      id: Type.String(),
-      parentId: Type.Union([Type.String(), Type.Null()]),
-      type: Type.Literal("message"),
-      message: MessageSchema,
-    }),
+const StoredSchema = Schema.Struct({
+  id: Schema.String,
+  cwd: Schema.String,
+  name: Schema.String,
+  modified: Schema.String,
+  leafId: Schema.Union([Schema.String, Schema.Null]),
+  entries: Schema.mutable(
+    Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        parentId: Schema.Union([Schema.String, Schema.Null]),
+        type: Schema.Literal("message"),
+        message: MessageSchema,
+      }).mapFields(Struct.map(Schema.mutableKey)),
+    ),
   ),
-});
-const ControlSchema = Type.Object({
-  id: Type.String(),
-  operation: Type.String(),
-  value: Type.String(),
-});
+}).mapFields(Struct.map(Schema.mutableKey));
+const ControlSchema = Schema.Struct({
+  id: Schema.String,
+  operation: Schema.String,
+  value: Schema.String,
+}).mapFields(Struct.map(Schema.mutableKey));
 const stateDirectory = path.resolve(process.env["FAKE_PI_STATE"] ?? "");
 if (!process.env["FAKE_PI_STATE"]) throw new Error("Fake Pi requires isolated state");
 const nativeDirectory = path.join(stateDirectory, "native");
 await mkdir(nativeDirectory, { recursive: true });
 const sessionArgument = process.argv.indexOf("--session");
 const sessionPath = sessionArgument >= 0 ? process.argv[sessionArgument + 1] : undefined;
-let stored: Static<typeof StoredSchema> = {
+let stored: typeof StoredSchema.Type = {
   id: randomUUID(),
   cwd: process.cwd(),
   name: "Test session",
@@ -75,7 +80,7 @@ let stored: Static<typeof StoredSchema> = {
 };
 if (sessionPath) {
   const value: unknown = JSON.parse(await readFile(sessionPath, "utf8"));
-  if (!Value.Check(StoredSchema, value)) throw new Error("Invalid saved fake session");
+  if (!Schema.is(StoredSchema)(value)) throw new Error("Invalid saved fake session");
   stored = value;
 }
 const file = sessionPath ?? path.join(nativeDirectory, `${stored.id}.jsonl`);
@@ -121,7 +126,7 @@ async function message(
   await persist();
   send({ type: "message_end", message: { role, content } });
 }
-function branchMessages(): Static<typeof MessageSchema>[] {
+function branchMessages(): (typeof MessageSchema.Type)[] {
   const branch = [];
   let leaf = stored.leafId;
   while (leaf) {
@@ -158,7 +163,7 @@ async function delayAcknowledgement(kind: "abort" | "prompt"): Promise<void> {
 }
 async function control(messageText: string): Promise<void> {
   const value: unknown = JSON.parse(messageText.slice("/workspace-control ".length));
-  if (!Value.Check(ControlSchema, value)) throw new Error("Invalid fake control");
+  if (!Schema.is(ControlSchema)(value)) throw new Error("Invalid fake control");
   let data: unknown;
   switch (value.operation) {
     case "list":
@@ -169,7 +174,7 @@ async function control(messageText: string): Promise<void> {
         const sessionFile = path.join(nativeDirectory, name);
         const session: unknown = JSON.parse(await readFile(sessionFile, "utf8"));
         if (
-          Value.Check(StoredSchema, session) &&
+          Schema.is(StoredSchema)(session) &&
           (value.operation === "list-all" || session.cwd === value.value)
         ) {
           sessions.push({
@@ -261,7 +266,7 @@ function completedText(promptText: string | undefined): string {
   ].join("\n\n");
 }
 
-async function activePrompt(command: Static<typeof CommandSchema>): Promise<string> {
+async function activePrompt(command: typeof CommandSchema.Type): Promise<string> {
   if (command.message === "__transcript_chunk__") {
     send({
       type: "message_update",
@@ -294,7 +299,7 @@ async function activePrompt(command: Static<typeof CommandSchema>): Promise<stri
 }
 
 async function prompt(
-  command: Static<typeof CommandSchema>,
+  command: typeof CommandSchema.Type,
   respond: (data?: unknown) => void,
 ): Promise<void> {
   if (command.message?.startsWith("/workspace-control ")) {
@@ -302,7 +307,7 @@ async function prompt(
       await control(command.message);
     } catch (error) {
       const request: unknown = JSON.parse(command.message.slice("/workspace-control ".length));
-      if (Value.Check(ControlSchema, request))
+      if (Schema.is(ControlSchema)(request))
         controlResult({
           type: "workspace_result",
           id: request.id,
@@ -414,7 +419,7 @@ async function prompt(
 
 async function handle(line: string): Promise<void> {
   const command: unknown = JSON.parse(line);
-  if (!Value.Check(CommandSchema, command)) throw new Error("Invalid test command");
+  if (!Schema.is(CommandSchema)(command)) throw new Error("Invalid test command");
   const respond = (data?: unknown): void => {
     send({ type: "response", id: command.id, command: command.type, success: true, data });
   };

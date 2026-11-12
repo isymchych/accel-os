@@ -1,5 +1,4 @@
-import { Type, type Static, type TSchema } from "typebox";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
 import {
   ControlsSchema,
@@ -11,21 +10,24 @@ import {
   WorkspaceSchema,
   type WorkspaceApi,
   type WorkspaceObservation,
-} from "../desktop-api.ts";
+} from "../contracts/index.ts";
 
-async function decode<T extends TSchema>(response: Response, schema: T): Promise<Static<T>> {
+async function decode<T extends Schema.ConstraintDecoder<unknown>>(
+  response: Response,
+  schema: T,
+): Promise<T["Type"]> {
   const value: unknown = await response.json();
   if (!response.ok) {
-    throw new Error(Value.Check(ErrorSchema, value) ? value.error : "Backend request failed");
+    throw new Error(Schema.is(ErrorSchema)(value) ? value.error : "Backend request failed");
   }
-  if (!Value.Check(schema, value)) throw new Error("Invalid backend response");
+  if (!Schema.is(schema)(value)) throw new Error("Invalid backend response");
   return value;
 }
-async function command<T extends TSchema>(
+async function command<T extends Schema.ConstraintDecoder<unknown>>(
   name: string,
   request: unknown,
   schema: T,
-): Promise<Static<T>> {
+): Promise<T["Type"]> {
   let response: Response;
   try {
     response = await fetch(`/api/${name}`, {
@@ -47,7 +49,7 @@ export async function connectApi(): Promise<WorkspaceApi> {
   const fragment = new URLSearchParams(window.location.hash.slice(1));
   const token = fragment.get("token");
   if (token === null) {
-    await decode(await fetch("/api/auth", { credentials: "same-origin" }), Type.Null());
+    await decode(await fetch("/api/auth", { credentials: "same-origin" }), Schema.Null);
   } else {
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
     await decode(
@@ -57,45 +59,45 @@ export async function connectApi(): Promise<WorkspaceApi> {
         credentials: "same-origin",
         body: "{}",
       }),
-      Type.Null(),
+      Schema.Null,
     );
   }
   return {
-    directory: async (cwd) => command("directory", { cwd }, Type.String()),
+    directory: async (cwd) => command("directory", { cwd }, Schema.String),
     list: async (cwd) => command("list", { cwd }, StoredSessionsSchema),
     listAll: async () => command("list-all", {}, StoredSessionsSchema),
     setMetadataFlag: async (id, flag, value) => {
-      await command("metadata-flag", { id, flag, value }, Type.Null());
+      await command("metadata-flag", { id, flag, value }, Schema.Null);
     },
     create: async (cwd) => command("create", { cwd }, SnapshotSchema),
     open: async (cwd, path) => command("open", { cwd, path }, SnapshotSchema),
-    prompt: async (request) => command("prompt", request, Type.String()),
+    prompt: async (request) => command("prompt", request, Schema.String),
     stop: async (key) => {
-      await command("stop", { key }, Type.Null());
+      await command("stop", { key }, Schema.Null);
     },
     history: async (key) => command("history", { key }, HistorySchema),
     navigate: async (key, entryId) =>
-      (await command("navigate", { key, entryId }, Type.Union([Type.String(), Type.Null()]))) ??
+      (await command("navigate", { key, entryId }, Schema.Union([Schema.String, Schema.Null]))) ??
       undefined,
     fork: async (key, entryId) => command("fork", { key, entryId }, SnapshotSchema),
     controls: async (key) => command("controls", { key }, ControlsSchema),
     model: async (key, provider, modelId) => {
-      await command("model", { key, provider, modelId }, Type.Null());
+      await command("model", { key, provider, modelId }, Schema.Null);
     },
     thinking: async (key, level) => {
-      await command("thinking", { key, level }, Type.Null());
+      await command("thinking", { key, level }, Schema.Null);
     },
     subscribe: (listener, connection) => {
       const events = new EventSource("/api/events");
-      function observe<T extends TSchema>(
+      function observe<T extends Schema.ConstraintDecoder<unknown>>(
         name: string,
         schema: T,
-        observation: (value: Static<T>) => WorkspaceObservation,
+        observation: (value: T["Type"]) => WorkspaceObservation,
       ): void {
         events.addEventListener(name, (event: MessageEvent<string>) => {
           try {
             const value: unknown = JSON.parse(event.data);
-            if (!Value.Check(schema, value)) throw new Error(`Invalid ${name} event`);
+            if (!Schema.is(schema)(value)) throw new Error(`Invalid ${name} event`);
             listener(observation(value));
             if (name === "ready") connection?.(true);
           } catch {

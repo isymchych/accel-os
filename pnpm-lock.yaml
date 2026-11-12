@@ -211,6 +211,9 @@ importers:
       cn:
         specifier: ^0.5.2
         version: 0.5.2
+      effect:
+        specifier: 4.1.4
+        version: 4.1.4
       hono:
         specifier: ^4.13.17
         version: 4.13.17
@@ -223,9 +226,6 @@ importers:
       react-dom:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
-      typebox:
-        specifier: 'catalog:'
-        version: 1.4.6
     devDependencies:
       '@playwright/test':
         specifier: ^1.65.0
@@ -1357,6 +1357,9 @@ packages:
 
   ecdsa-sig-formatter@1.0.11:
     resolution: {integrity: sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ==}
+
+  effect@4.1.4:
+    resolution: {integrity: sha512-Tgrv/9FN+TZYyOn8XSli+fVqAfwDrDAkiX5Uu9vztINb675VTQdhD0gWI5Kzvhlh9QqzjZvw72iugqw5pwoghQ==}
 
   electron@45.2.3:
     resolution: {integrity: sha512-Vurzu5UOA5nTGT4LqIwXD16QFGrOZdiXxF+1UP4KNsAOo/YtDcT3/u0jhP4WSwNJ0iLrLDi85hzBJ0arnGDhyw==}
@@ -2886,6 +2889,8 @@ snapshots:
   ecdsa-sig-formatter@1.0.11:
     dependencies:
       safe-buffer: 5.2.1
+
+  effect@4.1.4: {}
 
   electron@45.2.3:
     dependencies:

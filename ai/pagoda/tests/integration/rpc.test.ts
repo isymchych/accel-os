@@ -4,18 +4,30 @@ import { PassThrough, Writable } from "node:stream";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
 
-import { Type, type Static } from "typebox";
-import { Value } from "typebox/value";
+import { Schema } from "effect";
 
-import type { HistoryEntryId } from "../../src/desktop-api.ts";
+import { StateSchema } from "../../src/backend/protocol.ts";
+import type { HistoryEntryId } from "../../src/contracts/index.ts";
 import { contentText } from "./fixtures/helpers.ts";
 
-const CommandSchema = Type.Object({
-  id: Type.String(),
-  type: Type.String(),
-  message: Type.Optional(Type.String()),
+const CommandSchema = Schema.Struct({
+  id: Schema.String,
+  type: Schema.String,
+  message: Schema.optionalKey(Schema.String),
 });
-type Command = Static<typeof CommandSchema>;
+type Command = typeof CommandSchema.Type;
+
+test("Pi state validation allows extra provider fields but rejects invalid consumed fields", () => {
+  const state = {
+    sessionId: "session",
+    isStreaming: false,
+    isCompacting: false,
+    model: { provider: "fixture", id: "model", extra: true },
+    extra: true,
+  };
+  assert.ok(Schema.is(StateSchema)(state));
+  assert.equal(Schema.is(StateSchema)({ ...state, isStreaming: "no" }), false);
+});
 
 // Control the real transport's input streams, not its framing, request, or session logic.
 class ControlledChild extends EventEmitter {
@@ -30,7 +42,7 @@ class ControlledChild extends EventEmitter {
   public readonly stdin = new Writable({
     write: (chunk: Buffer, _encoding, callback): void => {
       const command: unknown = JSON.parse(chunk.toString("utf8"));
-      assert.ok(Value.Check(CommandSchema, command));
+      assert.ok(Schema.is(CommandSchema)(command));
       this.commands.push(command);
       this.onCommand(command);
       if (this.holdWrites) this.releaseWrite = callback;
@@ -307,8 +319,8 @@ function controlResult(command: Command, fields: Record<string, unknown>): void 
   assert.ok(command.message);
   assert.ok(command.message.startsWith("/workspace-control "));
   const request: unknown = JSON.parse(command.message.slice("/workspace-control ".length));
-  const schema = Type.Object({ id: Type.String() });
-  assert.ok(Value.Check(schema, request));
+  const schema = Schema.Struct({ id: Schema.String });
+  assert.ok(Schema.is(schema)(request));
   child.send({
     type: "extension_ui_request",
     id: "notification",
