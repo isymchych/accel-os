@@ -85,16 +85,23 @@ isolation but require another interprocess protocol. Neither is the selected des
 sessions share the backend process and its failure boundary; their cwd and configuration are
 explicit rather than implemented by switching process-global state.
 
-Use the documented SDK contracts and verify Pagoda's integration during implementation, without a
-separate SDK feasibility or terminal-extension compatibility evaluation. The
-[migration plan](../plans/effect-4-migration.md#3-direct-sdk-integration-and-scoped-execution-ownership)
-tracks delivery.
-
 Exception: the installed SDK declares the `prompt` option `preflightResult` as an internal hook. Its
 RPC mode uses that hook for authoritative started/queued/handled confirmation before execution
 finishes. Pagoda may use it for the same contract, with focused regression coverage, rather than
 guessing acceptance from execution events. Revisit this exception if a supported public equivalent
 becomes available.
+
+### Integration constraints
+
+Use documented SDK contracts and verify integration without a separate feasibility or
+terminal-extension compatibility evaluation.
+
+Fork creation must not invoke runtime fork hooks or let legacy migrations rewrite the live source.
+
+Custom slow-observer queue limits and write-deadline eviction, HTTP/RPC request-size limits, and
+connection termination for malformed or oversized Pi RPC records are rejected requirements. Do not
+preserve or recreate them for migration parity. The image proxy's response limits, boundary schema
+validation, and uncertain-submission handling remain required.
 
 ## ADR-014: Shared Pi resources and per-session account selection
 
@@ -115,14 +122,9 @@ Copying credentials into a separate Pagoda store would duplicate refresh state; 
 single active-account selection would prevent independent session choices. Neither is selected. The
 SDK storage remains responsible for credential reads and refresh writes to the original files.
 
-A small shared module for account discovery and safe metadata is a suitable implementation option;
-terminal selection stays separate. Do not turn reuse of account storage into reuse of the terminal
-execution launcher. The UI launch path must no longer require resolving one terminal account before
-starting Pagoda. The exact SDK wiring for idle-session account changes remains an implementation
-choice, subject to the existing single-writer and disposal-before-replacement constraints.
-
-This records configuration decisions, not authorization to implement them or redesign terminal
-account storage.
+UI launch is independent of the terminal execution launcher and its account selection. The
+superseded idle-session switching design left SDK wiring open, subject to single-writer and
+disposal-before-replacement constraints.
 
 ## ADR-015: Global account selection for new execution owners
 

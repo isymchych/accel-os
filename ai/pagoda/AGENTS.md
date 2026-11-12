@@ -9,39 +9,21 @@ Local-only Effect/React app with browser and Electron clients in private pnpm wo
   behavior, or recovery paths for hypothetical environment failures without an evidenced need.
 - I prefer tanstack ecosystem
 
-## Read before changing
+## Read and update by scope
 
-- For behavior changes, read [DOMAIN.md](docs/domain.md) and the
-  [workspace specification](docs/specs/workspace.md).
-- For integration changes, read [ARCHITECTURE.md](docs/architecture.md): it owns process, import,
-  HTTP, and security boundaries and distinguishes the current RPC implementation from the accepted
-  SDK target. Do not preserve terminal-runtime or extension parity as a migration requirement.
-- Before expanding scope, read [VISION.md](docs/vision.md); [DECISIONS.md](docs/decisions.md)
-  explains the consequential tradeoffs.
+- Behavior: [domain](docs/domain.md) for concepts and invariants;
+  [workspace specification](docs/specs/workspace.md) for approved behavior and client policies.
+- Integration: [architecture](docs/architecture.md) for current process, import, HTTP, and security
+  boundaries; [decisions](docs/decisions.md) for tradeoffs and rejected integration policies.
+- Scope expansion: [vision](docs/vision.md) for product direction and non-goals.
+- Reader instructions: `README.md` for usage, [development](docs/development.md) for contribution
+  and verification.
 
-## Documentation ownership and updates
-
-- `docs/vision.md` owns product intent, scope, and non-goals. Update it when an approved decision
-  changes product direction or scope; do not add a parallel intent document.
-- `docs/domain.md` owns vocabulary, ownership, and domain invariants. Update it when those meanings
-  or rules change.
-- `docs/specs/workspace.md` owns approved behavior and client-boundary policies. Update it for
-  approved requirement changes, not merely to match existing code. It describes the agreed target,
-  not proof that implementation is complete.
-- `docs/architecture.md` explains current structure, integration boundaries, and consequential
-  implementation choices. Update it when those change; link to the spec for behavioral requirements
-  rather than independently defining them. Mark implementation gaps explicitly.
-- `docs/decisions.md` records significant accepted technical choices and their tradeoffs. Add a
-  decision when rationale matters for future changes; mark superseded decisions rather than
-  rewriting their history.
-- `docs/development.md` and `README.md` own contributor and user instructions respectively. Update
-  them when the affected reader needs different instructions.
-
-Existing code and architecture descriptions do not establish new product requirements. Keep ideas
-and proposals distinct from accepted decisions; ask before adding consequential obligations.
-Rejected behavior must not become a migration requirement just because its code still exists. Update
-the owning document without duplicating its rules elsewhere. Documentation authorization does not
-authorize implementation changes.
+Update the owning document when its meaning or guidance changes, rather than duplicating it or
+creating parallel intent documents. The spec describes the agreed target, not implementation
+completeness; mark material gaps in architecture. Code does not establish requirements. Keep
+proposals distinct from decisions and ask before adding consequential obligations. Preserve decision
+history through supersession. Documentation changes do not authorize implementation.
 
 ## UI and validation
 
@@ -52,21 +34,16 @@ state, and feedback. Keep semantic theme tokens in `src/renderer/theme.css`.
 Use system fonts; do not add bundled fonts. Generate components from this directory with
 `pnpm dlx shadcn@4.23.0 add <component>` rather than keeping the CLI as a project dependency.
 
-Run workspace commands from this directory. Follow [development](docs/development.md#development)
-for startup and explicit restart rules that protect active work.
+Run workspace commands from this directory. Follow [development](docs/development.md) for startup,
+explicit restarts that protect active work, and isolated, credential-free verification.
 
-Use Node's test runner for focused/integration checks and Playwright browser tests for full
-frontend/HTTP/backend journeys; keep Electron checks focused on its shell. Follow
-[development checks](docs/development.md#checks) for isolated, credential-free execution and the
-distinction between fake integration wiring and real Pi compatibility.
+Use Node's test runner for focused/integration checks, Playwright browser tests for full application
+journeys, and Electron tests for the shell. Choose focused checks under the root validation
+guidance; `pnpm run check` is the full workspace suite and `pnpm run test:e2e` includes the
+production build. Avoid repeating checks already included in a broader run unless intervening
+changes need revalidation.
 
-Choose focused checks according to the root validation guidance. `pnpm run check` runs the full
-workspace verification suite. `pnpm run test:e2e` covers frontend/HTTP/backend and Electron journeys
-and includes the production build. When running a broader check, do not separately repeat checks it
-includes unless intervening changes require revalidation.
-
-Disclose missing display or Electron prerequisites. Follow
-[display prerequisites](docs/development.md#display-prerequisites) before GUI checks; do not open
-unexpected windows. Report tool and extension coverage limits. Required checks must pass or their
-outstanding failures must be reported precisely. pnpm scripts own workspace tooling; Just recipes
-are convenience wrappers.
+Follow [display prerequisites](docs/development.md#display-prerequisites) before GUI checks; do not
+open unexpected windows. Report missing prerequisites, outstanding required-check failures, and tool
+or extension coverage limits. Fake execution verifies wiring, not Pi compatibility. pnpm scripts own
+workspace tooling; Just recipes are convenience wrappers.

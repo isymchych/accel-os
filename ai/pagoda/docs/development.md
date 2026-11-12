@@ -18,13 +18,10 @@ after shell edits. Source watchers must not restart active agent work.
 ### Startup options
 
 Production uses `pnpm run build` then `pnpm run start`. The server accepts `--cwd` and `--port`
-(default 4317). Normal startup creates in-process SDK sessions and does not expose test
-fake-execution overrides.
+(default 4317). Test execution overrides are unavailable in normal startup.
 
-Through the terminal launcher, `ai ui` opens Electron and `ai ui --browser` opens a browser. Select
-the account for new execution owners inside Pagoda; this does not change terminal Pi's selection or
-existing owners. Terminal navigation selections are rejected for UI launches. `AI_CWD` retains its
-launch-directory override. Closing Electron or interrupting browser mode stops active work.
+For launcher usage, see [Setup and run](../README.md#setup-and-run). `AI_CWD` overrides the launch
+directory.
 
 The Electron npm package downloads its matching binary on first execution if it is not cached.
 
@@ -38,17 +35,15 @@ pnpm run test:e2e
 `check` runs formatting, lint, TypeScript checks, and Node integration tests. `test:e2e` includes
 the production build. Browser journeys exercise the real frontend and HTTP/SSE backend with fake SDK
 execution and native persistence; Electron checks cover shell isolation, shared state, and quit
-behavior. Ordinary journeys do not mock the application API; targeted fault tests cover stale
-responses and rejection. `tests/e2e/sdk.spec.ts` additionally exercises the built frontend,
-HTTP/SSE, and actual SDK against a local synthetic provider, including shared account selection and
-owner credential affinity.
+behavior. SDK journeys use the actual SDK against a local synthetic provider, including account
+selection and owner credential affinity. Ordinary journeys use the application API; targeted fault
+tests cover stale responses and rejection.
 
 For browser-only iteration without a graphical display or Xvfb, run `pnpm run test:e2e:browser`. The
 full `test:e2e` command also checks Electron.
 
-Choose focused checks for the changed behavior; use broader suites only when targeted checks leave a
-concrete integration risk unverified. Root `just check` runs the full repository verification suite.
-Workspace `Justfile` recipes are optional wrappers around pnpm commands.
+Choose focused checks for the changed behavior under the root validation guidance. Workspace
+`Justfile` recipes are optional wrappers around pnpm commands.
 
 ### Test isolation and compatibility
 

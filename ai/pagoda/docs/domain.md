@@ -8,19 +8,16 @@
   session.
 - **Fork:** a new, independent session copied from persisted history through a selected entry.
 - **Working directory:** the local starting context for project resources and tools.
-- **Account profile:** an existing `ai/pi/` profile with isolated credentials. Pagoda's global
-  selection supplies the account for new execution owners, independently of terminal Pi's active
-  profile; each existing owner retains its original account.
+- **Account profile:** an existing `ai/pi/` profile with isolated credentials.
+- **Execution owner:** the backend's live SDK session and its fixed credential context. An owner is
+  distinct from the persisted session it operates on.
 
 The workspace is the app's collection of open sessions.
 
 Pi owns agent execution machinery, model access, context management, retries, compaction, queues,
 native history, and session files. Pagoda owns its execution configuration, tool/extension
-selection, SDK session lifecycle, and shared presentation state; each client owns navigation,
-drafts, and graphical presentation. Pagoda reuses terminal Pi's credential files and shared skills,
-prompts, and system instructions, without inheriting terminal account switching or extension
-selection. The [workspace specification](specs/workspace.md#launch-and-configuration) owns resource
-loading and account-switching behavior.
+selection, SDK session lifecycle, and shared presentation state. Each client owns navigation,
+drafts, and graphical presentation.
 
 ## Invariants
 
@@ -33,20 +30,13 @@ loading and account-switching behavior.
 - Branch navigation preserves history within a session; a fork preserves native Pi format in an
   independent session.
 
-The [workspace specification](specs/workspace.md) owns command, draft, history, and lifecycle
-behavior.
-
 ## Configuration and interaction compatibility
 
-Native history compatibility does not imply the same execution environment. Viewing terminal history
-does not require its original extensions; continuing it uses Pagoda's available tools and
-instructions. Pagoda does not promise to reproduce terminal-only behavior or load terminal
-extensions. Configuration changes apply at Pi's supported boundaries or new session creation,
-without retargeting existing work.
+Native history is portable between terminal Pi and Pagoda; execution environments are independent.
+Configuration changes apply at Pi's supported boundaries or new session creation, without
+retargeting existing work.
 
 ## Execution authority
 
 Tools run unsandboxed on the host under the user's permissions, without approval gates. The working
-directory is not a filesystem boundary. [Architecture](architecture.md#security-and-execution)
-defines how the backend and shell protect clients and credentials without restricting tool
-authority.
+directory is not a filesystem boundary.

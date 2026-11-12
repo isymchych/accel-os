@@ -6,8 +6,8 @@ graphical way to follow agent work, manage sessions, and explore native Pi histo
 ## Product direction
 
 - **Native Pi sessions, Pagoda's execution environment.** View regular terminal Pi histories and
-  continue them using Pagoda's tools and instructions. Share native session format and storage,
-  without requiring terminal runtime, configuration, or extension parity.
+  continue them using Pagoda's tools and instructions, with shared native session format and
+  storage.
 - **A workspace for agent work.** Make ongoing activity, results, and failures understandable, with
   direct controls for input, cancellation, and session navigation.
 - **Local, single-user.** Serve the user on their own machine, without a managed background service.

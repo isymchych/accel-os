@@ -1,7 +1,7 @@
 # Workspace behavior
 
-This is the agreed behavioral contract, including local client boundaries. It describes the target;
-current implementation gaps are identified in [architecture](../architecture.md).
+The agreed behavioral contract, including local client boundaries; not a claim of implementation
+completeness.
 
 ## Launch and configuration
 
@@ -11,18 +11,15 @@ the backend foreground until Ctrl+C. The terminal launcher retains its ordinary 
 and account selection behavior. Unsupported UI arguments are rejected rather than forwarded to Pi.
 Remote access is outside scope.
 
-Execution uses direct, in-process Pi SDK sessions with Pagoda-owned configuration, tools, and
-extensions, not the terminal's `ai/pi/runtime` launcher or its extension list. Each execution owner
-has an explicit working directory and session configuration; process-global cwd/environment changes
-must not retarget another session.
+Each execution owner has an explicit working directory and session configuration; process-global
+cwd/environment changes must not retarget another session.
 
 ### Shared resources
 
 Load skills from `ai/skills/` and prompt templates from `ai/prompts/`, and append `ai/SYSTEM.md` to
-Pi's normal system prompt, as terminal Pi does. Preserve normal project instruction discovery for
-each session's working directory. These shared resources do not imply loading terminal extensions or
-inheriting their tool selection. Pagoda rejects the terminal's code-navigation selection; terminal
-Pi continues to support it.
+Pi's normal system prompt. Preserve normal project instruction discovery for each session's working
+directory. Pagoda configures its own tools and extensions independently of terminal Pi and rejects
+the terminal's code-navigation selection.
 
 ### Accounts
 
@@ -108,8 +105,7 @@ no-op.
 
 Forking creates an independent native session containing persisted history through the selected
 entry. The source retains its history and continues active work; unfinished streaming output is
-excluded from the fork. Fork creation must not invoke runtime fork hooks or let legacy migrations
-rewrite the live source.
+excluded from the fork. Fork creation leaves the live source unchanged.
 
 The fork can execute independently while its source continues streaming.
 
@@ -138,22 +134,14 @@ and authenticates through an HttpOnly, SameSite=Strict cookie. Do not log the cr
 explicit startup output or persist it in app storage. Backend restart invalidates authentication;
 reconnect through the new connection URL.
 
-Keep the authenticated image proxy. It fetches HTTP(S) URLs from transcript content without browser
-cookies or referrers, including URLs on local networks; it limits response size and duration and
-sandboxes successful responses, including when opened directly.
+An authenticated image proxy fetches HTTP(S) URLs from transcript content without browser cookies or
+referrers, including URLs on local networks; it limits response size and duration and sandboxes
+successful responses, including when opened directly.
 
 Render agent output as untrusted content; Markdown must not enable raw HTML or executable content.
-Keep referrer and cross-origin response policies. Production loads same-origin assets with a
+Responses enforce referrer and cross-origin policies. Production loads same-origin assets with a
 restrictive CSP and same-origin API connections. Development alone loads Vite from explicit loopback
 and permits its hot-update connection and injected scripts.
 
 These controls protect the UI boundary, not Pi tools; see
 [execution authority](../domain.md#execution-authority).
-
-### Excluded transport policies
-
-Custom slow-observer queue limits and write-deadline eviction, HTTP/RPC request-size limits, and
-connection termination for malformed or oversized Pi RPC records are rejected requirements. Do not
-preserve or recreate them merely for migration parity. The image proxy's response limits are
-retained and are separate from these exclusions. Boundary schema validation and uncertain submission
-handling remain unchanged.

@@ -1,8 +1,8 @@
 # Pagoda
 
-Local workspace for the existing Pi coding-agent setup in `../pi/`, usable in a browser or optional
-Electron client. Work across sessions, follow streaming output, steer work, and explore native Pi
-history without maintaining a second agent configuration.
+Local workspace built on the Pi SDK, usable in a browser or optional Electron client. Work across
+sessions, follow streaming output, steer work, and explore native Pi history. Pagoda shares
+instructions and account credentials with terminal Pi while owning its execution configuration.
 
 ## Setup and run
 
@@ -71,21 +71,21 @@ stored separately in the ignored `ai/pi/pagoda-state.json`.
 
 Pagoda loads the shared skills, prompt templates, and system instructions, but uses its own SDK
 tools rather than terminal Pi's extensions. Terminal code-navigation selections (`srcwalk` and
-`tilth`) are not accepted by `ai ui`. SDK notification/dialog bindings are still a migration gap;
-see [architecture](docs/architecture.md#known-implementation-gap).
+`tilth`) are not accepted by `ai ui`. Pi notifications are displayed; unsupported dialogs are
+explicitly cancelled with a visible notice.
 
-Agents have unsandboxed host filesystem and shell access; the working directory is not a security
-boundary. See [execution authority](docs/domain.md#execution-authority).
+Agents have unsandboxed host filesystem and shell access under your permissions, without approval
+gates. The working directory is not a security boundary.
 
 ## Documentation
 
 - [Development and verification](docs/development.md): contributor workflow, checks, and display
   setup.
-- [Vision](docs/vision.md): product scope and accepted direction.
-- [Domain](docs/domain.md): vocabulary, behavioral invariants, and lifecycle.
-- [Architecture](docs/architecture.md): process, HTTP, configuration, and security boundaries.
-- [Workspace specification](docs/specs/workspace.md): agreed workflows and acceptance criteria.
+- [Vision](docs/vision.md): product direction and scope.
+- [Domain](docs/domain.md): concepts and invariants.
+- [Workspace specification](docs/specs/workspace.md): behavioral contract.
+- [Architecture](docs/architecture.md): system structure and boundaries.
 - [Future work](docs/future-work.md): candidate capabilities.
-- [Decisions](docs/decisions.md): stack, integration, ownership, and lifecycle rationale.
+- [Decisions](docs/decisions.md): technical tradeoffs and history.
 - [Agent guide](AGENTS.md): development instructions.
 - [Ideas](docs/ideas.md): product brainstorming and exploration.
