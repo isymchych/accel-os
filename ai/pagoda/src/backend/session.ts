@@ -234,6 +234,12 @@ export class DesktopSession {
     return data;
   }
 
+  public async listAll(): Promise<StoredSession[]> {
+    const data = await this.rpc.control("list-all", "");
+    if (!Value.Check(CatalogSchema, data)) throw new Error("Invalid Pi session catalog");
+    return data;
+  }
+
   public async history(): Promise<SessionHistory> {
     const response = await this.rpc.request("get_entries");
     if (!Value.Check(EntriesSchema, response.data)) throw new Error("Invalid Pi session history");

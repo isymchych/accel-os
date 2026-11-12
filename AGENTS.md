@@ -30,9 +30,12 @@
 - `chezmoi apply` — sync confirmed updates; pair with `--include`/`--exclude` to scope risky runs.
 - `chezmoi doctor` — verify environment readiness after dependency changes.
 - `chezmoi data` — inspect template inputs before editing `.tmpl` files.
-- `just check` — run the canonical repository verification suite.
-- `just check-ai`, `just check-commands`, `just check-dotfiles` — run focused area checks during
-  iteration; use `just check` for shared code, repository tooling, or cross-area changes.
+- Run the smallest checks that verify the changed behavior and affected contracts. Broaden
+  validation only when targeted checks leave a concrete integration risk unverified. Supporting
+  changes to ignore rules, documentation, or dependency declarations do not by themselves justify
+  broader checks. Do not rerun checks without a relevant change.
+- `just check` — run the full repository verification suite.
+- `just check-ai`, `just check-commands`, `just check-dotfiles` — run area verification suites.
 - `just fmt` / `just fmt-check` — format or verify all supported source formats.
 - `just lint`, `just typecheck`, and `just test` — run targeted repository checks.
 - `just doctor` — verify the declared Arch host configuration.

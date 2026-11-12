@@ -90,6 +90,8 @@ test("independent owners survive view changes, reopen deduplicates, and forks pr
   assert.equal(a.summary().execution, "running");
   const catalog = await workspace.list(directory);
   assert.equal(catalog.length, 1);
+  const all = await workspace.listAll();
+  assert.deepEqual(new Set(all.map((session) => session.cwd)), new Set([directory, other]));
   const stored = catalog[0];
   assert.ok(stored);
   const [first, second] = await Promise.all([

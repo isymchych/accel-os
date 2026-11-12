@@ -36,10 +36,10 @@ frontend/HTTP/backend journeys; keep Electron checks focused on its shell. Follo
 [development checks](docs/development.md#checks) for isolated, credential-free execution and the
 distinction between fake RPC wiring and real Pi compatibility.
 
-For Pagoda-only changes, run `pnpm run check`. Run `pnpm run test:e2e` for affected
-frontend/HTTP/backend or Electron journeys; it includes the production build. Use root `just check`
-for shared code, repository tooling, or cross-area changes. When running a broader check, do not
-separately repeat checks it includes unless intervening changes require revalidation.
+Choose focused checks according to the root validation guidance. `pnpm run check` runs the full
+workspace verification suite. `pnpm run test:e2e` covers frontend/HTTP/backend and Electron journeys
+and includes the production build. When running a broader check, do not separately repeat checks it
+includes unless intervening changes require revalidation.
 
 Disclose missing display or Electron prerequisites. Follow
 [display prerequisites](docs/development.md#display-prerequisites) before GUI checks; do not open

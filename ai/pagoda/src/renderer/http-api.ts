@@ -5,6 +5,7 @@ import {
   ControlsSchema,
   ErrorSchema,
   HistorySchema,
+  MetadataSchema,
   SnapshotSchema,
   StoredSessionsSchema,
   WorkspaceSchema,
@@ -62,6 +63,10 @@ export async function connectApi(): Promise<WorkspaceApi> {
   return {
     directory: async (cwd) => command("directory", { cwd }, Type.String()),
     list: async (cwd) => command("list", { cwd }, StoredSessionsSchema),
+    listAll: async () => command("list-all", {}, StoredSessionsSchema),
+    setMetadataFlag: async (id, flag, value) => {
+      await command("metadata-flag", { id, flag, value }, Type.Null());
+    },
     create: async (cwd) => command("create", { cwd }, SnapshotSchema),
     open: async (cwd, path) => command("open", { cwd, path }, SnapshotSchema),
     prompt: async (request) => command("prompt", request, Type.String()),
@@ -101,6 +106,7 @@ export async function connectApi(): Promise<WorkspaceApi> {
       }
       observe("ready", WorkspaceSchema, (workspace) => ({ type: "workspace", workspace }));
       observe("snapshot", SnapshotSchema, (snapshot) => ({ type: "snapshot", snapshot }));
+      observe("metadata", MetadataSchema, (metadata) => ({ type: "metadata", metadata }));
       events.onerror = (): void => {
         connection?.(false);
       };

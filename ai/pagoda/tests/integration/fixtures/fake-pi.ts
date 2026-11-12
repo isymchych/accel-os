@@ -161,13 +161,17 @@ async function control(messageText: string): Promise<void> {
   if (!Value.Check(ControlSchema, value)) throw new Error("Invalid fake control");
   let data: unknown;
   switch (value.operation) {
-    case "list": {
+    case "list":
+    case "list-all": {
       const sessions = [];
       for (const name of await readdir(nativeDirectory)) {
         if (!name.endsWith(".jsonl")) continue;
         const sessionFile = path.join(nativeDirectory, name);
         const session: unknown = JSON.parse(await readFile(sessionFile, "utf8"));
-        if (Value.Check(StoredSchema, session) && session.cwd === value.value) {
+        if (
+          Value.Check(StoredSchema, session) &&
+          (value.operation === "list-all" || session.cwd === value.value)
+        ) {
           sessions.push({
             path: sessionFile,
             id: session.id,

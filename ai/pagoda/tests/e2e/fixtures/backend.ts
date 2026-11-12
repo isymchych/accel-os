@@ -21,6 +21,7 @@ export const test = base.extend<{ testBackend: TestBackend }>({
     try {
       backend = await startBackend({
         port: 0,
+        stateFile: path.join(directory, "pagoda-state.json"),
         clientDirectory: path.resolve(import.meta.dirname, "../../../dist/client"),
         pi: fakePiLaunch(directory),
       });

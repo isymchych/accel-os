@@ -146,7 +146,7 @@ export class PiRpc {
   }
 
   public async control(
-    operation: "list" | "navigate" | "snapshot",
+    operation: "list" | "list-all" | "navigate" | "snapshot",
     value: string,
   ): Promise<unknown> {
     // Fail before submitting a slash command if this runtime lacks the bridge.

@@ -1,11 +1,4 @@
-import {
-  FolderIcon,
-  InfoIcon,
-  PanelLeftIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SearchIcon,
-} from "lucide-react";
+import { FolderIcon, InfoIcon, PanelLeftIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import type {
@@ -18,6 +11,7 @@ import type {
 import { useApi } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
 import { SessionView, type ComposerFeedback } from "./session-view.tsx";
+import { SessionsLibrary } from "./sessions-library.tsx";
 import { useWorkspaceObservation } from "./use-workspace-observation.ts";
 import { WorkspaceNavigation } from "./workspace-navigation.tsx";
 
@@ -75,25 +69,46 @@ export function SessionScreen(): ReactElement {
   const workspaceRef = useRef<HTMLElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const navigationRevision = useRef(0);
+  const catalogRevision = useRef(0);
+  const previousExecution = useRef<Record<string, string>>({});
   useEffect(() => {
     workspaceRef.current?.focus({ preventScroll: true });
   }, []);
   const [selected, setSelected] = useState<SessionKey | null>(null);
   const [directory, setDirectory] = useState("");
   const [directoryInput, setDirectoryInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [listing, setListing] = useState<{ cwd: string; items: StoredSession[] }>({
-    cwd: "",
-    items: [],
-  });
-  const catalog = listing.cwd === directory ? listing.items : [];
-  const filteredCatalog = catalog.filter((session) =>
-    (session.name || session.id).toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-  );
+  const [library, setLibrary] = useState(false);
+  const [inactivityHours, setInactivityHours] = useState(48);
+  const [now, setNow] = useState(Date.now);
+  const [catalog, setCatalog] = useState<StoredSession[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});
 
+  const refreshCatalog = useCallback(async (): Promise<void> => {
+    catalogRevision.current += 1;
+    const revision = catalogRevision.current;
+    try {
+      const items = await workspace.listAll();
+      if (revision !== catalogRevision.current) return;
+      setCatalog(items);
+      setNow(Date.now());
+      setFeedback(null);
+    } catch (error) {
+      if (revision === catalogRevision.current) setFeedback(errorMessage(error));
+    }
+  }, [workspace]);
+  const onSnapshot = useCallback(
+    (session: SessionSnapshot): void => {
+      const previous = previousExecution.current[session.key];
+      previousExecution.current[session.key] = session.execution;
+      if ((previous === "running" || previous === "stopping") && session.execution === "idle") {
+        void refreshCatalog();
+      }
+    },
+    [refreshCatalog],
+  );
   const onWorkspace = useCallback((initial: WorkspaceState): void => {
     const previous = saved("pi-selected");
     const key =
@@ -101,29 +116,66 @@ export function SessionScreen(): ReactElement {
     setSelected(key);
     setDirectory(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
     setDirectoryInput(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
+    setInactivityHours(initial.inactivityHours);
   }, []);
-  const { sessions, receive, transportConnected } = useWorkspaceObservation(onWorkspace);
+  const { sessions, receive, metadata, transportConnected } = useWorkspaceObservation(
+    onWorkspace,
+    onSnapshot,
+  );
   useEffect(() => {
     if (selected !== null) remember("pi-selected", selected);
   }, [selected]);
 
   const summaries = Object.values(sessions).flatMap((session) => (session ? [session] : []));
-  const connected = summaries.some((session) => session.connection === "connected");
+  const inactivityMs = inactivityHours * 60 * 60 * 1000;
   useEffect(() => {
-    if (!directory || !connected) return undefined;
-    let active = true;
-    void workspace
-      .list(directory)
-      .then((items) => {
-        if (active) setListing({ cwd: directory, items });
-      })
-      .catch((error: unknown) => {
-        if (active) setFeedback(errorMessage(error));
-      });
+    const deadlines = catalog
+      .map((item) => Date.parse(item.modified) + inactivityMs)
+      .filter((deadline) => deadline > now);
+    if (deadlines.length === 0) return undefined;
+    const delay = Math.min(Math.min(...deadlines) - now, 2_147_483_647);
+    const timer = setTimeout(() => {
+      setNow(Date.now());
+    }, delay);
     return (): void => {
-      active = false;
+      clearTimeout(timer);
     };
-  }, [workspace, directory, connected]);
+  }, [catalog, inactivityMs, now]);
+  const isRecent = (id: string | null): boolean =>
+    catalog.some((item) => item.id === id && Date.parse(item.modified) + inactivityMs > now);
+  const isPinned = (id: string | null): boolean =>
+    metadata.some((item) => item.id === id && item.pinned);
+  const recentLive = summaries.filter(
+    (session) =>
+      !isPinned(session.sessionId) &&
+      (session.key === selected ||
+        !transportConnected ||
+        session.execution !== "idle" ||
+        Boolean(composers[session.key]?.message ?? saved(`pi-composer:${session.key}`)) ||
+        isRecent(session.sessionId)),
+  );
+  const recentStored = catalog.filter(
+    (item) =>
+      !isPinned(item.id) &&
+      isRecent(item.id) &&
+      !summaries.some((session) => session.sessionId === item.id),
+  );
+  const connected = summaries.some((session) => session.connection === "connected");
+  const missingPins = metadata
+    .filter((item) => item.pinned && !catalog.some((session) => session.id === item.id))
+    .map((item) => item.id)
+    .toSorted()
+    .join("\n");
+  useEffect(() => {
+    // Synchronize the catalog from the external Pi process.
+    // oxlint-disable-next-line react/set-state-in-effect
+    if (connected) void refreshCatalog();
+  }, [connected, refreshCatalog]);
+  useEffect(() => {
+    // A different client may pin a session absent from this catalog.
+    // oxlint-disable-next-line react/set-state-in-effect
+    if (connected && missingPins) void refreshCatalog();
+  }, [connected, missingPins, refreshCatalog]);
 
   const observed = selected === null ? undefined : sessions[selected];
   const snapshot =
@@ -179,23 +231,19 @@ export function SessionScreen(): ReactElement {
   async function open(operation: () => Promise<SessionSnapshot>): Promise<void> {
     setOpening(true);
     setFeedback(null);
-    const previous = selected;
+    navigationRevision.current += 1;
+    const revision = navigationRevision.current;
     try {
       const next = await operation();
       receive(next);
-      setSelected((current) => (current === previous ? next.key : current));
+      if (revision === navigationRevision.current) {
+        setSelected(next.key);
+        setLibrary(false);
+      }
     } catch (error) {
       setFeedback(errorMessage(error));
     }
     setOpening(false);
-  }
-  async function refreshCatalog(): Promise<void> {
-    try {
-      setListing({ cwd: directory, items: await workspace.list(directory) });
-      setFeedback(null);
-    } catch (error) {
-      setFeedback(errorMessage(error));
-    }
   }
 
   return (
@@ -270,17 +318,51 @@ export function SessionScreen(): ReactElement {
           <PlusIcon aria-hidden="true" />
           New session
         </Button>
+        <Button
+          variant={library ? "secondary" : "ghost"}
+          className="mx-4 mt-1 justify-start"
+          onClick={() => {
+            navigationRevision.current += 1;
+            setLibrary(true);
+            void refreshCatalog();
+          }}
+        >
+          Browse sessions
+        </Button>
         <div className="flex-1 space-y-6 px-3 py-6">
-          <nav aria-label="Open sessions" className="space-y-1">
-            <h2 className="mb-2 px-2 text-xs font-medium text-muted-foreground">Open sessions</h2>
-            {summaries.map((session) => (
+          <nav aria-label="Pinned sessions" className="space-y-1">
+            <h2 className="mb-2 px-2 text-xs font-medium text-muted-foreground">Pinned</h2>
+            {catalog
+              .filter((item) => metadata.some((mark) => mark.id === item.id && mark.pinned))
+              .map((item) => {
+                const live = summaries.find((session) => session.sessionId === item.id);
+                return (
+                  <Button
+                    key={item.path}
+                    variant={!library && live?.key === selected ? "secondary" : "ghost"}
+                    className="h-auto w-full justify-start whitespace-normal text-left"
+                    disabled={opening || !transportConnected}
+                    onClick={() => {
+                      void open(async () => workspace.open(item.cwd, item.path));
+                    }}
+                  >
+                    {item.name || item.id}
+                  </Button>
+                );
+              })}
+          </nav>
+          <nav aria-label="Recent sessions" className="space-y-1">
+            <h2 className="mb-2 px-2 text-xs font-medium text-muted-foreground">Recent</h2>
+            {recentLive.map((session) => (
               <Button
                 key={session.key}
-                variant={session.key === selected ? "secondary" : "ghost"}
-                aria-current={session.key === selected ? "page" : undefined}
+                variant={!library && session.key === selected ? "secondary" : "ghost"}
+                aria-current={!library && session.key === selected ? "page" : undefined}
                 className="h-auto w-full justify-start gap-2.5 px-3 py-2.5 whitespace-normal text-left"
                 onClick={() => {
+                  navigationRevision.current += 1;
                   setSelected(session.key);
+                  setLibrary(false);
                 }}
               >
                 <span
@@ -299,64 +381,35 @@ export function SessionScreen(): ReactElement {
                 </span>
               </Button>
             ))}
-          </nav>
-          <section aria-label="Saved sessions" className="space-y-1">
-            <div className="mb-2 flex items-center justify-between px-2">
-              <h2 className="text-xs font-medium text-muted-foreground">Saved sessions</h2>
-              <span className="text-xs text-muted-foreground">{catalog.length}</span>
-            </div>
-            <div className="relative mb-3">
-              <SearchIcon
-                aria-hidden="true"
-                className="pointer-events-none absolute top-2.5 left-3 size-3.5 text-muted-foreground"
-              />
-              <input
-                aria-label="Search saved sessions"
-                type="search"
-                placeholder="Search sessions…"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                }}
-                className="h-9 w-full rounded-lg border border-input bg-background/50 pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-            {catalog.length === 0 && (
-              <p className="px-2 py-2 text-xs leading-relaxed text-muted-foreground">
-                No saved sessions in this directory.
-              </p>
-            )}
-            {catalog.length > 0 && filteredCatalog.length === 0 && (
-              <p className="px-2 py-2 text-xs text-muted-foreground">No matching sessions.</p>
-            )}
-            {filteredCatalog.map((session) => (
+            {recentStored.map((item) => (
               <Button
-                key={session.path}
+                key={item.path}
                 variant="ghost"
+                className="h-auto w-full justify-start whitespace-normal text-left"
                 disabled={opening || !transportConnected}
-                className="h-auto w-full justify-start px-3 py-2.5 whitespace-normal text-left"
                 onClick={() => {
-                  void open(async () => workspace.open(session.cwd, session.path));
+                  void open(async () => workspace.open(item.cwd, item.path));
                 }}
               >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{session.name || session.id}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(session.modified).toLocaleString()}
-                  </span>
-                </span>
+                {item.name || item.id}
               </Button>
             ))}
-          </section>
+          </nav>
         </div>
         <div className="space-y-2 border-t border-sidebar-border p-3">
           <WorkspaceNavigation
             target={workspaceRef}
             composer={composerRef}
             transcript={transcriptRef}
-            sessionKeys={summaries.map((session) => session.key)}
+            sessionKeys={summaries
+              .filter((session) => isPinned(session.sessionId) || recentLive.includes(session))
+              .map((session) => session.key)}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={(key) => {
+              navigationRevision.current += 1;
+              setSelected(key);
+              setLibrary(false);
+            }}
           />
           <details className="px-2 text-xs text-muted-foreground">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md py-2 focus-visible:outline-2 focus-visible:outline-ring">
@@ -391,7 +444,22 @@ export function SessionScreen(): ReactElement {
             Backend connection unavailable. Execution state is unknown; reconnecting…
           </p>
         )}
-        {snapshot ? (
+        {library ? (
+          <SessionsLibrary
+            catalog={catalog}
+            sessions={summaries}
+            metadata={metadata}
+            disabled={opening || !transportConnected}
+            onOpen={(session) => {
+              void open(async () => workspace.open(session.cwd, session.path));
+            }}
+            onFlag={(id, flag, value) => {
+              void workspace.setMetadataFlag(id, flag, value).catch((error: unknown) => {
+                setFeedback(errorMessage(error));
+              });
+            }}
+          />
+        ) : snapshot ? (
           <SessionView
             key={snapshot.key}
             snapshot={snapshot}
@@ -410,9 +478,11 @@ export function SessionScreen(): ReactElement {
               void submit(mode);
             }}
             onFork={async (entryId) => {
+              navigationRevision.current += 1;
+              const revision = navigationRevision.current;
               const next = await workspace.fork(snapshot.key, entryId);
               receive(next);
-              setSelected(next.key);
+              if (revision === navigationRevision.current) setSelected(next.key);
             }}
           />
         ) : (

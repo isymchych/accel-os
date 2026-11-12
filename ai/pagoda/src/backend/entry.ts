@@ -46,6 +46,8 @@ process.on("disconnect", stop);
 backend = await startBackend({
   pi: { executable: process.execPath, args, cwd, env: { ...process.env, AI_CWD: cwd } },
   port,
+  stateFile: path.join(accelOs, "ai/pi/pagoda-state.json"),
+  settingsFile: path.join(accelOs, "ai/pi/pagoda-settings.json"),
   signal: shutdown.signal,
   ...(values.dev
     ? { developmentOrigin: "http://127.0.0.1:5173" as const }

@@ -6,6 +6,8 @@ import { getRequestListener } from "@hono/node-server";
 
 import { createHttpApp } from "./http.ts";
 import type { PiLaunch } from "./rpc.ts";
+import { SessionMetadataStore } from "./session-metadata.ts";
+import { readInactivityHours } from "./settings.ts";
 import { DesktopWorkspace } from "./workspace.ts";
 
 export interface BackendOptions {
@@ -14,6 +16,8 @@ export interface BackendOptions {
   clientDirectory?: string;
   developmentOrigin?: "http://127.0.0.1:5173";
   signal?: AbortSignal;
+  stateFile?: string;
+  settingsFile?: string;
 }
 export interface Backend {
   origin: string;
@@ -24,7 +28,9 @@ export interface Backend {
 /** One foreground backend owns execution; clients only observe and send commands. */
 export async function startBackend(options: BackendOptions): Promise<Backend> {
   options.signal?.throwIfAborted();
-  const workspace = new DesktopWorkspace(options.pi);
+  const inactivityHours = await readInactivityHours(options.settingsFile);
+  const metadata = new SessionMetadataStore(options.stateFile);
+  const workspace = new DesktopWorkspace(options.pi, metadata, inactivityHours);
   const shutdown = new AbortController();
   const token = randomBytes(32).toString("hex");
   let origin = "";

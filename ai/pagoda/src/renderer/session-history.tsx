@@ -209,14 +209,14 @@ export function SessionHistoryBrowser({
         render={<Button variant="ghost" size="sm" className="-ml-2 mt-2 text-muted-foreground" />}
       >
         <GitBranchIcon aria-hidden="true" />
-        History and branches
+        Conversation history
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-xl outline-none">
           <div className="shrink-0 border-b border-border p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
-              <Dialog.Title className="text-base font-semibold">History and branches</Dialog.Title>
+              <Dialog.Title className="text-base font-semibold">Conversation history</Dialog.Title>
               <Dialog.Close
                 render={<Button variant="ghost" size="icon" aria-label="Close history" />}
               >

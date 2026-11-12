@@ -11,6 +11,7 @@ import { Value } from "typebox/value";
 import {
   DirectorySchema,
   EntrySchema,
+  MetadataFlagSchema,
   ModelSchema,
   OpenSchema,
   PromptSchema,
@@ -163,12 +164,14 @@ export function createHttpApp(options: HttpOptions): Hono {
   }
   command("directory", DirectorySchema, async ({ cwd }) => workspace.directory(cwd));
   command("list", DirectorySchema, async ({ cwd }) => workspace.list(cwd));
+  command("list-all", Type.Object({}), async () => workspace.listAll());
+  command("metadata-flag", MetadataFlagSchema, async ({ id, flag, value }) =>
+    workspace.setMetadataFlag(id, flag, value),
+  );
   command("create", DirectorySchema, async ({ cwd }) => workspace.create(cwd));
   command("open", OpenSchema, async ({ cwd, path }) => workspace.open(cwd, path));
   command("snapshot", TargetSchema, ({ key }) => workspace.session(key).snapshot());
-  command("prompt", PromptSchema, async ({ key, message, mode }) =>
-    workspace.session(key).prompt(message, mode),
-  );
+  command("prompt", PromptSchema, async (request) => workspace.prompt(request));
   command("stop", TargetSchema, async ({ key }) => workspace.session(key).stop());
   command("history", TargetSchema, async ({ key }) => workspace.session(key).history());
   command("navigate", EntrySchema, async ({ key, entryId }) =>

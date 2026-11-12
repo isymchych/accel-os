@@ -235,6 +235,7 @@ test(
     assert.equal(catalog.length, 1);
     const original = catalog[0];
     assert.ok(original);
+    assert.ok((await session.listAll()).some((item) => item.id === original.id));
     const history = await session.history();
     const first = history.entries.find((entry) => entry.label.startsWith("user:"));
     assert.ok(first && history.leafId);

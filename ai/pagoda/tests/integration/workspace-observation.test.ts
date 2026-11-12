@@ -37,6 +37,8 @@ test("workspace initialization preserves newer command results and fills other s
     workspace: {
       initialKey: key,
       sessions: [snapshot(2, "stale"), snapshot(1, "other", otherKey)],
+      metadata: [],
+      inactivityHours: 48,
     },
   });
   assert.equal(contentText(result[key]?.messages[0]?.content), "live");

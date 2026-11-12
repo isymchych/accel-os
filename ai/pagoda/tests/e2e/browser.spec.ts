@@ -175,12 +175,12 @@ test("the workspace keeps its composer visible across window sizes and long draf
   }
   const sessionsToggle = page.getByRole("button", { name: "Sessions", exact: true });
   await expect(sessionsToggle).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByRole("navigation", { name: "Open sessions" })).toBeHidden();
+  await expect(page.getByRole("navigation", { name: "Recent sessions" })).toBeHidden();
   await sessionsToggle.click();
-  await expect(page.getByRole("navigation", { name: "Open sessions" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Recent sessions" })).toBeVisible();
   await expect(page.getByRole("button", { name: "New session", exact: true })).toBeInViewport();
   await sessionsToggle.click();
-  await expect(page.getByRole("navigation", { name: "Open sessions" })).toBeHidden();
+  await expect(page.getByRole("navigation", { name: "Recent sessions" })).toBeHidden();
   await expect(message).toHaveValue("A line of a long draft\n".repeat(100));
   await message.fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -195,27 +195,166 @@ test("the workspace keeps its composer visible across window sizes and long draf
   expect(controlsBounds.y + controlsBounds.height).toBeLessThanOrEqual(actionsBounds.y);
 });
 
-test("saved-session search filters history without changing open sessions", async ({
+test("session library search filters history without changing open sessions", async ({
   desktop: { page },
 }) => {
   await page.getByLabel("Message", { exact: true }).fill("saved history");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
-  await page.getByRole("button", { name: "Refresh sessions", exact: true }).click();
-  const saved = page.getByRole("region", { name: "Saved sessions" });
-  await expect(saved.getByRole("button")).toHaveCount(1);
-  const search = page.getByRole("searchbox", { name: "Search saved sessions" });
+  await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
+  const saved = page.getByRole("region", { name: "Sessions" });
+  await expect(saved.getByRole("listitem")).toHaveCount(1);
+  const search = page.getByRole("searchbox", { name: "Search sessions" });
   await search.fill("no matching session");
-  await expect(saved.getByRole("button")).toHaveCount(0);
+  await expect(saved.getByRole("listitem")).toHaveCount(0);
   await expect(saved.getByText("No matching sessions.", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("navigation", { name: "Open sessions" }).getByRole("button"),
+    page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button"),
   ).toHaveCount(1);
   await search.fill("TEST SESSION");
-  await expect(saved.getByRole("button")).toHaveCount(1);
+  await expect(saved.getByRole("listitem")).toHaveCount(1);
   await search.clear();
-  await saved.getByRole("button").click();
+  await saved.getByRole("listitem").getByRole("button").first().click();
   await expect(page.getByRole("article", { name: "user message" })).toContainText("saved history");
+});
+
+test("session library filters sessions across working directories", async ({
+  desktop: { page, directory },
+}) => {
+  const other = path.join(directory, "other-project");
+  await mkdir(other);
+  const message = page.getByLabel("Message", { exact: true });
+  await message.fill("first project");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
+  await page.getByLabel("Working directory", { exact: true }).fill(other);
+  await page.getByRole("button", { name: "Use directory", exact: true }).click();
+  await expect(page.getByRole("complementary")).toContainText(other);
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  await expect(
+    page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button"),
+  ).toHaveCount(2);
+  await expect(page.getByRole("article", { name: "user message" })).toHaveCount(0);
+  await message.fill("second project");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("article", { name: "user message" })).toContainText("second project");
+  await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
+  const library = page.getByRole("region", { name: "Sessions" });
+  await expect(library.getByRole("listitem")).toHaveCount(2);
+  await page.getByLabel("Filter by directory").selectOption(other);
+  await expect(library.getByRole("listitem")).toHaveCount(1);
+  await library.getByRole("listitem").getByRole("button").first().click();
+  await expect(message).toBeVisible();
+  await expect(page.getByRole("article", { name: "user message" })).toContainText("second project");
+  await expect(
+    page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button"),
+  ).toHaveCount(2);
+});
+
+test("pin and favourite changes are shared between clients", async ({
+  desktop: { page, backend },
+  browser,
+}) => {
+  await page.getByLabel("Message", { exact: true }).fill("important work");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
+  const context = await browser.newContext();
+  try {
+    const other = await context.newPage();
+    await other.goto(backend.connectionUrl);
+    await expect(other.getByRole("status").first()).toContainText("connected");
+    await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
+    const library = page.getByRole("region", { name: "Sessions" });
+    await expect(library.getByRole("listitem")).toHaveCount(1);
+    await library.getByRole("button", { name: "Pin Test session" }).click();
+    await expect(other.getByRole("navigation", { name: "Pinned sessions" })).toContainText(
+      "Test session",
+    );
+    await library.getByRole("button", { name: "Favourite Test session" }).click();
+    await other.getByRole("button", { name: "Browse sessions", exact: true }).click();
+    await other.getByLabel("Favourites only").check();
+    await expect(other.getByRole("region", { name: "Sessions" }).getByRole("listitem")).toHaveCount(
+      1,
+    );
+    await page.reload();
+    await expect(page.getByRole("navigation", { name: "Pinned sessions" })).toContainText(
+      "Test session",
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test("inactive sessions leave Recent without deleting history, while pinned sessions remain", async ({
+  desktop: { page },
+}) => {
+  await page.clock.install();
+  await page.getByLabel("Message", { exact: true }).fill("older work");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  const recent = page.getByRole("navigation", { name: "Recent sessions" });
+  await expect(recent.getByRole("button")).toHaveCount(2);
+  await page.clock.fastForward("49:00:00");
+  await expect(recent.getByRole("button")).toHaveCount(1);
+  await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
+  const library = page.getByRole("region", { name: "Sessions" });
+  await expect(library.getByRole("listitem")).toHaveCount(1);
+  await library.getByRole("button", { name: "Pin Test session" }).click();
+  const pinned = page.getByRole("navigation", { name: "Pinned sessions" });
+  await expect(pinned.getByRole("button")).toHaveCount(1);
+  await pinned.getByRole("button").click();
+  await expect(page.getByRole("article", { name: "user message" })).toContainText("older work");
+});
+
+test("Recent follows refreshed native activity without renewing on reopen", async ({
+  desktop: { page, directory },
+}) => {
+  const recent = page.getByRole("navigation", { name: "Recent sessions" });
+  const file = path.join(directory, "native", "external.jsonl");
+  const external = {
+    id: "external-session",
+    cwd: directory,
+    name: "External session",
+    modified: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
+    leafId: null,
+    entries: [],
+  };
+  await writeFile(file, JSON.stringify(external));
+  await page.getByRole("button", { name: "Refresh sessions" }).click();
+  await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(0);
+  await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
+  await page
+    .getByRole("region", { name: "Sessions" })
+    .getByRole("button", { name: /^External session /u })
+    .click();
+  await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(1);
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(0);
+  await writeFile(file, JSON.stringify({ ...external, modified: new Date().toISOString() }));
+  await page.getByRole("button", { name: "Refresh sessions" }).click();
+  await expect(recent.getByRole("button", { name: /External session/u })).toHaveCount(1);
+});
+
+test("running work and unsent drafts remain in Recent after expiry", async ({
+  desktop: { page },
+}) => {
+  await page.clock.install();
+  const message = page.getByLabel("Message", { exact: true });
+  const recent = page.getByRole("navigation", { name: "Recent sessions" });
+  await message.fill("hold");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("status").first()).toContainText("running");
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  await expect(recent.getByRole("button")).toHaveCount(2);
+  await expect(page.getByRole("status").first()).toContainText("idle");
+  await message.fill("draft to preserve");
+  await page.getByRole("button", { name: "New session", exact: true }).click();
+  await expect(recent.getByRole("button")).toHaveCount(3);
+  await page.clock.fastForward("49:00:00");
+  await expect(recent.getByRole("button")).toHaveCount(3);
+  await recent.getByRole("button").nth(1).click();
+  await expect(message).toHaveValue("draft to preserve");
 });
 
 test("rejected input preserves the draft across renderer reload", async ({ desktop: { page } }) => {
@@ -304,7 +443,7 @@ test("clients share execution but keep separate drafts and resynchronize after a
     );
     await expect(draft).toHaveValue("Keep my private draft");
     await expect(
-      page.getByRole("navigation", { name: "Open sessions" }).getByRole("button"),
+      page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button"),
     ).toHaveCount(1);
     network.disconnect();
     await expect(
@@ -371,7 +510,7 @@ test("directory selection, independent drafts, and a pending Stop stay bound to 
   await page.getByRole("button", { name: "Use directory", exact: true }).click();
   await expect(page.getByRole("complementary")).toContainText(other);
   await page.getByRole("button", { name: "New session", exact: true }).click();
-  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  const sessions = page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button");
   await expect(sessions).toHaveCount(2);
   await expect(page.getByRole("status").first()).toContainText("idle");
   await message.fill("B draft");
@@ -407,16 +546,16 @@ test("history forks preserve active source work and reopening reuses its owner",
   await message.fill("original history");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
-  await page.getByRole("button", { name: "Refresh sessions", exact: true }).click();
-  const saved = page.getByRole("region", { name: "Saved sessions" });
-  await expect(saved.getByRole("button")).toHaveCount(1);
-  await saved.getByRole("button").click();
-  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  await page.getByRole("button", { name: "Browse sessions", exact: true }).click();
+  const saved = page.getByRole("region", { name: "Sessions" });
+  await expect(saved.getByRole("listitem")).toHaveCount(1);
+  await saved.getByRole("listitem").getByRole("button").first().click();
+  const sessions = page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button");
   await expect(sessions).toHaveCount(1);
   await message.fill("hold");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("status").first()).toContainText("running");
-  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  await page.getByRole("button", { name: "Conversation history", exact: true }).click();
   const historyEntries = page.getByRole("region", { name: "History entries" });
   await historyEntries.getByRole("button").filter({ hasText: "assistant: Hello" }).click();
   await expect(page.getByRole("button", { name: "Navigate", exact: true })).toBeDisabled();
@@ -427,14 +566,14 @@ test("history forks preserve active source work and reopening reuses its owner",
     "original history",
   );
   expect((await snapshot(page, initialKey)).execution).toBe("running");
-  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  await page.getByRole("button", { name: "Conversation history", exact: true }).click();
   await historyEntries.getByRole("button").filter({ hasText: "user: original history" }).click();
   await page.getByRole("button", { name: "Navigate", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toHaveCount(0);
   await expect(message).toHaveValue("original history");
   await page.reload();
   await expect(message).toHaveValue("original history");
-  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  await page.getByRole("button", { name: "Conversation history", exact: true }).click();
   await historyEntries.getByRole("button").filter({ hasText: "assistant: Hello" }).click();
   await page.getByRole("button", { name: "Navigate", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
@@ -448,7 +587,7 @@ test("history browsing preserves branches, drafts, and focus until an explicit a
   await message.fill("original branch");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("article", { name: "assistant message" })).toBeVisible();
-  const trigger = page.getByRole("button", { name: "History and branches", exact: true });
+  const trigger = page.getByRole("button", { name: "Conversation history", exact: true });
   await trigger.click();
   const dialog = page.getByRole("dialog");
   const entries = dialog.getByRole("region", { name: "History entries" });
@@ -517,7 +656,7 @@ test("history fork failures remain local and long histories fit desktop and narr
     { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.getByRole("button", { name: "History and branches", exact: true }).click();
+    await page.getByRole("button", { name: "Conversation history", exact: true }).click();
     const dialog = page.getByRole("dialog");
     const entries = dialog.getByRole("region", { name: "History entries" });
     await expect(entries.getByRole("listitem")).toHaveCount(100);
@@ -585,7 +724,7 @@ test("history refreshes independently and a late response cannot overwrite a new
 }) => {
   const model = page.getByRole("combobox", { name: "Model", exact: true });
   await expect(model).toContainText("fake/fixture");
-  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  await page.getByRole("button", { name: "Conversation history", exact: true }).click();
   let controlsRequests = 0;
   await page.route("**/api/controls", async (route) => {
     controlsRequests += 1;
@@ -660,7 +799,7 @@ test("a delayed Send acknowledgement clears only its original session's draft", 
     "Waiting for Pi to confirm input",
   );
   await page.getByRole("button", { name: "New session", exact: true }).click();
-  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  const sessions = page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button");
   await expect(sessions).toHaveCount(2);
   await expect(page.getByRole("status").first()).toContainText("idle");
   await message.fill("B must keep this draft");
@@ -719,7 +858,7 @@ test("rejected model changes and navigation keep confirmed controls and transcri
   await expect(controls.getByRole("alert")).toContainText("Rejected model");
   await expect(model).toContainText("fake/fixture");
   await expect(model).toBeEnabled();
-  await page.getByRole("button", { name: "History and branches", exact: true }).click();
+  await page.getByRole("button", { name: "Conversation history", exact: true }).click();
   await page
     .getByRole("region", { name: "History entries" })
     .getByRole("button")
@@ -946,7 +1085,7 @@ test("keyboard session switching preserves drafts and work while overlays own th
   await page.keyboard.press("Escape");
   await expect(page.getByRole("status").first()).toContainText("running");
   await page.getByRole("button", { name: "New session", exact: true }).click();
-  const sessions = page.getByRole("navigation", { name: "Open sessions" }).getByRole("button");
+  const sessions = page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button");
   await expect(sessions).toHaveCount(2);
   await message.fill("B draft");
   await page.keyboard.press("Escape");

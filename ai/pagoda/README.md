@@ -33,14 +33,16 @@ credential: do not share it. Remote access is unsupported. Rebuild after source 
 
 ## Working with sessions
 
-- Enter a **Working directory**, select **Use directory**, and **New session**, or reopen a saved
-  session. Refresh the saved list after creating history elsewhere.
-- Switch between open sessions without stopping their work. Drafts and pending commands stay with
-  their original session, including across renderer reloads.
+- Enter a **Working directory**, select **Use directory**, and **New session**, or use **Browse
+  sessions** to search and reopen history across directories. Refresh after creating history
+  elsewhere.
+- The sidebar keeps pinned and recently active sessions. Favourites can be filtered in Sessions
+  independently of pins. Switch sessions without stopping their work; drafts and pending commands
+  stay with their original session across renderer reloads.
 - **Send** starts idle work; **Follow up** queues input after current work; **Steer** uses Pi's
   steering boundary. When idle, both start work immediately. Model and thinking controls apply to
   the current idle session, not global defaults.
-- Expand tool activity or long text to inspect full content. **History and branches** selects a
+- Expand tool activity or long text to inspect full content. **Conversation history** selects a
   native entry; **Navigate** changes the active branch when idle without deleting other history.
 - **Fork session** copies persisted history through the selected entry into an independent session.
   The source keeps running; unfinished output is excluded.
@@ -60,6 +62,11 @@ the page start/end. `i` focuses input; `Esc` returns to navigation without stopp
 switch sessions. Press `?` or click **Keyboard shortcuts** for the full reference.
 
 ## Configuration and compatibility
+
+Set `sidebar.inactivityHours` in `ai/pi/pagoda-settings.json` to control when idle, unpinned
+sessions leave Recent; the default is 48 hours. Restart the backend after changing it. Recent uses
+native Pi activity, including CLI work after refreshing the session catalog. Pins and favourites are
+stored separately in the ignored `ai/pi/pagoda-state.json`.
 
 Pi notifications are displayed, but select/confirm/input/editor dialogs are cancelled with a visible
 notice. Terminal components need graphical adaptations; the existing `ask_user_question` disables

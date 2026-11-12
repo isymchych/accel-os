@@ -1,6 +1,6 @@
 import type { SSEStreamingApi } from "hono/streaming";
 
-import type { SessionSnapshot } from "../desktop-api.ts";
+import type { SessionMetadata, SessionSnapshot } from "../desktop-api.ts";
 import type { DesktopWorkspace } from "./workspace.ts";
 
 /**
@@ -13,6 +13,7 @@ export async function observeWorkspace(
   shutdown: AbortSignal,
 ): Promise<void> {
   const pending = new Map<string, SessionSnapshot>();
+  let metadata: SessionMetadata[] | undefined;
   let wake: (() => void) | undefined;
   const isStopped = (): boolean => stream.aborted;
   const stop = (): void => {
@@ -30,6 +31,10 @@ export async function observeWorkspace(
   stream.onAbort(stop);
   shutdown.addEventListener("abort", stop, { once: true });
   const unsubscribe = workspace.subscribe(enqueue);
+  const unsubscribeMetadata = workspace.subscribeMetadata((next) => {
+    metadata = next;
+    wake?.();
+  });
   const heartbeat = setInterval(() => wake?.(), 15_000);
   const wait = async (): Promise<void> => {
     await new Promise<void>((resolve) => {
@@ -41,9 +46,14 @@ export async function observeWorkspace(
     if (isStopped()) return;
     const batch = [...pending.values()];
     pending.clear();
+    const nextMetadata = metadata;
+    metadata = undefined;
     const deadline = setTimeout(stop, 10_000);
     try {
-      if (batch.length === 0) await stream.writeSSE({ event: "heartbeat", data: "{}" });
+      if (batch.length === 0 && nextMetadata === undefined)
+        await stream.writeSSE({ event: "heartbeat", data: "{}" });
+      if (nextMetadata !== undefined)
+        await stream.writeSSE({ event: "metadata", data: JSON.stringify(nextMetadata) });
       for (const snapshot of batch) {
         if (isStopped()) break;
         await stream.writeSSE({ event: "snapshot", data: JSON.stringify(snapshot) });
@@ -64,12 +74,13 @@ export async function observeWorkspace(
       clearTimeout(readyDeadline);
     }
     while (!isStopped()) {
-      if (pending.size === 0) await wait();
+      if (pending.size === 0 && metadata === undefined) await wait();
       await flush();
     }
   } finally {
     clearInterval(heartbeat);
     shutdown.removeEventListener("abort", stop);
     unsubscribe();
+    unsubscribeMetadata();
   }
 }

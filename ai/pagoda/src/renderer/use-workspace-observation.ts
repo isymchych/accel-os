@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 
 import type {
   SessionKey,
+  SessionMetadata,
   SessionSnapshot,
   WorkspaceObservation,
   WorkspaceState,
@@ -15,6 +16,7 @@ export function mergeObservation(
   current: ObservedSessions,
   observation: WorkspaceObservation,
 ): ObservedSessions {
+  if (observation.type === "metadata") return current;
   const snapshots =
     observation.type === "workspace" ? observation.workspace.sessions : [observation.snapshot];
   let next = current;
@@ -27,13 +29,18 @@ export function mergeObservation(
 }
 
 /** SSE supplies the initial workspace and all subsequent observations. */
-export function useWorkspaceObservation(onWorkspace: (workspace: WorkspaceState) => void): {
+export function useWorkspaceObservation(
+  onWorkspace: (workspace: WorkspaceState) => void,
+  onSnapshot: (snapshot: SessionSnapshot) => void,
+): {
   sessions: ObservedSessions;
   receive: (snapshot: SessionSnapshot) => void;
+  metadata: SessionMetadata[];
   transportConnected: boolean;
 } {
   const workspace = useApi();
   const [sessions, dispatch] = useReducer(mergeObservation, {});
+  const [metadata, setMetadata] = useState<SessionMetadata[]>([]);
   const [transportConnected, setTransportConnected] = useState(false);
   const receive = useCallback((snapshot: SessionSnapshot): void => {
     dispatch({ type: "snapshot", snapshot });
@@ -43,10 +50,17 @@ export function useWorkspaceObservation(onWorkspace: (workspace: WorkspaceState)
     () =>
       workspace.subscribe((observation) => {
         dispatch(observation);
-        if (observation.type === "workspace") onWorkspace(observation.workspace);
+        if (observation.type === "workspace") {
+          setMetadata(observation.workspace.metadata);
+          onWorkspace(observation.workspace);
+        } else if (observation.type === "metadata") {
+          setMetadata(observation.metadata);
+        } else {
+          onSnapshot(observation.snapshot);
+        }
       }, setTransportConnected),
-    [workspace, onWorkspace],
+    [workspace, onWorkspace, onSnapshot],
   );
 
-  return { sessions, receive, transportConnected };
+  return { sessions, receive, metadata, transportConnected };
 }

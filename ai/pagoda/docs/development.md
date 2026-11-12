@@ -42,8 +42,9 @@ do not mock the application API; targeted fault tests cover stale responses and 
 For browser-only iteration without a graphical display or Xvfb, run `pnpm run test:e2e:browser`. The
 full `test:e2e` command also checks Electron.
 
-Root `just check` remains the repository gate. Workspace `Justfile` recipes are optional wrappers
-around pnpm commands.
+Choose focused checks for the changed behavior; use broader suites only when targeted checks leave
+a concrete integration risk unverified. Root `just check` runs the full repository verification
+suite. Workspace `Justfile` recipes are optional wrappers around pnpm commands.
 
 ### Test isolation and compatibility
 

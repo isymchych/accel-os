@@ -2,12 +2,16 @@ import { realpath, stat } from "node:fs/promises";
 
 import type {
   HistoryEntryId,
+  Prompt,
+  SessionId,
   SessionKey,
+  SessionMetadata,
   SessionSnapshot,
   StoredSession,
   WorkspaceState,
 } from "../desktop-api.ts";
 import type { PiLaunch } from "./rpc.ts";
+import type { SessionMetadataStore } from "./session-metadata.ts";
 import { DesktopSession } from "./session.ts";
 
 /** One backend-owned child per open session; view selection is never execution state. */
@@ -15,16 +19,25 @@ export class DesktopWorkspace {
   private readonly sessions = new Map<SessionKey, DesktopSession>();
   private readonly opening = new Map<string, Promise<SessionSnapshot>>();
   private readonly listeners = new Set<(snapshot: SessionSnapshot) => void>();
+  private readonly metadataListeners = new Set<(metadata: SessionMetadata[]) => void>();
   private closing = false;
   public readonly initialKey: SessionKey;
   private readonly initial: DesktopSession;
 
-  public constructor(privateLaunch: PiLaunch) {
+  public constructor(
+    privateLaunch: PiLaunch,
+    privateMetadata?: SessionMetadataStore,
+    inactivityHours = 48,
+  ) {
     this.launch = privateLaunch;
+    this.metadataStore = privateMetadata;
+    this.inactivityHours = inactivityHours;
     this.initial = this.attach(new DesktopSession(privateLaunch));
     this.initialKey = this.initial.summary().key;
   }
   private readonly launch: PiLaunch;
+  private readonly metadataStore: SessionMetadataStore | undefined;
+  private readonly inactivityHours: number;
 
   public async start(): Promise<void> {
     await this.initial.start();
@@ -33,12 +46,17 @@ export class DesktopWorkspace {
     return {
       initialKey: this.initialKey,
       sessions: [...this.sessions.values()].map((session) => session.snapshot()),
+      metadata: this.metadataStore?.list() ?? [],
+      inactivityHours: this.inactivityHours,
     };
   }
   public session(key: SessionKey): DesktopSession {
     const session = this.sessions.get(key);
     if (!session || this.closing) throw new Error("This session is unavailable");
     return session;
+  }
+  public async prompt(request: Prompt): Promise<string> {
+    return this.session(request.key).prompt(request.message, request.mode);
   }
   public async directory(cwd: string): Promise<string> {
     const directory = await realpath(cwd);
@@ -50,6 +68,28 @@ export class DesktopWorkspace {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+  public subscribeMetadata(listener: (metadata: SessionMetadata[]) => void): () => void {
+    this.metadataListeners.add(listener);
+    return () => {
+      this.metadataListeners.delete(listener);
+    };
+  }
+  public async setMetadataFlag(
+    id: SessionId,
+    flag: "pinned" | "favourite",
+    value: boolean,
+  ): Promise<void> {
+    if (!this.metadataStore) throw new Error("Session metadata is unavailable");
+    if (!(await this.listAll()).some((session) => session.id === id)) {
+      throw new Error("Session is not in the catalog");
+    }
+    this.metadataStore.setFlag(id, flag, value);
+    this.publishMetadata();
+  }
+  private publishMetadata(): void {
+    const metadata = this.metadataStore?.list() ?? [];
+    for (const listener of this.metadataListeners) listener(metadata);
   }
   private attach(session: DesktopSession): DesktopSession {
     this.sessions.set(session.summary().key, session);
@@ -65,6 +105,13 @@ export class DesktopWorkspace {
     );
     if (!owner || this.closing) throw new Error("No connected Pi session is available");
     return owner.list(directory);
+  }
+  public async listAll(): Promise<StoredSession[]> {
+    const owner = [...this.sessions.values()].find(
+      (session) => session.summary().connection === "connected",
+    );
+    if (!owner || this.closing) throw new Error("No connected Pi session is available");
+    return owner.listAll();
   }
   public async create(cwd: string): Promise<SessionSnapshot> {
     return this.launchSession(await realpath(cwd));
@@ -129,6 +176,7 @@ export class DesktopWorkspace {
       [...this.sessions.values()].map(async (session) => session.close()),
     );
     this.listeners.clear();
+    this.metadataListeners.clear();
     const failures = results.filter((result) => result.status === "rejected");
     if (failures.length > 0) throw new Error("Could not close every Pi session");
   }

@@ -14,6 +14,14 @@ const Path = Type.String({ minLength: 1, maxLength: 32_768 });
 export const TargetSchema = Type.Object({ key: SessionKeySchema }, { additionalProperties: false });
 export const DirectorySchema = Type.Object({ cwd: Path }, { additionalProperties: false });
 export const OpenSchema = Type.Object({ cwd: Path, path: Path }, { additionalProperties: false });
+export const MetadataFlagSchema = Type.Object(
+  {
+    id: SessionIdSchema,
+    flag: Type.Union([Type.Literal("pinned"), Type.Literal("favourite")]),
+    value: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
 export const EntrySchema = Type.Object(
   { key: SessionKeySchema, entryId: HistoryEntryIdSchema },
   { additionalProperties: false },
@@ -91,9 +99,17 @@ export const SnapshotSchema = Type.Object({
   error: Type.Union([Type.String(), Type.Null()]),
   notice: Type.Union([Type.String(), Type.Null()]),
 });
+export const SessionMetadataSchema = Type.Object({
+  id: SessionIdSchema,
+  pinned: Type.Boolean(),
+  favourite: Type.Boolean(),
+});
+export const MetadataSchema = Type.Array(SessionMetadataSchema);
 export const WorkspaceSchema = Type.Object({
   initialKey: SessionKeySchema,
   sessions: Type.Array(SnapshotSchema),
+  metadata: MetadataSchema,
+  inactivityHours: Type.Number({ exclusiveMinimum: 0 }),
 });
 const StoredSessionSchema = Type.Object({
   path: Type.String(),
@@ -133,6 +149,7 @@ export type ToolActivity = Static<typeof ToolActivitySchema>;
 export type SessionSummary = Static<typeof SummarySchema>;
 export type SessionSnapshot = Static<typeof SnapshotSchema>;
 export type WorkspaceState = Static<typeof WorkspaceSchema>;
+export type SessionMetadata = Static<typeof SessionMetadataSchema>;
 export type StoredSession = Static<typeof StoredSessionSchema>;
 export type HistoryEntry = Static<typeof HistoryEntrySchema>;
 export type SessionHistory = Static<typeof HistorySchema>;
@@ -141,11 +158,14 @@ export type SessionControls = Static<typeof ControlsSchema>;
 
 export type WorkspaceObservation =
   | { type: "workspace"; workspace: WorkspaceState }
-  | { type: "snapshot"; snapshot: SessionSnapshot };
+  | { type: "snapshot"; snapshot: SessionSnapshot }
+  | { type: "metadata"; metadata: SessionMetadata[] };
 
 export interface WorkspaceApi {
   directory(cwd: string): Promise<string>;
   list(cwd: string): Promise<StoredSession[]>;
+  listAll(): Promise<StoredSession[]>;
+  setMetadataFlag(id: SessionId, flag: "pinned" | "favourite", value: boolean): Promise<void>;
   create(cwd: string): Promise<SessionSnapshot>;
   open(cwd: string, path: string): Promise<SessionSnapshot>;
   prompt(request: Prompt): Promise<string>;

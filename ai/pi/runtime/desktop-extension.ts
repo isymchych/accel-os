@@ -14,7 +14,12 @@ import { listDesktopSessions, snapshotDesktopSession } from "./desktop-sessions.
 
 const RequestSchema = Type.Object({
   id: Type.String(),
-  operation: Type.Union([Type.Literal("list"), Type.Literal("navigate"), Type.Literal("snapshot")]),
+  operation: Type.Union([
+    Type.Literal("list"),
+    Type.Literal("list-all"),
+    Type.Literal("navigate"),
+    Type.Literal("snapshot"),
+  ]),
   value: Type.String(),
 });
 
@@ -31,6 +36,9 @@ export default function desktopExtension(pi: ExtensionAPI): void {
               ctx.sessionManager.getSessionDir(),
               await realpath(request.value),
             );
+            break;
+          case "list-all":
+            data = await listDesktopSessions(ctx.sessionManager.getSessionDir());
             break;
           case "navigate": {
             // The public command wrapper drops Pi's editorText. Recover it from

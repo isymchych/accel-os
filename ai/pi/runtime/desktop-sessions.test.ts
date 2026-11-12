@@ -8,6 +8,21 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 
 import { listDesktopSessions, snapshotDesktopSession } from "./desktop-sessions.ts";
 
+test("discovery reports native message activity without changing on reopen", async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "desktop-native-activity-"));
+  t.after(async () => rm(directory, { recursive: true, force: true }));
+  const storage = path.join(directory, "sessions");
+  const session = SessionManager.create(directory, storage);
+  session.appendMessage({ role: "user", content: "first", timestamp: 1_000 });
+  const file = session.getSessionFile();
+  assert.ok(file);
+  assert.equal((await listDesktopSessions(storage))[0]?.modified, new Date(1_000).toISOString());
+  const reopened = SessionManager.open(file);
+  assert.equal((await listDesktopSessions(storage))[0]?.modified, new Date(1_000).toISOString());
+  reopened.appendMessage({ role: "user", content: "continued", timestamp: 2_000 });
+  assert.equal((await listDesktopSessions(storage))[0]?.modified, new Date(2_000).toISOString());
+});
+
 test("snapshots persist setup-only selections and allow independent continuation", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "desktop-setup-snapshot-"));
   t.after(async () => {
@@ -73,6 +88,10 @@ test("discovery filters cwd and snapshots preserve lineage without migrating liv
   assert.deepEqual(
     (await listDesktopSessions(storage, cwd)).map((entry) => entry.id),
     [source.getSessionId()],
+  );
+  assert.deepEqual(
+    new Set((await listDesktopSessions(storage)).map((entry) => entry.id)),
+    new Set([source.getSessionId(), otherSession.getSessionId()]),
   );
   const forkFile = await snapshotDesktopSession(sourceFile, first, storage);
   assert.equal(await readFile(sourceFile, "utf8"), before);

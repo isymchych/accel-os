@@ -18,9 +18,11 @@ interface DesktopSessionInfo {
 
 export async function listDesktopSessions(
   sessionDir: string,
-  cwd: string,
+  cwd?: string,
 ): Promise<DesktopSessionInfo[]> {
-  const sessions = await SessionManager.list(cwd, sessionDir);
+  const sessions = cwd
+    ? await SessionManager.list(cwd, sessionDir)
+    : await SessionManager.listAll(sessionDir);
   return sessions.map((session) => ({
     path: session.path,
     id: session.id,

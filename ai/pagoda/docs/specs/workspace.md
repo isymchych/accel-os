@@ -16,7 +16,22 @@ must not retarget another session.
 
 Users can enter validated directory paths and browse, create, and reopen native Pi sessions.
 Selecting a session displays its transcript, draft, and activity. Reopening an active session reuses
-its execution owner; reopening saved history after child exit creates a new owner.
+its execution owner; reopening saved history after child exit creates a new owner. The Sessions
+library lists native sessions across working directories in the shared Pi session store, with search
+and directory filtering. The selected account supplies execution credentials when a session is
+reopened; session history is not separated by account profile.
+
+The sidebar shows pinned sessions and recently active sessions. Recent uses native Pi session
+activity, including work performed in the CLI; reopening history alone does not renew it. Refresh
+the catalog to see activity from outside Pagoda. An unpinned session leaves Recent after the
+configured inactivity period, except while selected, executing, stopping, execution is unknown, or
+the client has an unsent draft. Aging out neither deletes history nor stops work. Pinning keeps a
+session in the sidebar; favouriting makes it filterable in Sessions without pinning it. Pins and
+favourites are shared across clients and account profiles. `ai/pi/pagoda-settings.json` sets
+`sidebar.inactivityHours`; its default is 48 hours.
+
+Separate Pagoda backends share persisted pins and favourites but do not synchronize live updates.
+Simultaneous metadata edits across backends may lose changes; this low-frequency risk is accepted.
 
 Work continues independently across sessions. Starting work in A, switching to B and submitting
 there, then returning to A preserves each session's history, draft, and activity. Commands remain
@@ -56,9 +71,10 @@ notice, never silent approval; other presentation-only records are not rendered.
 
 ## History navigation and forks
 
-Users can read persisted history and navigate native branches while the session is idle. Navigation
-preserves the original history. Selecting a user message other than the current leaf navigates to
-its parent and restores its text to the composer; selecting the current leaf is a no-op.
+Users can read conversation history and navigate native branches while the session is idle.
+Navigation preserves the original history. Selecting a user message other than the current leaf
+navigates to its parent and restores its text to the composer; selecting the current leaf is a
+no-op.
 
 Forking creates an independent native session containing persisted history through the selected
 entry. The source retains its history and continues active work; unfinished streaming output is
