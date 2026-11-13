@@ -51,6 +51,18 @@ operational failures return HTTP 500, both retaining the `{ error }` response sh
 failures are normalized at the backend boundary, preserving their causes internally; HTTP handlers
 compose application effects without reclassifying errors.
 
+Catalog, accounts, history, and model/thinking controls use Effect atoms backed by the shared
+HttpApi contract. One React atom registry is mounted after authentication. History and controls
+queries are keyed by execution owner and refreshed on their SSE revisions. Successful controls
+mutations invalidate that owner's controls. Account selection remains authoritative in SSE. Pending
+account, controls, stop, and metadata mutations remain alive across view switches. Stop is keyed by
+execution owner and metadata by session and flag. Result-dependent commands use the same atom
+runtime's HTTP client directly, retaining per-call correlation. An application-scoped atom owns the
+SSE subscription and revision-aware workspace state; command snapshots use the same merge.
+Client-owned composer atoms retain per-owner drafts and pending submissions across view changes,
+with drafts and unacknowledged-submission markers in session storage. Navigation remains
+client-owned.
+
 The backend publishes snapshots including partial output; completed Pi messages replace
 reconstructed output. Clients resynchronize from current state rather than replaying commands. Pi's
 `agent_end` may precede retries or queued work; `agent_settled` marks the end of automatic

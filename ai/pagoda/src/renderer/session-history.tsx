@@ -1,4 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { AsyncResult, Atom } from "effect/reactivity";
 import { GitBranchIcon, GitForkIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 
@@ -9,8 +11,11 @@ import type {
   SessionKey,
   SessionSnapshot,
 } from "../contracts/index.ts";
-import { useApi } from "./api.ts";
+import { useApi, useRequests } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
+import { requestFeedback } from "./request-atoms.ts";
+
+const inactiveHistory = Atom.make(AsyncResult.initial<SessionHistory>());
 
 function historyRows(history: SessionHistory): {
   rows: { entry: HistoryEntry; depth: number; branchPoint: boolean }[];
@@ -131,7 +136,29 @@ function HistoryEntries({
   );
 }
 
+function useHistory(
+  snapshot: SessionSnapshot,
+  open: boolean,
+): { history: SessionHistory | null; loading: boolean; error: string | null; refresh: () => void } {
+  const requests = useRequests();
+  const { key, connection, historyRevision } = snapshot;
+  const query = open && connection === "connected" ? requests.history(key) : inactiveHistory;
+  const result = useAtomValue(query);
+  const refresh = useAtomRefresh(query);
+  useEffect(() => {
+    if (open && connection === "connected") refresh();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- SSE revisions invalidate history.
+  }, [open, connection, historyRevision, refresh]);
+  return {
+    history: AsyncResult.getOrElse(result, () => null),
+    loading: AsyncResult.isInitial(result) || result.waiting,
+    error: requestFeedback(result),
+    refresh,
+  };
+}
+
 /** Browses persisted branches without changing the session until an explicit action. */
+// oxlint-disable-next-line eslint/complexity -- The dialog coordinates selection and two distinct history actions.
 export function SessionHistoryBrowser({
   snapshot,
   controlsPending,
@@ -145,44 +172,21 @@ export function SessionHistoryBrowser({
 }): ReactElement {
   const workspace = useApi();
   const [open, setOpen] = useState(false);
-  const [history, setHistory] = useState<SessionHistory | null>(null);
   const [selected, setSelected] = useState<HistoryEntryId | null>(null);
   const [pending, setPending] = useState<"navigate" | "fork" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(0);
-  const { key, connection, execution, historyRevision } = snapshot;
-  const request = useMemo(
-    () => ({ key, connection, open, historyRevision, refresh }),
-    [key, connection, open, historyRevision, refresh],
-  );
-  const [loadedRequest, setLoadedRequest] = useState<typeof request | null>(null);
-  const loading = loadedRequest !== request;
+  const { key, connection, execution } = snapshot;
+  const {
+    history,
+    loading,
+    error: historyError,
+    refresh: refreshHistory,
+  } = useHistory(snapshot, open);
 
-  useEffect(() => {
-    if (!request.open || request.connection !== "connected") return undefined;
-    let active = true;
-    void workspace
-      .history(request.key)
-      .then((next) => {
-        if (!active) return;
-        setHistory(next);
-        setSelected((current) =>
-          next.entries.some((entry) => entry.id === current) ? current : next.leafId,
-        );
-      })
-      .catch((cause: unknown) => {
-        if (active)
-          setError(cause instanceof Error ? cause.message : "Could not load session history.");
-      })
-      .finally(() => {
-        if (active) setLoadedRequest(request);
-      });
-    return (): void => {
-      active = false;
-    };
-  }, [workspace, request]);
-
-  const entry = history?.entries.find((item) => item.id === selected);
+  const selectedId = history?.entries.some((item) => item.id === selected)
+    ? selected
+    : (history?.leafId ?? null);
+  const entry = history?.entries.find((item) => item.id === selectedId);
   const current = history?.entries.find((item) => item.id === history.leafId);
   const ready = connection === "connected" && !pending && !controlsPending && !loading && !!entry;
 
@@ -233,14 +237,14 @@ export function SessionHistoryBrowser({
           <div className="grid min-h-0 overflow-y-auto sm:grid-cols-[minmax(0,1fr)_18rem]">
             <HistoryEntries
               history={history}
-              selected={selected}
+              selected={selectedId}
               loading={loading}
               pending={!!pending}
               connected={connection === "connected"}
               onSelect={setSelected}
               onRefresh={() => {
                 setError(null);
-                setRefresh((value) => value + 1);
+                refreshHistory();
               }}
             />
             <section
@@ -302,9 +306,9 @@ export function SessionHistoryBrowser({
                   Pi is disconnected. History may be stale; actions need a connection.
                 </p>
               )}
-              {error && (
+              {(error ?? historyError) && (
                 <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">
-                  {error}
+                  {error ?? historyError}
                 </p>
               )}
             </section>

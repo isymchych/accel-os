@@ -1,3 +1,4 @@
+import { useAtom } from "@effect/atom-react";
 import { PinIcon, StarIcon } from "lucide-react";
 import { useState, type ReactElement } from "react";
 
@@ -7,7 +8,50 @@ import type {
   SessionSummary,
   StoredSession,
 } from "../contracts/index.ts";
+import { useRequests } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
+import { requestFeedback } from "./request-atoms.ts";
+
+function FlagButton({
+  id,
+  flag,
+  marked,
+  name,
+  disabled,
+}: {
+  id: SessionId;
+  flag: "pinned" | "favourite";
+  marked: boolean;
+  name: string;
+  disabled: boolean;
+}): ReactElement {
+  const requests = useRequests();
+  const [result, change] = useAtom(requests.metadata(id, flag));
+  const error = requestFeedback(result);
+  const label =
+    flag === "pinned" ? (marked ? "Unpin" : "Pin") : marked ? "Remove favourite" : "Favourite";
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        disabled={disabled || result.waiting}
+        aria-label={`${label} ${name}`}
+        aria-pressed={marked}
+        onClick={() => {
+          change(!marked);
+        }}
+      >
+        {flag === "pinned" ? <PinIcon aria-hidden="true" /> : <StarIcon aria-hidden="true" />}
+      </Button>
+      {error && (
+        <span role="alert" className="text-sm text-destructive">
+          {error}
+        </span>
+      )}
+    </>
+  );
+}
 
 export function SessionsLibrary({
   catalog,
@@ -15,14 +59,12 @@ export function SessionsLibrary({
   disabled,
   metadata,
   onOpen,
-  onFlag,
 }: {
   catalog: readonly StoredSession[];
   sessions: SessionSummary[];
   disabled: boolean;
   metadata: readonly SessionMetadata[];
   onOpen: (session: StoredSession) => void;
-  onFlag: (id: SessionId, flag: "pinned" | "favourite", value: boolean) => void;
 }): ReactElement {
   const [search, setSearch] = useState("");
   const [directory, setDirectory] = useState("");
@@ -106,30 +148,20 @@ export function SessionsLibrary({
                   </span>
                 </span>
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+              <FlagButton
+                id={session.id}
+                flag="pinned"
+                marked={marks?.pinned ?? false}
+                name={session.name || session.id}
                 disabled={disabled}
-                aria-label={`${marks?.pinned ? "Unpin" : "Pin"} ${session.name || session.id}`}
-                aria-pressed={marks?.pinned ?? false}
-                onClick={() => {
-                  onFlag(session.id, "pinned", !marks?.pinned);
-                }}
-              >
-                <PinIcon aria-hidden="true" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+              />
+              <FlagButton
+                id={session.id}
+                flag="favourite"
+                marked={marks?.favourite ?? false}
+                name={session.name || session.id}
                 disabled={disabled}
-                aria-label={`${marks?.favourite ? "Remove favourite" : "Favourite"} ${session.name || session.id}`}
-                aria-pressed={marks?.favourite ?? false}
-                onClick={() => {
-                  onFlag(session.id, "favourite", !marks?.favourite);
-                }}
-              >
-                <StarIcon aria-hidden="true" />
-              </Button>
+              />
             </li>
           );
         })}

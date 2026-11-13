@@ -1,7 +1,9 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useAtom, useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { AsyncResult, Atom } from "effect/reactivity";
+import { useEffect, type ReactElement } from "react";
 
 import type { Account } from "../contracts/index.ts";
-import { useApi } from "./api.ts";
+import { useRequests } from "./api.ts";
 import {
   Select,
   SelectContent,
@@ -9,6 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select.tsx";
+import { requestFeedback } from "./request-atoms.ts";
+
+const inactiveAccounts = Atom.make(AsyncResult.initial<readonly Account[]>());
 
 function label(account: Account): string {
   return [account.email ?? account.accountId ?? account.profile, account.plan]
@@ -24,29 +29,27 @@ export function AccountSelector({
   selected: string | null;
   connected: boolean;
 }): ReactElement | null {
-  const workspace = useApi();
-  const [accounts, setAccounts] = useState<readonly Account[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  return selected === null ? null : <AccountSelection selected={selected} connected={connected} />;
+}
+
+function AccountSelection({
+  selected,
+  connected,
+}: {
+  selected: string;
+  connected: boolean;
+}): ReactElement {
+  const requests = useRequests();
+  const accountQuery = connected ? requests.accounts : inactiveAccounts;
+  const result = useAtomValue(accountQuery);
+  const refresh = useAtomRefresh(accountQuery);
+  const [mutation, selectAccount] = useAtom(requests.selectAccount);
+  const accounts = AsyncResult.getOrElse(result, () => []);
+  const error = requestFeedback(mutation) ?? requestFeedback(result);
   useEffect(() => {
-    if (!connected || selected === null) return undefined;
-    let cancelled = false;
-    void workspace.accounts().then(
-      (items) => {
-        if (!cancelled) {
-          setAccounts(items);
-          setError(null);
-        }
-      },
-      (reason: unknown) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : "Cannot load accounts");
-      },
-    );
-    return (): void => {
-      cancelled = true;
-    };
-  }, [workspace, connected, selected]);
-  if (selected === null) return null;
+    if (connected) refresh();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Selection changes refresh account details.
+  }, [connected, selected, refresh]);
   const selectedAccount = accounts.find((account) => account.profile === selected);
   return (
     <div className="space-y-2 px-4 py-3">
@@ -55,19 +58,10 @@ export function AccountSelector({
       </span>
       <Select
         value={selected}
-        disabled={!connected || pending || accounts.length === 0}
+        disabled={!connected || mutation.waiting || accounts.length === 0}
         onValueChange={(profile) => {
           if (!profile || profile === selected) return;
-          setPending(true);
-          setError(null);
-          void workspace
-            .selectAccount(profile)
-            .catch((reason: unknown) => {
-              setError(reason instanceof Error ? reason.message : "Cannot select account");
-            })
-            .finally(() => {
-              setPending(false);
-            });
+          selectAccount({ payload: { profile } });
         }}
       >
         <SelectTrigger aria-labelledby="account-label" className="w-full min-w-0">

@@ -7,7 +7,7 @@ Local-only Effect/React app with browser and Electron clients in private pnpm wo
 
 - Assume the normal configured local environment. Do not add compatibility checks, fallback
   behavior, or recovery paths for hypothetical environment failures without an evidenced need.
-- I prefer tanstack ecosystem
+- Prefer libraries in this order: (1) Effect Platform/ecosystem, (2) TanStack ecosystem.
 - Import Effect Schema as `S`: `import { Schema as S } from "effect";`.
 
 ## Read and update by scope

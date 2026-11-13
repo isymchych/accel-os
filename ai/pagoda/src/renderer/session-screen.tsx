@@ -1,26 +1,17 @@
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
+import { AsyncResult } from "effect/reactivity";
 import { FolderIcon, InfoIcon, PanelLeftIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
-import type {
-  Prompt,
-  SessionKey,
-  SessionSnapshot,
-  StoredSession,
-  WorkspaceState,
-} from "../contracts/index.ts";
+import type { SessionKey, SessionSnapshot } from "../contracts/index.ts";
 import { AccountSelector } from "./account-selector.tsx";
-import { useApi } from "./api.ts";
+import { useApi, useComposerAtoms, useRequests, useWorkspaceAtoms } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
-import { SessionView, type ComposerFeedback } from "./session-view.tsx";
+import { requestFeedback } from "./request-atoms.ts";
+import { SessionView } from "./session-view.tsx";
 import { SessionsLibrary } from "./sessions-library.tsx";
-import { useWorkspaceObservation } from "./use-workspace-observation.ts";
 import { WorkspaceNavigation } from "./workspace-navigation.tsx";
 
-interface ComposerState {
-  message: string;
-  pending: boolean;
-  feedback: ComposerFeedback | null;
-}
 function saved(key: string): string {
   return sessionStorage.getItem(key) ?? "";
 }
@@ -67,12 +58,23 @@ function WorkspaceSidebar({ children }: { children: ReactNode }): ReactElement {
 
 export function SessionScreen(): ReactElement {
   const workspace = useApi();
+  const requests = useRequests();
+  const composerAtoms = useComposerAtoms();
+  const composers = useAtomValue(composerAtoms.state);
+  const editComposer = useAtomSet(composerAtoms.edit);
+  const submitComposer = useAtomSet(composerAtoms.submit);
+  const workspaceAtoms = useWorkspaceAtoms();
+  const { sessions, metadata, selectedAccount, transportConnected, initial } = useAtomValue(
+    workspaceAtoms.state,
+  );
+  const receive = useAtomSet(workspaceAtoms.receive);
+  const catalogResult = useAtomValue(requests.catalog);
+  const catalog = AsyncResult.getOrElse(catalogResult, () => []);
+  const refreshCatalog = useAtomRefresh(requests.catalog);
   const workspaceRef = useRef<HTMLElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const navigationRevision = useRef(0);
-  const catalogRevision = useRef(0);
-  const previousExecution = useRef<Record<string, string>>({});
   useEffect(() => {
     workspaceRef.current?.focus({ preventScroll: true });
   }, []);
@@ -82,45 +84,27 @@ export function SessionScreen(): ReactElement {
   const [library, setLibrary] = useState(false);
   const [inactivityHours, setInactivityHours] = useState(48);
   const [now, setNow] = useState(Date.now);
-  const [catalog, setCatalog] = useState<readonly StoredSession[]>([]);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [operationFeedback, setFeedback] = useState<string | null>(null);
+  const feedback = operationFeedback ?? requestFeedback(catalogResult);
   const [opening, setOpening] = useState(false);
-  const [composers, setComposers] = useState<Record<SessionKey, ComposerState>>({});
 
-  const refreshCatalog = useCallback(async (): Promise<void> => {
-    catalogRevision.current += 1;
-    const revision = catalogRevision.current;
-    try {
-      const items = await workspace.listAll();
-      if (revision !== catalogRevision.current) return;
-      setCatalog(items);
-      setNow(Date.now());
-      setFeedback(null);
-    } catch (error) {
-      if (revision === catalogRevision.current) setFeedback(errorMessage(error));
-    }
-  }, [workspace]);
-  const onSnapshot = useCallback(
-    (session: SessionSnapshot): void => {
-      const previous = previousExecution.current[session.key];
-      previousExecution.current[session.key] = session.execution;
-      if ((previous === "running" || previous === "stopping") && session.execution === "idle") {
-        void refreshCatalog();
-      }
-    },
-    [refreshCatalog],
-  );
-  const onWorkspace = useCallback((initial: WorkspaceState): void => {
+  useEffect(() => {
+    // Synchronize the expiry clock after the external catalog finishes refreshing.
+    // oxlint-disable-next-line react/set-state-in-effect
+    if (AsyncResult.isSuccess(catalogResult) && !catalogResult.waiting) setNow(Date.now());
+  }, [catalogResult]);
+  useEffect(() => {
+    if (!initial) return;
     const previous = saved("pi-selected");
     const key =
       initial.sessions.find((session) => session.key === previous)?.key ?? initial.initialKey;
+    // Restore client navigation when the external workspace reconnects.
+    // oxlint-disable-next-line react/set-state-in-effect
     setSelected(key);
     setDirectory(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
     setDirectoryInput(initial.sessions.find((session) => session.key === key)?.cwd ?? "");
     setInactivityHours(initial.inactivityHours);
-  }, []);
-  const { sessions, receive, metadata, selectedAccount, transportConnected } =
-    useWorkspaceObservation(onWorkspace, onSnapshot);
+  }, [initial]);
   useEffect(() => {
     if (selected !== null) remember("pi-selected", selected);
   }, [selected]);
@@ -150,7 +134,7 @@ export function SessionScreen(): ReactElement {
       (session.key === selected ||
         !transportConnected ||
         session.execution !== "idle" ||
-        Boolean(composers[session.key]?.message ?? saved(`pi-composer:${session.key}`)) ||
+        Boolean(composerAtoms.read(composers, session.key).message) ||
         isRecent(session.sessionId)),
   );
   const recentStored = catalog.filter(
@@ -167,13 +151,11 @@ export function SessionScreen(): ReactElement {
     .join("\n");
   useEffect(() => {
     // Synchronize the catalog from the external Pi process.
-    // oxlint-disable-next-line react/set-state-in-effect
-    if (connected) void refreshCatalog();
+    if (connected) refreshCatalog();
   }, [connected, refreshCatalog]);
   useEffect(() => {
     // A different client may pin a session absent from this catalog.
-    // oxlint-disable-next-line react/set-state-in-effect
-    if (connected && missingPins) void refreshCatalog();
+    if (connected && missingPins) refreshCatalog();
   }, [connected, missingPins, refreshCatalog]);
 
   const observed = selected === null ? undefined : sessions[selected];
@@ -181,52 +163,7 @@ export function SessionScreen(): ReactElement {
     observed && !transportConnected
       ? { ...observed, connection: "disconnected" as const, execution: "unknown" as const }
       : observed;
-  const composer = (selected === null ? undefined : composers[selected]) ?? {
-    message: selected === null ? "" : saved(`pi-composer:${selected}`),
-    pending: false,
-    feedback:
-      selected !== null && saved(`pi-submitting:${selected}`)
-        ? {
-            kind: "error" as const,
-            message:
-              "The submission may have been rejected or its outcome is uncertain; it was not retried.",
-          }
-        : null,
-  };
-  function updateComposer(key: SessionKey, change: Partial<ComposerState>): void {
-    setComposers((current) => ({
-      ...current,
-      [key]: {
-        message: saved(`pi-composer:${key}`),
-        pending: false,
-        feedback: null,
-        ...current[key],
-        ...change,
-      },
-    }));
-  }
-  function edit(message: string): void {
-    if (selected === null) return;
-    sessionStorage.removeItem(`pi-submitting:${selected}`);
-    remember(`pi-composer:${selected}`, message);
-    updateComposer(selected, { message, feedback: null });
-  }
-  async function submit(mode: Prompt["mode"]): Promise<void> {
-    const key = selected;
-    if (key === null) return;
-    const message = composer.message;
-    remember(`pi-submitting:${key}`, "pending");
-    updateComposer(key, { pending: true, feedback: null });
-    try {
-      await workspace.prompt({ key, message, mode });
-      remember(`pi-composer:${key}`, "");
-      sessionStorage.removeItem(`pi-submitting:${key}`);
-      updateComposer(key, { message: "", feedback: null });
-    } catch (error) {
-      updateComposer(key, { feedback: { kind: "error", message: errorMessage(error) } });
-    }
-    updateComposer(key, { pending: false });
-  }
+  const composer = composerAtoms.read(composers, selected);
   async function open(operation: () => Promise<SessionSnapshot>): Promise<void> {
     setOpening(true);
     setFeedback(null);
@@ -234,7 +171,7 @@ export function SessionScreen(): ReactElement {
     const revision = navigationRevision.current;
     try {
       const next = await operation();
-      receive(next);
+      receive({ type: "snapshot", snapshot: next });
       if (revision === navigationRevision.current) {
         setSelected(next.key);
         setLibrary(false);
@@ -299,7 +236,7 @@ export function SessionScreen(): ReactElement {
               type="button"
               disabled={!connected || !transportConnected}
               onClick={() => {
-                void refreshCatalog();
+                refreshCatalog();
               }}
             >
               <RefreshCwIcon aria-hidden="true" />
@@ -324,7 +261,7 @@ export function SessionScreen(): ReactElement {
           onClick={() => {
             navigationRevision.current += 1;
             setLibrary(true);
-            void refreshCatalog();
+            refreshCatalog();
           }}
         >
           Browse sessions
@@ -453,11 +390,6 @@ export function SessionScreen(): ReactElement {
             onOpen={(session) => {
               void open(async () => workspace.open(session.cwd, session.path));
             }}
-            onFlag={(id, flag, value) => {
-              void workspace.setMetadataFlag(id, flag, value).catch((error: unknown) => {
-                setFeedback(errorMessage(error));
-              });
-            }}
           />
         ) : snapshot ? (
           <SessionView
@@ -469,19 +401,20 @@ export function SessionScreen(): ReactElement {
             composerRef={composerRef}
             transcriptRef={transcriptRef}
             onExitComposer={() => workspaceRef.current?.focus({ preventScroll: true })}
-            onEdit={edit}
+            onEdit={(message) => {
+              editComposer({ key: snapshot.key, message });
+            }}
             onNavigateText={(key, text) => {
-              remember(`pi-composer:${key}`, text);
-              updateComposer(key, { message: text });
+              editComposer({ key, message: text, fromHistory: true });
             }}
             onSubmit={(mode) => {
-              void submit(mode);
+              submitComposer({ key: snapshot.key, mode });
             }}
             onFork={async (entryId) => {
               navigationRevision.current += 1;
               const revision = navigationRevision.current;
               const next = await workspace.fork(snapshot.key, entryId);
-              receive(next);
+              receive({ type: "snapshot", snapshot: next });
               if (revision === navigationRevision.current) setSelected(next.key);
             }}
           />

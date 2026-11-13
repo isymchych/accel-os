@@ -191,22 +191,12 @@ export type WorkspaceObservation =
   | { type: "metadata"; metadata: readonly SessionMetadata[] };
 
 export interface WorkspaceApi {
-  accounts(): Promise<readonly Account[]>;
-  selectAccount(profile: string): Promise<void>;
   directory(cwd: string): Promise<string>;
-  list(cwd: string): Promise<readonly StoredSession[]>;
-  listAll(): Promise<readonly StoredSession[]>;
-  setMetadataFlag(id: SessionId, flag: "pinned" | "favourite", value: boolean): Promise<void>;
   create(cwd: string): Promise<SessionSnapshot>;
   open(cwd: string, path: string): Promise<SessionSnapshot>;
   prompt(request: Prompt): Promise<string>;
-  stop(key: SessionKey): Promise<void>;
-  history(key: SessionKey): Promise<SessionHistory>;
   navigate(key: SessionKey, entryId: HistoryEntryId): Promise<string | undefined>;
   fork(key: SessionKey, entryId: HistoryEntryId): Promise<SessionSnapshot>;
-  controls(key: SessionKey): Promise<SessionControls>;
-  model(key: SessionKey, provider: string, modelId: string): Promise<void>;
-  thinking(key: SessionKey, level: string): Promise<void>;
   subscribe(
     listener: (observation: WorkspaceObservation) => void,
     connection?: (connected: boolean) => void,

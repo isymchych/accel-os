@@ -740,6 +740,60 @@ test("shadcn model/thinking controls and distinct follow-up/steering reach Pi", 
   ]);
 });
 
+test("catalog refresh errors are visible and an explicit refresh recovers", async ({
+  desktop: { page },
+}) => {
+  await page.route("**/api/list-all", async (route) => {
+    await route.fulfill({ status: 500, json: { error: "Catalog unavailable" } });
+  });
+  await page.getByRole("button", { name: "Refresh sessions" }).click();
+  await expect(page.getByRole("alert")).toContainText("Catalog unavailable");
+  await page.unroute("**/api/list-all");
+  const recovered = page.waitForResponse("**/api/list-all");
+  await page.getByRole("button", { name: "Refresh sessions" }).click();
+  expect((await recovered).ok()).toBe(true);
+  await expect(page.getByText("Catalog unavailable", { exact: true })).toHaveCount(0);
+});
+
+test("a pending model change stays with its session across view switches", async ({
+  desktop: { page },
+}) => {
+  // An empty, idle session has no native activity and otherwise leaves Recent.
+  await page.getByLabel("Message", { exact: true }).fill("Keep the first session visible");
+  const requested = Promise.withResolvers<undefined>();
+  const release = Promise.withResolvers<undefined>();
+  await page.route("**/api/model", async (route) => {
+    const response = await route.fetch();
+    requested.resolve(undefined);
+    await release.promise;
+    await route.fulfill({ response });
+  });
+  const model = page.getByRole("combobox", { name: "Model", exact: true });
+  await model.click();
+  await page.getByRole("option", { name: "fake/Other", exact: true }).click();
+  await requested.promise;
+  try {
+    await expect(model).toBeDisabled();
+    await page.getByRole("button", { name: "New session", exact: true }).click();
+    await expect(model).toContainText("fake/fixture");
+    await expect(model).toBeEnabled();
+    await expect(
+      page.getByRole("navigation", { name: "Recent sessions" }).getByRole("button"),
+    ).toHaveCount(2);
+    await page
+      .getByRole("navigation", { name: "Recent sessions" })
+      .getByRole("button")
+      .first()
+      .click();
+    await expect(model).toBeDisabled();
+    release.resolve(undefined);
+    await expect(model).toBeEnabled();
+    await expect(model).toContainText("fake/other");
+  } finally {
+    release.resolve(undefined);
+  }
+});
+
 test("history refreshes independently and a late response cannot overwrite a newer refresh", async ({
   desktop: { page },
 }) => {
@@ -754,19 +808,24 @@ test("history refreshes independently and a late response cannot overwrite a new
   let calls = 0;
   const requested = Promise.withResolvers<undefined>();
   const release = Promise.withResolvers<undefined>();
+  const settled = Promise.withResolvers<undefined>();
   await page.route("**/api/history", async (route) => {
     const response = await route.fetch();
     calls += 1;
     const first = calls === 1;
     requested.resolve(undefined);
     if (first) await release.promise;
-    await route.fulfill({
-      response,
-      json: {
-        entries: [{ id: "entry", parentId: null, label: first ? "old history" : "new history" }],
-        leafId: "entry",
-      },
-    });
+    try {
+      await route.fulfill({
+        response,
+        json: {
+          entries: [{ id: "entry", parentId: null, label: first ? "old history" : "new history" }],
+          leafId: "entry",
+        },
+      });
+    } finally {
+      if (first) settled.resolve(undefined);
+    }
   });
   const refresh = page.getByRole("button", { name: "Refresh history", exact: true });
   await refresh.click();
@@ -774,9 +833,8 @@ test("history refreshes independently and a late response cannot overwrite a new
   await refresh.click();
   const history = page.getByRole("region", { name: "History entries" });
   await expect(history).toContainText("new history");
-  const delivered = page.waitForResponse("**/api/history");
   release.resolve(undefined);
-  await delivered;
+  await settled.promise;
   await page.evaluate(
     async () =>
       new Promise<void>((resolve) => {

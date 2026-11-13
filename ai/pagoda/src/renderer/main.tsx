@@ -1,9 +1,11 @@
+import { RegistryProvider } from "@effect/atom-react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "./theme.css";
 import { ApiProvider } from "./api.ts";
 import { connectApi } from "./http-api.ts";
+import { createRequestAtoms } from "./request-atoms.ts";
 import { SessionScreen } from "./session-screen.tsx";
 
 const root = document.getElementById("root");
@@ -11,11 +13,14 @@ if (!root) throw new Error("Missing application root");
 const application = createRoot(root);
 void connectApi()
   .then((workspace) => {
+    const requests = createRequestAtoms(window.location.origin);
     application.render(
       <StrictMode>
-        <ApiProvider api={workspace}>
-          <SessionScreen />
-        </ApiProvider>
+        <RegistryProvider>
+          <ApiProvider api={workspace} requests={requests}>
+            <SessionScreen />
+          </ApiProvider>
+        </RegistryProvider>
       </StrictMode>,
     );
   })

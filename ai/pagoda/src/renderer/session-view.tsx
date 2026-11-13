@@ -1,6 +1,8 @@
 import { Menu } from "@base-ui/react/menu";
+import { useAtom, useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { AsyncResult } from "effect/reactivity";
 import { ArrowUpIcon, ChevronDownIcon, SquareIcon } from "lucide-react";
-import { useEffect, useState, type ReactElement, type ReactNode, type RefObject } from "react";
+import { useEffect, type ReactElement, type ReactNode, type RefObject } from "react";
 
 import type {
   HistoryEntryId,
@@ -9,7 +11,7 @@ import type {
   SessionKey,
   SessionSnapshot,
 } from "../contracts/index.ts";
-import { useApi } from "./api.ts";
+import { useRequests } from "./api.ts";
 import { Button } from "./components/ui/button.tsx";
 import {
   Select,
@@ -19,25 +21,19 @@ import {
   SelectValue,
 } from "./components/ui/select.tsx";
 import { Textarea } from "./components/ui/textarea.tsx";
+import { requestFeedback, type ControlsChange } from "./request-atoms.ts";
 import { SessionHistoryBrowser } from "./session-history.tsx";
 import { TranscriptPane } from "./transcript.tsx";
-
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : "Pi did not confirm this operation.";
-}
 
 function ModelControls({
   controls,
   idle,
-  sessionKey,
   change,
 }: {
   controls: SessionControls | null;
   idle: boolean;
-  sessionKey: SessionKey;
-  change: (operation: () => Promise<void>) => Promise<void>;
+  change: (change: ControlsChange) => void;
 }): ReactElement {
-  const workspace = useApi();
   if (!controls) return <p className="text-xs text-muted-foreground">Loading model controls…</p>;
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -54,10 +50,7 @@ function ModelControls({
             const model = controls.models.find(
               (item) => JSON.stringify([item.provider, item.id]) === value,
             );
-            if (model)
-              void change(async () => {
-                await workspace.model(sessionKey, model.provider, model.id);
-              });
+            if (model) change({ type: "model", provider: model.provider, modelId: model.id });
           }}
         >
           <SelectTrigger
@@ -88,10 +81,7 @@ function ModelControls({
           disabled={!idle}
           value={controls.thinkingLevel}
           onValueChange={(value) => {
-            if (value)
-              void change(async () => {
-                await workspace.thinking(sessionKey, value);
-              });
+            if (value) change({ type: "thinking", level: value });
           }}
         >
           <SelectTrigger
@@ -164,41 +154,21 @@ export function SessionView(
   },
 ): ReactElement {
   const { snapshot, onFork, onNavigateText, transcriptRef } = props;
-  const workspace = useApi();
-  const [controls, setControls] = useState<SessionControls | null>(null);
-  const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const requests = useRequests();
   const { key, connection, execution } = snapshot;
   const { controlsRevision } = snapshot;
+  const controlsAtom = requests.controls(key);
+  const controlsResult = useAtomValue(controlsAtom);
+  const controls = AsyncResult.getOrElse(controlsResult, () => null);
+  const refreshControls = useAtomRefresh(controlsAtom);
+  const [mutation, change] = useAtom(requests.changeControls(key));
+  const pending = mutation.waiting;
+  const feedback = requestFeedback(mutation) ?? requestFeedback(controlsResult);
 
   useEffect(() => {
-    if (connection !== "connected") return undefined;
-    let active = true;
-    void workspace
-      .controls(key)
-      .then((next) => {
-        if (!active) return;
-        setControls(next);
-      })
-      .catch((error: unknown) => {
-        if (active) setFeedback(errorText(error));
-      });
-    return (): void => {
-      active = false;
-    };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- The revision invalidates server-owned controls.
-  }, [workspace, key, connection, controlsRevision]);
-
-  async function change(operation: () => Promise<void>): Promise<void> {
-    setPending(true);
-    setFeedback(null);
-    try {
-      await operation();
-    } catch (error) {
-      setFeedback(errorText(error));
-    }
-    setPending(false);
-  }
+    if (connection === "connected") refreshControls();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- SSE revisions invalidate server-owned controls.
+  }, [connection, controlsRevision, refreshControls]);
   const idle = connection === "connected" && execution === "idle" && !pending;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -223,7 +193,7 @@ export function SessionView(
                 aria-label="Session controls"
                 className="min-w-0 basis-full lg:basis-auto lg:flex-1"
               >
-                <ModelControls controls={controls} idle={idle} sessionKey={key} change={change} />
+                <ModelControls controls={controls} idle={idle} change={change} />
                 {feedback && (
                   <p role="alert" className="px-2 py-1 text-sm text-destructive">
                     {feedback}
@@ -265,9 +235,10 @@ function SessionComposer({
   onExitComposer,
   modelControls,
 }: ComposerProps & { modelControls: ReactElement }): ReactElement {
-  const workspace = useApi();
-  const [stopError, setStopError] = useState<string | null>(null);
-  const [stopPending, setStopPending] = useState(false);
+  const requests = useRequests();
+  const [stopResult, stop] = useAtom(requests.stop(snapshot.key));
+  const stopError = requestFeedback(stopResult);
+  const stopPending = stopResult.waiting;
   const ready = snapshot.connection === "connected";
   const stopping = stopPending || snapshot.execution === "stopping";
   const busy = snapshot.execution === "running" || stopping;
@@ -346,16 +317,7 @@ function SessionComposer({
                   variant="outline"
                   className="rounded-xl"
                   onClick={() => {
-                    setStopError(null);
-                    setStopPending(true);
-                    void workspace
-                      .stop(snapshot.key)
-                      .catch((error: unknown) => {
-                        setStopError(errorText(error));
-                      })
-                      .finally(() => {
-                        setStopPending(false);
-                      });
+                    stop(undefined);
                   }}
                 >
                   <SquareIcon aria-hidden="true" />

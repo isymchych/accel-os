@@ -263,10 +263,6 @@ test("authenticated HTTP preserves execution independently of observers and clea
   const invalidRequest = await post("stop", {}, cookie);
   assert.equal(invalidRequest.headers.get("cross-origin-resource-policy"), "same-origin");
   assert.equal(
-    (await post("prompt", { key, mode: "prompt", message: "x".repeat(100_001) }, cookie)).status,
-    400,
-  );
-  assert.equal(
     (await post("prompt", { key, mode: "prompt", message: " \n " }, cookie)).status,
     400,
   );

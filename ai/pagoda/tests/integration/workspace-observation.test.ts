@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { SessionKey, SessionSnapshot } from "../../src/contracts/index.ts";
+import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
+
+import type {
+  SessionKey,
+  SessionSnapshot,
+  WorkspaceApi,
+  WorkspaceObservation,
+} from "../../src/contracts/index.ts";
 import { applySessionUpdate } from "../../src/renderer/http-api.ts";
-import { mergeObservation } from "../../src/renderer/use-workspace-observation.ts";
+import { createWorkspaceAtoms, mergeObservation } from "../../src/renderer/workspace-atoms.ts";
 import { contentText } from "./fixtures/helpers.ts";
 
 const key = "owner-a" as SessionKey;
@@ -71,4 +78,69 @@ test("streaming updates preserve unchanged history and reject missing or stale b
   assert.equal(next.streaming[0]?.type, "text");
   assert.throws(() => applySessionUpdate(undefined, update), /Invalid session update/u);
   assert.throws(() => applySessionUpdate(next, update), /Invalid session update/u);
+});
+
+test("one scoped subscription shares ordered state and refreshes only accepted completions", () => {
+  let listener: (observation: WorkspaceObservation) => void = () => {};
+  let connection: (connected: boolean) => void = () => {};
+  let subscriptions = 0;
+  let disposals = 0;
+  let catalogReads = 0;
+  const api: Pick<WorkspaceApi, "subscribe"> = {
+    subscribe: (observe, status) => {
+      subscriptions += 1;
+      listener = observe;
+      connection = status ?? ((): void => {});
+      return () => {
+        disposals += 1;
+      };
+    },
+  };
+  const catalog = Atom.make(() => {
+    catalogReads += 1;
+    return AsyncResult.success([]);
+  });
+  const workspace = createWorkspaceAtoms(api, { catalog });
+  const registry = AtomRegistry.make();
+  registry.mount(catalog);
+  registry.mount(workspace.subscription);
+  registry.mount(workspace.subscription);
+  assert.equal(subscriptions, 1);
+  listener({
+    type: "workspace",
+    workspace: {
+      initialKey: key,
+      sessions: [{ ...snapshot(4, "running"), execution: "running" }],
+      metadata: [],
+      selectedAccount: "first",
+      inactivityHours: 48,
+    },
+  });
+  connection(true);
+  registry.set(workspace.receive, { type: "snapshot", snapshot: snapshot(3, "stale") });
+  listener({ type: "snapshot", snapshot: snapshot(2, "stale completion") });
+  assert.equal(registry.get(workspace.state).sessions[key]?.name, "running");
+  assert.equal(catalogReads, 1);
+  listener({ type: "snapshot", snapshot: snapshot(5, "complete") });
+  assert.equal(registry.get(workspace.state).sessions[key]?.name, "complete");
+  assert.equal(catalogReads, 2);
+  listener({ type: "account", profile: "second" });
+  connection(false);
+  assert.equal(registry.get(workspace.state).selectedAccount, "second");
+  assert.equal(registry.get(workspace.state).transportConnected, false);
+  assert.equal(registry.get(workspace.state).sessions[key]?.name, "complete");
+  listener({
+    type: "workspace",
+    workspace: {
+      initialKey: key,
+      sessions: [snapshot(1, "old"), snapshot(1, "other", otherKey)],
+      metadata: [],
+      selectedAccount: "second",
+      inactivityHours: 48,
+    },
+  });
+  assert.equal(registry.get(workspace.state).sessions[key]?.name, "complete");
+  assert.equal(registry.get(workspace.state).sessions[otherKey]?.name, "other");
+  registry.dispose();
+  assert.equal(disposals, 1);
 });
