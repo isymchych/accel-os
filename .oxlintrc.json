@@ -169,8 +169,8 @@
           {
             "patterns": [
               {
-                "regex": "^(?:\\.\\./)+src/(?:renderer|electron|backend)/",
-                "message": "the launcher must launch the app, not import its implementation"
+                "regex": "^(?:\\.\\./)+src/(?:renderer|electron)/",
+                "message": "the launcher must not import renderer or Electron implementation"
               }
             ]
           }

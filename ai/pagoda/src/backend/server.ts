@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { createServer } from "node:http";
 
 import { NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
-import { Effect, Exit, FileSystem, Scope } from "effect";
+import { Cause, Effect, Exit, FileSystem, Scope } from "effect";
 
 import { createHttpApp } from "./http.ts";
 import type { PiSessionOptions, PiSessionFactory } from "./pi/session.ts";
@@ -51,7 +51,7 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
   };
   options.signal?.addEventListener("abort", abort, { once: true });
   try {
-    return await Effect.runPromise(
+    const result = await Effect.runPromiseExit(
       Effect.gen(function* () {
         yield* Scope.addFinalizer(
           scope,
@@ -115,6 +115,13 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
       ),
       { signal: options.signal },
     );
+    if (Exit.isFailure(result)) {
+      if (options.signal?.aborted && Cause.hasInterruptsOnly(result.cause)) {
+        options.signal.throwIfAborted();
+      }
+      throw Cause.squash(result.cause);
+    }
+    return result.value;
   } catch (error) {
     await close();
     throw error;

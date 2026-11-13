@@ -1,6 +1,8 @@
 import { EventEmitter } from "node:events";
 import { mock } from "node:test";
 
+import type { BackendOptions } from "../../../src/backend/server.ts";
+
 mock.module("node:module", {
   exports: { createRequire: () => (): string => "/fake/electron" },
 });
@@ -14,13 +16,10 @@ mock.module("node:child_process", {
       console.log(`executable:${command}`);
       console.log(`args:${JSON.stringify(args)}`);
       console.log(`cwd:${options.cwd}`);
-      console.log(`root:${options.env?.["ACCEL_OS"]}`);
-      const isBackend = args[0]?.endsWith("backend/entry.js") === true;
-      const isServerFixture = process.env["TEST_LAUNCHER_TARGET"] === "server";
       const child = Object.assign(new EventEmitter(), {
         unref: () => {},
         kill: () => {
-          console.log(`killed:${isBackend ? "backend" : "client"}`);
+          console.log("killed:client");
           queueMicrotask(() => {
             child.emit("exit", 0, null);
           });
@@ -28,24 +27,13 @@ mock.module("node:child_process", {
         },
       });
       queueMicrotask(() => {
-        if (isBackend) {
-          if (process.env["TEST_BACKEND_FAIL"] === "1") {
-            child.emit("exit", 1, null);
-            return;
-          }
-          child.emit("message", {
-            type: "ready",
-            url: `http://127.0.0.1:4317/#token=${"a".repeat(64)}`,
-          });
-          if (process.env["TEST_STOP_ON_READY"] === "1") process.emit("SIGTERM");
-          if (isServerFixture) child.emit("exit", 0, null);
+        if (
+          process.env["TEST_BROWSER"] === "1" ||
+          process.env["TEST_LAUNCHER_TARGET"] === "server"
+        ) {
+          process.emit("SIGINT");
         } else {
           child.emit("exit", Number(process.env["TEST_ELECTRON_EXIT"] ?? 0), null);
-          if (process.env["TEST_BROWSER"] === "1") {
-            queueMicrotask(() => {
-              process.emit("SIGINT");
-            });
-          }
         }
       });
       return child;
@@ -58,11 +46,60 @@ mock.module("vite", {
       listen: async (): Promise<void> => {
         console.log("vite:listening");
       },
-      resolvedUrls: { local: ["http://127.0.0.1:5173/"] },
       close: async (): Promise<void> => {
         console.log("vite:closed");
       },
     }),
+  },
+});
+
+const { runApplication, backendOptions } = await import("../../../scripts/application.ts");
+mock.module("../../../scripts/application.ts", {
+  exports: {
+    backendOptions,
+    runApplication: (values: Parameters<typeof runApplication>[0], client: boolean) =>
+      runApplication(values, client, async (options: BackendOptions) => {
+        if (process.env["TEST_BACKEND_FAIL"] === "1") throw new Error("Backend startup failed");
+        if (process.env["TEST_STOP_DURING_STARTUP"]) {
+          const signal = options.signal;
+          if (!signal) throw new Error("Missing startup signal");
+          await new Promise<void>((resolve) => {
+            signal.addEventListener(
+              "abort",
+              () => {
+                resolve();
+              },
+              { once: true },
+            );
+            setImmediate(() => {
+              process.emit("SIGTERM");
+            });
+          });
+          console.log("startup:cleaned");
+          if (process.env["TEST_STOP_DURING_STARTUP"] === "failure")
+            throw new Error("Startup cleanup failed");
+          throw signal.reason;
+        }
+        console.log(`sdk:${JSON.stringify(options.pi)}`);
+        console.log(`port:${options.port}`);
+        console.log(`renderer:${options.developmentOrigin ?? "built"}`);
+        console.log(`accounts:${options.accountConfigDir}`);
+        if (process.env["TEST_STOP_ON_READY"] === "1") {
+          process.emit("SIGTERM");
+          process.emit("SIGTERM");
+        } else if (process.env["TEST_LAUNCHER_TARGET"] === "server") {
+          setImmediate(() => {
+            process.emit("SIGINT");
+          });
+        }
+        return {
+          connectionUrl: `http://127.0.0.1:4317/#token=${"a".repeat(64)}`,
+          origin: "http://127.0.0.1:4317",
+          close: async (): Promise<void> => {
+            console.log("closed:backend");
+          },
+        };
+      }),
   },
 });
 

@@ -85,7 +85,7 @@ requests. These controls protect the client boundary; tool execution remains
 
 Backend shutdown closes observers, waits for SDK acquisition, binding, and pending prompt preflight,
 then aborts active SDK work, drains session operation fibers, disposes sessions, and settles
-credential writes. Pi cannot abort prompt preflight before a run exists. The launcher owns backend
-lifetime: Electron mode ends with its window, while browser mode runs until interrupted. Clients
-attach through an explicit connection URL; startup has no automatic backend discovery, daemon, or
-crash replay.
+credential writes. Pi cannot abort prompt preflight before a run exists. The launcher runs the
+backend in its own Node process and owns its lifetime: Electron mode ends with its window, while
+browser mode runs until interrupted. Electron runs as a separate process. Clients attach through an
+explicit connection URL; startup has no automatic backend discovery, daemon, or crash replay.

@@ -27,14 +27,13 @@ test("the Electron launcher starts a backend and owns its lifetime", async () =>
   assert.ok(stdout.includes(`args:${JSON.stringify([source])}`));
   assert.ok(stdout.includes(`cwd:${source}`));
   assert.ok(!stdout.includes("vite:"));
-  assert.ok(stdout.includes("backend/entry.js"));
-  assert.ok(stdout.includes("killed:backend"));
+  assert.ok(stdout.includes("closed:backend"));
 });
 test("browser mode opens the URL and keeps the backend until interrupted", async () => {
   const { stdout } = await runFixture("launcher", ["--browser"], { TEST_BROWSER: "1" });
   assert.ok(stdout.includes(`Pagoda connection URL: ${url}`));
   assert.ok(stdout.includes(`args:${JSON.stringify([url])}`));
-  assert.ok(stdout.includes("killed:backend"));
+  assert.ok(stdout.includes("closed:backend"));
 });
 test("the Electron launcher reports shell failure", async () => {
   await assert.rejects(
@@ -46,17 +45,28 @@ test("backend startup failure does not launch a client", async () => {
   await assert.rejects(
     runFixture("launcher", [], { TEST_BACKEND_FAIL: "1" }),
     (error: { stdout: string; stderr: string }) => {
-      assert.match(error.stderr, /Backend exited \(1\)/u);
+      assert.match(error.stderr, /Backend startup failed/u);
       assert.doesNotMatch(error.stdout, /executable:\/fake\/electron/u);
       return true;
     },
   );
 });
+test("interruption during backend startup waits for cleanup without opening a client", async () => {
+  const { stdout } = await runFixture("launcher", [], { TEST_STOP_DURING_STARTUP: "cancel" });
+  assert.match(stdout, /startup:cleaned/u);
+  assert.doesNotMatch(stdout, /executable:/u);
+});
+test("a startup cleanup failure remains visible after interruption", async () => {
+  await assert.rejects(
+    runFixture("launcher", [], { TEST_STOP_DURING_STARTUP: "failure" }),
+    /Startup cleanup failed/u,
+  );
+});
 test("shutdown at backend readiness does not launch either client", async () => {
   for (const args of [[], ["--browser"]]) {
     const { stdout } = await runFixture("launcher", args, { TEST_STOP_ON_READY: "1" });
-    assert.match(stdout, /killed:backend/u);
-    assert.equal(stdout.match(/executable:/gu)?.length, 1);
+    assert.equal(stdout.match(/closed:backend/gu)?.length, 1);
+    assert.doesNotMatch(stdout, /executable:/u);
   }
 });
 test("Electron entry attaches to an explicitly configured backend", async () => {
@@ -76,25 +86,18 @@ test("server launcher owns configuration and development Vite lifetime", async (
     TEST_LAUNCHER_TARGET: "server",
     ACCEL_OS: "/repository",
   });
-  assert.ok(
-    stdout.includes(
-      `args:${JSON.stringify([
-        path.join(source, "dist/main/backend/entry.js"),
-        ...context.slice(0, 2),
-        "--port",
-        "4321",
-        "--dev",
-      ])}`,
-    ),
-  );
-  assert.ok(stdout.includes("root:/repository"));
+  assert.ok(stdout.includes("port:4321"));
+  assert.ok(stdout.includes("renderer:http://127.0.0.1:5173"));
+  assert.ok(stdout.includes("accounts:/repository/ai/pi"));
   assert.ok(stdout.includes("vite:listening"));
   assert.ok(stdout.includes("vite:closed"));
 });
 
-test("server entry configures native SDK execution and shared account discovery", async () => {
-  const { stdout } = await runFixture("server-entry", ["--cwd", source], {
+test("server launcher configures native SDK execution and shared account discovery", async () => {
+  const { stdout } = await runFixture("launcher", ["--cwd", source], {
     ACCEL_OS: "/repository",
+    TEST_LAUNCHER_TARGET: "server",
+    TEST_STOP_ON_READY: "1",
   });
   assert.ok(
     stdout.includes(
@@ -107,22 +110,10 @@ test("server entry configures native SDK execution and shared account discovery"
       })}`,
     ),
   );
-  assert.ok(stdout.includes(`cwd:${source}`));
   assert.ok(stdout.includes("renderer:built"));
   assert.ok(stdout.includes("accounts:/repository/ai/pi"));
   assert.doesNotMatch(stdout, /rpc-entry/u);
   for (const option of ["--pi-entry", "--profile-dir", "--code-navigation"]) {
-    await assert.rejects(
-      runFixture("server-entry", [option, "/unused"], { ACCEL_OS: "/repository" }),
-      /Unknown option/u,
-    );
     await assert.rejects(runFixture("launcher", [option, "/unused"]), /Unknown option/u);
   }
-});
-
-test("backend shutdown stays idempotent when the terminal and launchers forward multiple signals", async () => {
-  await runFixture("server-entry", ["--cwd", source], {
-    ACCEL_OS: "/repository",
-    TEST_REPEAT_SIGNALS: "1",
-  });
 });

@@ -26,6 +26,7 @@ for (const phase of ["binding", "SDK initialization"] as const) {
   test(`cancellation during ${phase} closes the listener and releases acquired SDK resources`, async (t) => {
     const root = await mkdtemp(path.join(tmpdir(), "pagoda-server-startup-"));
     const controller = new AbortController();
+    const cancellation = new Error("Startup cancelled");
     let acquired = false;
     t.after(async () => {
       if (server?.listening)
@@ -43,12 +44,12 @@ for (const phase of ["binding", "SDK initialization"] as const) {
       pi: fakePiOptions(root),
       sessionFactory: async (options) => {
         acquired = true;
-        controller.abort(new Error("Startup cancelled"));
+        controller.abort(cancellation);
         return fakeSessionFactory(options);
       },
     });
-    if (phase === "binding") controller.abort(new Error("Startup cancelled"));
-    await assert.rejects(starting);
+    if (phase === "binding") controller.abort(cancellation);
+    await assert.rejects(starting, (error: unknown) => error === cancellation);
     assert.ok(server);
     assert.equal(server.listening, false);
     assert.equal(acquired, phase === "SDK initialization");
