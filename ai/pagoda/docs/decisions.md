@@ -1,141 +1,77 @@
 # Decisions
 
-## ADR-011: Local Electron interface to the existing Pi setup
+Current accepted choices and their rationale. [Architecture](architecture.md) describes the system;
+the [workspace specification](specs/workspace.md) owns behavior. Original ADRs and superseded
+alternatives are preserved in [decision history](decision-history.md).
 
-Status: UI transport and app-lifetime execution superseded by ADR-012 below. Configured Pi
-subprocesses and the local RPC transport are superseded by ADR-013; native-session compatibility
-remains applicable. The rationale below records the earlier choices.
+## One application, browser and Electron clients
 
-### Why Electron and plain Vite
+HTTP commands and SSE observations are the sole application transport. A shared application makes
+browser use and browser-based integration testing first-class, rather than adding a development-only
+adapter alongside Electron IPC. Electron is a thin desktop shell.
 
-Electron supplies desktop lifecycle and Chromium DevTools; React and plain Vite with the official
-React plugin supply presentation and renderer hot updates. TypeScript spans both sides.
+Electron supplies desktop lifecycle and Chromium DevTools; React and plain Vite provide presentation
+and renderer hot updates with standard build tools. Backend and shell changes require explicit
+restarts to protect active work; see [development](development.md#development).
 
-Standard build tools and a small development script keep the integration locally understandable.
-Renderer edits update live; main/preload/integration edits require an explicit restart to protect
-active agent work from source-watch restarts.
-
-### Why configured Pi subprocesses rather than the SDK
-
-Reusing the canonical `ai/pi/` launch configuration keeps terminal and desktop behavior aligned
-without maintaining another profile, tool, or extension setup. A Node RPC child also gives each
-session its own working directory and environment rather than retargeting process-global state.
-
-The direct SDK is an alternative for in-process integration. RPC fits this setup because it
-preserves the existing CLI launch semantics and process-local configuration.
-
-### Why native sessions and app-lifetime execution
-
-Native Pi persistence permits sequential terminal/desktop handoff without introducing a second
-history format. The single-writer constraint rules out concurrent editing of the same session.
-Graphical controls adapt Pi interactions rather than sharing terminal widgets.
-
-Main-process ownership lets renderer refresh and session navigation preserve active work without
-requiring a separate daemon. The tradeoff is that app quit ends active execution and there is no
-background service or automatic crash recovery; persisted history does not resume unfinished work.
-
-### Local RPC transport
-
-The desktop needs extension-response writing and child-exit observation as well as typed commands
-and events. Upstream `RpcClient` does not expose all those hooks, so the desktop uses a local
-transport. Reconsider upstream reuse when its public API covers this boundary.
-
-## ADR-012: One local HTTP application with browser and Electron clients
-
-Status: accepted. Supersedes ADR-011's renderer IPC and app-lifetime execution choices. The Hono
-implementation described below has since been replaced by Effect HTTP; the transport decision
-remains. ADR-013 supersedes the Pi RPC integration retained by this decision.
-
-Hono on Node owns a foreground backend. HTTP commands and SSE observations are the sole application
-transport; the configured Pi JSONL RPC integration remains unchanged. React runs in a browser or a
-thin sandboxed Electron shell. This makes the real application directly available to browser
-development tools and moves most integrated journeys to browser tests without maintaining a second
-transport or a fixture-only frontend.
-
-The credible alternative was to retain Electron IPC and add a browser development adapter. That
-would keep desktop-first lifecycle semantics but duplicate the boundary and would not provide
-production browser use.
-
-The consequence is a launcher-owned backend lifetime: browser mode runs until interrupted, while
-Electron mode ends with its window. There is no managed service or crash recovery. Execution
-configuration belongs to backend startup, and clients use directory-path entry instead of native
-dialogs. Local HTTP also introduces an
+The launcher owns the backend: browser mode runs until interrupted, while Electron mode ends with
+its window. This avoids a managed service, but active execution ends with the backend; saved history
+does not resume unfinished work. Clients use directory-path entry rather than native dialogs. Local
+HTTP requires an
 [authentication and origin-security boundary](architecture.md#security-and-execution); remote access
 remains outside scope.
 
-## ADR-013: Direct Pi SDK sessions with native history compatibility
+Sources: [ADR-011](decision-history.md#adr-011-local-electron-interface-to-the-existing-pi-setup),
+[ADR-012](decision-history.md#adr-012-one-local-http-application-with-browser-and-electron-clients).
 
-Status: implemented. Supersedes ADR-011's configured-subprocess/local-RPC choices and the Pi RPC
-integration retained in ADR-012. HTTP/SSE client transport and launcher-owned backend lifetime
-remain unchanged.
+## Direct Pi SDK, native history
 
-Pagoda will host Pi SDK sessions directly in its backend, with Pagoda-owned execution configuration,
-tools, and extensions. Native terminal session history remains discoverable and reopenable; sharing
-history does not require reproducing the terminal runtime or extension environment. The
-[workspace specification](specs/workspace.md#launch-and-configuration) owns that compatibility
-contract. ADR-014 below settles shared resources and account selection.
+The backend hosts in-process Pi SDK sessions with explicit cwd and configuration. Native history
+remains portable without reproducing terminal Pi's tools or extensions. Without terminal-runtime
+parity, RPC adds protocol and lifecycle machinery without serving its original purpose.
 
-The original reason for RPC was reuse of the terminal launcher and isolation of its process-global
-configuration. Terminal parity is no longer required, so retaining a subprocess protocol would add
-transport and lifecycle machinery without serving that goal. Direct SDK calls replace protocol
-framing, response correlation, and the desktop command bridge.
-
-Retaining RPC was the alternative. Hosting the SDK in separate workers would preserve process
-isolation but require another interprocess protocol. Neither is the selected design. In-process
-sessions share the backend process and its failure boundary; their cwd and configuration are
-explicit rather than implemented by switching process-global state.
-
-Exception: the installed SDK declares the `prompt` option `preflightResult` as an internal hook. Its
-RPC mode uses that hook for authoritative started/queued/handled confirmation before execution
-finishes. Pagoda may use it for the same contract, with focused regression coverage, rather than
-guessing acceptance from execution events. Revisit this exception if a supported public equivalent
-becomes available.
-
-### Integration constraints
+Separate SDK workers would retain process isolation but require another interprocess protocol.
+In-process sessions instead share the backend's failure boundary; they must not retarget
+process-global cwd or environment for individual sessions.
 
 Use documented SDK contracts and verify integration without a separate feasibility or
-terminal-extension compatibility evaluation.
+terminal-extension compatibility evaluation. The approved exception is the internal
+`preflightResult` prompt hook: it confirms started/queued/handled acceptance before execution
+finishes. Keep focused regression coverage and revisit the exception when a supported public
+equivalent becomes available; execution events alone are not authoritative acceptance.
 
 Fork creation must not invoke runtime fork hooks or let legacy migrations rewrite the live source.
 
 Custom slow-observer queue limits and write-deadline eviction, HTTP/RPC request-size limits, and
 connection termination for malformed or oversized Pi RPC records are rejected requirements. Do not
-preserve or recreate them for migration parity. The image proxy's response limits, boundary schema
+preserve or recreate them for migration parity. Image-proxy response limits, boundary schema
 validation, and uncertain-submission handling remain required.
 
-## ADR-014: Shared Pi resources and per-session account selection
+Source:
+[ADR-013](decision-history.md#adr-013-direct-pi-sdk-sessions-with-native-history-compatibility).
 
-Status: shared-resource and credential-storage choices implemented. Per-session account selection is
-superseded by ADR-015. Refines ADR-013 without restoring terminal-runtime or extension parity.
+## Shared resources and credential storage
 
-Pagoda shares `ai/skills/`, `ai/prompts/`, and the appended `ai/SYSTEM.md` with terminal Pi, while
-retaining normal per-working-directory project instruction discovery. Tools and extensions remain
-Pagoda-owned.
+Pagoda shares instructions, skills, and prompts with terminal Pi, including normal per-directory
+project instruction discovery, while owning its tools and extensions. Reuse existing isolated
+account credential files through SDK storage rather than copying credentials into a Pagoda store and
+duplicating refresh state. The SDK owns credential reads and refresh writes.
 
-Reuse the existing isolated account credential files and their storage format, but not the terminal
-account switcher. All existing accounts are available in Pagoda, and account selection belongs to
-each session. This permits concurrent work with different accounts without changing terminal Pi's
-active profile. The [specification](specs/workspace.md#accounts) owns switching boundaries and
-credential exposure rules. Login and account creation stay in terminal Pi initially.
+Pagoda's launch and account selection are independent of the terminal account switcher. Login and
+account creation remain in terminal Pi; the [specification](specs/workspace.md#accounts) defines
+credential exposure and selection boundaries.
 
-Copying credentials into a separate Pagoda store would duplicate refresh state; using the terminal's
-single active-account selection would prevent independent session choices. Neither is selected. The
-SDK storage remains responsible for credential reads and refresh writes to the original files.
+Source:
+[ADR-014](decision-history.md#adr-014-shared-pi-resources-and-per-session-account-selection).
 
-UI launch is independent of the terminal execution launcher and its account selection. The
-superseded idle-session switching design left SDK wiring open, subject to single-writer and
-disposal-before-replacement constraints.
+## Account selection fixed per execution owner
 
-## ADR-015: Global account selection for new execution owners
+One backend-wide account selection, initially the first discovered account, supplies each new
+execution owner. Later selections affect new owners only; existing owners keep their account,
+including active and queued work. Reopening an active session reuses its owner.
 
-Status: implemented. Supersedes ADR-014's per-session account-selection and idle switching design;
-its shared resource and credential-storage choices remain.
+This is simpler than per-session switching while preserving stable credential contexts. Sessions
+created at different times can use different accounts without changing terminal Pi's selection. The
+[specification](specs/workspace.md#accounts) owns the behavioral contract.
 
-Pagoda presents one backend-wide selection and initially chooses the first discovered account. Each
-new execution owner captures that selection. A later selection applies to new owners, not existing
-sessions or their active and queued work. Consequently sessions started at different times can use
-different accounts without changing the terminal's selection. The
-[workspace specification](specs/workspace.md#accounts) owns the behavioral contract.
-
-This is a simpler initial UI than per-session switching, while keeping credential contexts stable
-for the lifetime of each owner. Reopening an already active session retains its owner and account.
+Source: [ADR-015](decision-history.md#adr-015-global-account-selection-for-new-execution-owners).

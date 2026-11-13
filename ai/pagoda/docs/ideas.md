@@ -1,7 +1,9 @@
 # Ideas
 
-Open-ended product brainstorming, including distributed/Durable explorations beyond the current
-local desktop scope. Technical claims here are exploratory and need validation before adoption.
+Non-binding scratchpad, including historical notes and distributed/Durable explorations beyond the
+current local scope. Nothing here establishes requirements; technical claims need validation before
+adoption. [Vision](vision.md) defines current scope; [future work](future-work.md) lists candidate
+capabilities.
 
 ## Early direction notes
 

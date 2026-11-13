@@ -22,8 +22,7 @@ Main does not import renderer implementation. The launcher starts Electron rathe
 main module. Root lint rules enforce these boundaries.
 
 Workspace runtime code stays independent of repository-internal packages and private Pi runtime
-imports. Pi integration uses public APIs, with the prompt-acceptance exception below. Application
-fixtures inject a session factory.
+imports. Pi integration uses public APIs, with the prompt-acceptance exception below.
 
 ## Pi compatibility
 
@@ -35,8 +34,8 @@ Pagoda loads shared instructions, skills, and prompts, with its own tools and no
 extensions. Pi APIs provide native session discovery and snapshots without an active execution
 owner. Fork publication is atomic, preserves lineage, and does not overwrite existing files.
 
-Pi owns session persistence and credential refresh. Pagoda metadata and settings use Effect's
-filesystem service; metadata operations within one backend are serialized.
+Pi owns session persistence and credential refresh. Pagoda owns settings and presentation metadata;
+metadata operations within one backend are serialized.
 
 Verify compatibility against installed Pi declarations and documentation. Check the revision of any
 reference checkout before using its source, and validate upgrades with integration checks.
@@ -46,54 +45,24 @@ reference checkout before using its source, and validate upgrades with integrati
 HTTP requests are validated at the server and JSON/SSE responses at the client. Typed SDK calls and
 events are projected into Pagoda presentation data.
 
-Application operations use shared schema-backed errors: rejected requests return HTTP 400 and
-operational failures return HTTP 500, both retaining the `{ error }` response shape. External
-failures are normalized at the backend boundary, preserving their causes internally; HTTP handlers
-compose application effects without reclassifying errors.
+Application errors retain their causes internally and are normalized at the backend boundary:
+rejected requests return HTTP 400, operational failures HTTP 500, both as `{ error }`. Clients
+distinguish backend, transport, and invalid-response failures, including uncertain command outcomes.
 
-The renderer separates `transport/` (authentication, generated HTTP client, SSE decoding, and error
-normalization), `workspace/` (observation state, catalog, accounts, metadata, and navigation), and
-`session/` (owner-keyed queries, composers, history, and transcript). `app/` composes one stable
-application model exposed through one React context; atom values live in the registry mounted after
-authentication.
+The renderer separates transport, workspace observation/navigation, and per-session interaction.
+Shared state comes from the backend; navigation and drafts remain client-owned. Drafts and
+unacknowledged submissions persist in session storage, keyed to the execution owner rather than the
+persisted Pi session ID.
 
-Catalog, accounts, history, and model/thinking controls use Effect atoms backed by the shared
-HttpApi contract. The workspace observation layer owns revision-driven invalidation and reconnect
-refreshes; unmounted history queries remain lazy. Successful controls mutations invalidate that
-owner's controls. Account selection remains authoritative in SSE. Pending account, controls, stop,
-and metadata mutations remain alive across view switches. Stop is keyed by execution owner and
-metadata by session and flag.
+Commands target execution owners. Their scopes own SDK sessions and active work independently of
+HTTP request or connection lifetimes; disconnecting a caller does not cancel execution.
 
-Commands compose Effects using the same atom runtime's HTTP client; result-dependent React actions
-cross one Promise boundary, retaining per-call correlation. Command snapshots and SSE observations
-use the same revision-aware merge. Client errors retain backend, transport, or invalid-response
-meaning until presentation distinguishes read failures from uncertain command outcomes.
+SSE starts with a full workspace snapshot, then sends changed session fields. Slow observers
+coalesce to current state; reconnecting takes a fresh snapshot rather than replaying commands.
+Revision ordering prevents stale command responses or observations from overwriting newer state.
 
-The selected session subscribes to its own snapshot and composer. The sidebar reads session
-summaries and draft presence rather than transcript content or every draft edit. Owner-keyed
-composer atoms retain drafts and pending submissions across view changes, with drafts and
-unacknowledged-submission markers in session storage. Navigation remains client-owned; sidebar
-membership is calculated independently of React and transport.
-
-The backend publishes snapshots including partial output; completed Pi messages replace
-reconstructed output. Clients resynchronize from current state rather than replaying commands. Pi's
-`agent_end` may precede retries or queued work; `agent_settled` marks the end of automatic
-continuation.
-
-Session snapshots are immutable and share unchanged fields between updates. Each SSE connection
-begins with a complete workspace snapshot. After coalescing, the stream compares snapshots against
-its own last encoded state and sends changed session fields; new sessions receive a full snapshot.
-Slow subscribers coalesce to the latest state, and reconnecting starts with a fresh snapshot. The
-client reconstructs session snapshots before applying revision ordering.
-
-Commands and observations target an execution-owner key, distinct from the persisted Pi session ID
-and file. Client session storage keys drafts to that owner. Execution-owner scopes own SDK sessions,
-subscriptions, and active work; HTTP connection scopes own observation only. Snapshots and
-subsequent observations are ordered to preserve concurrent updates.
-
-Workspace scopes own command execution; HTTP request scopes own reads and observations.
-Non-cancellable SDK calls run in session-owned Effect fibers, independently of callers waiting for
-their results. A Deferred confirms prompt acceptance while its execution fiber continues.
+Pi's `agent_end` can precede retries or queued work; `agent_settled` marks the end of automatic
+continuation. Completed Pi messages replace reconstructed streaming output.
 
 SDK prompt acceptance uses Pi's declared internal `preflightResult` callback, an approved
 integration exception tested separately from execution completion. Lost HTTP confirmation remains
@@ -101,9 +70,27 @@ uncertain, not safe to retry.
 
 ## Security and execution
 
-The HTTP layer implements the spec's
-[local client boundaries](specs/workspace.md#local-client-boundaries): loopback binding, Host/Origin
-checks, cookie authentication, browser response policies, and the authenticated image proxy.
+These controls implement the spec's
+[local client boundaries](specs/workspace.md#local-client-boundaries).
+
+The backend binds only to `127.0.0.1`. Host validation permits explicit backend/development origins;
+foreign Origin and cross-site requests are rejected. API reads, commands, and streams require
+authentication except for credential exchange; writes require same-origin JSON requests. There is no
+permissive CORS or arbitrary shell, filesystem, environment, or credential API.
+
+The connection URL carries a backend-lifetime credential in its fragment. The frontend removes it
+and exchanges it for an HttpOnly, SameSite=Strict cookie. The credential must not be logged beyond
+explicit startup output or persisted in app storage. Backend restart invalidates authentication;
+clients reconnect through the new connection URL.
+
+The authenticated image proxy fetches HTTP(S) transcript URLs, including local-network URLs, without
+browser cookies or referrers. It limits response size and duration and sandboxes successful
+responses, including direct viewing.
+
+Markdown disables raw HTML and executable content. Responses enforce referrer and cross-origin
+policies. Production uses same-origin assets, a restrictive CSP, and same-origin API connections.
+Development alone permits explicit loopback Vite assets, its hot-update connection, and injected
+scripts.
 
 Electron loads only an explicit loopback connection URL, with sandboxing, context isolation, and no
 Node integration or preload bridge. It opens validated HTTP(S) links without embedded credentials in
@@ -113,9 +100,10 @@ requests. These controls protect the client boundary; tool execution remains
 
 ## Process lifetime
 
-Backend shutdown closes observers, waits for SDK acquisition, binding, and pending prompt preflight,
-then aborts active SDK work, drains session operation fibers, disposes sessions, and settles
-credential writes. Pi cannot abort prompt preflight before a run exists. The launcher runs the
-backend in its own Node process and owns its lifetime: Electron mode ends with its window, while
-browser mode runs until interrupted. Electron runs as a separate process. Clients attach through an
-explicit connection URL; startup has no automatic backend discovery, daemon, or crash replay.
+The launcher owns separate backend and Electron processes: Electron mode ends with its window, while
+browser mode runs until interrupted. Clients attach through an explicit connection URL; there is no
+automatic backend discovery, daemon, or crash replay.
+
+Shutdown closes observers, waits for SDK acquisition, binding, and prompt preflight, then aborts
+active work, drains session operations, disposes sessions, and settles credential writes. Pi cannot
+abort prompt preflight before a run exists.

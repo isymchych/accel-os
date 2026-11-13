@@ -54,8 +54,8 @@ the catalog to see activity from outside Pagoda. An unpinned session leaves Rece
 configured inactivity period, except while selected, executing, stopping, execution is unknown, or
 the client has an unsent draft. Aging out neither deletes history nor stops work. Pinning keeps a
 session in the sidebar; favouriting makes it filterable in Sessions without pinning it. Pins and
-favourites are shared across clients and account profiles. `ai/pi/pagoda-settings.json` sets
-`sidebar.inactivityHours`; its default is 48 hours.
+favourites are shared across clients and account profiles. See
+[configuration](../../README.md#configuration) for the inactivity setting and default.
 
 Separate Pagoda backends share persisted pins and favourites but do not synchronize live updates.
 Simultaneous metadata edits across backends may lose changes; this low-frequency risk is accepted.
@@ -124,24 +124,10 @@ remains reopenable after a backend or machine crash; unfinished execution requir
 
 ## Local client boundaries
 
-The backend binds only to `127.0.0.1`. Validate Host against explicit backend/development origins;
-reject foreign Origin and cross-site requests. All API reads, commands, and streams require an
-authenticated session, except the credential exchange. Writes require same-origin JSON requests.
-There is no permissive CORS or arbitrary shell, filesystem, environment, or credential API.
+Only authenticated local clients may read workspace state, issue commands, or observe execution.
+Agent output is untrusted content, not executable UI. Images referenced by HTTP(S) URL load through
+an authenticated, bounded proxy rather than with browser credentials.
 
-The connection URL carries a backend-lifetime credential in its fragment. The frontend removes it
-and authenticates through an HttpOnly, SameSite=Strict cookie. Do not log the credential beyond
-explicit startup output or persist it in app storage. Backend restart invalidates authentication;
-reconnect through the new connection URL.
-
-An authenticated image proxy fetches HTTP(S) URLs from transcript content without browser cookies or
-referrers, including URLs on local networks; it limits response size and duration and sandboxes
-successful responses, including when opened directly.
-
-Render agent output as untrusted content; Markdown must not enable raw HTML or executable content.
-Responses enforce referrer and cross-origin policies. Production loads same-origin assets with a
-restrictive CSP and same-origin API connections. Development alone loads Vite from explicit loopback
-and permits its hot-update connection and injected scripts.
-
-These controls protect the UI boundary, not Pi tools; see
-[execution authority](../domain.md#execution-authority).
+The required authentication, origin, content, and Electron controls are defined in
+[security and execution](../architecture.md#security-and-execution). They protect the UI boundary,
+not Pi tools; see [execution authority](../domain.md#execution-authority).
