@@ -25,6 +25,8 @@
   evals, control group, multiple attempt
 - script/skill to draw DB diagrams i.e. in drawio? or graphviz
 - **prevent agent from inventing requirements**
+- my local mb-... scripts should have logs/traces; Effect? cli, telemetry; configure accel-os
+  telemetry sink
 
 ? how codex @visualize skill works? ? "provide irrefutable proof that this things works"
 

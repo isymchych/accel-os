@@ -4,4 +4,4 @@
 set -euo pipefail
 
 : "${ACCEL_OS:?ACCEL_OS must point at repo root}"
-exec "$HOME/bin/accel-node" "$ACCEL_OS/packages/commands/bin/mb-ydl.ts" "$@"
+exec "$HOME/bin/accel-node" "$ACCEL_OS/packages/commands/bin/mb-ydl/index.ts" "$@"

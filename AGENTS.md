@@ -59,6 +59,17 @@
   `dotfiles/scripts/lib/`.
 - Store installed Node command entry points in `packages/commands/bin/` and command-only shared
   modules in `packages/commands/lib/`.
+- Prefer the Effect ecosystem for new or substantially rewritten TypeScript CLIs: CLI argument
+  parsing, Schema validation, interactive prompts, subprocess management, and logging. Existing
+  commands can migrate incrementally.
+- Write structured execution logs to journald with invocation IDs, useful inputs and operation
+  context, durations, outcomes, and error details including stack traces when available.
+- Display subprocess stderr live and retain it in execution logs. Keep normal command output
+  separate from logs.
+- Reuse command infrastructure in `packages/commands/lib/`. Keep command-specific events and context
+  in the owning command.
+- Installed commands target Linux; do not add speculative cross-platform support or recovery
+  machinery.
 - Run scripts directly with Node's native TypeScript type stripping; do not add a build step unless
   explicitly needed.
 - Keep `dotfiles/tsconfig.json` and `packages/commands/tsconfig.json` aligned with Node type
@@ -131,10 +142,9 @@
 - When writing Pi tool prompt guidance, describe the tool's user-visible value and routing criteria
   because internal jargon and negative unsupported-argument framing make model tool selection less
   reliable.
-- For repository automation and installed commands, parse external JSON through
-  `@accel-os/shared/json` using a TypeBox schema near the external shape. Standalone applications
-  own their validation and should use their schema library directly rather than depend on
-  repository-internal helpers.
+- For repository automation and installed commands, parse and validate external JSON with Effect
+  Schema, keeping schemas near the external shape. Standalone applications own their validation and
+  should use their schema library directly rather than depend on repository-internal helpers.
 - When parsing external CLI/API JSON, keep boundary schemas permissive for extra fields on
   provider-owned nested objects and normalize into strict internal domain types because providers
   can add or return undocumented metadata.

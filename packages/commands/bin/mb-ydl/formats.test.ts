@@ -1,50 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import process from "node:process";
 import test from "node:test";
 
 import {
   buildAudioChoices,
-  buildDownloadArgs,
   buildLanguageChoices,
   buildVideoChoices,
-  fetchMetadata,
   filterAudioLanguage,
   formatSize,
-  parseMetadata,
-  parseYdlArgs,
-} from "./mb-ydl.ts";
-
-test("fetchMetadata accepts JSON larger than the default subprocess buffer", () => {
-  const directory = mkdtempSync(path.join(tmpdir(), "mb-ydl-test-"));
-  const originalPath = process.env["PATH"];
-  try {
-    writeFileSync(
-      path.join(directory, "yt-dlp"),
-      `#!${process.execPath}
-process.stdout.write(JSON.stringify({
-  title: "Large metadata",
-  formats: [],
-  description: "x".repeat(2 * 1024 * 1024)
-}));
-`,
-      { mode: 0o700 },
-    );
-    process.env["PATH"] = `${directory}${path.delimiter}${originalPath ?? ""}`;
-
-    assert.deepEqual(fetchMetadata("https://example.com/video"), {
-      title: "Large metadata",
-      isPlaylist: false,
-      formats: [],
-    });
-  } finally {
-    if (originalPath === undefined) delete process.env["PATH"];
-    else process.env["PATH"] = originalPath;
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+} from "./formats.ts";
+import { buildDownloadArgs, parseMetadata } from "./yt-dlp.ts";
 
 const metadata = parseMetadata(
   JSON.stringify({
@@ -80,15 +44,6 @@ const metadata = parseMetadata(
     ],
   }),
 );
-
-test("parseYdlArgs accepts exactly one URL", () => {
-  assert.deepEqual(parseYdlArgs(["https://example.com/video"]), {
-    help: false,
-    url: "https://example.com/video",
-  });
-  assert.throws(() => parseYdlArgs([]), /Expected exactly one video URL/u);
-  assert.throws(() => parseYdlArgs(["first", "second"]), /Expected exactly one video URL/u);
-});
 
 test("language selection restricts both modes without losing video-only streams", () => {
   const multilingual = parseMetadata(
@@ -222,6 +177,7 @@ test("parseMetadata accepts a single format stored in top-level fields", () => {
   assert.equal(singleFormat.isPlaylist, false);
   assert.deepEqual(buildVideoChoices(singleFormat), [
     {
+      kind: "video",
       id: "video-720",
       label: "720p\t20 MiB",
       format: "0",
@@ -244,6 +200,7 @@ test("parseMetadata accepts a single format stored in top-level fields", () => {
 test("buildVideoChoices chooses the best format per resolution and sums audio size", () => {
   assert.deepEqual(buildVideoChoices(metadata), [
     {
+      kind: "video",
       id: "video-1080",
       label: "1080p\t108 MiB",
       format: "137+251",
@@ -251,6 +208,7 @@ test("buildVideoChoices chooses the best format per resolution and sums audio si
       size: { bytes: 108 * 1024 ** 2, approximate: false },
     },
     {
+      kind: "video",
       id: "video-720",
       label: "720p\t~48 MiB",
       format: "136+251",
@@ -272,6 +230,7 @@ for (const height of [undefined, null]) {
 
     assert.deepEqual(choices, [
       {
+        kind: "video",
         id: "video-unknown",
         label: "Unknown resolution\t1 KiB",
         format: "mp4",
@@ -305,6 +264,7 @@ test("buildVideoChoices combines unknown-resolution video with separate audio", 
 
   assert.deepEqual(choices, [
     {
+      kind: "video",
       id: "video-unknown",
       label: "Unknown resolution\t3 KiB",
       format: "video+audio",
@@ -386,12 +346,14 @@ for (const codec of [undefined, null]) {
 test("buildAudioChoices shows source sizes for conversions", () => {
   assert.deepEqual(buildAudioChoices(metadata), [
     {
+      kind: "audio",
       id: "audio-original",
       label: "Original\t8 MiB",
       format: "251",
       size: { bytes: 8 * 1024 ** 2, approximate: false },
     },
     {
+      kind: "audio",
       id: "audio-mp3",
       label: "MP3\t8 MiB source download",
       format: "251",
@@ -399,6 +361,7 @@ test("buildAudioChoices shows source sizes for conversions", () => {
       size: { bytes: 8 * 1024 ** 2, approximate: false },
     },
     {
+      kind: "audio",
       id: "audio-m4a",
       label: "M4A\t8 MiB source download",
       format: "251",
@@ -406,6 +369,7 @@ test("buildAudioChoices shows source sizes for conversions", () => {
       size: { bytes: 8 * 1024 ** 2, approximate: false },
     },
     {
+      kind: "audio",
       id: "audio-opus",
       label: "OPUS\t8 MiB source download",
       format: "251",
