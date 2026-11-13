@@ -2,15 +2,11 @@ import { useAtom } from "@effect/atom-react";
 import { PinIcon, StarIcon } from "lucide-react";
 import { useState, type ReactElement } from "react";
 
-import type {
-  SessionId,
-  SessionMetadata,
-  SessionSummary,
-  StoredSession,
-} from "../contracts/index.ts";
-import { useRequests } from "./api.ts";
-import { Button } from "./components/ui/button.tsx";
-import { requestFeedback } from "./request-atoms.ts";
+import type { SessionId, SessionMetadata, StoredSession } from "../../contracts/index.ts";
+import { useAppModel } from "../app/app-provider.tsx";
+import { Button } from "../components/ui/button.tsx";
+import { requestFeedback } from "../transport/errors.ts";
+import type { SessionOverview } from "./workspace-state.ts";
 
 function FlagButton({
   id,
@@ -25,9 +21,9 @@ function FlagButton({
   name: string;
   disabled: boolean;
 }): ReactElement {
-  const requests = useRequests();
+  const { requests } = useAppModel();
   const [result, change] = useAtom(requests.metadata(id, flag));
-  const error = requestFeedback(result);
+  const error = requestFeedback(result, true);
   const label =
     flag === "pinned" ? (marked ? "Unpin" : "Pin") : marked ? "Remove favourite" : "Favourite";
   return (
@@ -61,7 +57,7 @@ export function SessionsLibrary({
   onOpen,
 }: {
   catalog: readonly StoredSession[];
-  sessions: SessionSummary[];
+  sessions: readonly SessionOverview[];
   disabled: boolean;
   metadata: readonly SessionMetadata[];
   onOpen: (session: StoredSession) => void;

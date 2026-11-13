@@ -190,13 +190,7 @@ export type WorkspaceObservation =
   | { type: "account"; profile: string | null }
   | { type: "metadata"; metadata: readonly SessionMetadata[] };
 
-export interface WorkspaceApi {
-  directory(cwd: string): Promise<string>;
-  create(cwd: string): Promise<SessionSnapshot>;
-  open(cwd: string, path: string): Promise<SessionSnapshot>;
-  prompt(request: Prompt): Promise<string>;
-  navigate(key: SessionKey, entryId: HistoryEntryId): Promise<string | undefined>;
-  fork(key: SessionKey, entryId: HistoryEntryId): Promise<SessionSnapshot>;
+export interface WorkspaceEvents {
   subscribe(
     listener: (observation: WorkspaceObservation) => void,
     connection?: (connected: boolean) => void,

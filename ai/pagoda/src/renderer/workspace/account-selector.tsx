@@ -1,17 +1,17 @@
-import { useAtom, useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { useAtom, useAtomValue } from "@effect/atom-react";
 import { AsyncResult, Atom } from "effect/reactivity";
-import { useEffect, type ReactElement } from "react";
+import type { ReactElement } from "react";
 
-import type { Account } from "../contracts/index.ts";
-import { useRequests } from "./api.ts";
+import type { Account } from "../../contracts/index.ts";
+import { useAppModel } from "../app/app-provider.tsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./components/ui/select.tsx";
-import { requestFeedback } from "./request-atoms.ts";
+} from "../components/ui/select.tsx";
+import { requestFeedback } from "../transport/errors.ts";
 
 const inactiveAccounts = Atom.make(AsyncResult.initial<readonly Account[]>());
 
@@ -39,17 +39,12 @@ function AccountSelection({
   selected: string;
   connected: boolean;
 }): ReactElement {
-  const requests = useRequests();
+  const { requests } = useAppModel();
   const accountQuery = connected ? requests.accounts : inactiveAccounts;
   const result = useAtomValue(accountQuery);
-  const refresh = useAtomRefresh(accountQuery);
   const [mutation, selectAccount] = useAtom(requests.selectAccount);
   const accounts = AsyncResult.getOrElse(result, () => []);
-  const error = requestFeedback(mutation) ?? requestFeedback(result);
-  useEffect(() => {
-    if (connected) refresh();
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Selection changes refresh account details.
-  }, [connected, selected, refresh]);
+  const error = requestFeedback(mutation, true) ?? requestFeedback(result);
   const selectedAccount = accounts.find((account) => account.profile === selected);
   return (
     <div className="space-y-2 px-4 py-3">

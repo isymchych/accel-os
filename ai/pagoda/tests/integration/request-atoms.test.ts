@@ -10,12 +10,22 @@ import {
   TargetSchema,
   type SessionControls,
 } from "../../src/contracts/index.ts";
-import { createComposerAtoms } from "../../src/renderer/composer-atoms.ts";
+import { createComposerAtoms } from "../../src/renderer/session/composer-state.ts";
+import { createSessionState, type SessionState } from "../../src/renderer/session/session-state.ts";
 import {
-  createRequestAtoms,
+  ClientFailure,
+  errorMessage,
   requestFeedback,
-  type RequestAtoms,
-} from "../../src/renderer/request-atoms.ts";
+} from "../../src/renderer/transport/errors.ts";
+import {
+  createHttpClient,
+  runCommand,
+  type PagodaClient,
+} from "../../src/renderer/transport/http-client.ts";
+import {
+  createWorkspaceRequests,
+  type WorkspaceRequests,
+} from "../../src/renderer/workspace/requests.ts";
 
 const ownerA = S.decodeUnknownSync(TargetSchema)({ key: "owner-a" }).key;
 const ownerB = S.decodeUnknownSync(TargetSchema)({ key: "owner-b" }).key;
@@ -30,7 +40,11 @@ const stored = {
 function setup(
   t: TestContext,
   fetch: typeof globalThis.fetch,
-): { registry: AtomRegistry.AtomRegistry; requests: RequestAtoms } {
+): {
+  registry: AtomRegistry.AtomRegistry;
+  requests: WorkspaceRequests & SessionState;
+  http: PagodaClient;
+} {
   const registry = AtomRegistry.make();
   t.after(() => {
     registry.dispose();
@@ -38,7 +52,12 @@ function setup(
   const httpClient = FetchHttpClient.layer.pipe(
     Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
   );
-  return { registry, requests: createRequestAtoms("http://127.0.0.1:4317", httpClient) };
+  const http = createHttpClient("http://127.0.0.1:4317", httpClient);
+  return {
+    registry,
+    requests: { ...createWorkspaceRequests(http), ...createSessionState(http) },
+    http,
+  };
 }
 
 function controls(model: string): SessionControls {
@@ -78,14 +97,14 @@ test("composer submissions use the shared HTTP client", async (t) => {
       items.set(key, value);
     },
   };
-  const composers = createComposerAtoms(storage, requests.promptEffect);
-  registry.set(composers.edit, { key: ownerA, message: "hello" });
-  registry.set(composers.submit, { key: ownerA, mode: "prompt" });
+  const composer = createComposerAtoms(storage, requests.prompt)(ownerA);
+  registry.set(composer.edit, { message: "hello" });
+  registry.set(composer.submit, "prompt");
   await received.promise;
-  assert.equal(composers.read(registry.get(composers.state), ownerA).pending, true);
+  assert.equal(registry.get(composer.state).pending, true);
   const completed = new Promise<void>((resolve) => {
-    const unsubscribe = registry.subscribe(composers.state, (state) => {
-      if (!composers.read(state, ownerA).pending) {
+    const unsubscribe = registry.subscribe(composer.state, (state) => {
+      if (!state.pending) {
         unsubscribe();
         resolve();
       }
@@ -99,7 +118,7 @@ test("composer submissions use the shared HTTP client", async (t) => {
 test("direct commands share the atom client and keep overlapping results correlated", async (t) => {
   const first = Promise.withResolvers<Response>();
   const requested = Promise.withResolvers<undefined>();
-  const { registry, requests } = setup(t, async (input, init) => {
+  const { registry, http } = setup(t, async (input, init) => {
     const request = new Request(input, init);
     assert.equal(new URL(request.url).pathname, "/api/directory");
     const payload = (await request.json()) as { cwd: string };
@@ -109,12 +128,49 @@ test("direct commands share the atom client and keep overlapping results correla
     }
     return Response.json("/second");
   });
-  const commands = requests.commands(registry);
-  const a = commands.directory("/first");
+  const directory = (cwd: string): Promise<string> =>
+    runCommand(
+      registry,
+      http.request((client) => client.workspace.directory({ payload: { cwd } })),
+    );
+  const a = directory("/first");
   await requested.promise;
-  assert.equal(await commands.directory("/second"), "/second");
+  assert.equal(await directory("/second"), "/second");
   first.resolve(Response.json("/first"));
   assert.equal(await a, "/first");
+});
+
+test("transport and invalid-response failures retain their meaning until read or command presentation", async (t) => {
+  const { registry, requests, http } = setup(t, () => {
+    throw new TypeError("Connection lost");
+  });
+  registry.mount(requests.catalog);
+  await assert.rejects(Effect.runPromise(AtomRegistry.getResult(registry, requests.catalog)));
+  assert.equal(
+    requestFeedback(registry.get(requests.catalog)),
+    "Backend connection lost. Could not load data.",
+  );
+  await assert.rejects(
+    runCommand(
+      registry,
+      http.request((client) => client.workspace.create({ payload: { cwd: "/project" } })),
+    ),
+    (error: unknown) => {
+      assert.ok(error instanceof ClientFailure);
+      assert.equal(error.kind, "transport");
+      assert.match(errorMessage(error), /outcome is uncertain/u);
+      return true;
+    },
+  );
+  const invalid = setup(t, () => Promise.resolve(Response.json({ unexpected: true })));
+  invalid.registry.mount(invalid.requests.catalog);
+  await assert.rejects(
+    Effect.runPromise(AtomRegistry.getResult(invalid.registry, invalid.requests.catalog)),
+  );
+  assert.equal(
+    requestFeedback(invalid.registry.get(invalid.requests.catalog)),
+    "Invalid backend response.",
+  );
 });
 
 test("stop remains pending for its owner across view switches without retrying", async (t) => {

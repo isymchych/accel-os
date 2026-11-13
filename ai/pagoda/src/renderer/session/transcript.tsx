@@ -16,13 +16,13 @@ import type {
   SessionSnapshot,
   ToolActivity,
   TranscriptMessage,
-} from "../contracts/index.ts";
-import { Button } from "./components/ui/button.tsx";
+} from "../../contracts/index.ts";
+import { Button } from "../components/ui/button.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "./components/ui/collapsible.tsx";
+} from "../components/ui/collapsible.tsx";
 
 function TranscriptImage({ src, alt }: { src: string; alt: string }): ReactElement {
   const [failed, setFailed] = useState(false);

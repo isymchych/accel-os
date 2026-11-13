@@ -237,7 +237,7 @@ export const fakeSessionFactory: PiSessionFactory = async (options) => {
           [
             "read-demo",
             "read",
-            { path: "src/renderer/session-view.tsx" },
+            { path: "src/renderer/session/session-view.tsx" },
             "Read 120 lines.",
             false,
           ],

@@ -51,17 +51,29 @@ operational failures return HTTP 500, both retaining the `{ error }` response sh
 failures are normalized at the backend boundary, preserving their causes internally; HTTP handlers
 compose application effects without reclassifying errors.
 
+The renderer separates `transport/` (authentication, generated HTTP client, SSE decoding, and error
+normalization), `workspace/` (observation state, catalog, accounts, metadata, and navigation), and
+`session/` (owner-keyed queries, composers, history, and transcript). `app/` composes one stable
+application model exposed through one React context; atom values live in the registry mounted after
+authentication.
+
 Catalog, accounts, history, and model/thinking controls use Effect atoms backed by the shared
-HttpApi contract. One React atom registry is mounted after authentication. History and controls
-queries are keyed by execution owner and refreshed on their SSE revisions. Successful controls
-mutations invalidate that owner's controls. Account selection remains authoritative in SSE. Pending
-account, controls, stop, and metadata mutations remain alive across view switches. Stop is keyed by
-execution owner and metadata by session and flag. Result-dependent commands use the same atom
-runtime's HTTP client directly, retaining per-call correlation. An application-scoped atom owns the
-SSE subscription and revision-aware workspace state; command snapshots use the same merge.
-Client-owned composer atoms retain per-owner drafts and pending submissions across view changes,
-with drafts and unacknowledged-submission markers in session storage. Navigation remains
-client-owned.
+HttpApi contract. The workspace observation layer owns revision-driven invalidation and reconnect
+refreshes; unmounted history queries remain lazy. Successful controls mutations invalidate that
+owner's controls. Account selection remains authoritative in SSE. Pending account, controls, stop,
+and metadata mutations remain alive across view switches. Stop is keyed by execution owner and
+metadata by session and flag.
+
+Commands compose Effects using the same atom runtime's HTTP client; result-dependent React actions
+cross one Promise boundary, retaining per-call correlation. Command snapshots and SSE observations
+use the same revision-aware merge. Client errors retain backend, transport, or invalid-response
+meaning until presentation distinguishes read failures from uncertain command outcomes.
+
+The selected session subscribes to its own snapshot and composer. The sidebar reads session
+summaries and draft presence rather than transcript content or every draft edit. Owner-keyed
+composer atoms retain drafts and pending submissions across view changes, with drafts and
+unacknowledged-submission markers in session storage. Navigation remains client-owned; sidebar
+membership is calculated independently of React and transport.
 
 The backend publishes snapshots including partial output; completed Pi messages replace
 reconstructed output. Clients resynchronize from current state rather than replaying commands. Pi's

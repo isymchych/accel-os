@@ -3,8 +3,8 @@ import { useHotkeys, type UseHotkeyDefinition } from "@tanstack/react-hotkeys";
 import { KeyboardIcon } from "lucide-react";
 import { useState, type ReactElement, type RefObject } from "react";
 
-import type { SessionKey } from "../contracts/index.ts";
-import { Button } from "./components/ui/button.tsx";
+import type { SessionKey } from "../../contracts/index.ts";
+import { Button } from "../components/ui/button.tsx";
 
 export function WorkspaceNavigation({
   target,

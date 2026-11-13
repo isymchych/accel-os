@@ -882,6 +882,13 @@ test("a delayed Send acknowledgement clears only its original session's draft", 
   await expect(sessions).toHaveCount(2);
   await expect(page.getByRole("status").first()).toContainText("idle");
   await message.fill("B must keep this draft");
+  // Registry-owned atoms must retain their owner's identity even when the view releases it.
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send("HeapProfiler.collectGarbage");
+  } finally {
+    await cdp.detach();
+  }
   await writeFile(path.join(directory, "release-prompt"), "release");
   await sessions.nth(0).click();
   await expect(message).toHaveValue("");
@@ -1041,7 +1048,7 @@ test("assistant Markdown and compact tools remain readable without executing con
   expect(remoteRequests).toEqual([]);
   const tools = page.getByRole("region", { name: "Tool activity" });
   await expect(tools.getByRole("button", { name: "read · completed", exact: true })).toContainText(
-    "src/renderer/session-view.tsx",
+    "src/renderer/session/session-view.tsx",
   );
   const failed = tools.getByRole("button", { name: "bash · error", exact: true });
   await expect(failed).toContainText("pnpm run check");

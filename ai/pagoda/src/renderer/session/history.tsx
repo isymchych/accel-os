@@ -1,19 +1,18 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { GitBranchIcon, GitForkIcon, RefreshCwIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 
 import type {
   HistoryEntry,
   HistoryEntryId,
   SessionHistory,
-  SessionKey,
   SessionSnapshot,
-} from "../contracts/index.ts";
-import { useApi, useRequests } from "./api.ts";
-import { Button } from "./components/ui/button.tsx";
-import { requestFeedback } from "./request-atoms.ts";
+} from "../../contracts/index.ts";
+import { useAppModel, useRunCommand } from "../app/app-provider.tsx";
+import { Button } from "../components/ui/button.tsx";
+import { errorMessage, requestFeedback } from "../transport/errors.ts";
 
 const inactiveHistory = Atom.make(AsyncResult.initial<SessionHistory>());
 
@@ -140,15 +139,11 @@ function useHistory(
   snapshot: SessionSnapshot,
   open: boolean,
 ): { history: SessionHistory | null; loading: boolean; error: string | null; refresh: () => void } {
-  const requests = useRequests();
-  const { key, connection, historyRevision } = snapshot;
-  const query = open && connection === "connected" ? requests.history(key) : inactiveHistory;
+  const { sessions } = useAppModel();
+  const { key, connection } = snapshot;
+  const query = open && connection === "connected" ? sessions.history(key) : inactiveHistory;
   const result = useAtomValue(query);
-  const refresh = useAtomRefresh(query);
-  useEffect(() => {
-    if (open && connection === "connected") refresh();
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- SSE revisions invalidate history.
-  }, [open, connection, historyRevision, refresh]);
+  const refresh = useAtomRefresh(sessions.history(key));
   return {
     history: AsyncResult.getOrElse(result, () => null),
     loading: AsyncResult.isInitial(result) || result.waiting,
@@ -163,14 +158,14 @@ export function SessionHistoryBrowser({
   snapshot,
   controlsPending,
   onFork,
-  onNavigateText,
 }: {
   snapshot: SessionSnapshot;
   controlsPending: boolean;
   onFork: (entryId: HistoryEntryId) => Promise<void>;
-  onNavigateText: (key: SessionKey, text: string) => void;
 }): ReactElement {
-  const workspace = useApi();
+  const { sessions, composers } = useAppModel();
+  const run = useRunCommand();
+  const edit = useAtomSet(composers(snapshot.key).edit);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<HistoryEntryId | null>(null);
   const [pending, setPending] = useState<"navigate" | "fork" | null>(null);
@@ -197,18 +192,24 @@ export function SessionHistoryBrowser({
     try {
       if (action === "fork") await onFork(entry.id);
       else {
-        const text = await workspace.navigate(key, entry.id);
-        if (text !== undefined) onNavigateText(key, text);
+        const text = await run(sessions.navigate(key, entry.id));
+        if (text !== null) edit({ message: text, fromHistory: true });
       }
       setOpen(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Pi did not confirm the history action.");
+      setError(errorMessage(cause));
     }
     setPending(null);
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value);
+        if (value && connection === "connected") refreshHistory();
+      }}
+    >
       <Dialog.Trigger
         render={<Button variant="ghost" size="sm" className="-ml-2 mt-2 text-muted-foreground" />}
       >

@@ -1,5 +1,4 @@
 import type {
-  WorkspaceApi,
   EntrySchema,
   HistoryEntryId,
   SessionId,
@@ -15,9 +14,7 @@ type Assignable<A, B> = A extends B ? true : false;
 export type SessionKeySchemaType = Assert<Equal<(typeof TargetSchema.Type)["key"], SessionKey>>;
 export type EntrySchemaType = Assert<Equal<(typeof EntrySchema.Type)["entryId"], HistoryEntryId>>;
 export type SessionIdStateType = Assert<Equal<SessionSummary["sessionId"], SessionId | null>>;
-export type NavigateParameters = Assert<
-  Equal<Parameters<WorkspaceApi["navigate"]>, [key: SessionKey, entryId: HistoryEntryId]>
->;
+export type EntrySessionKey = Assert<Equal<(typeof EntrySchema.Type)["key"], SessionKey>>;
 export type KeyRejectsSessionId = Assert<Equal<Assignable<SessionId, SessionKey>, false>>;
 export type KeyRejectsEntryId = Assert<Equal<Assignable<HistoryEntryId, SessionKey>, false>>;
 export type EntryRejectsKey = Assert<Equal<Assignable<SessionKey, HistoryEntryId>, false>>;

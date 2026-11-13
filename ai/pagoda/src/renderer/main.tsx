@@ -3,23 +3,24 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "./theme.css";
-import { ApiProvider } from "./api.ts";
-import { connectApi } from "./http-api.ts";
-import { createRequestAtoms } from "./request-atoms.ts";
-import { SessionScreen } from "./session-screen.tsx";
+import { createAppModel } from "./app/app-model.ts";
+import { AppProvider } from "./app/app-provider.tsx";
+import { authenticate } from "./transport/authentication.ts";
+import { createWorkspaceEvents } from "./transport/workspace-events.ts";
+import { WorkspaceScreen } from "./workspace/workspace-screen.tsx";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing application root");
 const application = createRoot(root);
-void connectApi()
-  .then((workspace) => {
-    const requests = createRequestAtoms(window.location.origin);
+void authenticate()
+  .then(() => {
+    const model = createAppModel(createWorkspaceEvents(), sessionStorage);
     application.render(
       <StrictMode>
         <RegistryProvider>
-          <ApiProvider api={workspace} requests={requests}>
-            <SessionScreen />
-          </ApiProvider>
+          <AppProvider model={model}>
+            <WorkspaceScreen />
+          </AppProvider>
         </RegistryProvider>
       </StrictMode>,
     );

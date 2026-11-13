@@ -5,12 +5,17 @@ import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
 import type {
   SessionKey,
+  SessionControls,
+  SessionHistory,
   SessionSnapshot,
-  WorkspaceApi,
+  WorkspaceEvents,
   WorkspaceObservation,
 } from "../../src/contracts/index.ts";
-import { applySessionUpdate } from "../../src/renderer/http-api.ts";
-import { createWorkspaceAtoms, mergeObservation } from "../../src/renderer/workspace-atoms.ts";
+import { applySessionUpdate } from "../../src/renderer/transport/workspace-events.ts";
+import {
+  createWorkspaceAtoms,
+  mergeObservation,
+} from "../../src/renderer/workspace/workspace-state.ts";
 import { contentText } from "./fixtures/helpers.ts";
 
 const key = "owner-a" as SessionKey;
@@ -54,6 +59,119 @@ test("workspace initialization preserves newer command results and fills other s
   assert.equal(contentText(result[otherKey]?.messages[0]?.content), "other");
 });
 
+test("accepted revisions invalidate only the affected owner's queries and keep unopened history lazy", (t) => {
+  const registry = AtomRegistry.make();
+  t.after(() => {
+    registry.dispose();
+  });
+  const controlsReads = new Map<SessionKey, number>();
+  const historyReads = new Map<SessionKey, number>();
+  const controls = Atom.family((owner: SessionKey) =>
+    Atom.make(() => {
+      controlsReads.set(owner, (controlsReads.get(owner) ?? 0) + 1);
+      return AsyncResult.success<SessionControls>({
+        models: [],
+        model: null,
+        thinkingLevel: "off",
+        levels: [],
+        pendingMessageCount: 0,
+      });
+    }),
+  );
+  const history = Atom.family((owner: SessionKey) =>
+    Atom.make(() => {
+      historyReads.set(owner, (historyReads.get(owner) ?? 0) + 1);
+      return AsyncResult.success<SessionHistory>({ entries: [], leafId: null });
+    }),
+  );
+  const workspace = createWorkspaceAtoms(
+    { subscribe: () => (): void => {} },
+    {
+      catalog: Atom.make(AsyncResult.success([])),
+      accounts: Atom.make(AsyncResult.success([])),
+    },
+    { controls, history },
+  );
+  const receive = (value: SessionSnapshot): void => {
+    workspace.receive(registry, { type: "snapshot", snapshot: value });
+  };
+  receive(snapshot(1, "A"));
+  receive(snapshot(1, "B", otherKey));
+  registry.mount(controls(key));
+  registry.mount(controls(otherKey));
+  receive({ ...snapshot(2, "A"), controlsRevision: 1, historyRevision: 1 });
+  assert.equal(controlsReads.get(key), 2);
+  assert.equal(controlsReads.get(otherKey), 1);
+  assert.equal(historyReads.size, 0, "Invalidation must not fetch unviewed history");
+  registry.mount(history(key));
+  assert.equal(historyReads.get(key), 1);
+  receive({ ...snapshot(3, "A"), controlsRevision: 1, historyRevision: 2 });
+  assert.equal(historyReads.get(key), 2);
+  assert.equal(controlsReads.get(key), 2);
+  receive({ ...snapshot(2, "stale"), controlsRevision: 99, historyRevision: 99 });
+  assert.equal(historyReads.get(key), 2);
+  assert.equal(controlsReads.get(key), 2);
+
+  workspace.receive(registry, {
+    type: "workspace",
+    workspace: {
+      sessions: [{ ...snapshot(3, "A"), controlsRevision: 1, historyRevision: 2 }],
+      initialKey: key,
+      selectedAccount: null,
+      metadata: [],
+      inactivityHours: 48,
+    },
+  });
+  assert.equal(
+    historyReads.get(key),
+    3,
+    "Reconnect refreshes mounted history even at the same revision",
+  );
+  assert.equal(controlsReads.get(key), 3);
+  assert.equal(controlsReads.get(otherKey), 1);
+});
+
+test("streaming in another owner does not notify the selected session or sidebar summaries", (t) => {
+  const registry = AtomRegistry.make();
+  t.after(() => {
+    registry.dispose();
+  });
+  const workspace = createWorkspaceAtoms(
+    { subscribe: () => (): void => {} },
+    {
+      catalog: Atom.make(AsyncResult.success([])),
+      accounts: Atom.make(AsyncResult.success([])),
+    },
+    {
+      controls: Atom.family(() => Atom.make(AsyncResult.initial<SessionControls>())),
+      history: Atom.family(() => Atom.make(AsyncResult.initial<SessionHistory>())),
+    },
+  );
+  workspace.receive(registry, { type: "connection", connected: true });
+  workspace.receive(registry, { type: "snapshot", snapshot: snapshot(1, "A") });
+  workspace.receive(registry, { type: "snapshot", snapshot: snapshot(1, "B", otherKey) });
+  let selectedNotifications = 0;
+  let sidebarNotifications = 0;
+  registry.subscribe(workspace.session(key), () => {
+    selectedNotifications += 1;
+  });
+  registry.subscribe(workspace.summaries, () => {
+    sidebarNotifications += 1;
+  });
+  workspace.receive(registry, {
+    type: "snapshot",
+    snapshot: {
+      ...snapshot(2, "B", otherKey),
+      streaming: [{ type: "text", text: "more output" }],
+    },
+  });
+  assert.equal(selectedNotifications, 0);
+  assert.equal(sidebarNotifications, 0);
+  workspace.receive(registry, { type: "connection", connected: false });
+  assert.equal(registry.get(workspace.session(key))?.execution, "unknown");
+  assert.equal(selectedNotifications, 1);
+});
+
 test("late command snapshots cannot overwrite newer streaming observations", () => {
   const observed = mergeObservation({}, { type: "snapshot", snapshot: snapshot(4, "new") });
   const result = mergeObservation(observed, { type: "snapshot", snapshot: snapshot(2, "old") });
@@ -86,7 +204,7 @@ test("one scoped subscription shares ordered state and refreshes only accepted c
   let subscriptions = 0;
   let disposals = 0;
   let catalogReads = 0;
-  const api: Pick<WorkspaceApi, "subscribe"> = {
+  const api: WorkspaceEvents = {
     subscribe: (observe, status) => {
       subscriptions += 1;
       listener = observe;
@@ -100,7 +218,27 @@ test("one scoped subscription shares ordered state and refreshes only accepted c
     catalogReads += 1;
     return AsyncResult.success([]);
   });
-  const workspace = createWorkspaceAtoms(api, { catalog });
+  const workspace = createWorkspaceAtoms(
+    api,
+    {
+      catalog,
+      accounts: Atom.make(AsyncResult.success([])),
+    },
+    {
+      history: Atom.family(() => Atom.make(AsyncResult.success({ entries: [], leafId: null }))),
+      controls: Atom.family(() =>
+        Atom.make(
+          AsyncResult.success({
+            models: [],
+            model: null,
+            thinkingLevel: "off",
+            levels: [],
+            pendingMessageCount: 0,
+          }),
+        ),
+      ),
+    },
+  );
   const registry = AtomRegistry.make();
   registry.mount(catalog);
   registry.mount(workspace.subscription);
@@ -117,13 +255,13 @@ test("one scoped subscription shares ordered state and refreshes only accepted c
     },
   });
   connection(true);
-  registry.set(workspace.receive, { type: "snapshot", snapshot: snapshot(3, "stale") });
+  workspace.receive(registry, { type: "snapshot", snapshot: snapshot(3, "stale") });
   listener({ type: "snapshot", snapshot: snapshot(2, "stale completion") });
   assert.equal(registry.get(workspace.state).sessions[key]?.name, "running");
-  assert.equal(catalogReads, 1);
+  assert.equal(catalogReads, 2);
   listener({ type: "snapshot", snapshot: snapshot(5, "complete") });
   assert.equal(registry.get(workspace.state).sessions[key]?.name, "complete");
-  assert.equal(catalogReads, 2);
+  assert.equal(catalogReads, 3);
   listener({ type: "account", profile: "second" });
   connection(false);
   assert.equal(registry.get(workspace.state).selectedAccount, "second");
