@@ -173,8 +173,9 @@ export class DesktopSession {
     return this.forkOperation(operation).pipe(Effect.flatMap(Fiber.join));
   }
 
+  /** Immutable snapshot; updates replace changed fields and retain unchanged references. */
   public snapshot(): SessionSnapshot {
-    return structuredClone(this.state);
+    return this.state;
   }
 
   public summary(): SessionSummary {

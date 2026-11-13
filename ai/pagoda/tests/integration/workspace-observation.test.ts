@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { SessionKey, SessionSnapshot } from "../../src/contracts/index.ts";
+import { applySessionUpdate } from "../../src/renderer/http-api.ts";
 import { mergeObservation } from "../../src/renderer/use-workspace-observation.ts";
 import { contentText } from "./fixtures/helpers.ts";
 
@@ -56,4 +57,18 @@ test("late command snapshots cannot overwrite newer streaming observations", () 
 test("account observations do not change session snapshots", () => {
   const observed = mergeObservation({}, { type: "snapshot", snapshot: snapshot(4, "live") });
   assert.equal(mergeObservation(observed, { type: "account", profile: "second" }), observed);
+});
+
+test("streaming updates preserve unchanged history and reject missing or stale baselines", () => {
+  const previous = snapshot(4, "history");
+  const update = {
+    key,
+    revision: 5,
+    changes: { streaming: [{ type: "text" as const, text: "new" }] },
+  };
+  const next = applySessionUpdate(previous, update);
+  assert.equal(next.messages, previous.messages);
+  assert.equal(next.streaming[0]?.type, "text");
+  assert.throws(() => applySessionUpdate(undefined, update), /Invalid session update/u);
+  assert.throws(() => applySessionUpdate(next, update), /Invalid session update/u);
 });

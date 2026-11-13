@@ -74,6 +74,91 @@ test("initial observation precedes updates and replays only changes after its sn
   observations.close();
 });
 
+test("streaming updates omit unchanged history and preserve all changed fields", async () => {
+  const key = "a" as SessionKey;
+  const initial: SessionSnapshot = {
+    ...sessionSnapshot(key, 1),
+    messages: [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "history".repeat(10_000) }],
+        isError: false,
+      },
+    ],
+  };
+  const observations = new WorkspaceObservations(() =>
+    Effect.succeed({
+      revision: 0,
+      state: {
+        initialKey: key,
+        sessions: [initial],
+        metadata: [],
+        selectedAccount: null,
+        inactivityHours: 48,
+      },
+    }),
+  );
+  const response = HttpServerResponse.toWeb(observeWorkspace(observations));
+  assert.ok(response.body);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const ready = await reader.read();
+  assert.match(decoder.decode(ready.value), /^event: ready/u);
+  // A coalesced notification can arrive after its state was included in ready.
+  observations.publish({ type: "snapshot", value: initial });
+  const next: SessionSnapshot = {
+    ...initial,
+    revision: 2,
+    streaming: [{ type: "text", text: "hello" }],
+    execution: "idle",
+  };
+  observations.publish({ type: "snapshot", value: next });
+  const update = await reader.read();
+  const text = decoder.decode(update.value);
+  assert.match(text, /^event: session-update/u);
+  assert.ok(text.length < 250);
+  assert.doesNotMatch(text, /history/u);
+  assert.match(text, /"execution":"idle"/u);
+  assert.match(text, /"streaming":/u);
+  await reader.cancel();
+  observations.close();
+});
+
+test("a newly observed session is sent in full before later partial updates", async () => {
+  const key = "new" as SessionKey;
+  const observations = new WorkspaceObservations(() =>
+    Effect.succeed({
+      revision: 0,
+      state: {
+        initialKey: key,
+        sessions: [],
+        metadata: [],
+        selectedAccount: null,
+        inactivityHours: 48,
+      },
+    }),
+  );
+  const response = HttpServerResponse.toWeb(observeWorkspace(observations));
+  assert.ok(response.body);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  await reader.read();
+  const initial = sessionSnapshot(key, 1);
+  observations.publish({ type: "snapshot", value: initial });
+  assert.match(decoder.decode((await reader.read()).value), /^event: snapshot/u);
+  observations.publish({
+    type: "snapshot",
+    value: { ...initial, revision: 2, execution: "idle" },
+  });
+  let update = decoder.decode((await reader.read()).value);
+  while (update.startsWith("event: heartbeat")) {
+    update = decoder.decode((await reader.read()).value);
+  }
+  assert.match(update, /^event: session-update/u);
+  await reader.cancel();
+  observations.close();
+});
+
 test("cancelling an observer interrupts its pending initial snapshot", async () => {
   const started = Promise.withResolvers<undefined>();
   const interrupted = Promise.withResolvers<undefined>();

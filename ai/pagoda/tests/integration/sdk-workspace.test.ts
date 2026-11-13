@@ -8,7 +8,7 @@ import test from "node:test";
 import { Effect } from "effect";
 
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
-import { runScoped } from "./fixtures/helpers.ts";
+import { metadataStore, runScoped } from "./fixtures/helpers.ts";
 
 test(
   "SDK workspace executes, observes, and navigates native history",
@@ -90,9 +90,8 @@ test(
           sessionDir,
           sharedDir: shared,
         },
-        undefined,
+        await metadataStore(agent),
         48,
-        agent,
       ),
     );
     t.after(async () => {

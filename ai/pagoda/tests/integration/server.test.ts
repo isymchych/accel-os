@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test, { mock } from "node:test";
 
-import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory, setupFakePi } from "./fixtures/helpers.ts";
 
 let server: http.Server | undefined;
 mock.module("node:http", {
@@ -25,6 +25,7 @@ for (const phase of ["binding", "SDK initialization"] as const) {
   // eslint-disable-next-line no-loop-func
   test(`cancellation during ${phase} closes the listener and releases acquired SDK resources`, async (t) => {
     const root = await mkdtemp(path.join(tmpdir(), "pagoda-server-startup-"));
+    await setupFakePi(root);
     const controller = new AbortController();
     const cancellation = new Error("Startup cancelled");
     let acquired = false;

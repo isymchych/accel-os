@@ -8,10 +8,23 @@ import {
   MetadataSchema,
   SelectedAccountSchema,
   SnapshotSchema,
+  SnapshotUpdateSchema,
   WorkspaceSchema,
+  type SessionKey,
+  type SessionSnapshot,
+  type SessionUpdate,
   type WorkspaceApi,
   type WorkspaceObservation,
 } from "../contracts/index.ts";
+
+export function applySessionUpdate(
+  previous: SessionSnapshot | undefined,
+  update: SessionUpdate,
+): SessionSnapshot {
+  if (!previous || update.key !== previous.key || update.revision <= previous.revision)
+    throw new Error("Invalid session update");
+  return { ...previous, ...update.changes, revision: update.revision };
+}
 
 async function decode<T extends Schema.ConstraintDecoder<unknown>>(
   response: Response,
@@ -98,6 +111,7 @@ export async function connectApi(): Promise<WorkspaceApi> {
     },
     subscribe: (listener, connection) => {
       const events = new EventSource("/api/events");
+      const snapshots = new Map<SessionKey, SessionSnapshot>();
       function observe<T extends Schema.ConstraintDecoder<unknown>>(
         name: string,
         schema: T,
@@ -115,8 +129,20 @@ export async function connectApi(): Promise<WorkspaceApi> {
           }
         });
       }
-      observe("ready", WorkspaceSchema, (workspace) => ({ type: "workspace", workspace }));
-      observe("snapshot", SnapshotSchema, (snapshot) => ({ type: "snapshot", snapshot }));
+      observe("ready", WorkspaceSchema, (workspace) => {
+        snapshots.clear();
+        for (const snapshot of workspace.sessions) snapshots.set(snapshot.key, snapshot);
+        return { type: "workspace", workspace };
+      });
+      observe("snapshot", SnapshotSchema, (snapshot) => {
+        snapshots.set(snapshot.key, snapshot);
+        return { type: "snapshot", snapshot };
+      });
+      observe("session-update", SnapshotUpdateSchema, (update) => {
+        const snapshot = applySessionUpdate(snapshots.get(update.key), update);
+        snapshots.set(update.key, snapshot);
+        return { type: "snapshot", snapshot };
+      });
       observe("metadata", MetadataSchema, (metadata) => ({ type: "metadata", metadata }));
       observe("account", SelectedAccountSchema, (profile) => ({ type: "account", profile }));
       events.onerror = (): void => {

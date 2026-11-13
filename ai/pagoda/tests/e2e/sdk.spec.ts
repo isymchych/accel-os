@@ -74,7 +74,6 @@ test("SDK browser sessions capture the shared account selection without retarget
         sessionDir,
         sharedDir,
       },
-      accountConfigDir: agentDir,
       clientDirectory: path.resolve(import.meta.dirname, "../../dist/client"),
     });
     await page.goto(backend.connectionUrl);

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:http";
+import path from "node:path";
 
 import { NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
 import { Cause, Effect, Exit, FileSystem, Scope } from "effect";
@@ -18,9 +19,6 @@ export interface BackendOptions {
   clientDirectory?: string;
   developmentOrigin?: "http://127.0.0.1:5173";
   signal?: AbortSignal;
-  stateFile?: string;
-  settingsFile?: string;
-  accountConfigDir?: string;
 }
 export interface Backend {
   origin: string;
@@ -66,7 +64,9 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
           }),
         );
         const fs = yield* FileSystem.FileSystem;
-        const inactivityHours = yield* readInactivityHours(options.settingsFile);
+        const inactivityHours = yield* readInactivityHours(
+          path.join(options.pi.agentDir, "pagoda-settings.json"),
+        );
         yield* Effect.tryPromise({
           try: async () => {
             server.listen({
@@ -84,9 +84,8 @@ export async function startBackend(options: BackendOptions): Promise<Backend> {
         const origin = `http://127.0.0.1:${address.port}`;
         const workspace = yield* DesktopWorkspace.make(
           options.pi,
-          new SessionMetadataStore(fs, options.stateFile),
+          new SessionMetadataStore(fs, path.join(options.pi.agentDir, "pagoda-state.json")),
           inactivityHours,
-          options.accountConfigDir,
           options.sessionFactory,
         );
         const token = randomBytes(32).toString("hex");

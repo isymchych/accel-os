@@ -83,7 +83,7 @@ mock.module("../../../scripts/application.ts", {
         console.log(`sdk:${JSON.stringify(options.pi)}`);
         console.log(`port:${options.port}`);
         console.log(`renderer:${options.developmentOrigin ?? "built"}`);
-        console.log(`accounts:${options.accountConfigDir}`);
+        console.log(`accounts:${options.pi.agentDir}`);
         if (process.env["TEST_STOP_ON_READY"] === "1") {
           process.emit("SIGTERM");
           process.emit("SIGTERM");

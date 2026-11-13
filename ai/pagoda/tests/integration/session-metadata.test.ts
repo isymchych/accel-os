@@ -13,7 +13,7 @@ import { readInactivityHours } from "../../src/backend/settings.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import type { SessionId } from "../../src/contracts/index.ts";
 import { runScoped } from "./fixtures/helpers.ts";
-import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory, setupFakePi } from "./fixtures/helpers.ts";
 
 const fs = await Effect.runPromise(
   FileSystem.FileSystem.pipe(Effect.provide(NodeFileSystem.layer)),
@@ -72,15 +72,14 @@ test("sidebar inactivity configuration defaults and validates", async (t) => {
 
 test("backend exposes the configured inactivity period", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-settings-backend-"));
+  await setupFakePi(directory);
   t.after(async () => rm(directory, { recursive: true, force: true }));
-  const settings = path.join(directory, "settings.json");
+  const settings = path.join(fakePiOptions(directory).agentDir, "pagoda-settings.json");
   await writeFile(settings, JSON.stringify({ sidebar: { inactivityHours: 2 } }));
   const backend = await startBackend({
     pi: fakePiOptions(directory),
     sessionFactory: fakeSessionFactory,
     port: 0,
-    settingsFile: settings,
-    stateFile: path.join(directory, "state.json"),
   });
   try {
     const token = new URLSearchParams(new URL(backend.connectionUrl).hash.slice(1)).get("token");
@@ -107,6 +106,7 @@ test("backend exposes the configured inactivity period", async (t) => {
 
 test("workspace restores pins and favourites without reopening the session", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-marks-restart-"));
+  await setupFakePi(directory);
   t.after(async () => rm(directory, { recursive: true, force: true }));
   const file = path.join(directory, "state.json");
   const first = await runScoped(
@@ -115,7 +115,6 @@ test("workspace restores pins and favourites without reopening the session", asy
       fakePiOptions(directory),
       new SessionMetadataStore(fs, file),
       48,
-      undefined,
       fakeSessionFactory,
     ),
   );
@@ -134,7 +133,6 @@ test("workspace restores pins and favourites without reopening the session", asy
       fakePiOptions(directory),
       new SessionMetadataStore(fs, file),
       48,
-      undefined,
       fakeSessionFactory,
     ),
   );

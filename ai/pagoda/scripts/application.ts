@@ -107,9 +107,6 @@ export async function runApplication(
           sharedDir: path.join(accelOs, "ai"),
         },
         port: options.port,
-        stateFile: path.join(agentDir, "pagoda-state.json"),
-        settingsFile: path.join(agentDir, "pagoda-settings.json"),
-        accountConfigDir: agentDir,
         signal: shutdown.signal,
         ...(options.dev
           ? { developmentOrigin: "http://127.0.0.1:5173" as const }

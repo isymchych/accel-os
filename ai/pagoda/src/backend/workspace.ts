@@ -35,33 +35,29 @@ export class DesktopWorkspace {
   private readonly catalog: SessionCatalog;
   private readonly scope: Scope.Closeable;
   private readonly launch: PiSessionOptions;
-  private readonly metadataStore: SessionMetadataStore | undefined;
+  private readonly metadataStore: SessionMetadataStore;
   private readonly inactivityHours: number;
-  private readonly accountConfigDir: string | undefined;
   private readonly sessionFactory: PiSessionFactory | undefined;
 
   private constructor(
     scope: Scope.Closeable,
     launch: PiSessionOptions,
-    metadataStore: SessionMetadataStore | undefined,
+    metadataStore: SessionMetadataStore,
     inactivityHours: number,
-    accountConfigDir: string | undefined,
     sessionFactory: PiSessionFactory | undefined,
   ) {
     this.scope = scope;
     this.launch = launch;
     this.metadataStore = metadataStore;
     this.inactivityHours = inactivityHours;
-    this.accountConfigDir = accountConfigDir;
     this.sessionFactory = sessionFactory;
     this.catalog = new SessionCatalog(launch.sessionDir);
   }
 
   public static make(
     launch: PiSessionOptions,
-    metadataStore?: SessionMetadataStore,
+    metadataStore: SessionMetadataStore,
     inactivityHours = DEFAULT_INACTIVITY_HOURS,
-    accountConfigDir?: string,
     sessionFactory?: PiSessionFactory,
   ): Effect.Effect<DesktopWorkspace, OperationError, Scope.Scope> {
     return Effect.gen(function* () {
@@ -71,7 +67,6 @@ export class DesktopWorkspace {
         launch,
         metadataStore,
         inactivityHours,
-        accountConfigDir,
         sessionFactory,
       );
       workspace.closeEffect = yield* Effect.cached(
@@ -87,14 +82,12 @@ export class DesktopWorkspace {
         }),
       );
       yield* Effect.gen(function* () {
-        if (accountConfigDir) {
-          const accounts = yield* workspace.accounts();
-          workspace.selectedAccount = accounts[0]?.profile;
-          if (!workspace.selectedAccount)
-            return yield* Effect.fail(
-              new OperationRejected({ error: "No Pi accounts are available" }),
-            );
-        }
+        const accounts = yield* workspace.accounts();
+        workspace.selectedAccount = accounts[0]?.profile;
+        if (!workspace.selectedAccount)
+          return yield* Effect.fail(
+            new OperationRejected({ error: "No Pi accounts are available" }),
+          );
         workspace.initial = workspace.attach(
           yield* DesktopSession.make(
             workspace.sessionOptions(launch.cwd, launch.sessionFile),
@@ -132,7 +125,7 @@ export class DesktopWorkspace {
     // The outer lock coordinates persisted metadata reads with observation publication.
     return this.metadataLock.withPermits(1)(
       Effect.gen({ self: this }, function* () {
-        const metadata = this.metadataStore ? yield* this.metadataStore.list() : [];
+        const metadata = yield* this.metadataStore.list();
         return {
           state: {
             initialKey: this.initialKey,
@@ -164,13 +157,8 @@ export class DesktopWorkspace {
 
   public accounts(): Effect.Effect<readonly Account[], OperationError> {
     return Effect.suspend(() => {
-      const configDir = this.accountConfigDir;
-      if (!configDir)
-        return Effect.fail(
-          new OperationRejected({ error: "Account configuration is unavailable" }),
-        );
       return Effect.tryPromise({
-        try: () => listPiAccounts(configDir),
+        try: () => listPiAccounts(this.launch.agentDir),
         catch: operationError,
       });
     });
@@ -206,10 +194,6 @@ export class DesktopWorkspace {
     value: boolean,
   ): Effect.Effect<void, OperationError> {
     return Effect.gen({ self: this }, function* () {
-      if (!this.metadataStore)
-        return yield* Effect.fail(
-          new OperationRejected({ error: "Session metadata is unavailable" }),
-        );
       if (!(yield* this.listAll()).some((session) => session.id === id))
         return yield* Effect.fail(
           new OperationRejected({ error: "Session is not in the catalog" }),
@@ -318,8 +302,8 @@ export class DesktopWorkspace {
       ...this.launch,
       cwd,
       ...(sessionFile ? { sessionFile } : {}),
-      ...(this.accountConfigDir && this.selectedAccount
-        ? { profileDir: path.join(this.accountConfigDir, "profiles", this.selectedAccount) }
+      ...(this.selectedAccount
+        ? { profileDir: path.join(this.launch.agentDir, "profiles", this.selectedAccount) }
         : {}),
     };
   }

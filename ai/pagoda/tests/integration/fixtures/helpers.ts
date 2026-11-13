@@ -1,11 +1,30 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { TestContext } from "node:test";
 
-import { Effect, Exit, Scope } from "effect";
+import { NodeFileSystem } from "@effect/platform-node";
+import { Effect, Exit, FileSystem, Scope } from "effect";
 
+import { SessionMetadataStore } from "../../../src/backend/session-metadata.ts";
 import type { DesktopSession } from "../../../src/backend/session.ts";
 import type { ContentBlock, SessionSnapshot } from "../../../src/contracts/index.ts";
+import { fakePiOptions } from "./fake-sdk.ts";
 
 export { fakePiOptions, fakeSessionFactory } from "./fake-sdk.ts";
+
+/** Create an isolated synthetic account for normal backend startup. */
+export async function setupFakePi(directory: string): Promise<void> {
+  const profile = path.join(fakePiOptions(directory).agentDir, "profiles", ".pi-account-test");
+  await mkdir(profile, { recursive: true });
+  await writeFile(path.join(profile, "auth.json"), "{}");
+}
+
+export async function metadataStore(agentDir: string): Promise<SessionMetadataStore> {
+  const fs = await Effect.runPromise(
+    FileSystem.FileSystem.pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+  return new SessionMetadataStore(fs, path.join(agentDir, "pagoda-state.json"));
+}
 
 /** Keep native Effect resources alive until the owning test finishes. */
 export function runScoped<A, E>(

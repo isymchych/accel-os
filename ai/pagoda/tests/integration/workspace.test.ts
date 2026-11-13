@@ -9,15 +9,27 @@ import { Deferred, Effect, Fiber } from "effect";
 
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import { runScoped } from "./fixtures/helpers.ts";
-import { contentText, fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+import {
+  contentText,
+  fakePiOptions,
+  fakeSessionFactory,
+  metadataStore,
+  setupFakePi,
+} from "./fixtures/helpers.ts";
 
 async function fixture(
   t: test.TestContext,
 ): Promise<{ workspace: DesktopWorkspace; directory: string }> {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-"));
+  await setupFakePi(directory);
   const workspace = await runScoped(
     t,
-    DesktopWorkspace.make(fakePiOptions(directory), undefined, 48, undefined, fakeSessionFactory),
+    DesktopWorkspace.make(
+      fakePiOptions(directory),
+      await metadataStore(fakePiOptions(directory).agentDir),
+      48,
+      fakeSessionFactory,
+    ),
   );
   t.after(async () => {
     try {

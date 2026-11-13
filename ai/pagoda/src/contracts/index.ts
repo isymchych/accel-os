@@ -1,13 +1,13 @@
 import { Schema } from "effect";
 
-const Key = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+const Key = Schema.String.check(Schema.isMinLength(1));
 const SessionKeySchema = Key.pipe(Schema.brand("SessionKey"));
 const HistoryEntryIdSchema = Key.pipe(Schema.brand("HistoryEntryId"));
 const SessionIdSchema = Schema.String.pipe(Schema.brand("SessionId"));
 export type SessionKey = typeof SessionKeySchema.Type;
 export type SessionId = typeof SessionIdSchema.Type;
 export type HistoryEntryId = typeof HistoryEntryIdSchema.Type;
-const Path = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32_768));
+const Path = Schema.String.check(Schema.isMinLength(1));
 export const TargetSchema = Schema.Struct({ key: SessionKeySchema });
 export const DirectorySchema = Schema.Struct({ cwd: Path });
 export const OpenSchema = Schema.Struct({ cwd: Path, path: Path });
@@ -22,7 +22,7 @@ export const EntrySchema = Schema.Struct({
 });
 export const PromptSchema = Schema.Struct({
   key: SessionKeySchema,
-  message: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100_000)),
+  message: Schema.String.check(Schema.isMinLength(1)),
   mode: Schema.Union([
     Schema.Literal("prompt"),
     Schema.Literal("follow_up"),
@@ -36,7 +36,7 @@ export const ModelSchema = Schema.Struct({
 });
 export const ThinkingSchema = Schema.Struct({
   key: SessionKeySchema,
-  level: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(30)),
+  level: Schema.String.check(Schema.isMinLength(1)),
 });
 
 // HTTP JSON and SSE are external boundaries. Derive the presentation types from
@@ -99,6 +99,21 @@ export const SnapshotSchema = Schema.Struct({
   error: Schema.Union([Schema.String, Schema.Null]),
   notice: Schema.Union([Schema.String, Schema.Null]),
 });
+const { key: _key, revision: _revision, ...snapshotChangeFields } = SnapshotSchema.fields;
+// Object.fromEntries preserves these keys and only changes each field's optionality.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+const optionalSnapshotChangeFields = Object.fromEntries(
+  Object.entries(snapshotChangeFields).map(([key, field]) => [key, Schema.optionalKey(field)]),
+) as {
+  readonly [K in keyof typeof snapshotChangeFields]: Schema.optionalKey<
+    (typeof snapshotChangeFields)[K]
+  >;
+};
+export const SnapshotUpdateSchema = Schema.Struct({
+  key: SnapshotSchema.fields.key,
+  revision: SnapshotSchema.fields.revision,
+  changes: Schema.Struct(optionalSnapshotChangeFields),
+});
 export const SessionMetadataSchema = Schema.Struct({
   id: SessionIdSchema,
   pinned: Schema.Boolean,
@@ -159,6 +174,7 @@ export type TranscriptMessage = typeof TranscriptMessageSchema.Type;
 export type ToolActivity = typeof ToolActivitySchema.Type;
 export type SessionSummary = typeof SummarySchema.Type;
 export type SessionSnapshot = typeof SnapshotSchema.Type;
+export type SessionUpdate = typeof SnapshotUpdateSchema.Type;
 export type WorkspaceState = typeof WorkspaceSchema.Type;
 export type SessionMetadata = typeof SessionMetadataSchema.Type;
 export type Account = (typeof AccountsSchema.Type)[number];

@@ -5,12 +5,11 @@ import { operationError, OperationFailed, type OperationError } from "./errors.t
 
 /** Pagoda presentation metadata, independent of Pi's native session files. */
 export class SessionMetadataStore {
-  private memory: SessionMetadata[] = [];
-  private readonly file: string | undefined;
+  private readonly file: string;
   private readonly fs: FileSystem.FileSystem;
   private readonly lock = Semaphore.makeUnsafe(1);
 
-  public constructor(fs: FileSystem.FileSystem, file?: string) {
+  public constructor(fs: FileSystem.FileSystem, file: string) {
     this.fs = fs;
     this.file = file;
   }
@@ -21,7 +20,6 @@ export class SessionMetadataStore {
 
   private read(): Effect.Effect<SessionMetadata[], OperationError> {
     return Effect.gen({ self: this }, function* () {
-      if (!this.file) return structuredClone(this.memory);
       const contents = yield* this.fs
         .readFileString(this.file)
         .pipe(
@@ -63,11 +61,9 @@ export class SessionMetadataStore {
           const next = { ...previous, [flag]: value };
           if (index < 0) entries.push(next);
           else entries[index] = next;
-          if (this.file)
-            yield* this.fs.writeFileString(this.file, `${JSON.stringify(entries, null, 2)}\n`, {
-              mode: 0o600,
-            });
-          else this.memory = entries;
+          yield* this.fs.writeFileString(this.file, `${JSON.stringify(entries, null, 2)}\n`, {
+            mode: 0o600,
+          });
           return entries;
         }),
       )

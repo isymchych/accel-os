@@ -13,15 +13,15 @@ import { startBackend } from "../../src/backend/server.ts";
 import { PagodaApi } from "../../src/contracts/api.ts";
 import { OperationFailed, OperationRejected } from "../../src/contracts/errors.ts";
 import { SnapshotSchema, WorkspaceSchema } from "../../src/contracts/index.ts";
-import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+import { fakePiOptions, fakeSessionFactory, setupFakePi } from "./fixtures/helpers.ts";
 
 test("HTTP distinguishes rejected commands from operational failures, including workspace reads", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-http-errors-"));
-  const stateFile = path.join(directory, "state.json");
+  await setupFakePi(directory);
+  const stateFile = path.join(fakePiOptions(directory).agentDir, "pagoda-state.json");
   const backend = await startBackend({
     port: 0,
     pi: fakePiOptions(directory),
-    stateFile,
     sessionFactory: async (options) => {
       const sdk = await fakeSessionFactory(options);
       sdk.modelRuntime.getAvailable = async (): Promise<never> => {
@@ -116,6 +116,7 @@ test("HTTP distinguishes rejected commands from operational failures, including 
 
 test("authenticated HTTP preserves execution independently of observers and cleans up on shutdown", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "pagoda-http-"));
+  await setupFakePi(directory);
   const backend = await startBackend({
     port: 0,
     pi: fakePiOptions(directory),

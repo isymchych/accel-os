@@ -72,6 +72,22 @@ test("renderer subscription replacement does not interrupt work; Stop confirms t
   assert.throws(() => process.kill(toolPid, 0), { code: "ESRCH" });
 });
 
+test("snapshots retain unchanged history and do not mutate earlier state", async (t) => {
+  const { session } = await fixture(t);
+  const active = observe(session, (snapshot) => snapshot.activity === "Running harmless-wait");
+  await Effect.runPromise(session.prompt("hold"));
+  const before = await active;
+  const saved = structuredClone(before);
+
+  await Effect.runPromise(session.stop());
+  const after = session.snapshot();
+  assert.notEqual(after, before);
+  assert.equal(after.messages, before.messages);
+  assert.deepEqual(before, saved);
+  assert.equal(before.execution, "running");
+  assert.equal(after.execution, "idle");
+});
+
 test("shutdown disposes the SDK owner and cleans up active tool work", async (t) => {
   const { session, directory } = await fixture(t);
   const active = observe(session, (snapshot) => snapshot.activity !== null);

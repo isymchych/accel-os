@@ -14,10 +14,9 @@ const SettingsSchema = Schema.Struct({
 const decodeSettings = Schema.decodeUnknownSync(SettingsSchema, { onExcessProperty: "error" });
 
 export function readInactivityHours(
-  file?: string,
+  file: string,
 ): Effect.Effect<number, OperationError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    if (!file) return DEFAULT_INACTIVITY_HOURS;
     const fs = yield* FileSystem.FileSystem;
     const contents = yield* fs
       .readFileString(file)

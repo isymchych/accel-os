@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test, { mock } from "node:test";
 import { setImmediate } from "node:timers/promises";
@@ -15,7 +16,7 @@ import type {
   SessionSummary,
   StoredSession,
 } from "../../src/contracts/index.ts";
-import { runScoped } from "./fixtures/helpers.ts";
+import { fakePiOptions, metadataStore, runScoped, setupFakePi } from "./fixtures/helpers.ts";
 
 // Control only owner startup/disposal. The real workspace handles reservations,
 // catalog validation, target selection, and shutdown across every owner.
@@ -117,6 +118,9 @@ mock.module(path.resolve(import.meta.dirname, "../../src/backend/catalog.ts"), {
 const { DesktopWorkspace } = await import("../../src/backend/workspace.ts");
 
 async function fixture(t: test.TestContext): Promise<Workspace> {
+  const root = await fs.mkdtemp(path.join(tmpdir(), "pagoda-ownership-"));
+  await setupFakePi(root);
+  t.after(async () => fs.rm(root, { recursive: true, force: true }));
   owners.length = 0;
   startOwner = async (): Promise<void> => {};
   closeOwner = async (): Promise<void> => {};
@@ -131,13 +135,10 @@ async function fixture(t: test.TestContext): Promise<Workspace> {
   ];
   const workspace = await runScoped(
     t,
-    DesktopWorkspace.make({
-      cwd: "/project",
-      agentDir: "/agent",
-      profileDir: "/profile",
-      sessionDir: "/sessions",
-      sharedDir: "/shared",
-    }),
+    DesktopWorkspace.make(
+      { ...fakePiOptions(root), cwd: "/project" },
+      await metadataStore(fakePiOptions(root).agentDir),
+    ),
   );
   t.after(async () => {
     closeOwner = async (): Promise<void> => {};

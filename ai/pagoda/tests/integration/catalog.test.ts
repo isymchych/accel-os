@@ -10,7 +10,12 @@ import { Effect } from "effect";
 import { SessionCatalog } from "../../src/backend/catalog.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
 import { runScoped } from "./fixtures/helpers.ts";
-import { fakePiOptions, fakeSessionFactory } from "./fixtures/helpers.ts";
+import {
+  fakePiOptions,
+  fakeSessionFactory,
+  metadataStore,
+  setupFakePi,
+} from "./fixtures/helpers.ts";
 
 test("catalog discovers activity and snapshots legacy history without modifying its source", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-catalog-"));
@@ -56,6 +61,7 @@ test("catalog discovers activity and snapshots legacy history without modifying 
 
 test("workspace discovers native sessions without a connected execution owner", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-catalog-workspace-"));
+  await setupFakePi(root);
   t.after(async () => rm(root, { recursive: true, force: true }));
   const storage = path.join(root, "sessions");
   const session = SessionManager.create(root, storage);
@@ -64,9 +70,8 @@ test("workspace discovers native sessions without a connected execution owner", 
     t,
     DesktopWorkspace.make(
       { ...fakePiOptions(root), sessionDir: storage },
-      undefined,
+      await metadataStore(fakePiOptions(root).agentDir),
       48,
-      undefined,
       fakeSessionFactory,
     ),
   );

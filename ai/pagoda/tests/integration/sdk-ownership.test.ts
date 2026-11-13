@@ -9,7 +9,13 @@ import { Effect, Exit, Fiber, Scope } from "effect";
 
 import { DesktopSession } from "../../src/backend/session.ts";
 import { DesktopWorkspace } from "../../src/backend/workspace.ts";
-import { fakePiOptions, fakeSessionFactory, runScoped } from "./fixtures/helpers.ts";
+import {
+  fakePiOptions,
+  fakeSessionFactory,
+  metadataStore,
+  runScoped,
+  setupFakePi,
+} from "./fixtures/helpers.ts";
 
 test("shutdown during SDK acquisition waits for and releases the acquired owner", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-sdk-acquisition-"));
@@ -154,6 +160,7 @@ test("parent shutdown and explicit close share the same in-flight cleanup", asyn
 
 test("workspace shutdown waits for an in-flight SDK mutation before disposal", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-sdk-mutation-"));
+  await setupFakePi(root);
   t.after(async () => rm(root, { recursive: true, force: true }));
   const started = Promise.withResolvers<undefined>();
   const release = Promise.withResolvers<undefined>();
@@ -161,31 +168,36 @@ test("workspace shutdown waits for an in-flight SDK mutation before disposal", a
   const lifecycle: string[] = [];
   const workspace = await runScoped(
     t,
-    DesktopWorkspace.make(fakePiOptions(root), undefined, 48, undefined, async (options) => {
-      const sdk = await fakeSessionFactory(options);
-      const abort = sdk.abort.bind(sdk);
-      const dispose = sdk.dispose.bind(sdk);
-      const settle = sdk.modelRuntime.settleCredentialWrites.bind(sdk.modelRuntime);
-      sdk.setModel = async (): Promise<void> => {
-        started.resolve(undefined);
-        await release.promise;
-        lifecycle.push("mutation finished");
-      };
-      sdk.abort = async (): Promise<void> => {
-        lifecycle.push("abort");
-        await abort();
-        aborted.resolve(undefined);
-      };
-      sdk.dispose = (): void => {
-        lifecycle.push("dispose");
-        dispose();
-      };
-      sdk.modelRuntime.settleCredentialWrites = async (): Promise<void> => {
-        lifecycle.push("credentials settled");
-        await settle();
-      };
-      return sdk;
-    }),
+    DesktopWorkspace.make(
+      fakePiOptions(root),
+      await metadataStore(fakePiOptions(root).agentDir),
+      48,
+      async (options) => {
+        const sdk = await fakeSessionFactory(options);
+        const abort = sdk.abort.bind(sdk);
+        const dispose = sdk.dispose.bind(sdk);
+        const settle = sdk.modelRuntime.settleCredentialWrites.bind(sdk.modelRuntime);
+        sdk.setModel = async (): Promise<void> => {
+          started.resolve(undefined);
+          await release.promise;
+          lifecycle.push("mutation finished");
+        };
+        sdk.abort = async (): Promise<void> => {
+          lifecycle.push("abort");
+          await abort();
+          aborted.resolve(undefined);
+        };
+        sdk.dispose = (): void => {
+          lifecycle.push("dispose");
+          dispose();
+        };
+        sdk.modelRuntime.settleCredentialWrites = async (): Promise<void> => {
+          lifecycle.push("credentials settled");
+          await settle();
+        };
+        return sdk;
+      },
+    ),
   );
   const command = Effect.runPromiseExit(
     workspace.command(

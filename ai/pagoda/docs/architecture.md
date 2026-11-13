@@ -56,6 +56,12 @@ reconstructed output. Clients resynchronize from current state rather than repla
 `agent_end` may precede retries or queued work; `agent_settled` marks the end of automatic
 continuation.
 
+Session snapshots are immutable and share unchanged fields between updates. Each SSE connection
+begins with a complete workspace snapshot. After coalescing, the stream compares snapshots against
+its own last encoded state and sends changed session fields; new sessions receive a full snapshot.
+Slow subscribers coalesce to the latest state, and reconnecting starts with a fresh snapshot. The
+client reconstructs session snapshots before applying revision ordering.
+
 Commands and observations target an execution-owner key, distinct from the persisted Pi session ID
 and file. Client session storage keys drafts to that owner. Execution-owner scopes own SDK sessions,
 subscriptions, and active work; HTTP connection scopes own observation only. Snapshots and

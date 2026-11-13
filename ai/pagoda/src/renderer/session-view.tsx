@@ -299,7 +299,6 @@ function SessionComposer({
           id="message"
           className="max-h-[25dvh] min-h-24 resize-none overflow-y-auto rounded-xl border-0 bg-transparent px-3 py-3 text-sm shadow-none focus-visible:ring-0 md:text-sm dark:bg-transparent"
           placeholder="Ask Pi…"
-          maxLength={100_000}
           readOnly={pending}
           required
           value={message}

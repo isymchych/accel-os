@@ -72,6 +72,15 @@ test("missing profiles are empty and invalid profile files fail without exposing
   });
 });
 
+test("backend startup requires an account", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "pagoda-no-account-"));
+  t.after(async () => rm(root, { recursive: true, force: true }));
+  await assert.rejects(
+    startBackend({ pi: fakePiOptions(root), sessionFactory: fakeSessionFactory, port: 0 }),
+    /No Pi accounts are available/u,
+  );
+});
+
 test("authenticated account selection is shared with observers and leaves terminal selection alone", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "pagoda-accounts-http-"));
   const profile = path.join(root, "profiles", ".pi-account-first");
@@ -96,9 +105,8 @@ test("authenticated account selection is shared with observers and leaves termin
   const terminalSelection = JSON.stringify({ profile: ".pi-account-first" });
   await writeFile(path.join(root, "active-account.json"), terminalSelection);
   const backend = await startBackend({
-    pi: fakePiOptions(root),
+    pi: { ...fakePiOptions(root), agentDir: root },
     sessionFactory: fakeSessionFactory,
-    accountConfigDir: root,
     port: 0,
   });
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;

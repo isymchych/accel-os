@@ -5,7 +5,11 @@ import path from "node:path";
 import { test as base } from "@playwright/test";
 
 import { startBackend, type Backend } from "../../../src/backend/server.ts";
-import { fakePiOptions, fakeSessionFactory } from "../../integration/fixtures/helpers.ts";
+import {
+  fakePiOptions,
+  fakeSessionFactory,
+  setupFakePi,
+} from "../../integration/fixtures/helpers.ts";
 
 export interface TestBackend {
   backend: Backend;
@@ -17,11 +21,11 @@ export const test = base.extend<{ testBackend: TestBackend }>({
   // oxlint-disable-next-line no-empty-pattern
   testBackend: async ({}, use) => {
     const directory = await mkdtemp(path.join(tmpdir(), "pagoda-e2e-"));
+    await setupFakePi(directory);
     let backend: Backend | undefined;
     try {
       backend = await startBackend({
         port: 0,
-        stateFile: path.join(directory, "pagoda-state.json"),
         clientDirectory: path.resolve(import.meta.dirname, "../../../dist/client"),
         pi: fakePiOptions(directory),
         sessionFactory: fakeSessionFactory,
