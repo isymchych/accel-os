@@ -11,6 +11,7 @@ external_ip_enabled = false
 screen_time_enabled = false
 polkit_agent = true
 clipboard_enabled = true
+clipboard_history_max_entries = 1000
 clipboard_keep_from_closed_apps = false
 clipboard_auto_paste = "off"
 launch_apps_as_systemd_services = true

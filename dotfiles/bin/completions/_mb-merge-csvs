@@ -1,0 +1,10 @@
+#compdef mb-merge-csvs
+
+_mb-merge-csvs() {
+  _arguments \
+    '(-o --output)'{-o,--output}'[Destination CSV]:output:_files' \
+    '--delimiter[Override delimiter]:delimiter:(, \; tab)' \
+    '--dry-run[List input order without reading contents]' \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '*:CSV file:_files -g "*.csv"'
+}
