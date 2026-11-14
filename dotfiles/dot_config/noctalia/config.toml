@@ -70,7 +70,7 @@ theme_mode_changed = [
 
 [wallpaper]
 enabled = true
-fill_mode = "fit"
+fill_mode = "crop"
 directory = "~/Pictures/wallpapers"
 per_monitor_directories = false
 
@@ -151,6 +151,7 @@ history_retention_hours = 6
 keep_dismissed_in_history = true
 max_visible = 3
 position = "top_right"
+show_progress_bar = false
 width = 500
 offset_y = 25
 background_opacity = 0.82
