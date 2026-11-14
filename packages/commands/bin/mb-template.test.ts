@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import type { SpawnSyncReturns } from "node:child_process";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -27,7 +27,9 @@ async function createFixture(t: test.TestContext): Promise<TemplateFixture> {
   };
 
   for (const [name, body] of Object.entries({
-    "wl-copy": 'printf "%s\\n" "$@" > "$CAPTURE.args"; cat > "$CAPTURE"; exit "${COMMAND_CODE:-0}"',
+    "wl-copy":
+      'printf "%s\\n" "$@" > "$CAPTURE.args"; cat > "$CAPTURE"; printf "%s" "${COMMAND_STDERR:-}" >&2; exit "${COMMAND_CODE:-0}"',
+    logger: 'cat >> "$CAPTURE.journal"; printf "\\n" >> "$CAPTURE.journal"',
   })) {
     const executable = path.join(root, name);
     await writeFile(executable, `#!/usr/bin/env bash\nset -euo pipefail\n${body}\n`);
@@ -79,13 +81,37 @@ test("invalid selections and arguments cannot invoke clipboard tools", async (t)
   ]) {
     const result = fixture.run(args);
     assert.equal(result.status, 1, `${JSON.stringify(args)}: ${result.stderr}`);
-    assert.match(result.stderr, /Usage:|Unknown template/u);
+    assert.match(result.stdout + result.stderr, /USAGE|Usage:|Unknown template/u);
   }
   await assert.rejects(readFile(fixture.capture), { code: "ENOENT" });
 });
 
 test("template copy failures are reported", async (t) => {
   const fixture = await createFixture(t);
-  const result = fixture.run(["copy", "task-template.md"], { COMMAND_CODE: "7" });
+  const result = fixture.run(["copy", "task-template.md"], {
+    COMMAND_CODE: "7",
+    COMMAND_STDERR: "clipboard failed",
+  });
+
   assert.equal(result.status, 7, result.stderr);
+  assert.match(result.stderr, /clipboard failed/u);
+  assert.match(await readFile(`${fixture.capture}.journal`, "utf8"), /clipboard failed/u);
+});
+
+test("a missing clipboard command fails without printing to stdout", async (t) => {
+  const fixture = await createFixture(t);
+  const emptyPath = `${fixture.capture}-empty-path`;
+
+  await mkdir(emptyPath);
+  await writeFile(
+    path.join(emptyPath, "logger"),
+    `#!${process.execPath}\nprocess.stdin.resume();\n`,
+    { mode: 0o755 },
+  );
+
+  const result = fixture.run(["copy", "task-template.md"], { PATH: emptyPath });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /wl-copy/u);
 });
