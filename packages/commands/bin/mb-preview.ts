@@ -1,23 +1,16 @@
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { fstatSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { parseArgs } from "node:util";
 
+import { NodeRuntime, NodeServices, NodeStream } from "@effect/platform-node";
+import { ByteSize, Console, Effect, FileSystem, Option, Stream } from "effect";
+import type { PlatformError } from "effect";
+import { Duration } from "effect";
+import { Argument, Command, Flag } from "effect/cli";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { marked, type Token, type Tokens } from "marked";
 
-interface PreviewArgs {
-  readonly inputPath: string | null;
-  readonly outputPath: string | null;
-  readonly title: string | null;
-  readonly baseDir: string | null;
-  readonly embedImages: boolean;
-  readonly open: boolean;
-  readonly help: boolean;
-}
+import { logEvent, withExecutionLog } from "../lib/execution-log.ts";
 
 interface PreparedMarkdown {
   readonly markdown: string;
@@ -29,7 +22,9 @@ interface PreparedMarkdown {
 }
 
 interface PrepareMarkdownOptions {
-  readonly renderGraphviz?: GraphvizRenderer;
+  readonly renderGraphviz?: (
+    dot: string,
+  ) => Effect.Effect<GraphvizRenderResult, never, ChildProcessSpawner.ChildProcessSpawner>;
   readonly embedImagesBaseDir?: string | null;
 }
 
@@ -52,14 +47,6 @@ interface GraphvizRenderFailure {
 
 type GraphvizRenderResult = GraphvizRenderSuccess | GraphvizRenderFailure;
 
-type GraphvizRenderer = (dot: string) => Promise<GraphvizRenderResult>;
-
-type SpawnGraphviz = (
-  command: string,
-  args: readonly string[],
-  options: { readonly stdio: ["pipe", "pipe", "pipe"] },
-) => ChildProcessWithoutNullStreams;
-
 const graphvizLanguages = new Set(["dot", "graphviz", "gv"]);
 const graphvizInputMaxBytes = 256 * 1024;
 const graphvizOutputMaxBytes = 2 * 1024 * 1024;
@@ -80,84 +67,68 @@ const imageMimeTypes = new Map([
   [".webp", "image/webp"],
 ]);
 
-const usage = `Usage: mb-preview [--open] [--out <file>] [--title <title>] [--base-dir <dir>] [file.md]
-
-Render Markdown to a standalone HTML file, including Mermaid and Graphviz fenced diagrams.
-
-Options:
-  --open, -b        Open the generated HTML with xdg-open
-  --out, -o <file>  Write HTML to this path instead of a temp file
-  --title <title>   Set the HTML document title
-  --base-dir <dir>  Resolve relative local assets from this directory
-  --embed-images    Embed local Markdown images in the generated HTML
-  --help, -h        Show this help
-
-Input:
-  Reads file.md when provided. Otherwise reads piped stdin.
-`;
-
-export async function main(): Promise<void> {
-  const args = parseCliArgs(process.argv.slice(2));
-
-  if (args.help) {
-    process.stdout.write(usage);
-    return;
-  }
-
-  const sourceName = args.inputPath === null ? "stdin" : path.basename(args.inputPath);
-  const title = args.title ?? sourceName;
-  const imageBaseDir = resolveImageBaseDirectory(args.inputPath, args.baseDir);
-  if (args.embedImages && imageBaseDir === null) {
-    throw new Error("--embed-images requires --base-dir when reading Markdown from stdin.");
-  }
-  const baseHref = args.baseDir === null ? null : baseHrefForDirectory(args.baseDir);
-  const markdown = await readInput(args.inputPath);
-  const prepared = await prepareMarkdown(markdown, {
-    embedImagesBaseDir: args.embedImages ? imageBaseDir : null,
-  });
-  const html = await renderDocument(prepared, title, baseHref);
-  const outputPath = args.outputPath ?? (await defaultOutputPath(args.title ?? sourceName));
-
-  await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, html);
-  process.stdout.write(`${outputPath}\n`);
-
-  if (args.open) {
-    openInBrowser(outputPath);
-  }
+interface PreviewOptions {
+  readonly input: Option.Option<string>;
+  readonly out: Option.Option<string>;
+  readonly title: Option.Option<string>;
+  readonly baseDir: Option.Option<string>;
+  readonly embedImages: boolean;
+  readonly open: boolean;
 }
 
-export function parseCliArgs(args: string[]): PreviewArgs {
-  const parsed = parseArgs({
-    args,
-    allowPositionals: true,
-    options: {
-      help: { type: "boolean", short: "h" },
-      open: { type: "boolean", short: "b" },
-      out: { type: "string", short: "o" },
-      title: { type: "string" },
-      "base-dir": { type: "string" },
-      "embed-images": { type: "boolean" },
-    },
-  });
+const preview = Command.make(
+  "mb-preview",
+  {
+    input: Argument.String("file.md").pipe(Argument.optional),
+    open: Flag.Boolean("open").pipe(Flag.withAlias("b"), Flag.withDefault(false)),
+    out: Flag.String("out").pipe(Flag.withAlias("o"), Flag.optional),
+    title: Flag.String("title").pipe(Flag.optional),
+    baseDir: Flag.String("base-dir").pipe(Flag.optional),
+    embedImages: Flag.Boolean("embed-images").pipe(Flag.withDefault(false)),
+  },
+  (options) => runPreview(options),
+).pipe(Command.withDescription("Render Markdown to a standalone HTML preview."));
 
-  if (parsed.positionals.length > 1) {
-    throw new Error(
-      `Expected at most one input file, got ${parsed.positionals.length}.\n\n${usage}`,
+function runPreview(
+  options: PreviewOptions,
+): Effect.Effect<
+  void,
+  Error | PlatformError.PlatformError,
+  FileSystem.FileSystem | ChildProcessSpawner.ChildProcessSpawner
+> {
+  return Effect.gen(function* () {
+    const inputPath = Option.getOrUndefined(options.input) ?? null;
+    const output = Option.getOrUndefined(options.out);
+    const titleOption = Option.getOrUndefined(options.title);
+    const baseDirectory = Option.getOrUndefined(options.baseDir) ?? null;
+    const sourceName = inputPath === null ? "stdin" : path.basename(inputPath);
+    const title = titleOption ?? sourceName;
+    const imageBaseDir = resolveImageBaseDirectory(inputPath, baseDirectory);
+    if (options.embedImages && imageBaseDir === null) {
+      yield* Effect.fail(
+        new Error("--embed-images requires --base-dir when reading Markdown from stdin."),
+      );
+    }
+    const markdown = yield* readInput(inputPath);
+    const prepared = yield* prepareMarkdown(markdown, {
+      embedImagesBaseDir: options.embedImages ? imageBaseDir : null,
+    });
+    const html = yield* renderDocument(
+      prepared,
+      title,
+      baseDirectory === null ? null : baseHrefForDirectory(baseDirectory),
     );
-  }
-
-  const [inputPath] = parsed.positionals;
-
-  return {
-    inputPath: inputPath ?? null,
-    outputPath: parsed.values.out ?? null,
-    title: parsed.values.title ?? null,
-    baseDir: parsed.values["base-dir"] ?? null,
-    embedImages: parsed.values["embed-images"] === true,
-    open: parsed.values.open === true,
-    help: parsed.values.help === true,
-  };
+    const outputPath = output ?? (yield* defaultOutputPath(titleOption ?? sourceName));
+    const fs = yield* FileSystem.FileSystem;
+    yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true });
+    yield* fs.writeFileString(outputPath, html);
+    yield* Console.log(outputPath);
+    yield* logEvent("preview_written", {
+      output_path: outputPath,
+      diagrams: prepared.graphvizBlocks.length,
+    });
+    if (options.open) yield* openInBrowser(outputPath);
+  });
 }
 
 function resolveImageBaseDirectory(
@@ -170,136 +141,151 @@ function resolveImageBaseDirectory(
   return inputPath === null ? null : path.dirname(path.resolve(inputPath));
 }
 
-async function readInput(inputPath: string | null): Promise<string> {
-  if (inputPath !== null) {
-    return readFile(inputPath, "utf8");
-  }
+function readInput(
+  inputPath: string | null,
+): Effect.Effect<string, Error | PlatformError.PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    if (inputPath !== null) {
+      return yield* fs.readFileString(inputPath);
+    }
 
-  if (!hasReadableStdin()) {
-    throw new Error(`Missing input file or piped stdin.\n\n${usage}`);
-  }
-
-  return readStream(process.stdin);
+    if (process.stdin.isTTY)
+      return yield* Effect.fail(new Error("Missing input file or piped stdin."));
+    return yield* NodeStream.toString(() => process.stdin, {
+      onError: (error) => (error instanceof Error ? error : new Error(String(error))),
+    });
+  });
 }
 
-function hasReadableStdin(): boolean {
-  try {
-    const stdin = fstatSync(0);
-    return stdin.isFIFO() || stdin.isFile() || stdin.isSocket();
-  } catch {
-    return false;
-  }
-}
-
-async function readStream(stream: NodeJS.ReadableStream): Promise<string> {
-  stream.setEncoding("utf8");
-
-  let data = "";
-  for await (const chunk of stream) {
-    data += String(chunk);
-  }
-  return data;
-}
-
-export async function prepareMarkdown(
+export function prepareMarkdown(
   markdown: string,
   options: PrepareMarkdownOptions = {},
-): Promise<PreparedMarkdown> {
-  let hasGraphviz = false;
-  const replaced = replaceGraphvizFences(markdown);
-  const graphvizBlocks: BrowserGraphvizBlock[] = [];
-  const renderGraphviz = options.renderGraphviz ?? renderGraphvizToSvg;
+): Effect.Effect<
+  PreparedMarkdown,
+  Error | PlatformError.PlatformError,
+  FileSystem.FileSystem | ChildProcessSpawner.ChildProcessSpawner
+> {
+  return Effect.gen(function* () {
+    let hasGraphviz = false;
+    const replaced = replaceGraphvizFences(markdown);
+    const graphvizBlocks: BrowserGraphvizBlock[] = [];
+    const renderGraphviz = options.renderGraphviz ?? renderGraphvizToSvg;
 
-  for (const block of replaced.graphvizSources) {
-    const rendered = await renderGraphviz(block.source);
-    if (rendered.ok) {
-      hasGraphviz = true;
+    for (const block of replaced.graphvizSources) {
+      const rendered = yield* renderGraphviz(block.source);
+      if (rendered.ok) {
+        hasGraphviz = true;
+      }
+      graphvizBlocks.push({ ...block, result: rendered });
     }
-    graphvizBlocks.push({ ...block, result: rendered });
-  }
 
-  return {
-    markdown: replaced.markdown,
-    embeddedImages:
-      options.embedImagesBaseDir === undefined || options.embedImagesBaseDir === null
-        ? {}
-        : await embedMarkdownImages(replaced.markdown, options.embedImagesBaseDir),
-    hasMermaid: replaced.hasMermaid,
-    hasGraphviz,
-    hasDiagrams: replaced.hasMermaid || hasGraphviz,
-    graphvizBlocks,
-  };
+    return {
+      markdown: replaced.markdown,
+      embeddedImages:
+        options.embedImagesBaseDir === undefined || options.embedImagesBaseDir === null
+          ? {}
+          : yield* embedMarkdownImages(replaced.markdown, options.embedImagesBaseDir),
+      hasMermaid: replaced.hasMermaid,
+      hasGraphviz,
+      hasDiagrams: replaced.hasMermaid || hasGraphviz,
+      graphvizBlocks,
+    };
+  });
 }
 
-async function embedMarkdownImages(
+function embedMarkdownImages(
   markdown: string,
   baseDir: string,
-): Promise<Readonly<Record<string, string>>> {
-  const hrefs = new Set<string>();
-  const tokens = marked.lexer(markdown, { gfm: true });
+): Effect.Effect<
+  Readonly<Record<string, string>>,
+  Error | PlatformError.PlatformError,
+  FileSystem.FileSystem
+> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const hrefs = new Set<string>();
+    const tokens = marked.lexer(markdown, { gfm: true });
 
-  void marked.walkTokens(tokens, (token) => {
-    if (isImageToken(token)) {
-      hrefs.add(token.href);
+    void marked.walkTokens(tokens, (token) => {
+      if (isImageToken(token)) {
+        hrefs.add(token.href);
+      }
+    });
+
+    const embeddedImages: Record<string, string> = {};
+    let totalBytes = 0;
+
+    for (const href of hrefs) {
+      const localImage = yield* resolveLocalImage(href, baseDir);
+      if (localImage === null) {
+        continue;
+      }
+
+      const mimeType = imageMimeTypes.get(path.extname(localImage.filePath).toLowerCase());
+      if (mimeType === undefined) {
+        return yield* Effect.fail(
+          new Error(`Cannot embed image "${href}": unsupported image format.`),
+        );
+      }
+
+      let fileStats;
+      fileStats = yield* fs
+        .stat(localImage.filePath)
+        .pipe(
+          Effect.mapError(
+            (error) =>
+              new Error(
+                `Cannot embed image "${href}" from ${localImage.filePath}: ${errorMessage(error)}`,
+                { cause: error },
+              ),
+          ),
+        );
+
+      if (fileStats.type !== "File") {
+        return yield* Effect.fail(
+          new Error(`Cannot embed image "${href}": ${localImage.filePath} is not a file.`),
+        );
+      }
+      const statBytes = Number(ByteSize.toBigInt(fileStats.size));
+      if (statBytes > imageInputMaxBytes) {
+        return yield* Effect.fail(
+          new Error(
+            `Cannot embed image "${href}": file exceeds ${formatBytes(imageInputMaxBytes)}.`,
+          ),
+        );
+      }
+      if (totalBytes + statBytes > imageInputTotalMaxBytes) {
+        return yield* Effect.fail(
+          new Error(
+            `Cannot embed images: total size exceeds ${formatBytes(imageInputTotalMaxBytes)}.`,
+          ),
+        );
+      }
+
+      const contents = yield* fs.readFile(localImage.filePath);
+      if (contents.byteLength > imageInputMaxBytes) {
+        return yield* Effect.fail(
+          new Error(
+            `Cannot embed image "${href}": file exceeds ${formatBytes(imageInputMaxBytes)}.`,
+          ),
+        );
+      }
+      if (totalBytes + contents.byteLength > imageInputTotalMaxBytes) {
+        return yield* Effect.fail(
+          new Error(
+            `Cannot embed images: total size exceeds ${formatBytes(imageInputTotalMaxBytes)}.`,
+          ),
+        );
+      }
+
+      totalBytes += contents.byteLength;
+      embeddedImages[href] =
+        `data:${mimeType};base64,${Buffer.from(contents).toString("base64")}${localImage.fragment}`;
     }
+
+    return embeddedImages;
   });
-
-  const embeddedImages: Record<string, string> = {};
-  let totalBytes = 0;
-
-  for (const href of hrefs) {
-    const localImage = resolveLocalImage(href, baseDir);
-    if (localImage === null) {
-      continue;
-    }
-
-    const mimeType = imageMimeTypes.get(path.extname(localImage.filePath).toLowerCase());
-    if (mimeType === undefined) {
-      throw new Error(`Cannot embed image "${href}": unsupported image format.`);
-    }
-
-    let fileStats;
-    try {
-      fileStats = await stat(localImage.filePath);
-    } catch (error) {
-      throw new Error(
-        `Cannot embed image "${href}" from ${localImage.filePath}: ${errorMessage(error)}`,
-        { cause: error },
-      );
-    }
-
-    if (!fileStats.isFile()) {
-      throw new Error(`Cannot embed image "${href}": ${localImage.filePath} is not a file.`);
-    }
-    if (fileStats.size > imageInputMaxBytes) {
-      throw new Error(
-        `Cannot embed image "${href}": file exceeds ${formatBytes(imageInputMaxBytes)}.`,
-      );
-    }
-    if (totalBytes + fileStats.size > imageInputTotalMaxBytes) {
-      throw new Error(
-        `Cannot embed images: total size exceeds ${formatBytes(imageInputTotalMaxBytes)}.`,
-      );
-    }
-
-    const contents = await readFile(localImage.filePath);
-    if (contents.byteLength > imageInputMaxBytes) {
-      throw new Error(
-        `Cannot embed image "${href}": file exceeds ${formatBytes(imageInputMaxBytes)}.`,
-      );
-    }
-    if (totalBytes + contents.byteLength > imageInputTotalMaxBytes) {
-      throw new Error(
-        `Cannot embed images: total size exceeds ${formatBytes(imageInputTotalMaxBytes)}.`,
-      );
-    }
-
-    totalBytes += contents.byteLength;
-    embeddedImages[href] =
-      `data:${mimeType};base64,${contents.toString("base64")}${localImage.fragment}`;
-  }
-
-  return embeddedImages;
 }
 
 interface LocalImage {
@@ -307,35 +293,38 @@ interface LocalImage {
   readonly fragment: string;
 }
 
-function resolveLocalImage(href: string, baseDir: string): LocalImage | null {
-  // Mirror browser HTML/URL processing: decode supported character references,
-  // then escape only bare percent signs before Node parses the file URL.
-  const browserHref = decodeImageHrefReferences(href);
-  if (browserHref.startsWith("//")) {
-    return null;
-  }
+function resolveLocalImage(href: string, baseDir: string): Effect.Effect<LocalImage | null, Error> {
+  return Effect.gen(function* () {
+    // Mirror browser HTML/URL processing: decode supported character references,
+    // then escape only bare percent signs before Node parses the file URL.
+    const browserHref = decodeImageHrefReferences(href);
+    if (browserHref.startsWith("//")) {
+      return null;
+    }
 
-  let url: URL;
-  try {
-    const normalizedHref = browserHref.replaceAll(/%(?![0-9A-Fa-f]{2})/gu, "%25");
-    url = new URL(normalizedHref, baseHrefForDirectory(baseDir));
-  } catch {
-    throw new Error(`Cannot embed image "${href}": invalid image URL.`);
-  }
+    const url = yield* Effect.try({
+      try: () => {
+        const normalizedHref = browserHref.replaceAll(/%(?![0-9A-Fa-f]{2})/gu, "%25");
+        return new URL(normalizedHref, baseHrefForDirectory(baseDir));
+      },
+      catch: () => new Error(`Cannot embed image "${href}": invalid image URL.`),
+    });
 
-  if (url.protocol !== "file:") {
-    return null;
-  }
+    if (url.protocol !== "file:") {
+      return null;
+    }
 
-  const fragment = url.hash;
-  url.hash = "";
-  url.search = "";
+    const fragment = url.hash;
+    url.hash = "";
+    url.search = "";
 
-  try {
-    return { filePath: fileURLToPath(url), fragment };
-  } catch (error) {
-    throw new Error(`Cannot embed image "${href}": ${errorMessage(error)}`, { cause: error });
-  }
+    const filePath = yield* Effect.try({
+      try: () => fileURLToPath(url),
+      catch: (error) =>
+        new Error(`Cannot embed image "${href}": ${errorMessage(error)}`, { cause: error }),
+    });
+    return { filePath, fragment };
+  });
 }
 
 function decodeImageHrefReferences(href: string): string {
@@ -498,92 +487,100 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
-export async function renderGraphvizToSvg(
+export function renderGraphvizToSvg(
   dot: string,
-  spawnGraphviz: SpawnGraphviz = spawn,
-): Promise<GraphvizRenderResult> {
+): Effect.Effect<GraphvizRenderResult, never, ChildProcessSpawner.ChildProcessSpawner> {
   if (Buffer.byteLength(dot, "utf8") > graphvizInputMaxBytes) {
-    return { ok: false, error: `Graphviz input exceeds ${formatBytes(graphvizInputMaxBytes)}.` };
+    return Effect.succeed({
+      ok: false,
+      error: `Graphviz input exceeds ${formatBytes(graphvizInputMaxBytes)}.`,
+    });
   }
 
-  return new Promise<GraphvizRenderResult>((resolve) => {
-    let settled = false;
+  const render = Effect.gen(function* () {
+    yield* logEvent("graphviz_started", { input_bytes: Buffer.byteLength(dot, "utf8") });
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const child = yield* spawner.spawn(
+      ChildProcess.make("dot", ["-Tsvg"], {
+        stdin: Stream.make(new TextEncoder().encode(dot)),
+        stdout: "pipe",
+        stderr: "pipe",
+        forceKillAfter: "1 second",
+      }),
+    );
     let outputBytes = 0;
-    let stderr = "";
     let stdout = "";
-
-    const child = spawnGraphviz("dot", ["-Tsvg"], { stdio: ["pipe", "pipe", "pipe"] });
-
-    const finish = (result: GraphvizRenderResult): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timeout);
-      resolve(result);
-    };
-
-    const failForLargeOutput = (): void => {
-      child.kill();
-      finish({
-        ok: false,
-        error: `Graphviz output exceeds ${formatBytes(graphvizOutputMaxBytes)}.`,
-      });
-    };
-
-    const timeout = setTimeout(() => {
-      child.kill();
-      finish({ ok: false, error: `Graphviz timed out after ${graphvizTimeoutMs}ms.` });
-    }, graphvizTimeoutMs);
-
-    child.stdout.on("data", (chunk: Buffer | string) => {
-      outputBytes += Buffer.byteLength(chunk);
-      if (outputBytes > graphvizOutputMaxBytes) {
-        failForLargeOutput();
-        return;
-      }
-      stdout += String(chunk);
-    });
-
-    child.stderr.on("data", (chunk: Buffer | string) => {
-      stderr += String(chunk);
-    });
-
-    child.once("error", (error) => {
-      finish({ ok: false, error: error.message });
-    });
-
-    child.once("close", (code, signal) => {
-      if (settled) {
-        return;
-      }
-
-      if (code === 0) {
-        finish({ ok: true, svg: stdout });
-        return;
-      }
-
-      const detail = stderr.trim() || `exited with ${signal ?? `code ${code}`}`;
-      finish({ ok: false, error: detail });
-    });
-
-    child.stdin.end(dot);
-  });
+    let stderr = "";
+    const drainStdout = child.stdout.pipe(
+      Stream.decodeText(),
+      Stream.runForEach((chunk) =>
+        Effect.suspend(() => {
+          outputBytes += Buffer.byteLength(chunk);
+          if (outputBytes > graphvizOutputMaxBytes) return Effect.fail(new Error("output-limit"));
+          stdout += chunk;
+          return Effect.void;
+        }),
+      ),
+    );
+    const drainStderr = child.stderr.pipe(
+      Stream.tap((chunk) => Effect.sync(() => process.stderr.write(chunk))),
+      Stream.decodeText(),
+      Stream.runForEach((chunk) =>
+        Effect.gen(function* () {
+          stderr += chunk;
+          yield* logEvent("graphviz_stderr", { stderr: chunk });
+        }),
+      ),
+    );
+    const [,] = yield* Effect.all([drainStdout, drainStderr], { concurrency: "unbounded" });
+    const code = yield* child.exitCode;
+    if (code !== 0)
+      return { ok: false as const, error: stderr.trim() || `exited with code ${code}` };
+    return { ok: true as const, svg: stdout };
+  }).pipe(Effect.scoped);
+  return Effect.raceFirst(
+    render.pipe(
+      Effect.catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        return Effect.succeed({
+          ok: false as const,
+          error:
+            message === "output-limit"
+              ? `Graphviz output exceeds ${formatBytes(graphvizOutputMaxBytes)}.`
+              : message,
+        });
+      }),
+    ),
+    Effect.sleep(Duration.millis(graphvizTimeoutMs)).pipe(
+      Effect.as({
+        ok: false as const,
+        error: `Graphviz timed out after ${graphvizTimeoutMs}ms.`,
+      }),
+    ),
+  ).pipe(
+    Effect.tap((result) =>
+      logEvent("graphviz_finished", {
+        outcome: result.ok ? "success" : "failure",
+        ...(result.ok ? {} : { error: result.error }),
+      }),
+    ),
+  );
 }
 
-export async function renderDocument(
+export function renderDocument(
   prepared: PreparedMarkdown,
   title: string,
   baseHref: string | null,
-): Promise<string> {
-  const previewScript = await previewInitializerScript(prepared.hasMermaid);
-  const baseElement = baseHref === null ? "" : `  <base href="${escapeHtml(baseHref)}">\n`;
-  const previewData = jsonScriptContent({
-    embeddedImages: prepared.embeddedImages,
-    graphvizBlocks: prepared.graphvizBlocks,
-    markdown: prepared.markdown,
-  });
-  return `<!doctype html>
+): Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const previewScript = yield* previewInitializerScript(prepared.hasMermaid);
+    const baseElement = baseHref === null ? "" : `  <base href="${escapeHtml(baseHref)}">\n`;
+    const previewData = jsonScriptContent({
+      embeddedImages: prepared.embeddedImages,
+      graphvizBlocks: prepared.graphvizBlocks,
+      markdown: prepared.markdown,
+    });
+    return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -728,6 +725,7 @@ ${previewScript}
 </body>
 </html>
 `;
+  });
 }
 
 const previewRendererJs = `(() => {
@@ -1350,35 +1348,42 @@ const diagramControllerJs = `(() => {
   });
 })();`;
 
-async function previewInitializerScript(hasMermaid: boolean): Promise<string> {
-  const markedPackagePath = fileURLToPath(import.meta.resolve("marked/package.json"));
-  const markedJs = await readFile(
-    path.join(path.dirname(markedPackagePath), "lib/marked.umd.js"),
-    "utf8",
-  );
-  const domPurifyJs = await readFile(
-    fileURLToPath(import.meta.resolve("dompurify/dist/purify.min.js")),
-    "utf8",
-  );
-  const mermaidJs = hasMermaid
-    ? await readFile(
-        fileURLToPath(import.meta.resolve("@mermaid-js/tiny/dist/mermaid.tiny.js")),
-        "utf8",
-      )
-    : "";
+function previewInitializerScript(
+  hasMermaid: boolean,
+): Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const markedPackagePath = fileURLToPath(import.meta.resolve("marked/package.json"));
+    const markedJs = yield* fs.readFileString(
+      path.join(path.dirname(markedPackagePath), "lib/marked.umd.js"),
+    );
+    const domPurifyJs = yield* fs.readFileString(
+      fileURLToPath(import.meta.resolve("dompurify/dist/purify.min.js")),
+    );
+    const mermaidJs = hasMermaid
+      ? yield* fs.readFileString(
+          fileURLToPath(import.meta.resolve("@mermaid-js/tiny/dist/mermaid.tiny.js")),
+        )
+      : "";
 
-  return `<script>
+    return `<script>
 ${inlineScriptContent(`${markedJs}
 ${domPurifyJs}
 ${mermaidJs}
 ${previewRendererJs}
 ${diagramControllerJs}`)}
 </script>`;
+  });
 }
 
-async function defaultOutputPath(sourceName: string): Promise<string> {
-  const dir = await mkdtemp(path.join(tmpdir(), "mb-preview-"));
-  return path.join(dir, `${htmlBaseName(sourceName)}.html`);
+function defaultOutputPath(
+  sourceName: string,
+): Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const dir = yield* fs.makeTempDirectory({ prefix: "mb-preview-" });
+    return path.join(dir, `${htmlBaseName(sourceName)}.html`);
+  });
 }
 
 function htmlBaseName(sourceName: string): string {
@@ -1403,19 +1408,31 @@ function baseHrefForDirectory(rawDirectory: string): string {
   return pathToFileURL(directoryWithSeparator).href;
 }
 
-function openInBrowser(filePath: string): void {
-  const lookup = spawnSync("sh", ["-c", "command -v xdg-open >/dev/null 2>&1"], {
-    stdio: "ignore",
-  });
-  if (lookup.status !== 0) {
-    throw new Error("Cannot open preview: xdg-open is not available.");
-  }
-
-  const child = spawn("xdg-open", [filePath], {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
+function openInBrowser(
+  filePath: string,
+): Effect.Effect<
+  void,
+  Error | PlatformError.PlatformError,
+  ChildProcessSpawner.ChildProcessSpawner
+> {
+  return Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const child = yield* spawner.spawn(
+      ChildProcess.make("xdg-open", [filePath], {
+        detached: true,
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore",
+      }),
+    );
+    yield* child.unref;
+    yield* logEvent("browser_open_started", { output_path: filePath, pid: child.pid });
+  }).pipe(
+    Effect.scoped,
+    Effect.catch((error) =>
+      Effect.fail(new Error(`Cannot open preview: ${errorMessage(error)}`, { cause: error })),
+    ),
+  );
 }
 
 function escapeHtml(value: string): string {
@@ -1455,9 +1472,11 @@ function errorMessage(error: unknown): string {
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${message}\n`);
-    process.exit(1);
-  });
+  NodeRuntime.runMain(
+    withExecutionLog("mb-preview", preview.pipe(Command.run({ version: "1.0.0" }))).pipe(
+      Effect.tapError((error) => Console.error(errorMessage(error))),
+      Effect.provide(NodeServices.layer),
+    ),
+    { disableErrorReporting: true },
+  );
 }

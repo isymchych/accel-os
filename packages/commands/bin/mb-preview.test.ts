@@ -1,49 +1,35 @@
 import assert from "node:assert/strict";
-import { execFile, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { EventEmitter } from "node:events";
-import { mkdtemp, readFile, rm, truncate, writeFile } from "node:fs/promises";
+import { execFile, spawnSync } from "node:child_process";
+import { chmod, mkdtemp, readFile, rm, truncate, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { PassThrough } from "node:stream";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
-import {
-  parseCliArgs,
-  prepareMarkdown,
-  renderDocument,
-  renderGraphvizToSvg,
-} from "./mb-preview.ts";
+import { NodeServices } from "@effect/platform-node";
+import { Effect, Exit, Fiber } from "effect";
+
+import { prepareMarkdown, renderDocument, renderGraphvizToSvg } from "./mb-preview.ts";
+
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>): Promise<A> =>
+  Effect.runPromise(Effect.provide(effect, NodeServices.layer) as Effect.Effect<A, E>);
 
 // oxlint-disable-next-line typescript/strict-void-return -- execFile has a native custom promisify implementation.
 const execFileAsync = promisify(execFile);
 
-class FakeGraphvizChild extends EventEmitter {
-  public readonly stdin = new PassThrough();
-  public readonly stdout = new PassThrough();
-  public readonly stderr = new PassThrough();
-  public killed = false;
-
-  public kill(): boolean {
-    this.killed = true;
-    return true;
-  }
-
-  public emitClose(code: number | null, signal: NodeJS.Signals | null = null): void {
-    this.emit("close", code, signal);
-  }
-}
-
 test("prepareMarkdown pre-renders graphviz fences and leaves browser rendering to marked", async () => {
   const calls: string[] = [];
 
-  const prepared = await prepareMarkdown("before\n\n```dot\ndigraph { a -> b }\n```\n\nafter", {
-    renderGraphviz: async (dot) => {
-      calls.push(dot);
-      return { ok: true, svg: "<svg>diagram</svg>" };
-    },
-  });
+  const prepared = await run(
+    prepareMarkdown("before\n\n```dot\ndigraph { a -> b }\n```\n\nafter", {
+      renderGraphviz: (dot) => {
+        calls.push(dot);
+        return Effect.succeed({ ok: true, svg: "<svg>diagram</svg>" });
+      },
+    }),
+  );
 
   assert.deepEqual(calls, ["digraph { a -> b }"]);
   assert.equal(prepared.hasMermaid, false);
@@ -62,12 +48,15 @@ test("prepareMarkdown pre-renders graphviz fences and leaves browser rendering t
 });
 
 test("prepareMarkdown stores graphviz failures for browser-side error rendering", async () => {
-  const prepared = await prepareMarkdown("```graphviz\ndigraph { a -> }\n```", {
-    renderGraphviz: async () => ({
-      ok: false,
-      error: "syntax <bad>",
+  const prepared = await run(
+    prepareMarkdown("```graphviz\ndigraph { a -> }\n```", {
+      renderGraphviz: () =>
+        Effect.succeed({
+          ok: false,
+          error: "syntax <bad>",
+        }),
     }),
-  });
+  );
 
   assert.equal(prepared.hasGraphviz, false);
   assert.equal(prepared.hasDiagrams, false);
@@ -82,11 +71,7 @@ test("prepareMarkdown stores graphviz failures for browser-side error rendering"
 
 test("prepareMarkdown detects mermaid fences without invoking graphviz", async () => {
   const markdown = "```mermaid\ngraph TD; A-->B\n```";
-  const prepared = await prepareMarkdown(markdown, {
-    renderGraphviz: async () => {
-      throw new Error("graphviz renderer should not be called");
-    },
-  });
+  const prepared = await run(prepareMarkdown(markdown));
 
   assert.equal(prepared.markdown, markdown);
   assert.equal(prepared.hasMermaid, true);
@@ -96,8 +81,8 @@ test("prepareMarkdown detects mermaid fences without invoking graphviz", async (
 });
 
 test("renderDocument embeds Mermaid Tiny for mermaid fences", async () => {
-  const prepared = await prepareMarkdown("```mermaid\ngraph TD; A-->B\n```");
-  const html = await renderDocument(prepared, "Mermaid preview", null);
+  const prepared = await run(prepareMarkdown("```mermaid\ngraph TD; A-->B\n```"));
+  const html = await run(renderDocument(prepared, "Mermaid preview", null));
 
   assert.match(html, /__esbuild_esm_mermaid_nm/u);
   assert.match(html, /globalThis\.mermaid\.run/u);
@@ -105,28 +90,27 @@ test("renderDocument embeds Mermaid Tiny for mermaid fences", async () => {
 
 test("prepareMarkdown preserves normal code fence info strings", async () => {
   const markdown = "```ts title=example.ts\nconst x = 1;\n```";
-  const prepared = await prepareMarkdown(markdown, {
-    renderGraphviz: async () => {
-      throw new Error("graphviz renderer should not be called");
-    },
-  });
+  const prepared = await run(prepareMarkdown(markdown));
 
   assert.equal(prepared.markdown, markdown);
   assert.equal(prepared.hasDiagrams, false);
 });
 
 test("renderDocument embeds marked, DOMPurify, and escaped preview data", async () => {
-  const prepared = await prepareMarkdown(
-    "# Hello\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n```dot\ndigraph { a -> b }\n```",
-    {
-      renderGraphviz: async () => ({
-        ok: true,
-        svg: "<svg><script>alert(1)</script></svg>",
-      }),
-    },
+  const prepared = await run(
+    prepareMarkdown(
+      "# Hello\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n```dot\ndigraph { a -> b }\n```",
+      {
+        renderGraphviz: () =>
+          Effect.succeed({
+            ok: true,
+            svg: "<svg><script>alert(1)</script></svg>",
+          }),
+      },
+    ),
   );
 
-  const html = await renderDocument(prepared, "unsafe </title>", null);
+  const html = await run(renderDocument(prepared, "unsafe </title>", null));
 
   assert.match(html, /<title>unsafe &lt;\/title&gt;<\/title>/u);
   assert.match(html, /<main id="mb-preview-root">/u);
@@ -136,13 +120,6 @@ test("renderDocument embeds marked, DOMPurify, and escaped preview data", async 
   assert.match(html, /"markdown":"# Hello/u);
   assert.match(html, /\\u003Cscript\\u003Ealert\(1\)\\u003C\/script\\u003E/u);
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/u);
-});
-
-test("parseCliArgs enables local image embedding", () => {
-  const args = parseCliArgs(["--embed-images", "notes.md"]);
-
-  assert.equal(args.embedImages, true);
-  assert.equal(args.inputPath, "notes.md");
 });
 
 test("default output filenames preserve normalized Unicode letters", async (context) => {
@@ -225,20 +202,22 @@ test("prepareMarkdown embeds inline and reference-style local images", async (co
   await writeFile(path.join(directory, "a&b.png"), Buffer.from([6, 7, 8]));
   await writeFile(path.join(directory, "space name.png"), Buffer.from([9, 10, 11]));
 
-  const prepared = await prepareMarkdown(
-    [
-      "![inline](inline.png)",
-      "![reference][diagram]",
-      "![percent](100%.png)",
-      "![entity](a&amp;b.png)",
-      "![decimal entity](a&#38;b.png)",
-      "![hex entity](a&#x26;b.png)",
-      "![encoded](space%20name.png#focus)",
-      "![remote](https://example.com/image.png)",
-      "",
-      "[diagram]: reference.svg#shape",
-    ].join("\n"),
-    { embedImagesBaseDir: directory },
+  const prepared = await run(
+    prepareMarkdown(
+      [
+        "![inline](inline.png)",
+        "![reference][diagram]",
+        "![percent](100%.png)",
+        "![entity](a&amp;b.png)",
+        "![decimal entity](a&#38;b.png)",
+        "![hex entity](a&#x26;b.png)",
+        "![encoded](space%20name.png#focus)",
+        "![remote](https://example.com/image.png)",
+        "",
+        "[diagram]: reference.svg#shape",
+      ].join("\n"),
+      { embedImagesBaseDir: directory },
+    ),
   );
 
   assert.deepEqual(prepared.embeddedImages, {
@@ -260,13 +239,22 @@ test("prepareMarkdown rejects missing and unsupported local images", async (cont
   await writeFile(path.join(directory, "image.txt"), "not an image");
 
   await assert.rejects(
-    prepareMarkdown("![missing](missing.png)", { embedImagesBaseDir: directory }),
+    run(prepareMarkdown("![missing](missing.png)", { embedImagesBaseDir: directory })),
     /Cannot embed image "missing\.png"/u,
   );
   await assert.rejects(
-    prepareMarkdown("![unsupported](image.txt)", { embedImagesBaseDir: directory }),
+    run(prepareMarkdown("![unsupported](image.txt)", { embedImagesBaseDir: directory })),
     /unsupported image format/u,
   );
+  for (const [markdown, message] of [
+    ["![unsupported](image.txt)", /unsupported image format/u],
+    ["![invalid](bad%2Fname.png)", /Cannot embed image "bad%2Fname\.png"/u],
+  ] as const) {
+    const error = await run(
+      Effect.flip(prepareMarkdown(markdown, { embedImagesBaseDir: directory })),
+    );
+    assert.match(error.message, message);
+  }
 });
 
 test("prepareMarkdown enforces the per-image size limit", async (context) => {
@@ -279,49 +267,132 @@ test("prepareMarkdown enforces the per-image size limit", async (context) => {
   await truncate(imagePath, 16 * 1024 * 1024 + 1);
 
   await assert.rejects(
-    prepareMarkdown("![large](large.png)", { embedImagesBaseDir: directory }),
+    run(prepareMarkdown("![large](large.png)", { embedImagesBaseDir: directory })),
     /file exceeds 16384KiB/u,
   );
 });
 
-test("renderGraphvizToSvg spawns dot and writes dot input to stdin", async () => {
-  const calls: Array<{ command: string; args: readonly string[]; stdin: string }> = [];
-
-  const resultPromise = renderGraphvizToSvg("digraph { a -> b }", (command, args) => {
-    const child = new FakeGraphvizChild();
-    let stdin = "";
-
-    child.stdin.on("data", (chunk) => {
-      stdin += String(chunk);
-    });
-
-    child.stdin.on("finish", () => {
-      calls.push({ command, args, stdin });
-      child.stdout.end("<svg>ok</svg>");
-      child.stderr.end();
-      queueMicrotask(() => {
-        child.emitClose(0);
-      });
-    });
-
-    return child as unknown as ChildProcessWithoutNullStreams;
-  });
-
-  assert.deepEqual(await resultPromise, { ok: true, svg: "<svg>ok</svg>" });
-  assert.deepEqual(calls, [{ command: "dot", args: ["-Tsvg"], stdin: "digraph { a -> b }" }]);
+test("prepareMarkdown enforces the aggregate image size limit", async (context) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "mb-preview-test-"));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const images = Array.from({ length: 5 }, (_, index) => `${index}.png`);
+  for (const image of images) {
+    const imagePath = path.join(directory, image);
+    await writeFile(imagePath, "");
+    await truncate(imagePath, 16 * 1024 * 1024);
+  }
+  await assert.rejects(
+    run(
+      prepareMarkdown(images.map((image) => `![image](${image})`).join("\n"), {
+        embedImagesBaseDir: directory,
+      }),
+    ),
+    /total size exceeds 65536KiB/u,
+  );
 });
 
-test("renderGraphvizToSvg returns stderr on non-zero dot exits", async () => {
-  const result = await renderGraphvizToSvg("bad", () => {
-    const child = new FakeGraphvizChild();
-    child.stdin.on("finish", () => {
-      child.stderr.end("syntax error\n");
-      queueMicrotask(() => {
-        child.emitClose(1);
-      });
-    });
-    return child as unknown as ChildProcessWithoutNullStreams;
-  });
+test("CLI reads piped stdin and writes only the output path to stdout", async (context) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "mb-preview-test-"));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const output = path.join(directory, "preview.html");
+  const result = spawnSync(
+    process.execPath,
+    [path.join(import.meta.dirname, "mb-preview.ts"), "-o", output],
+    { input: "# Piped content\n", encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, `${output}\n`);
+  assert.match(await readFile(output, "utf8"), /Piped content/u);
+});
 
-  assert.deepEqual(result, { ok: false, error: "syntax error" });
+test("CLI leaves the browser opener running after it exits", async (context) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "mb-preview-open-"));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const opener = path.join(directory, "xdg-open");
+  const marker = path.join(directory, "opened");
+  await writeFile(
+    opener,
+    `#!${process.execPath}\nsetTimeout(() => (awaitImport()), 2000); async function awaitImport() { (await import("node:fs")).writeFileSync(${JSON.stringify(marker)}, process.argv[2]); }\n`,
+  );
+  await chmod(opener, 0o755);
+  const output = path.join(directory, "preview.html");
+  const input = path.join(directory, "input.md");
+  await writeFile(input, "# Preview\n");
+  const result = await execFileAsync(
+    process.execPath,
+    [path.join(import.meta.dirname, "mb-preview.ts"), "--open", "--out", output, input],
+    { env: { ...process.env, PATH: `${directory}${path.delimiter}${process.env["PATH"] ?? ""}` } },
+  );
+  assert.equal(result.stdout, `${output}\n`);
+  await waitForFile(marker);
+  assert.equal(await readFile(marker, "utf8"), output);
+});
+
+async function waitForFile(filePath: string): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      await readFile(filePath);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      await delay(50);
+    }
+  }
+  throw new Error(`Timed out waiting for ${filePath}`);
+}
+
+test("renderGraphvizToSvg rejects oversized input before spawning a process", async () => {
+  const result = await run(renderGraphvizToSvg("x".repeat(256 * 1024 + 1)));
+  assert.deepEqual(result, { ok: false, error: "Graphviz input exceeds 256KiB." });
+});
+
+test("renderGraphvizToSvg streams data, limits output, and times out scoped subprocesses", async (context) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "mb-preview-dot-"));
+  const executable = path.join(directory, "dot");
+  const originalPath = process.env["PATH"];
+  context.after(async () => {
+    if (originalPath === undefined) delete process.env["PATH"];
+    else process.env["PATH"] = originalPath;
+    await rm(directory, { recursive: true, force: true });
+  });
+  await writeFile(
+    executable,
+    `#!${process.execPath}\nlet input = ""; for await (const chunk of process.stdin) input += chunk; if (input === "large") process.stdout.write(Buffer.alloc(2 * 1024 * 1024 + 1)); else if (input === "slow") { (await import("node:fs")).writeFileSync(${JSON.stringify(path.join(directory, "pid"))}, String(process.pid)); setInterval(() => {}, 1000); } else if (input === "bad") { process.stderr.write("syntax error\\n"); process.exitCode = 1; } else process.stdout.write("<svg>" + input + "</svg>");\n`,
+  );
+  await chmod(executable, 0o755);
+  process.env["PATH"] = `${directory}${path.delimiter}${originalPath ?? ""}`;
+
+  assert.deepEqual(await run(renderGraphvizToSvg("graph input")), {
+    ok: true,
+    svg: "<svg>graph input</svg>",
+  });
+  assert.deepEqual(await run(renderGraphvizToSvg("large")), {
+    ok: false,
+    error: "Graphviz output exceeds 2048KiB.",
+  });
+  assert.deepEqual(await run(renderGraphvizToSvg("bad")), {
+    ok: false,
+    error: "syntax error",
+  });
+  assert.deepEqual(await run(renderGraphvizToSvg("slow")), {
+    ok: false,
+    error: "Graphviz timed out after 5000ms.",
+  });
+  const pid = Number(await readFile(path.join(directory, "pid"), "utf8"));
+  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+  await unlink(path.join(directory, "pid"));
+  const fiber = Effect.runFork(
+    renderGraphvizToSvg("slow").pipe(Effect.provide(NodeServices.layer)),
+  );
+  await waitForFile(path.join(directory, "pid"));
+  const interruptedPid = Number(await readFile(path.join(directory, "pid"), "utf8"));
+  await run(Fiber.interrupt(fiber));
+  const [exit] = await run(Fiber.awaitAll([fiber]));
+  assert.ok(exit && Exit.hasInterrupts(exit));
+  assert.throws(() => process.kill(interruptedPid, 0), { code: "ESRCH" });
+  await unlink(executable);
+  process.env["PATH"] = directory;
+  const missing = await run(renderGraphvizToSvg("graph input"));
+  assert.equal(missing.ok, false);
+  assert.match(missing.error, /ENOENT|not\s?found/iu);
 });
