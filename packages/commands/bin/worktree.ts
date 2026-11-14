@@ -1,13 +1,14 @@
-import { spawnSync } from "node:child_process";
-import { mkdirSync, statSync } from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
-import { createInterface } from "node:readline/promises";
-import { parseArgs as parseNodeArgs } from "node:util";
 
-import { assertNever, getErrorMessage, isPresent } from "@accel-os/shared/guards";
-import { parseJsonWithSchema } from "@accel-os/shared/json";
-import { Type } from "typebox";
+import { getErrorMessage, isPresent } from "@accel-os/shared/guards";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { Cause, Console, Effect, Exit, FileSystem, Schema, Stdio, Stream, Terminal } from "effect";
+import type { PlatformError } from "effect";
+import { Argument, CliError, Command, Flag } from "effect/cli";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
+
+import { logEvent, withExecutionLog } from "../lib/execution-log.ts";
 
 /**
  * Repo-local Git worktree helper.
@@ -36,7 +37,11 @@ import { Type } from "typebox";
  * - repo selection defaults to `AI_CWD` when present, otherwise the current working directory;
  *   `--repo <path>` overrides that starting directory explicitly
  */
-type CommandName = "list" | "checkout" | "new-branch" | "new-from-main" | "new-from-pr" | "remove";
+type WorktreeOperation<A, R = never> = Effect.Effect<
+  A,
+  Error | PlatformError.PlatformError | Terminal.QuitError,
+  ChildProcessSpawner.ChildProcessSpawner | Stdio.Stdio | R
+>;
 
 interface RepoIdentity {
   readonly owner: string;
@@ -70,20 +75,6 @@ interface WorktreeStatus {
   readonly comparisonRef: string;
 }
 
-interface ParsedArgs {
-  readonly command: CommandName | null;
-  readonly positional: string[];
-  readonly deleteBranch: boolean;
-  readonly dryRun: boolean;
-  readonly force: boolean;
-  readonly runSetup: boolean;
-  readonly fromRef: string | null;
-  readonly help: boolean;
-  readonly json: boolean;
-  readonly pathOverride: string | null;
-  readonly repoOverride: string | null;
-}
-
 interface RunOptions {
   readonly cwd?: string;
   readonly stdio?: "inherit" | "pipe";
@@ -112,27 +103,23 @@ interface PullRequestMetadata {
   } | null;
 }
 
-const OptionalLoginObjectSchema = Type.Object({
-  login: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+const OptionalLoginObjectSchema = Schema.Struct({
+  login: Schema.optionalKey(Schema.NullOr(Schema.String)),
 });
 
-const PullRequestMetadataJsonSchema = Type.Object(
-  {
-    number: Type.Number(),
-    headRefName: Type.String(),
-    isCrossRepository: Type.Boolean(),
-    headRepository: Type.Union([
-      Type.Object({
-        name: Type.String(),
-        nameWithOwner: Type.String(),
-        owner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
-      }),
-      Type.Null(),
-    ]),
-    headRepositoryOwner: Type.Optional(Type.Union([OptionalLoginObjectSchema, Type.Null()])),
-  },
-  { additionalProperties: false },
-);
+const PullRequestMetadataJsonSchema = Schema.Struct({
+  number: Schema.Number,
+  headRefName: Schema.String,
+  isCrossRepository: Schema.Boolean,
+  headRepository: Schema.NullOr(
+    Schema.Struct({
+      name: Schema.String,
+      nameWithOwner: Schema.String,
+      owner: Schema.optionalKey(Schema.NullOr(OptionalLoginObjectSchema)),
+    }),
+  ),
+  headRepositoryOwner: Schema.optionalKey(Schema.NullOr(OptionalLoginObjectSchema)),
+});
 
 type CreateCollisionDecision =
   | {
@@ -168,167 +155,6 @@ type CreationTarget =
       readonly displaySource: string;
     };
 
-function isErrnoException(value: unknown): value is NodeJS.ErrnoException {
-  return value instanceof Error && "code" in value;
-}
-
-function pathExists(filePath: string): boolean {
-  try {
-    statSync(filePath);
-    return true;
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ENOENT") {
-      return false;
-    }
-
-    throw error;
-  }
-}
-
-async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
-  if (parsed.help || parsed.command === null) {
-    printUsage();
-    process.exit(parsed.help ? 0 : 1);
-  }
-
-  const context = buildContext(parsed.repoOverride);
-
-  switch (parsed.command) {
-    case "list":
-      ensureNoExtraArgs(parsed.positional, "list");
-      runList(context, parsed.json);
-      return;
-    case "checkout":
-      runCheckout(context, parsed.positional, parsed.runSetup, parsed.pathOverride, parsed.dryRun);
-      return;
-    case "new-branch":
-      runNewBranch(
-        context,
-        parsed.positional,
-        parsed.fromRef,
-        parsed.runSetup,
-        parsed.pathOverride,
-        parsed.dryRun,
-      );
-      return;
-    case "new-from-main":
-      runNewFromMain(
-        context,
-        parsed.positional,
-        parsed.runSetup,
-        parsed.pathOverride,
-        parsed.dryRun,
-      );
-      return;
-    case "new-from-pr":
-      runNewFromPr(context, parsed.positional, parsed.runSetup, parsed.pathOverride, parsed.dryRun);
-      return;
-    case "remove":
-      await runRemove(context, parsed.positional, parsed.deleteBranch, parsed.force, parsed.dryRun);
-      return;
-    default:
-      assertNever(parsed.command);
-  }
-}
-
-export function parseArgs(args: string[]): ParsedArgs {
-  const parsed = parseNodeArgs({
-    args,
-    allowPositionals: true,
-    options: {
-      "delete-branch": { type: "boolean" },
-      "dry-run": { type: "boolean" },
-      force: { type: "boolean" },
-      "no-setup": { type: "boolean" },
-      from: { type: "string" },
-      help: { type: "boolean", short: "h" },
-      json: { type: "boolean" },
-      path: { type: "string" },
-      repo: { type: "string" },
-    },
-  });
-
-  const fromRef = requireOptionValue(parsed.values.from, "from", "ref");
-  const pathOverride = requireOptionValue(parsed.values.path, "path", "directory");
-  const repoOverride = requireOptionValue(parsed.values.repo, "repo", "directory");
-
-  const commandCandidate = parsed.positionals[0] ?? null;
-  const command = isCommandName(commandCandidate) ? commandCandidate : null;
-
-  return {
-    command,
-    positional: command === null ? parsed.positionals : parsed.positionals.slice(1),
-    deleteBranch: parsed.values["delete-branch"] === true,
-    dryRun: parsed.values["dry-run"] === true,
-    force: parsed.values.force === true,
-    runSetup: parsed.values["no-setup"] !== true,
-    fromRef,
-    help: parsed.values.help === true,
-    json: parsed.values.json === true,
-    pathOverride,
-    repoOverride,
-  };
-}
-
-function requireOptionValue(
-  value: string | undefined,
-  optionName: string,
-  valueDescription: string,
-): string | null {
-  if (value === undefined) return null;
-  if (value === "")
-    throw new Error(`Option "--${optionName}" requires a ${valueDescription} value.`);
-  return value;
-}
-
-function isCommandName(value: string | null): value is CommandName {
-  return (
-    value === "list" ||
-    value === "checkout" ||
-    value === "new-branch" ||
-    value === "new-from-main" ||
-    value === "new-from-pr" ||
-    value === "remove"
-  );
-}
-
-function printUsage(): void {
-  console.log(`Usage:
-  mb-worktree [--repo <dir>] list
-  mb-worktree [--repo <dir>] checkout <ref>
-  mb-worktree [--repo <dir>] new-branch <branch> --from <ref>
-  mb-worktree [--repo <dir>] new-from-main <branch>
-  mb-worktree [--repo <dir>] new-from-pr <url-or-number>
-  mb-worktree [--repo <dir>] remove <branch-or-path> [--delete-branch] [--force]
-
-Commands:
-  list                      List linked worktrees and their local status.
-  checkout <ref>            Create a worktree from an existing branch, remote branch, tag, or commit.
-  new-branch <branch>       Create a new branch worktree from the explicit --from ref.
-  new-from-main <branch>    Fetch origin/main, create a new branch worktree, then run setup-worktree.sh when present.
-  new-from-pr <url|number>  Fetch a same-repo PR head and create its worktree when no same-named local branch exists.
-  remove <branch-or-path>   Remove a worktree. Prompts if it has file changes, untracked files, or local commits unless --force is set.
-
-Options:
-  --from <ref>              Base ref for new-branch.
-  --json                    Emit machine-readable JSON output for list.
-  --path <dir>              Override the target worktree directory for create commands.
-  --repo <dir>              Target a repo from outside it. Relative paths resolve from the caller's original cwd.
-  --delete-branch           After successful removal, also delete the local branch with git branch -d/-D.
-  --dry-run                 Print the resolved actions without creating or removing anything.
-  --force                   Skip remove confirmation and use forceful branch/worktree deletion where applicable.
-  --no-setup                Skip setup-worktree.sh after creating a new worktree.
-  -h, --help                Show this help message.
-`);
-}
-
-function ensureNoExtraArgs(args: readonly string[], command: CommandName): void {
-  if (args.length > 0) {
-    throw new Error(`Command "${command}" does not accept extra arguments.`);
-  }
-}
-
 export function getInvocationDirectory(
   cwd: string = process.cwd(),
   aiCwd: string | null = process.env["AI_CWD"] ?? null,
@@ -349,44 +175,59 @@ export function resolveRepoSearchStart(
     : path.resolve(invocationDirectory, repoOverride);
 }
 
-function buildContext(repoOverride: string | null): CommandContext {
-  const invocationDirectory = getInvocationDirectory();
-  const repoSearchStart = resolveRepoSearchStart(invocationDirectory, repoOverride);
-  const primaryWorktreeRoot = resolvePrimaryWorktreeRoot(repoSearchStart);
-  const currentWorktreeRoot = resolveGitTopLevel(repoSearchStart);
-  const repoRoot = primaryWorktreeRoot;
-  const repoIdentity = resolveRepoIdentity(repoRoot);
-
-  return {
-    repoRoot,
-    primaryWorktreeRoot,
-    currentWorktreeRoot,
-    repoIdentity,
-  };
-}
-
-function resolveGitTopLevel(cwd: string): string {
-  const result = runCommand("git", ["rev-parse", "--show-toplevel"], { cwd });
-  return result.stdout.trim();
-}
-
-function resolvePrimaryWorktreeRoot(cwd: string): string {
-  const result = runCommand("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], {
-    cwd,
+function buildContext(repoOverride: string | null): WorktreeOperation<CommandContext> {
+  return Effect.gen(function* () {
+    const invocationDirectory = getInvocationDirectory();
+    const repoSearchStart = resolveRepoSearchStart(invocationDirectory, repoOverride);
+    const primaryWorktreeRoot = yield* resolvePrimaryWorktreeRoot(repoSearchStart);
+    const currentWorktreeRoot = yield* resolveGitTopLevel(repoSearchStart);
+    const repoRoot = primaryWorktreeRoot;
+    const repoIdentity = yield* resolveRepoIdentity(repoRoot);
+    yield* logEvent("repo_resolved", {
+      repo_root: repoRoot,
+      current_worktree: currentWorktreeRoot,
+    });
+    return { repoRoot, primaryWorktreeRoot, currentWorktreeRoot, repoIdentity };
   });
-  const gitCommonDir = result.stdout.trim();
-
-  if (path.basename(gitCommonDir) !== ".git") {
-    throw new Error(`Expected git common dir to end with .git, got: ${gitCommonDir}`);
-  }
-
-  return path.dirname(gitCommonDir);
 }
 
-function resolveRepoIdentity(repoRoot: string): RepoIdentity {
-  const remoteUrl = runCommand("git", ["remote", "get-url", "origin"], {
-    cwd: repoRoot,
-  }).stdout.trim();
+function resolveGitTopLevel(cwd: string): WorktreeOperation<string> {
+  return runCommand("git", ["rev-parse", "--show-toplevel"], { cwd }).pipe(
+    Effect.map((result) => result.stdout.trim()),
+  );
+}
+
+function resolvePrimaryWorktreeRoot(cwd: string): WorktreeOperation<string> {
+  return Effect.gen(function* () {
+    const result = yield* runCommand(
+      "git",
+      ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      {
+        cwd,
+      },
+    );
+    const gitCommonDir = result.stdout.trim();
+    if (path.basename(gitCommonDir) !== ".git") {
+      return yield* Effect.fail(
+        new Error(`Expected git common dir to end with .git, got: ${gitCommonDir}`),
+      );
+    }
+    return path.dirname(gitCommonDir);
+  });
+}
+
+function resolveRepoIdentity(repoRoot: string): WorktreeOperation<RepoIdentity> {
+  return runCommand("git", ["remote", "get-url", "origin"], { cwd: repoRoot }).pipe(
+    Effect.flatMap((result) =>
+      Effect.try({
+        try: () => parseRepoIdentity(result.stdout.trim()),
+        catch: (cause) => new Error(getErrorMessage(cause), { cause }),
+      }),
+    ),
+  );
+}
+
+function parseRepoIdentity(remoteUrl: string): RepoIdentity {
   const normalizedUrl = remoteUrl.replace(/\.git$/u, "");
 
   const sshMatch = /^(?:ssh:\/\/)?git@github\.com[:/](.+)\/(.+)$/u.exec(normalizedUrl);
@@ -426,180 +267,174 @@ interface WorktreeListRow {
   readonly primary: string;
 }
 
-function runList(context: CommandContext, json: boolean): void {
-  const statuses = collectWorktreeStatuses(context);
+function runList(context: CommandContext, json: boolean): WorktreeOperation<void> {
+  return Effect.gen(function* () {
+    const statuses = yield* collectWorktreeStatuses(context);
 
-  if (statuses.length === 0) {
-    console.log(json ? "[]" : "No worktrees found.");
-    return;
-  }
+    if (statuses.length === 0) {
+      yield* Console.log(json ? "[]" : "No worktrees found.");
+      return;
+    }
 
-  const rows = buildWorktreeListRows(context.repoRoot, statuses);
-  if (json) {
-    console.log(JSON.stringify(rows, null, 2));
-    return;
-  }
+    const rows = buildWorktreeListRows(context.repoRoot, statuses);
+    if (json) {
+      yield* Console.log(JSON.stringify(rows, null, 2));
+      return;
+    }
 
-  const headers: (keyof WorktreeListRow)[] = [
-    "branch",
-    "source",
-    "pathKind",
-    "upstream",
-    "comparison",
-    "path",
-    "dirty",
-    "untracked",
-    "localCommits",
-    "current",
-    "primary",
-  ];
+    const headers: (keyof WorktreeListRow)[] = [
+      "branch",
+      "source",
+      "pathKind",
+      "upstream",
+      "comparison",
+      "path",
+      "dirty",
+      "untracked",
+      "localCommits",
+      "current",
+      "primary",
+    ];
 
-  const widths = headers.map((header) =>
-    Math.max(header.length, ...rows.map((row) => row[header].length)),
-  );
+    const widths = headers.map((header) =>
+      Math.max(header.length, ...rows.map((row) => row[header].length)),
+    );
 
-  const headerLine = headers
-    .map((header, index) => header.padEnd(widths[index] ?? header.length))
-    .join("  ");
-  const separatorLine = widths.map((width) => "-".repeat(width)).join("  ");
-
-  console.log(`${headerLine}\n${separatorLine}`);
-  for (const row of rows) {
-    const line = headers
-      .map((header, index) => row[header].padEnd(widths[index] ?? header.length))
+    const headerLine = headers
+      .map((header, index) => header.padEnd(widths[index] ?? header.length))
       .join("  ");
-    console.log(line);
-  }
+    const separatorLine = widths.map((width) => "-".repeat(width)).join("  ");
+
+    yield* Console.log(`${headerLine}\n${separatorLine}`);
+    for (const row of rows) {
+      const line = headers
+        .map((header, index) => row[header].padEnd(widths[index] ?? header.length))
+        .join("  ");
+      yield* Console.log(line);
+    }
+  });
 }
 
 function runCheckout(
   context: CommandContext,
-  args: readonly string[],
+  requestedRef: string,
   runSetup: boolean,
   pathOverride: string | null,
   dryRun: boolean,
-): void {
-  const requestedRef = args[0];
-  if (!requestedRef || args.length !== 1) {
-    throw new Error('Command "checkout" requires exactly one ref.');
-  }
-
-  const target = resolveCheckoutTarget(context, requestedRef, pathOverride);
-  createOrReuseWorktree(context, target, runSetup, dryRun);
+): WorktreeOperation<void, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const target = yield* resolveCheckoutTarget(context, requestedRef, pathOverride);
+    yield* createOrReuseWorktree(context, target, runSetup, dryRun);
+  });
 }
 
 function runNewBranch(
   context: CommandContext,
-  args: readonly string[],
+  branchName: string,
   fromRef: string | null,
   runSetup: boolean,
   pathOverride: string | null,
   dryRun: boolean,
-): void {
-  const branchName = args[0];
-  if (!branchName || args.length !== 1) {
-    throw new Error('Command "new-branch" requires exactly one new branch name.');
-  }
-
+): WorktreeOperation<void, FileSystem.FileSystem> {
   if (!fromRef) {
-    throw new Error('Command "new-branch" requires "--from <ref>".');
+    return Effect.fail(new Error('Command "new-branch" requires "--from <ref>".'));
   }
 
   const target = buildNewBranchTarget(context, branchName, fromRef, pathOverride);
-  createOrReuseWorktree(context, target, runSetup, dryRun);
+  return createOrReuseWorktree(context, target, runSetup, dryRun);
 }
 
 function runNewFromMain(
   context: CommandContext,
-  args: readonly string[],
+  branchName: string,
   runSetup: boolean,
   pathOverride: string | null,
   dryRun: boolean,
-): void {
-  const branchName = args[0];
-  if (!branchName || args.length !== 1) {
-    throw new Error('Command "new-from-main" requires exactly one new branch name.');
-  }
+): WorktreeOperation<void, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    if (dryRun) {
+      yield* Console.log("Dry run only. Skipping fetch for origin/main.");
+    } else {
+      yield* Console.log("Fetching origin/main...");
+      yield* runCommand("git", ["fetch", "origin", "main"], {
+        cwd: context.repoRoot,
+        stdio: "inherit",
+      });
+    }
 
-  if (dryRun) {
-    console.log("Dry run only. Skipping fetch for origin/main.");
-  } else {
-    console.log("Fetching origin/main...");
-    runCommand("git", ["fetch", "origin", "main"], {
-      cwd: context.repoRoot,
-      stdio: "inherit",
-    });
-  }
-
-  const target = buildNewBranchTarget(context, branchName, "origin/main", pathOverride);
-  createOrReuseWorktree(context, target, runSetup, dryRun);
+    const target = buildNewBranchTarget(context, branchName, "origin/main", pathOverride);
+    yield* createOrReuseWorktree(context, target, runSetup, dryRun);
+  });
 }
 
 function runNewFromPr(
   context: CommandContext,
-  args: readonly string[],
+  prSelector: string,
   runSetup: boolean,
   pathOverride: string | null,
   dryRun: boolean,
-): void {
-  const prSelector = args[0];
-  if (!prSelector || args.length !== 1) {
-    throw new Error('Command "new-from-pr" requires exactly one PR URL or number.');
-  }
+): WorktreeOperation<void, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const metadata = yield* resolvePullRequestMetadata(context, prSelector);
 
-  const metadata = resolvePullRequestMetadata(context, prSelector);
+    if (metadata.isCrossRepository) {
+      yield* Effect.fail(
+        new Error(
+          `PR #${metadata.number} comes from a fork/cross-repo branch; only same-repo PRs are supported.`,
+        ),
+      );
+    }
 
-  if (metadata.isCrossRepository) {
-    throw new Error(
-      `PR #${metadata.number} comes from a fork/cross-repo branch; only same-repo PRs are supported.`,
+    const headRepository = metadata.headRepository;
+    if (headRepository?.nameWithOwner !== context.repoIdentity.nameWithOwner) {
+      yield* Effect.fail(
+        new Error(
+          `PR #${metadata.number} head repository does not match ${context.repoIdentity.nameWithOwner}.`,
+        ),
+      );
+    }
+
+    if (dryRun) {
+      yield* Console.log(`Dry run only. Skipping fetch for origin/${metadata.headRefName}.`);
+    } else {
+      yield* Console.log(`Fetching origin/${metadata.headRefName}...`);
+      yield* runCommand("git", ["fetch", "origin", metadata.headRefName], {
+        cwd: context.repoRoot,
+        stdio: "inherit",
+      });
+    }
+
+    const existingLocalHeadBranch = yield* resolveExistingLocalBranch(
+      context.repoRoot,
+      metadata.headRefName,
     );
-  }
+    if (existingLocalHeadBranch) {
+      yield* Effect.fail(
+        new Error(
+          formatExistingLocalBranchConflict(
+            existingLocalHeadBranch,
+            `fetched PR head origin/${metadata.headRefName}`,
+          ),
+        ),
+      );
+    }
 
-  const headRepository = metadata.headRepository;
-  if (headRepository?.nameWithOwner !== context.repoIdentity.nameWithOwner) {
-    throw new Error(
-      `PR #${metadata.number} head repository does not match ${context.repoIdentity.nameWithOwner}.`,
+    const target = buildBranchTarget(
+      context,
+      metadata.headRefName,
+      resolvePrHeadSource(metadata.headRefName),
+      false,
+      pathOverride,
     );
-  }
-
-  if (dryRun) {
-    console.log(`Dry run only. Skipping fetch for origin/${metadata.headRefName}.`);
-  } else {
-    console.log(`Fetching origin/${metadata.headRefName}...`);
-    runCommand("git", ["fetch", "origin", metadata.headRefName], {
-      cwd: context.repoRoot,
-      stdio: "inherit",
-    });
-  }
-
-  const existingLocalHeadBranch = resolveExistingLocalBranch(
-    context.repoRoot,
-    metadata.headRefName,
-  );
-  if (existingLocalHeadBranch) {
-    throw new Error(
-      formatExistingLocalBranchConflict(
-        existingLocalHeadBranch,
-        `fetched PR head origin/${metadata.headRefName}`,
-      ),
-    );
-  }
-
-  const target = buildBranchTarget(
-    context,
-    metadata.headRefName,
-    resolvePrHeadSource(metadata.headRefName),
-    false,
-    pathOverride,
-  );
-  createOrReuseWorktree(context, target, runSetup, dryRun);
+    yield* createOrReuseWorktree(context, target, runSetup, dryRun);
+  });
 }
 
 function resolvePullRequestMetadata(
   context: CommandContext,
   prSelector: string,
-): PullRequestMetadata {
-  const json = runCommand(
+): WorktreeOperation<PullRequestMetadata> {
+  return runCommand(
     "gh",
     [
       "pr",
@@ -611,16 +446,44 @@ function resolvePullRequestMetadata(
     {
       cwd: context.repoRoot,
     },
-  ).stdout;
-
-  return parsePullRequestMetadataJson(json, context.repoIdentity.owner);
+  ).pipe(
+    Effect.flatMap((result) =>
+      Effect.try({
+        try: () => parsePullRequestMetadataJson(result.stdout, context.repoIdentity.owner),
+        catch: (cause) => new Error(getErrorMessage(cause), { cause }),
+      }),
+    ),
+  );
 }
 
 export function parsePullRequestMetadataJson(
   json: string,
   fallbackOwnerLogin: string,
 ): PullRequestMetadata {
-  const parsed = parseJsonWithSchema(json, PullRequestMetadataJsonSchema, "gh PR metadata");
+  let value: unknown;
+  try {
+    value = JSON.parse(json);
+  } catch (error) {
+    throw new Error("gh PR metadata: invalid JSON syntax", { cause: error });
+  }
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const allowed = new Set([
+      "number",
+      "headRefName",
+      "isCrossRepository",
+      "headRepository",
+      "headRepositoryOwner",
+    ]);
+    if (Object.keys(value).some((key) => !allowed.has(key))) {
+      throw new Error("gh PR metadata: invalid JSON: unexpected top-level field");
+    }
+  }
+  let parsed: typeof PullRequestMetadataJsonSchema.Type;
+  try {
+    parsed = Schema.decodeUnknownSync(PullRequestMetadataJsonSchema)(value);
+  } catch (error) {
+    throw new Error(`gh PR metadata: invalid JSON: ${getErrorMessage(error)}`, { cause: error });
+  }
 
   return {
     number: parsed.number,
@@ -654,71 +517,75 @@ function resolveCheckoutTarget(
   context: CommandContext,
   requestedRef: string,
   pathOverride: string | null,
-): CreationTarget {
-  const remoteBranch = resolveRemoteBranch(context.repoRoot, requestedRef);
-  if (remoteBranch && isExplicitRemoteBranchRequest(requestedRef, remoteBranch)) {
-    const existingLocalBranch = resolveExistingLocalBranch(
-      context.repoRoot,
-      remoteBranch.localBranchName,
-    );
-    if (existingLocalBranch) {
-      throw new Error(
-        formatExistingLocalBranchConflict(
-          existingLocalBranch,
-          `remote ref ${remoteBranch.remoteRef}`,
-        ),
+): WorktreeOperation<CreationTarget> {
+  return Effect.gen(function* () {
+    const remoteBranch = yield* resolveRemoteBranch(context.repoRoot, requestedRef);
+    if (remoteBranch && isExplicitRemoteBranchRequest(requestedRef, remoteBranch)) {
+      const existingLocalBranch = yield* resolveExistingLocalBranch(
+        context.repoRoot,
+        remoteBranch.localBranchName,
       );
-    }
+      if (existingLocalBranch) {
+        return yield* Effect.fail(
+          new Error(
+            formatExistingLocalBranchConflict(
+              existingLocalBranch,
+              `remote ref ${remoteBranch.remoteRef}`,
+            ),
+          ),
+        );
+      }
 
-    return buildBranchTarget(
-      context,
-      remoteBranch.localBranchName,
-      remoteBranch.remoteRef,
-      false,
-      pathOverride,
-    );
-  }
-
-  const localBranch = resolveExistingLocalBranch(context.repoRoot, requestedRef);
-  if (localBranch) {
-    return buildBranchTarget(context, localBranch, localBranch, false, pathOverride);
-  }
-
-  if (remoteBranch) {
-    const localBranchFromRemote = resolveExistingLocalBranch(
-      context.repoRoot,
-      remoteBranch.localBranchName,
-    );
-    if (localBranchFromRemote) {
       return buildBranchTarget(
         context,
-        localBranchFromRemote,
-        localBranchFromRemote,
+        remoteBranch.localBranchName,
+        remoteBranch.remoteRef,
         false,
         pathOverride,
       );
     }
 
-    return buildBranchTarget(
-      context,
-      remoteBranch.localBranchName,
-      remoteBranch.remoteRef,
-      false,
-      pathOverride,
-    );
-  }
+    const localBranch = yield* resolveExistingLocalBranch(context.repoRoot, requestedRef);
+    if (localBranch) {
+      return buildBranchTarget(context, localBranch, localBranch, false, pathOverride);
+    }
 
-  if (refExists(context.repoRoot, `refs/tags/${requestedRef}`)) {
-    const resolvedCommit = resolveCommitish(context.repoRoot, requestedRef);
-    return buildDetachedTarget(context, requestedRef, resolvedCommit, pathOverride);
-  }
+    if (remoteBranch) {
+      const localBranchFromRemote = yield* resolveExistingLocalBranch(
+        context.repoRoot,
+        remoteBranch.localBranchName,
+      );
+      if (localBranchFromRemote) {
+        return buildBranchTarget(
+          context,
+          localBranchFromRemote,
+          localBranchFromRemote,
+          false,
+          pathOverride,
+        );
+      }
 
-  const resolvedCommit = tryResolveCommitish(context.repoRoot, requestedRef);
-  if (resolvedCommit) {
-    return buildDetachedTarget(context, requestedRef, resolvedCommit, pathOverride);
-  }
+      return buildBranchTarget(
+        context,
+        remoteBranch.localBranchName,
+        remoteBranch.remoteRef,
+        false,
+        pathOverride,
+      );
+    }
 
-  throw new Error(`Could not resolve ref: ${requestedRef}`);
+    if (yield* refExists(context.repoRoot, `refs/tags/${requestedRef}`)) {
+      const resolvedCommit = yield* resolveCommitish(context.repoRoot, requestedRef);
+      return buildDetachedTarget(context, requestedRef, resolvedCommit, pathOverride);
+    }
+
+    const resolvedCommit = yield* tryResolveCommitish(context.repoRoot, requestedRef);
+    if (resolvedCommit) {
+      return buildDetachedTarget(context, requestedRef, resolvedCommit, pathOverride);
+    }
+
+    return yield* Effect.fail(new Error(`Could not resolve ref: ${requestedRef}`));
+  });
 }
 
 export function formatExistingLocalBranchConflict(
@@ -786,68 +653,85 @@ function createOrReuseWorktree(
   target: CreationTarget,
   runSetup: boolean,
   dryRun: boolean,
-): void {
-  const existingWorktrees = listWorktrees(context.repoRoot);
-  const collisionDecision = evaluateCreateCollision(existingWorktrees, target);
+): WorktreeOperation<void, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const existingWorktrees = yield* listWorktrees(context.repoRoot);
+    const collisionDecision = evaluateCreateCollision(existingWorktrees, target);
+    yield* logEvent("creation_planned", {
+      target_path: target.worktreePath,
+      source: target.displaySource,
+      decision: collisionDecision.kind,
+      dry_run: dryRun,
+      run_setup: runSetup,
+    });
 
-  if (collisionDecision.kind === "reuse-existing") {
-    console.log(
-      `already exists: ${formatDisplayPath(
-        context.repoRoot,
-        collisionDecision.existingWorktree.path,
-      )}`,
-    );
-    return;
-  }
+    if (collisionDecision.kind === "reuse-existing") {
+      yield* Console.log(
+        `already exists: ${formatDisplayPath(
+          context.repoRoot,
+          collisionDecision.existingWorktree.path,
+        )}`,
+      );
+      return;
+    }
 
-  if (collisionDecision.kind === "path-conflict") {
-    throw new Error(
-      `Target path already belongs to a different worktree: ${formatDisplayPath(
-        context.repoRoot,
-        collisionDecision.existingWorktree.path,
-      )}`,
-    );
-  }
+    if (collisionDecision.kind === "path-conflict") {
+      yield* Effect.fail(
+        new Error(
+          `Target path already belongs to a different worktree: ${formatDisplayPath(
+            context.repoRoot,
+            collisionDecision.existingWorktree.path,
+          )}`,
+        ),
+      );
+    }
 
-  if (collisionDecision.kind === "branch-conflict") {
-    throw new Error(
-      `Branch "${
-        target.kind === "branch" ? target.branchName : "(detached)"
-      }" is already checked out in ${formatDisplayPath(
-        context.repoRoot,
-        collisionDecision.existingWorktree.path,
-      )}.`,
-    );
-  }
+    if (collisionDecision.kind === "branch-conflict") {
+      yield* Effect.fail(
+        new Error(
+          `Branch "${
+            target.kind === "branch" ? target.branchName : "(detached)"
+          }" is already checked out in ${formatDisplayPath(
+            context.repoRoot,
+            collisionDecision.existingWorktree.path,
+          )}.`,
+        ),
+      );
+    }
 
-  if (pathExists(target.worktreePath)) {
-    throw new Error(
-      `Target path exists but is not a registered worktree: ${formatDisplayPath(
+    if (yield* fs.exists(target.worktreePath)) {
+      yield* Effect.fail(
+        new Error(
+          `Target path exists but is not a registered worktree: ${formatDisplayPath(
+            context.repoRoot,
+            target.worktreePath,
+          )}. Remove it or choose a different target.`,
+        ),
+      );
+    }
+
+    if (dryRun) {
+      yield* printDryRunPlan(context.repoRoot, target, runSetup);
+      return;
+    }
+
+    yield* fs.makeDirectory(path.dirname(target.worktreePath), { recursive: true });
+
+    yield* Console.log(
+      `Creating worktree at ${formatDisplayPath(
         context.repoRoot,
         target.worktreePath,
-      )}. Remove it or choose a different target.`,
+      )} from ${target.displaySource}...`,
     );
-  }
+    yield* runCommand("git", target.createArgs, {
+      cwd: context.repoRoot,
+      stdio: "inherit",
+    });
 
-  if (dryRun) {
-    printDryRunPlan(context.repoRoot, target, runSetup);
-    return;
-  }
-
-  mkdirSync(path.dirname(target.worktreePath), { recursive: true });
-
-  console.log(
-    `Creating worktree at ${formatDisplayPath(
-      context.repoRoot,
-      target.worktreePath,
-    )} from ${target.displaySource}...`,
-  );
-  runCommand("git", target.createArgs, {
-    cwd: context.repoRoot,
-    stdio: "inherit",
+    yield* logEvent("worktree_created", { target_path: target.worktreePath });
+    yield* runSetupWorktreeHookIfPresent(context.repoRoot, target.worktreePath, runSetup);
   });
-
-  runSetupWorktreeHookIfPresent(context.repoRoot, target.worktreePath, runSetup);
 }
 
 export function evaluateCreateCollision(
@@ -903,16 +787,27 @@ export function isReusableExistingWorktree(
   return existingWorktree.detached && existingWorktree.head === target.resolvedCommit;
 }
 
-function resolveExistingLocalBranch(repoRoot: string, branchName: string): string | null {
-  return refExists(repoRoot, `refs/heads/${branchName}`) ? branchName : null;
+function resolveExistingLocalBranch(
+  repoRoot: string,
+  branchName: string,
+): WorktreeOperation<string | null> {
+  return refExists(repoRoot, `refs/heads/${branchName}`).pipe(
+    Effect.map((exists) => (exists ? branchName : null)),
+  );
 }
 
 function resolveRemoteBranch(
   repoRoot: string,
   requestedRef: string,
-): RemoteBranchResolution | null {
-  const remoteRefs = listRemoteTrackingRefs(repoRoot);
-  return resolveRemoteBranchFromRefs(remoteRefs, requestedRef);
+): WorktreeOperation<RemoteBranchResolution | null> {
+  return listRemoteTrackingRefs(repoRoot).pipe(
+    Effect.flatMap((remoteRefs) =>
+      Effect.try({
+        try: () => resolveRemoteBranchFromRefs(remoteRefs, requestedRef),
+        catch: (cause) => new Error(getErrorMessage(cause), { cause }),
+      }),
+    ),
+  );
 }
 
 export function resolveRemoteBranchFromRefs(
@@ -961,44 +856,42 @@ function deriveLocalBranchNameFromRemoteRef(remoteRef: string): string {
   return remoteRef.slice(separatorIndex + 1);
 }
 
-function listRemoteTrackingRefs(repoRoot: string): string[] {
-  const output = runCommand(
-    "git",
-    ["for-each-ref", "--format=%(refname:strip=2)", "refs/remotes"],
-    { cwd: repoRoot },
-  ).stdout;
-
-  return output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.endsWith("/HEAD"));
-}
-
-function refExists(repoRoot: string, ref: string): boolean {
-  return (
-    runCommand("git", ["show-ref", "--verify", "--quiet", ref], {
-      cwd: repoRoot,
-      allowFailure: true,
-    }).status === 0
+function listRemoteTrackingRefs(repoRoot: string): WorktreeOperation<string[]> {
+  return runCommand("git", ["for-each-ref", "--format=%(refname:strip=2)", "refs/remotes"], {
+    cwd: repoRoot,
+  }).pipe(
+    Effect.map(({ stdout }) =>
+      stdout
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.endsWith("/HEAD")),
+    ),
   );
 }
 
-function resolveCommitish(repoRoot: string, ref: string): string {
-  const resolved = tryResolveCommitish(repoRoot, ref);
-  if (!resolved) {
-    throw new Error(`Could not resolve commit-ish: ${ref}`);
-  }
-
-  return resolved;
-}
-
-function tryResolveCommitish(repoRoot: string, ref: string): string | null {
-  const result = runCommand("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+function refExists(repoRoot: string, ref: string): WorktreeOperation<boolean> {
+  return runCommand("git", ["show-ref", "--verify", "--quiet", ref], {
     cwd: repoRoot,
     allowFailure: true,
-  });
+  }).pipe(Effect.map((result) => result.status === 0));
+}
 
-  return result.status === 0 ? result.stdout.trim() : null;
+function resolveCommitish(repoRoot: string, ref: string): WorktreeOperation<string> {
+  return Effect.gen(function* () {
+    const resolved = yield* tryResolveCommitish(repoRoot, ref);
+    if (!resolved) {
+      return yield* Effect.fail(new Error(`Could not resolve commit-ish: ${ref}`));
+    }
+
+    return resolved;
+  });
+}
+
+function tryResolveCommitish(repoRoot: string, ref: string): WorktreeOperation<string | null> {
+  return runCommand("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+    cwd: repoRoot,
+    allowFailure: true,
+  }).pipe(Effect.map((result) => (result.status === 0 ? result.stdout.trim() : null)));
 }
 
 export function resolveCreateWorktreePath(
@@ -1055,121 +948,151 @@ export function sanitizePathToken(value: string): string {
   return normalized.length > 0 ? normalized : "ref";
 }
 
-async function runRemove(
+function runRemove(
   context: CommandContext,
-  args: readonly string[],
+  targetArg: string,
   deleteBranch: boolean,
   force: boolean,
   dryRun: boolean,
-): Promise<void> {
-  const targetArg = args[0];
-  if (!targetArg || args.length !== 1) {
-    throw new Error('Command "remove" requires exactly one branch name or path.');
-  }
+): WorktreeOperation<void, Terminal.Terminal> {
+  return Effect.gen(function* () {
+    const statuses = yield* collectWorktreeStatuses(context);
+    const target = yield* Effect.try({
+      try: () => resolveRemovalTarget(statuses, context.repoRoot, targetArg),
+      catch: (cause) => new Error(getErrorMessage(cause), { cause }),
+    });
 
-  const statuses = collectWorktreeStatuses(context);
-  const target = resolveRemovalTarget(statuses, context.repoRoot, targetArg);
+    if (target.isCurrent) {
+      yield* Effect.fail(
+        new Error(`Refusing to remove the current worktree: ${target.worktree.path}`),
+      );
+    }
 
-  if (target.isCurrent) {
-    throw new Error(`Refusing to remove the current worktree: ${target.worktree.path}`);
-  }
+    if (target.isPrimary) {
+      yield* Effect.fail(
+        new Error(`Refusing to remove the primary repository checkout: ${target.worktree.path}`),
+      );
+    }
+    yield* logEvent("removal_planned", {
+      target_path: target.worktree.path,
+      branch: target.worktree.branchName,
+      dirty: target.dirty,
+      untracked: target.untracked,
+      local_commits: target.localCommits,
+      detached: target.worktree.detached,
+      force,
+      dry_run: dryRun,
+      delete_branch: deleteBranch,
+    });
 
-  if (target.isPrimary) {
-    throw new Error(`Refusing to remove the primary repository checkout: ${target.worktree.path}`);
-  }
-
-  const dirtyRemovalConfirmed = force
-    ? hasChanges(target)
-    : dryRun
+    const dirtyRemovalConfirmed = force
       ? hasChanges(target)
-      : hasChanges(target)
-        ? await confirmDirtyRemoval(context.repoRoot, target)
-        : false;
-  if (!dryRun && hasChanges(target) && !dirtyRemovalConfirmed) {
-    return;
-  }
+      : dryRun
+        ? hasChanges(target)
+        : hasChanges(target)
+          ? yield* confirmDirtyRemoval(context.repoRoot, target)
+          : false;
+    if (!dryRun && hasChanges(target) && !dirtyRemovalConfirmed) {
+      return;
+    }
 
-  if (dryRun) {
-    console.log("Dry run only. No changes were made.");
-    console.log(`Would remove: ${formatDisplayPath(context.repoRoot, target.worktree.path)}`);
-    console.log(`Force remove: ${toYesNo(dirtyRemovalConfirmed)}`);
-    console.log(
-      `Delete branch: ${
-        deleteBranch && target.worktree.branchName ? target.worktree.branchName : "no"
-      }`,
+    if (dryRun) {
+      yield* Console.log("Dry run only. No changes were made.");
+      yield* Console.log(
+        `Would remove: ${formatDisplayPath(context.repoRoot, target.worktree.path)}`,
+      );
+      yield* Console.log(`Force remove: ${toYesNo(dirtyRemovalConfirmed)}`);
+      yield* Console.log(
+        `Delete branch: ${
+          deleteBranch && target.worktree.branchName ? target.worktree.branchName : "no"
+        }`,
+      );
+      return;
+    }
+
+    yield* Console.log(
+      `Removing worktree ${formatDisplayPath(context.repoRoot, target.worktree.path)}...`,
     );
-    return;
-  }
-
-  console.log(`Removing worktree ${formatDisplayPath(context.repoRoot, target.worktree.path)}...`);
-  const removeArgs = dirtyRemovalConfirmed
-    ? ["worktree", "remove", "--force", target.worktree.path]
-    : ["worktree", "remove", target.worktree.path];
-  runCommand("git", removeArgs, {
-    cwd: context.repoRoot,
-    stdio: "inherit",
-  });
-
-  if (deleteBranch && target.worktree.branchName) {
-    console.log(`Deleting branch ${target.worktree.branchName}...`);
-    const deleteBranchFlag = getBranchDeletionFlag(target, force);
-    runCommand("git", ["branch", deleteBranchFlag, target.worktree.branchName], {
+    const removeArgs = dirtyRemovalConfirmed
+      ? ["worktree", "remove", "--force", target.worktree.path]
+      : ["worktree", "remove", target.worktree.path];
+    yield* runCommand("git", removeArgs, {
       cwd: context.repoRoot,
       stdio: "inherit",
     });
-  }
+    yield* logEvent("worktree_removed", { target_path: target.worktree.path });
+
+    if (deleteBranch && target.worktree.branchName) {
+      yield* Console.log(`Deleting branch ${target.worktree.branchName}...`);
+      const deleteBranchFlag = getBranchDeletionFlag(target, force);
+      yield* runCommand("git", ["branch", deleteBranchFlag, target.worktree.branchName], {
+        cwd: context.repoRoot,
+        stdio: "inherit",
+      });
+      yield* logEvent("branch_deleted", { branch: target.worktree.branchName });
+    }
+  });
 }
 
 export function getBranchDeletionFlag(status: WorktreeStatus, force: boolean): "-d" | "-D" {
   return force || status.localCommits > 0 ? "-D" : "-d";
 }
 
-async function confirmDirtyRemoval(repoRoot: string, status: WorktreeStatus): Promise<boolean> {
-  if (!hasChanges(status)) {
-    return false;
-  }
+function confirmDirtyRemoval(
+  repoRoot: string,
+  status: WorktreeStatus,
+): WorktreeOperation<boolean, Terminal.Terminal> {
+  return Effect.gen(function* () {
+    if (!hasChanges(status)) {
+      return false;
+    }
 
-  const details = [
-    status.worktree.detached ? "detached HEAD (commits may be unpublished)" : null,
-    status.dirty ? "tracked changes" : null,
-    status.untracked ? "untracked files" : null,
-    status.localCommits > 0 ? `${status.localCommits} local commit(s)` : null,
-  ].filter(isPresent);
+    const details = [
+      status.worktree.detached ? "detached HEAD (commits may be unpublished)" : null,
+      status.dirty ? "tracked changes" : null,
+      status.untracked ? "untracked files" : null,
+      status.localCommits > 0 ? `${status.localCommits} local commit(s)` : null,
+    ].filter(isPresent);
 
-  const confirmed = await confirmDestructiveAction(
-    `Worktree ${formatDisplayPath(repoRoot, status.worktree.path)} has ${details.join(
-      ", ",
-    )}. Remove it? [y/N] `,
-  );
-  if (!confirmed) {
-    console.log("Removal cancelled.");
-    return false;
-  }
+    const confirmed = yield* confirmDestructiveAction(
+      `Worktree ${formatDisplayPath(repoRoot, status.worktree.path)} has ${details.join(
+        ", ",
+      )}. Remove it? [y/N] `,
+    );
+    if (!confirmed) {
+      yield* Console.log("Removal cancelled.");
+      yield* logEvent("removal_declined", { target_path: status.worktree.path });
+      return false;
+    }
 
-  return true;
+    return true;
+  });
 }
 
 function runSetupWorktreeHookIfPresent(
   repoRoot: string,
   worktreePath: string,
   runSetup: boolean,
-): void {
-  const setupScriptPath = path.join(repoRoot, "setup-worktree.sh");
+): WorktreeOperation<void, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const setupScriptPath = path.join(repoRoot, "setup-worktree.sh");
 
-  if (!pathExists(setupScriptPath)) {
-    console.log("No setup-worktree.sh found. Skipping post-create setup.");
-    return;
-  }
+    if (!(yield* fs.exists(setupScriptPath))) {
+      yield* Console.log("No setup-worktree.sh found. Skipping post-create setup.");
+      return;
+    }
 
-  if (!runSetup) {
-    console.log("Skipped setup-worktree.sh because --no-setup was provided.");
-    return;
-  }
+    if (!runSetup) {
+      yield* Console.log("Skipped setup-worktree.sh because --no-setup was provided.");
+      return;
+    }
 
-  console.log("Running setup-worktree.sh...");
-  runCommand("bash", ["./setup-worktree.sh", worktreePath], {
-    cwd: repoRoot,
-    stdio: "inherit",
+    yield* Console.log("Running setup-worktree.sh...");
+    yield* runCommand("bash", ["./setup-worktree.sh", worktreePath], {
+      cwd: repoRoot,
+      stdio: "inherit",
+    });
   });
 }
 
@@ -1192,41 +1115,56 @@ export function buildWorktreeListRows(
   }));
 }
 
-function collectWorktreeStatuses(context: CommandContext): WorktreeStatus[] {
-  return listWorktrees(context.repoRoot).map((worktree) => {
-    const statusOutput = runCommand("git", ["status", "--porcelain", "--untracked-files=all"], {
-      cwd: worktree.path,
-    }).stdout;
+function collectWorktreeStatuses(context: CommandContext): WorktreeOperation<WorktreeStatus[]> {
+  return Effect.gen(function* () {
+    const worktrees = yield* listWorktrees(context.repoRoot);
+    const statuses: WorktreeStatus[] = [];
+    for (const worktree of worktrees) {
+      const { stdout: statusOutput } = yield* runCommand(
+        "git",
+        ["status", "--porcelain", "--untracked-files=all"],
+        {
+          cwd: worktree.path,
+        },
+      );
 
-    const statusLines = statusOutput
-      .split("\n")
-      .map((line) => line.trimEnd())
-      .filter(Boolean);
+      const statusLines = statusOutput
+        .split("\n")
+        .map((line) => line.trimEnd())
+        .filter(Boolean);
 
-    const dirty = statusLines.some((line) => !line.startsWith("??"));
-    const untracked = statusLines.some((line) => line.startsWith("??"));
-    const upstreamRef = getUpstreamRef(worktree);
-    const comparisonRef = getComparisonRef(worktree, upstreamRef);
-    const localCommits = getLocalCommitCount(worktree.path, comparisonRef, worktree.detached);
+      const dirty = statusLines.some((line) => !line.startsWith("??"));
+      const untracked = statusLines.some((line) => line.startsWith("??"));
+      const upstreamRef = yield* getUpstreamRef(worktree);
+      const comparisonRef = getComparisonRef(worktree, upstreamRef);
+      const localCommits = yield* getLocalCommitCount(
+        worktree.path,
+        comparisonRef,
+        worktree.detached,
+      );
 
-    return {
-      worktree,
-      isCurrent: areSamePath(worktree.path, context.currentWorktreeRoot),
-      isPrimary: areSamePath(worktree.path, context.primaryWorktreeRoot),
-      dirty,
-      untracked,
-      localCommits,
-      upstreamRef,
-      comparisonRef,
-    };
+      statuses.push({
+        worktree,
+        isCurrent: areSamePath(worktree.path, context.currentWorktreeRoot),
+        isPrimary: areSamePath(worktree.path, context.primaryWorktreeRoot),
+        dirty,
+        untracked,
+        localCommits,
+        upstreamRef,
+        comparisonRef,
+      });
+    }
+    return statuses;
   });
 }
 
-function listWorktrees(repoRoot: string): WorktreeRecord[] {
-  const output = runCommand("git", ["worktree", "list", "--porcelain"], {
+function listWorktrees(repoRoot: string): WorktreeOperation<WorktreeRecord[]> {
+  return runCommand("git", ["worktree", "list", "--porcelain"], {
     cwd: repoRoot,
-  }).stdout;
+  }).pipe(Effect.map(({ stdout }) => parseWorktrees(stdout)));
+}
 
+function parseWorktrees(output: string): WorktreeRecord[] {
   const records: WorktreeRecord[] = [];
   let currentPath: string | null = null;
   let head: string | null = null;
@@ -1283,33 +1221,37 @@ function listWorktrees(repoRoot: string): WorktreeRecord[] {
   return records;
 }
 
-export function getUpstreamRef(worktree: Pick<WorktreeRecord, "path" | "detached">): string | null {
-  if (worktree.detached) {
-    return null;
-  }
-
-  const upstream = runCommand(
-    "git",
-    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
-    {
-      cwd: worktree.path,
-      allowFailure: true,
-    },
-  );
-
-  if (upstream.status === 0) {
-    const value = upstream.stdout.trim();
-    if (value.length > 0) {
-      return value;
+function getUpstreamRef(
+  worktree: Pick<WorktreeRecord, "path" | "detached">,
+): WorktreeOperation<string | null> {
+  return Effect.gen(function* () {
+    if (worktree.detached) {
+      return null;
     }
-  }
 
-  return null;
+    const upstream = yield* runCommand(
+      "git",
+      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+      {
+        cwd: worktree.path,
+        allowFailure: true,
+      },
+    );
+
+    if (upstream.status === 0) {
+      const value = upstream.stdout.trim();
+      if (value.length > 0) {
+        return value;
+      }
+    }
+
+    return null;
+  });
 }
 
 export function getComparisonRef(
   worktree: Pick<WorktreeRecord, "path" | "detached">,
-  upstreamRef: string | null = getUpstreamRef(worktree),
+  upstreamRef: string | null,
 ): string {
   if (worktree.detached) {
     return "HEAD";
@@ -1322,22 +1264,24 @@ function getLocalCommitCount(
   worktreePath: string,
   comparisonRef: string,
   detached: boolean,
-): number {
-  if (detached || comparisonRef === "HEAD") {
-    return 0;
-  }
+): WorktreeOperation<number> {
+  return Effect.gen(function* () {
+    if (detached || comparisonRef === "HEAD") {
+      return 0;
+    }
 
-  const result = runCommand("git", ["rev-list", "--count", `${comparisonRef}..HEAD`], {
-    cwd: worktreePath,
-    allowFailure: true,
+    const result = yield* runCommand("git", ["rev-list", "--count", `${comparisonRef}..HEAD`], {
+      cwd: worktreePath,
+      allowFailure: true,
+    });
+
+    if (result.status !== 0) {
+      return 0;
+    }
+
+    const parsed = Number(result.stdout.trim());
+    return Number.isFinite(parsed) ? parsed : 0;
   });
-
-  if (result.status !== 0) {
-    return 0;
-  }
-
-  const parsed = Number(result.stdout.trim());
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**
@@ -1377,36 +1321,35 @@ export function hasChanges(status: WorktreeStatus): boolean {
   return status.worktree.detached || status.dirty || status.untracked || status.localCommits > 0;
 }
 
-function printDryRunPlan(repoRoot: string, target: CreationTarget, runSetup: boolean): void {
-  console.log("Dry run only. No changes were made.");
-  console.log(`Resolved path: ${formatDisplayPath(repoRoot, target.worktreePath)}`);
-  console.log(`Source: ${target.displaySource}`);
-  console.log(`Git command: git ${target.createArgs.join(" ")}`);
-  console.log(
-    `Run setup-worktree.sh: ${
-      runSetup && pathExists(path.join(repoRoot, "setup-worktree.sh")) ? "yes" : "no"
-    }`,
-  );
-}
-
-async function confirmDestructiveAction(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    throw new Error("Confirmation is required, but no interactive terminal is available.");
-  }
-
-  return isConfirmedAnswer(await readLine(question));
-}
-
-async function readLine(question: string): Promise<string> {
-  const readline = createInterface({
-    input: process.stdin,
-    output: process.stdout,
+function printDryRunPlan(
+  repoRoot: string,
+  target: CreationTarget,
+  runSetup: boolean,
+): WorktreeOperation<void, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const setupExists = runSetup && (yield* fs.exists(path.join(repoRoot, "setup-worktree.sh")));
+    yield* Console.log("Dry run only. No changes were made.");
+    yield* Console.log(`Resolved path: ${formatDisplayPath(repoRoot, target.worktreePath)}`);
+    yield* Console.log(`Source: ${target.displaySource}`);
+    yield* Console.log(`Git command: git ${target.createArgs.join(" ")}`);
+    yield* Console.log(`Run setup-worktree.sh: ${setupExists ? "yes" : "no"}`);
   });
-  try {
-    return await readline.question(question);
-  } finally {
-    readline.close();
-  }
+}
+
+function confirmDestructiveAction(question: string): WorktreeOperation<boolean, Terminal.Terminal> {
+  return Effect.gen(function* () {
+    const stdio = yield* Stdio.Stdio;
+    if (!(yield* stdio.stdinIsTerminal) || !(yield* stdio.stdoutIsTerminal)) {
+      return yield* Effect.fail(
+        new Error("Confirmation is required, but no interactive terminal is available."),
+      );
+    }
+    const terminal = yield* Terminal.Terminal;
+    yield* terminal.display(question);
+    // Keep the explicit y/yes contract rather than switching to a single-key confirmation.
+    return isConfirmedAnswer(yield* terminal.readLine);
+  });
 }
 
 export function isConfirmedAnswer(answer: string): boolean {
@@ -1456,33 +1399,224 @@ function areSamePath(left: string, right: string): boolean {
   return path.resolve(left) === path.resolve(right);
 }
 
-function runCommand(command: string, args: readonly string[], options: RunOptions = {}): RunResult {
-  const result = spawnSync(command, [...args], {
-    cwd: options.cwd,
-    encoding: "utf8",
-    stdio: options.stdio === "inherit" ? "inherit" : "pipe",
-  });
-
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-
-  const stdout = options.stdio === "inherit" ? "" : result.stdout;
-  const stderr = options.stdio === "inherit" ? "" : result.stderr;
-  const status = result.status ?? 1;
-
-  if (status !== 0 && !options.allowFailure) {
-    const renderedCommand = [command, ...args].join(" ");
-    const message = stderr.trim() || stdout.trim() || `Command failed with exit code ${status}.`;
-    throw new Error(`${renderedCommand}: ${message}`);
-  }
-
-  return { stdout, stderr, status };
+function runCommand(
+  executable: string,
+  args: readonly string[],
+  options: RunOptions = {},
+): WorktreeOperation<RunResult> {
+  return Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const stdio = yield* Stdio.Stdio;
+    const start = performance.now();
+    yield* logEvent("subprocess_started");
+    const result = yield* Effect.gen(function* () {
+      const inherited = options.stdio === "inherit";
+      const child = yield* spawner.spawn(
+        ChildProcess.make(executable, args, {
+          cwd: options.cwd,
+          stdin: inherited ? "inherit" : "ignore",
+          stdout: inherited ? "inherit" : "pipe",
+          stderr: "pipe",
+        }),
+      );
+      const [stdout, stderr] = yield* Effect.all(
+        [
+          inherited
+            ? Effect.succeed("")
+            : Stream.runFold(
+                Stream.decodeText(child.stdout),
+                () => "",
+                (text, chunk) => text + chunk,
+              ),
+          child.stderr.pipe(
+            Stream.tap((chunk) =>
+              Stream.run(Stream.make(chunk), stdio.stderr({ endOnDone: false })),
+            ),
+            Stream.decodeText(),
+            Stream.tap((chunk) => logEvent("subprocess_stderr", { stderr: chunk })),
+            Stream.runFold(
+              () => "",
+              (text, chunk) => text + chunk,
+            ),
+          ),
+        ],
+        { concurrency: "unbounded" },
+      );
+      const status = yield* child.exitCode;
+      return { stdout, stderr, status };
+    }).pipe(
+      Effect.scoped,
+      Effect.onExit((exit) =>
+        logEvent("subprocess_finished", {
+          duration_ms: Math.round(performance.now() - start),
+          ...(Exit.isSuccess(exit)
+            ? {
+                exit_code: exit.value.status,
+                outcome: exit.value.status === 0 ? "success" : "failure",
+              }
+            : Exit.hasInterrupts(exit)
+              ? { outcome: "cancelled" }
+              : { outcome: "failure", error: Cause.pretty(exit.cause) }),
+        }),
+      ),
+    );
+    if (result.status !== 0 && !options.allowFailure) {
+      const message =
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        `Command failed with exit code ${result.status}.`;
+      return yield* Effect.fail(new Error(`${[executable, ...args].join(" ")}: ${message}`));
+    }
+    return result;
+  }).pipe(
+    Effect.annotateLogs({
+      executable,
+      args,
+      cwd: options.cwd ?? process.cwd(),
+      allow_failure: options.allowFailure === true,
+    }),
+  );
 }
 
+function optionalValue(name: string, description: string): Flag.Flag<string | null> {
+  return Flag.String(name).pipe(
+    Flag.filter(
+      (value) => value.length > 0,
+      () => `Option "--${name}" requires a value.`,
+    ),
+    Flag.withDescription(description),
+    Flag.withDefault(null),
+  );
+}
+
+function requiredArgument(name: string): Argument.Argument<string> {
+  return Argument.String(name).pipe(
+    Argument.filter(
+      (value) => value.length > 0,
+      () => `${name} must not be empty.`,
+    ),
+  );
+}
+
+const parent = Command.make("mb-worktree", {}, () =>
+  Effect.fail(new Error("Specify a worktree command. See --help.")),
+).pipe(
+  Command.withDescription("Create, inspect, and safely remove repo-local Git worktrees."),
+  // Shared flags preserve the existing before/after-subcommand option placement.
+  Command.withSharedFlags({
+    repo: optionalValue(
+      "repo",
+      "Target a repo; relative paths resolve from AI_CWD or the caller's cwd.",
+    ),
+    path: optionalValue("path", "Override the target worktree directory for create commands."),
+    from: optionalValue("from", "Base ref for new-branch."),
+    runSetup: Flag.Boolean("no-setup").pipe(
+      Flag.withDefault(false),
+      Flag.withDescription("Skip setup-worktree.sh after creating a worktree."),
+      Flag.map((skip) => !skip),
+    ),
+    dryRun: Flag.Boolean("dry-run").pipe(
+      Flag.withDefault(false),
+      Flag.withDescription("Print actions without changing anything."),
+    ),
+    json: Flag.Boolean("json").pipe(
+      Flag.withDefault(false),
+      Flag.withDescription("Emit machine-readable list output."),
+    ),
+    force: Flag.Boolean("force").pipe(
+      Flag.withDefault(false),
+      Flag.withDescription("Skip removal confirmation and force deletion."),
+    ),
+    deleteBranch: Flag.Boolean("delete-branch").pipe(
+      Flag.withDefault(false),
+      Flag.withDescription("Delete the branch only after successful worktree removal."),
+    ),
+  }),
+);
+
+export const command = parent.pipe(
+  Command.withSubcommands([
+    Command.make("list", {}, () =>
+      Effect.gen(function* () {
+        const options = yield* parent;
+        const context = yield* buildContext(options.repo);
+        yield* runList(context, options.json).pipe(Effect.annotateLogs({ action: "list" }));
+      }),
+    ).pipe(Command.withDescription("List linked worktrees and their local status.")),
+    Command.make("checkout", { ref: requiredArgument("ref") }, ({ ref }) =>
+      Effect.gen(function* () {
+        const options = yield* parent;
+        const context = yield* buildContext(options.repo);
+        yield* runCheckout(context, ref, options.runSetup, options.path, options.dryRun).pipe(
+          Effect.annotateLogs({ action: "checkout", ref }),
+        );
+      }),
+    ).pipe(
+      Command.withDescription(
+        "Create a worktree from an existing branch, remote branch, tag, or commit.",
+      ),
+    ),
+    Command.make("new-branch", { branch: requiredArgument("branch") }, ({ branch }) =>
+      Effect.gen(function* () {
+        const options = yield* parent;
+        const context = yield* buildContext(options.repo);
+        yield* runNewBranch(
+          context,
+          branch,
+          options.from,
+          options.runSetup,
+          options.path,
+          options.dryRun,
+        ).pipe(Effect.annotateLogs({ action: "new-branch", branch, from: options.from }));
+      }),
+    ).pipe(Command.withDescription("Create a new branch worktree from --from <ref>.")),
+    Command.make("new-from-main", { branch: requiredArgument("branch") }, ({ branch }) =>
+      Effect.gen(function* () {
+        const options = yield* parent;
+        const context = yield* buildContext(options.repo);
+        yield* runNewFromMain(context, branch, options.runSetup, options.path, options.dryRun).pipe(
+          Effect.annotateLogs({ action: "new-from-main", branch }),
+        );
+      }),
+    ).pipe(
+      Command.withDescription("Fetch origin/main, create a new branch worktree, and run setup."),
+    ),
+    Command.make("new-from-pr", { pr: requiredArgument("url-or-number") }, ({ pr }) =>
+      Effect.gen(function* () {
+        const options = yield* parent;
+        const context = yield* buildContext(options.repo);
+        yield* runNewFromPr(context, pr, options.runSetup, options.path, options.dryRun).pipe(
+          Effect.annotateLogs({ action: "new-from-pr", pr }),
+        );
+      }),
+    ).pipe(Command.withDescription("Fetch a same-repo PR head and create its worktree.")),
+    Command.make("remove", { target: requiredArgument("branch-or-path") }, ({ target }) =>
+      Effect.gen(function* () {
+        const options = yield* parent;
+        const context = yield* buildContext(options.repo);
+        yield* runRemove(context, target, options.deleteBranch, options.force, options.dryRun).pipe(
+          Effect.annotateLogs({ action: "remove", target }),
+        );
+      }),
+    ).pipe(
+      Command.withDescription(
+        "Remove a worktree, confirming changes or unpublished commits unless --force is set.",
+      ),
+    ),
+  ]),
+);
+
 if (import.meta.main) {
-  void main().catch((error: unknown) => {
-    console.error(getErrorMessage(error));
-    process.exit(1);
-  });
+  NodeRuntime.runMain(
+    withExecutionLog("mb-worktree", command.pipe(Command.run({ version: "0.0.0" }))).pipe(
+      Effect.tapCause((cause) => {
+        const error = Cause.squash(cause);
+        return error instanceof CliError.ShowHelp || Cause.hasInterrupts(cause)
+          ? Effect.void
+          : Console.error(getErrorMessage(error));
+      }),
+      Effect.provide(NodeServices.layer),
+    ),
+    { disableErrorReporting: true },
+  );
 }
