@@ -46,11 +46,96 @@ test("merges browser downloads naturally, preserving semicolons, BOM, and field 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     await f.read(),
-    '\uFEFFid;name\n0;"comma, and ; semicolon"\n1;00123\n2;"two\nlines"\n10;"two ""quotes"""\n',
+    '\uFEFFid;name\r\n0;"comma, and ; semicolon"\r\n1;00123\r\n2;"two\nlines"\r\n10;"two ""quotes"""\r\n',
   );
   assert.match(result.stdout, /4 files, 4 data rows/u);
   assert.doesNotMatch(result.stdout + result.stderr, /00123|two|semicolon/u);
   for (const [name, content] of Object.entries(inputs)) assert.equal(await f.read(name), content);
+});
+
+test("uses the first input's record separator and preserves embedded newlines", async (t) => {
+  const f = await fixture(t, {
+    "page2.csv": '"id\nquoted",name\n2,"two\r\nlines"\n',
+    "page1.csv": '"id\nquoted",name\r\n1,"one\nline"\r\n',
+  });
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await f.read(), '"id\nquoted",name\r\n1,"one\nline"\r\n2,"two\r\nlines"\r\n');
+});
+
+test("newline overrides normalize output record separators", async (t) => {
+  for (const [option, input, expected] of [
+    ["lf", "id,name\r\n1,one\r\n", "id,name\n1,one\n"],
+    ["crlf", "id,name\n1,one\n", "id,name\r\n1,one\r\n"],
+  ] as const) {
+    const f = await fixture(t, { "goods.csv": input });
+    const result = f.run(["-o", "combined.csv", "--newline", option]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(await f.read(), expected);
+  }
+});
+
+test("accepts mixed record separators within one input", async (t) => {
+  const f = await fixture(t, { "goods.csv": "id,name\n1,one\r\n2,two\r3,three\n" });
+  const result = f.run();
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await f.read(), "id,name\n1,one\n2,two\n3,three\n");
+});
+
+test("preserves duplicate and empty header names and empty cells", async (t) => {
+  const f = await fixture(t, {
+    "page1.csv": ",id,id\n,1,\n",
+    "page2.csv": ",id,id\nx,,3\n",
+  });
+  const result = f.run();
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await f.read(), ",id,id\n,1,\nx,,3\n");
+});
+
+test("accepts records larger than one MiB", async (t) => {
+  const value = "x".repeat(1024 * 1024 + 1);
+  const f = await fixture(t, { "goods.csv": `id,name\n1,${value}\n` });
+  const result = f.run();
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await f.read(), `id,name\n1,${value}\n`);
+});
+
+test("explicit delimiter rejects inconsistent record widths", async (t) => {
+  const f = await fixture(t, { "goods.csv": "id,name\n1,one,extra\n" });
+  const result = f.run(["-o", "combined.csv", "--delimiter", ","]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /record 2/u);
+  assert.deepEqual(await readdir(f.root), ["goods.csv"]);
+});
+
+test("rejects supplementary Unicode delimiters", async (t) => {
+  const f = await fixture(t, { "goods.csv": "id💠name\n1💠one\n" });
+  const result = f.run(["-o", "combined.csv", "--delimiter", "💠"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /delimiter/u);
+  assert.deepEqual(await readdir(f.root), ["goods.csv"]);
+});
+
+test("falls back to LF when the first input has no record separator", async (t) => {
+  const f = await fixture(t, { "page1.csv": "id,name", "page2.csv": "id,name\r\n2,two\r\n" });
+  const result = f.run();
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await f.read(), "id,name\n2,two\n");
+});
+
+test("dry-run accepts a newline override without reading input", async (t) => {
+  const f = await fixture(t, { "goods.csv": '"invalid' });
+  const result = f.run(["--dry-run", "--newline", "crlf"]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await readdir(f.root), ["goods.csv"]);
 });
 
 test("detects comma and tab formats, with ordinary natural numbering", async (t) => {
@@ -128,9 +213,38 @@ test("explicit delimiter reports malformed record location without revealing pri
   const f = await fixture(t, { "goods.csv": 'id,name\n1,"PRIVATE"bad\n' });
   const result = f.run(["-o", "combined.csv", "--delimiter", ","]);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /goods.csv: CSV_INVALID_CLOSING_QUOTE at line 2, record 2/u);
+  assert.match(result.stderr, /goods.csv:.*line 2, record 2/u);
   assert.doesNotMatch(result.stdout + result.stderr, /PRIVATE/u);
   await assert.rejects(f.read(), { code: "ENOENT" });
+});
+
+test("invalid UTF-8 fails without publishing or leaving temporary files", async (t) => {
+  const f = await fixture(t, {});
+  await writeFile(path.join(f.root, "goods.csv"), Buffer.from([0xff]));
+
+  const result = f.run();
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Could not read UTF-8 input/u);
+  assert.deepEqual(await readdir(f.root), ["goods.csv"]);
+});
+
+test("CSV parsing failures do not expose cell contents in execution logs", async (t) => {
+  const f = await fixture(t, { "goods.csv": 'id,name\n1,"PRIVATE"bad\n' });
+  const logger = path.join(f.root, "logger");
+  const journal = path.join(f.root, "journal");
+  await writeFile(logger, '#!/bin/sh\n/bin/cat >> "$TEST_JOURNAL"\n', { mode: 0o755 });
+
+  const result = spawnSync(process.execPath, [SCRIPT, "-o", "combined.csv", "--delimiter", ","], {
+    cwd: f.root,
+    encoding: "utf8",
+    timeout: 5000,
+    env: { ...process.env, PATH: `${f.root}:/usr/bin`, TEST_JOURNAL: journal },
+  });
+
+  assert.equal(result.status, 1);
+  const logged = await readFile(journal, "utf8");
+  assert.match(logged, /run_finished/u);
+  assert.doesNotMatch(logged + result.stdout + result.stderr, /PRIVATE/u);
 });
 
 test("existing output is excluded and never overwritten", async (t) => {
@@ -149,6 +263,7 @@ test("help and invalid invocations", async (t) => {
     ["-o", "combined.csv"],
     ["--dry-run", "missing*.csv"],
     ["--delimiter", "xx", "--dry-run"],
+    ["--newline", "cr", "--dry-run"],
   ]) {
     assert.equal(f.run(args).status, 1, JSON.stringify(args));
   }

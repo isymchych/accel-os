@@ -4,6 +4,7 @@ _mb-merge-csvs() {
   _arguments \
     '(-o --output)'{-o,--output}'[Destination CSV]:output:_files' \
     '--delimiter[Override delimiter]:delimiter:(, \; tab)' \
+    '--newline[Override output record separator]:newline:(lf crlf)' \
     '--dry-run[List input order without reading contents]' \
     '(-h --help)'{-h,--help}'[Show help]' \
     '*:CSV file:_files -g "*.csv"'

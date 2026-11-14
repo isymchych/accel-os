@@ -35,6 +35,7 @@ capabilities.
   save errors - including from the frontend
 - trace app performance (basics/high level only, frontend and backend), in ring buffer - and allow
   to manually export/inspect it when notice slowness/lags
+- use effect config
 
 ## Earlier deferred ideas
 
