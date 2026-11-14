@@ -27,6 +27,10 @@
 - **prevent agent from inventing requirements**
 - my local mb-... scripts should have logs/traces; Effect? cli, telemetry; configure accel-os
   telemetry sink
+- pi-vcc
+- > I have a thing called Memento (https://rcarmo.github.io/projects/memento) that all my agents use
+  > to share skills and some cross-project notes, but in general most project-related context lives
+  > on SQLite someplace with some FTS.
 
 ? how codex @visualize skill works? ? "provide irrefutable proof that this things works"
 

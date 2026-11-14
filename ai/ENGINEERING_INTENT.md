@@ -50,8 +50,16 @@ and conventions live in [AGENTS.md](../AGENTS.md).
   Broad unions, `any`, misleading nullability, hidden ordering requirements, and nested type-level
   indirection can move complexity onto callers.
 - Aggregating low-level errors is useful when it gives callers a meaningful boundary error.
-- Names should be concise without repeating their types. Comments are valuable for intent,
-  invariants, tradeoffs, and non-obvious contracts, rather than narrating implementation.
+- Names should be concise without repeating their types.
+- I value comments that supply understanding the code does not readily convey: domain meaning,
+  caller obligations, invariants, and reasons for otherwise surprising choices. Behavioral
+  documentation is useful when it explains the abstraction without requiring readers to inspect its
+  implementation. Restating names, types, or implementation steps adds maintenance cost without
+  understanding. The goal is useful explanation, not fewer comments for their own sake.
+- For logic whose purpose and overall approach are not apparent at a glance, I prefer a brief
+  overview of what it accomplishes and how its main parts fit together. This orientation is valuable
+  even when readers could reconstruct it by tracing the implementation. Omit the overview when the
+  code already makes that picture clear.
 
 ## Libraries and protocols
 

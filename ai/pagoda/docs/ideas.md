@@ -7,14 +7,11 @@ capabilities.
 
 ## Early direction notes
 
-- Pagoda? Brama?
-- rename "runtime" to something more interesting - i.e. "robot"/"agent"?
 - company? - agentic system/organisation
 - separating where the work executes from where the developer controls it
-- the UI, agent execution engine, and synchronization layer are separate systems
-
-- Earlier architecture review task (superseded by the local desktop pivot): review the
-  ARCHITECTURE - cleanup, drop unreasonable/stupid/LLM-generated requirements
+- memory - in Memory tab; Router: A long-lived coordinator holding global context.
+- supervising work - session management, progress visibility, code review, and human attention
+  become central workflow concerns.
 
 > The interesting abstraction is:
 
@@ -32,11 +29,12 @@ capabilities.
 
 ## Earlier tech-debt candidates
 
-- branded types, domain ids
-- network requests in ui component
 - verbose errors/stacktraces in tests
 - should run e2e tests each time?
-- use pino logger
+- add structured logging, telemetry, telemetry sink (display telemetry in app, in Telemetry tab);
+  save errors - including from the frontend
+- trace app performance (basics/high level only, frontend and backend), in ring buffer - and allow
+  to manually export/inspect it when notice slowness/lags
 
 ## Earlier deferred ideas
 

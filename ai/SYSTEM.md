@@ -66,6 +66,16 @@ simplifying, remove unnecessary behavior and its tests rather than merely rewrit
 - Prefer fewer ownership boundaries and less simultaneously active state. Use direct composition
   over unnecessary callbacks and standalone functions when a class has no meaningful ownership.
   Correctness and clarity take priority over small diffs or file counts.
+- Write comments and API documentation to add understanding beyond names and types: explain
+  non-obvious meaning, caller obligations, constraints, or rationale. Avoid mechanically narrating
+  declarations or implementation steps. Prefer clearer code when naming or structure can carry the
+  meaning, while preserving useful contracts and correctness rationale. Judge whether a comment
+  provides useful meaning, rationale, or orientation rather than repeating what is already obvious.
+- For functions, methods, classes, or cohesive blocks of logic, add a brief overview when a reader
+  cannot readily understand their purpose and overall approach from their names, interfaces, and
+  structure. Explain what the piece accomplishes and how its main parts fit together, without
+  requiring readers to trace implementation details. Omit the overview when that picture is already
+  clear.
 - Preserve required error reporting and cleanup. Add retries, fallbacks, and other recovery only for
   affected contracts or evidenced operational needs; otherwise fail clearly.
 - Follow local conventions unless they conflict with correctness or explicit requirements. Build

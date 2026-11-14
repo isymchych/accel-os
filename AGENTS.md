@@ -151,9 +151,9 @@
 - Prefer named domain/result types over nested utility types such as
   `Promise<Awaited<ReturnType<typeof fn>>>`; explicit types keep public helper contracts readable.
 - When inspecting installed Pi package APIs in this repo, start from
-  `ai/pi/node_modules/@earendil-works/*/dist/*.d.ts`. The desktop app integrates through the
-  `ai/pi/` RPC entry point. Dependencies are linked per workspace; exclude `*.map` because
-  sourcemaps make compiled output noisy.
+  `ai/pi/node_modules/@earendil-works/*/dist/*.d.ts`. Pagoda integrates directly through the Pi SDK
+  in `ai/pagoda/src/backend/pi/session.ts`, independently of the terminal launcher. Dependencies are
+  linked per workspace; exclude `*.map` because sourcemaps make compiled output noisy.
 - Declare tools required by dotfiles in the canonical package inventory. Update platform setup
   guides when manual setup or maintenance steps change, or existing instructions become incorrect.
   Managed configuration changes alone do not justify adding documentation.
@@ -207,9 +207,9 @@
 - Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.
 - Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as
   `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.
-- When adding a new Pi tool that should be agent-callable by default, also add it to the default
-  `--tools` allowlist in `ai/pi/ai.ts`; loading an extension alone does not enable the tool when
-  `ai.ts` passes an explicit allowlist.
+- When adding a new Pi tool that should be agent-callable by default, register its extension in
+  `ai/pi/runtime/pi-launcher.ts`; terminal Pi disables extension auto-discovery. That file also owns
+  the `--exclude-tools` list for superseded built-in tools.
 - Do not edit `~/.pi/agent/*` unless the user explicitly asks for a one-off live change there.
 - On this machine, `ai/pi/` is also the live Pi config because `dotfiles/dot_zshenv_tools` defaults
   `PI_CODING_AGENT_DIR` to that path.

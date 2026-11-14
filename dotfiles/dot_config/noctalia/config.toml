@@ -103,7 +103,7 @@ temperature_day = 6500
 temperature_night = 4000
 
 [weather]
-enabled = false
+enabled = true
 
 [lockscreen]
 enabled = true
@@ -117,12 +117,28 @@ type = "login_box"
 
 [lockscreen_widgets.widget."lockscreen-login-box@DP-3".settings]
 show_media = false
+show_weather = false
 
 [lockscreen_widgets.widget."lockscreen-login-box@eDP-1"]
 type = "login_box"
 
 [lockscreen_widgets.widget."lockscreen-login-box@eDP-1".settings]
 show_media = false
+show_weather = false
+
+[lockscreen_widgets.widget."lockscreen-login-box@DP-1"]
+type = "login_box"
+
+[lockscreen_widgets.widget."lockscreen-login-box@DP-1".settings]
+show_media = false
+show_weather = false
+
+[lockscreen_widgets.widget."lockscreen-login-box@HDMI-A-1"]
+type = "login_box"
+
+[lockscreen_widgets.widget."lockscreen-login-box@HDMI-A-1".settings]
+show_media = false
+show_weather = false
 
 [idle.behavior.lock]
 enabled = true
@@ -249,6 +265,8 @@ end = [
   "privacy",
   "tray",
   "clock-gap",
+  "weather",
+  "weather-gap",
   "date",
   "clock",
 ]
@@ -270,7 +288,7 @@ scale = 1.0
 font_scale = 1.1
 padding = 8
 widget_spacing = 8
-start = ["launcher", "right-clock", "right-date", "right-date-gap", "workspaces", "sway-mode"]
+start = ["launcher", "right-clock", "right-date", "right-weather-gap", "weather", "right-date-gap", "workspaces", "sway-mode"]
 center = [
   "right-media-art",
   "right-media-gap",
@@ -299,6 +317,10 @@ end = [
 ]
 
 [widget.right-date-gap]
+type = "spacer"
+length = 12
+
+[widget.right-weather-gap]
 type = "spacer"
 length = 12
 
@@ -340,6 +362,10 @@ length = 32
 [widget.clock-gap]
 type = "spacer"
 length = 32
+
+[widget.weather-gap]
+type = "spacer"
+length = 16
 
 [widget.media-art]
 type = "media"
@@ -472,6 +498,9 @@ scale = 1.25
 
 [widget.bluetooth.actions]
 right = "exec xterm run --class=bluetui -- bluetui"
+
+[widget.weather]
+show_condition = false
 
 [widget.tray]
 drawer = false
