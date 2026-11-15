@@ -493,6 +493,9 @@ scale = 1.25
 show_label = false
 vpn_status = "both"
 
+[widget.network.actions]
+right = "exec nm-connection-editor"
+
 [widget.bluetooth]
 scale = 1.25
 

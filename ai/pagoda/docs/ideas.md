@@ -12,6 +12,7 @@ capabilities.
 - memory - in Memory tab; Router: A long-lived coordinator holding global context.
 - supervising work - session management, progress visibility, code review, and human attention
   become central workflow concerns.
+- easily manage worktrees
 
 > The interesting abstraction is:
 
@@ -47,6 +48,15 @@ capabilities.
 - Per-run usage/cost visibility, where supported by runtime accounting.
 - Workflow evaluations once we have repeatable workflows to evaluate.
 - mandatory human approval gates in workflows
+
+## Inspiration
+
+- <https://github.com/stablyai/orca> - code review / comments, files panel, UI
+- <https://github.com/photostructure/gavel> - code review / comments - it has separate
+  "question/comment/change request" comment types
+- <https://github.com/yoshiko-pg/difit> - code review
+- <https://github.com/backnotprop/plannotator> - code review / comments
+- <https://github.com/beluga-labs/beluga> - UI, "scratch"
 
 ---
 
@@ -97,7 +107,6 @@ capabilities.
   - https://github.com/hyperpuncher/pi-ui
   - https://github.com/mattiacerutti/supernova
   - https://t3.codes/
-  - https://github.com/backnotprop/plannotator
   - https://github.com/disler/durable-pi
   - https://github.com/zeronsh/zeron
   - AMP web

@@ -147,7 +147,6 @@ packages:
 
             desktop_integration:
               - nm-connection-editor # Graphical NetworkManager connection editor
-              - network-manager-applet # Applet for managing network connections
               - networkmanager-openvpn # OpenVPN support for NetworkManager
               - papirus-icon-theme # Light/dark icon themes selected by Noctalia
               - adw-gtk-theme # GTK3 base theme for Noctalia's GTK color templates

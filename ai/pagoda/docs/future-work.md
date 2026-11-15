@@ -7,8 +7,10 @@ Candidates for expanding the workspace, subject to a product decision.
 - **Credentials:** manage credentials through desktop screens.
 - **Filesystem freshness:** refresh pins, favourites, and the session catalog when their files
   change, while retaining explicit Refresh. This would not follow externally running transcripts or
-  resolve concurrent-write collisions. Watcher design and validation remain undecided.
+  resolve concurrent-write collisions. Watcher design and validation remain undecided - use effect
 - **History tree:** explore session branches through a richer graphical view.
-- **Terminal:** work with an embedded terminal.
-- **Files:** browse and edit files within the workspace.
-- **Distribution:** install and run the app through installers and distribution packages.
+- **Files:** browse and preview files within the workspace.
+- open external terminal
+- open external editor
+- edit prompt in external editor
+- better message composer, with custom commands & feature parity with CLI

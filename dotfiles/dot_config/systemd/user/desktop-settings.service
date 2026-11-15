@@ -2,7 +2,7 @@
 Description=Static desktop settings for Sway
 PartOf=sway-session.target
 After=sway-session.target graphical-session.target
-Before=noctalia.service nm-applet.service udiskie.service
+Before=noctalia.service udiskie.service
 ConditionEnvironment=WAYLAND_DISPLAY
 
 [Service]
