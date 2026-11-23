@@ -6,6 +6,15 @@
 - Write instructions that prevent plausible mistakes. State when the rule applies and what to do
   instead; pair restrictions with an actionable alternative where possible. Prefer consequential,
   non-obvious knowledge over repository inventories or generic advice.
+- Make decision rules easy to parse. Keep the condition, action, and exception explicit. Separate
+  instructions when combining them obscures their scope or order; do not impose sentence-length or
+  punctuation rules for their own sake.
+- Use consistent terms for the same concept, especially where wording affects authorization, scope,
+  or requirement strength. Preserve terms that express real distinctions rather than replacing them
+  with a single generic word.
+- Clarity edits must preserve meaning, including uncertainty, requirement strength, conditions, and
+  exceptions. Keep proposed improvements separate from faithful rewrites. Treat automated style
+  findings as review aids, not proof that a rewrite preserves meaning.
 - Context before code. Gather requirements and inspect the relevant implementation before proposing
   changes.
 - Read-only by default. Investigation, review, and verification should not unexpectedly mutate code

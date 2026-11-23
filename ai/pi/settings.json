@@ -1,6 +1,6 @@
 {
   "theme": "system",
-  "lastChangelogVersion": "1.5.2",
+  "lastChangelogVersion": "1.6.0",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
   "defaultProvider": "openai-codex",
@@ -37,8 +37,8 @@
   "enabledModels": [
     "openai-codex/gpt-6-luna",
     "openai-codex/gpt-6.1-terra",
-    "openai-codex/gpt-6.1-sol",
-    "openai-codex/gpt-6-astra"
+    "openai-codex/gpt-6.2-sol",
+    "openai-codex/gpt-6.2-astra"
   ],
   "treeFilterMode": "no-tools",
   "transport": "websocket-cached",

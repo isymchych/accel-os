@@ -66,6 +66,11 @@
   context, durations, outcomes, and error details including stack traces when available.
 - Display subprocess stderr live and retain it in execution logs. Keep normal command output
   separate from logs.
+- When investigating failures in `packages/commands/`, inspect existing journald execution logs
+  before rerunning potentially state-changing commands. Use
+  `journalctl -t mb-<command> --since "1 hour ago" -o json-pretty --no-pager`, then filter by
+  `MB_RUN_ID=<id>` to isolate one invocation. Structured fields contain diagnostics beyond
+  `MESSAGE`. Logging is best-effort, so missing records do not prove a command never ran.
 - Reuse command infrastructure in `packages/commands/lib/`. Keep command-specific events and context
   in the owning command.
 - Installed commands target Linux; do not add speculative cross-platform support or recovery

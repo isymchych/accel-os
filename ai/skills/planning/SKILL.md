@@ -16,7 +16,22 @@ skill.
 
 Loading this skill does not require a separate planning phase or approval checkpoint. Continue
 within existing authorization; pause only for blockers or consequential decisions requiring user
-input.
+input, or for the outline approval required below.
+
+## Outline Approval
+
+- When the user requests a detailed plan or asks to write or save a plan, first present a concise
+  high-level outline inline. Include the intended outcome, proposed delivery slices and their
+  ordering, and consequential open decisions. Do not expand into detailed tasks or create or update
+  the plan file yet.
+- Ask for explicit confirmation of the outline before producing the detailed plan. A request to
+  write the plan starts this workflow; it does not count as outline approval.
+- After approval, develop and, when requested, save the detailed plan within the approved direction.
+  Approval authorizes planning, not implementation.
+- Reuse an outline already explicitly approved in the conversation; do not ask for the same approval
+  again.
+- This checkpoint does not apply to lightweight task sequencing within already-authorized
+  implementation.
 
 ## Approach
 

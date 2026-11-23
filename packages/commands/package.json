@@ -20,8 +20,8 @@
     "@accel-os/shared": "workspace:*",
     "@effect/platform-node": "4.1.4",
     "@mermaid-js/tiny": "^12.3.0",
-    "dompurify": "^3.4.17",
+    "dompurify": "^3.4.18",
     "effect": "4.1.4",
-    "marked": "^18.2.0"
+    "marked": "^18.2.1"
   }
 }

@@ -69,6 +69,11 @@ DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> ARCHITECTURE -> PROGRAM DESIGN -> 
 
 don't go to the next step without confirmation
 
+# Paseo
+
+- integrate my ai cli tools? srcwalk / the one for compressing bash commands
+- microvms by default?
+
 # AI
 
 - memento - extract valuable patterns
@@ -168,10 +173,36 @@ pinpoint the root cause Makes targeted fixes based on evidence
 - frontend dev: Reusable behavior, algorithms, protocols, and complex functionality retain strong
   value. Reusable UI structure and styling may increasingly be generated and customized rather than
   consumed through rigid component APIs.
+- **Choose the least autonomous architecture that works.** Prefer deterministic code or workflows
+  when steps are predictable. Agents are justified when the path is unknown, outcomes are
+  verifiable, errors are recoverable, and the value outweighs cost and latency.
 
 # AI ENGINEERING
 
+- <https://github.com/keyuchen21/agentic-engineering-handbook>
 - self-healing systems
+  - agents succeed at long tasks not by avoiding every mistake, but by detecting and repairing
+    mistakes through feedback.
+- AI inbox/outbox;
+  - human approval - async, not blocker.
+  - inbox for "agent findings" - issues/opportunities (with next steps) etc. Bugs, risks and ideas
+    the agent noticed outside the task it's working on.
+- plan
+- timers/schedule;
+- agent 2 agent communication;
+- Human needs a personal always-on agent
+- paseo-like agent coordination/workflows BUT COORDINATOR SHOULD BE ABLE TO MANIPULATE AGENT
+  CONTEXT - build their context
+  - "find out how this feature works" - then rememeber this message/context id; then may ask
+    questions and rollback to that context id
+  - build context with smart model, rememeber point & switch to dumber and implement, then switch
+    back to point & smart model & validate work
+
+- Memory
+  - instructions, preferences, track progress
+  - quality: Preventing contradictions, stale instructions, and unbounded memory growth requires
+    explicit mechanisms.
+- subagent to run build/tests/lints/typechecks and analyze failures (RCA?) and provide summary back
 
 # USEFUL QUESTIONS
 
@@ -187,10 +218,6 @@ pinpoint the root cause Makes targeted fixes based on evidence
 - Is the doc coherent?
 - check if we can improve boundaries
 - Discuss options for doing ...
-
-# SUBAGENTS
-
-- subagent to run build/tests/lints/typechecks and analyze failures (RCA?) and provide summary back
 
 # RESEARCH AREAS
 
@@ -267,6 +294,7 @@ pinpoint the root cause Makes targeted fixes based on evidence
 - <https://github.com/obra/superpowers>
 - TODO <https://github.com/addyosmani/agent-skills>
 - <https://github.com/humanlayer/skills>
+- <https://github.com/danyuchn/asd-ste100-skill>
 
 ## Semantic code navigation / index
 
@@ -309,3 +337,8 @@ Why not containers:
 - <https://github.com/addyosmani/agent-skills/blob/main/skills/frontend-ui-engineering/SKILL.md>
 - <https://github.com/pbakaus/impeccable>
 - <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>
+
+## Other
+
+- <https://github.com/vercel-labs/agent-browser> - browser controlled from CLI for agents
+- <https://github.com/HazAT/ultimate> - pi-durable-based AI workspace

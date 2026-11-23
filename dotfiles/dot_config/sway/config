@@ -249,6 +249,9 @@ for_window [window_role="^pop-up"] floating enable
 for_window [window_type="dialog"]  floating enable
 for_window [window_type="menu"]    floating enable
 
+# GTK portal dialogs: compact and centered.
+for_window [app_id="^xdg-desktop-portal-gtk$"] floating enable, resize set width 1600 px height 900 px, move position center
+
 for_window [class="^firefox"] floating enable
 for_window [class="^firefox" instance="Navigator"] floating disable, border pixel $border
 for_window [window_role="PictureInPicture"] floating enable, sticky enable, border pixel $border

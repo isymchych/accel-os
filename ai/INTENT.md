@@ -4,7 +4,9 @@ This document preserves the values and preferences that informed `SYSTEM.md`. It
 for future prompt revisions, not a standalone operational contract. It includes material preserved
 from the previous system prompt and explicitly recorded preferences.
 
-I'm trying to keep the system prompt lean.
+I'm trying to keep the system prompt lean. Lean means removing unnecessary guidance, not compressing
+necessary guidance until readers must reconstruct its meaning. Preserve conditions, exceptions,
+uncertainty, and requirement strength even when doing so takes more words.
 
 Engineering preferences and their tradeoffs are recorded in
 [ENGINEERING_INTENT.md](ENGINEERING_INTENT.md).

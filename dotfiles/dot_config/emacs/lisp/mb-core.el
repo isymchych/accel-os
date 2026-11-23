@@ -25,6 +25,9 @@
 (setq-default
  frame-title-format '(buffer-file-name "%f" ("%b"))
 
+ ;; Reserve a row so LSP breadcrumbs can appear without shifting buffer text.
+ header-line-format '("")
+
  ;; avoid some initial frame resizing to speed up startup
  frame-inhibit-implied-resize t
 
