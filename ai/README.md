@@ -31,6 +31,7 @@
 - > I have a thing called Memento (https://rcarmo.github.io/projects/memento) that all my agents use
   > to share skills and some cross-project notes, but in general most project-related context lives
   > on SQLite someplace with some FTS.
+- voice/audio: open source whisper STT & kokoro TTS
 
 ? how codex @visualize skill works? ? "provide irrefutable proof that this things works"
 
@@ -65,9 +66,6 @@ add to sysprompt:
 DESIGN/BRAINSTORM (build PRD/SPEC/roadmap) -> ARCHITECTURE -> PROGRAM DESIGN -> PLAN -> EXECUTE
 
 - codemods
-- common failure mode: “helpful overreach.”
-
-don't go to the next step without confirmation
 
 # Paseo
 
@@ -219,9 +217,15 @@ pinpoint the root cause Makes targeted fixes based on evidence
 - check if we can improve boundaries
 - Discuss options for doing ...
 
-# RESEARCH AREAS
+# Failure modes
 
-- common failure mode: “helpful overreach.”
+- AI follows requirements instead of challenging them. Coding agents typically prioritize fulfilling
+  requirements, security, and backward compatibility. This can produce:
+  - Unnecessary complexity.
+  - Performance bottlenecks.
+  - Redundant database tables and duplicated logic.
+  - Excessive backward compatibility.
+  - Architectures that are technically valid but inappropriate for the product.
 
 # Getting started with AI coding agents
 

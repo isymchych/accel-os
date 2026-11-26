@@ -188,31 +188,28 @@ function actionsFor(clipboard: Clipboard, file: string): Action[] {
   } else {
     const url = parseWebUrl(text);
     if (url !== undefined) {
-      const host = url.hostname.toLowerCase();
-      if (host === "youtu.be" || host === "youtube.com" || host.endsWith(".youtube.com")) {
-        actions.push({
-          id: "download",
-          label: "Download…",
-          run: () => {
-            const directory = outputLine(
-              invoke(
-                "zenity",
-                [
-                  "--file-selection",
-                  "--directory",
-                  "--title=Download destination",
-                  `--filename=${homedir()}/`,
-                ],
-                undefined,
-                "exit-1",
-              ),
-            );
-            if (directory !== undefined) {
-              invoke("xterm", ["run", "--cwd", directory, "--", "mb-ydl", url.href]);
-            }
-          },
-        });
-      }
+      actions.push({
+        id: "download",
+        label: "Try downloading video…",
+        run: () => {
+          const directory = outputLine(
+            invoke(
+              "zenity",
+              [
+                "--file-selection",
+                "--directory",
+                "--title=Download destination",
+                `--filename=${homedir()}/`,
+              ],
+              undefined,
+              "exit-1",
+            ),
+          );
+          if (directory !== undefined) {
+            invoke("xterm", ["run", "--cwd", directory, "--", "mb-ydl", url.href]);
+          }
+        },
+      });
       actions.push({
         id: "browse",
         label: "Open in browser",

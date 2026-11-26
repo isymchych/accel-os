@@ -188,6 +188,7 @@ enabled = true
 follow_focused_output = true
 
 [osd.kinds]
+keyboard_layout = false
 lock_keys = false
 media = false
 
@@ -238,6 +239,7 @@ start = [
   "launcher",
   "launcher-gap",
   "cpu",
+  "cpu-temp",
   "cpu-gap",
   "memory",
   "memory-gap",
@@ -246,6 +248,7 @@ start = [
   "brightness",
   "brightness-gap",
   "battery",
+  "power_profile",
   "metrics-gap",
   "workspaces",
   "sway-mode",
@@ -309,11 +312,13 @@ end = [
   "pi-agents",
   "right-status-gap",
   "cpu",
+  "cpu-temp",
   "memory",
   "disk",
   "right-metrics-gap",
   "brightness",
   "battery",
+  "power_profile",
 ]
 
 [widget.right-date-gap]
@@ -544,6 +549,11 @@ label_min_width = 30
 [widget.cpu.actions]
 right = "exec xterm run -- htop --sort-key=PERCENT_CPU"
 
+[widget.cpu-temp]
+type = "sysmon"
+stat = "cpu_temp"
+visualization = "none"
+
 [widget.memory]
 type = "sysmon"
 stat = "ram_pct"
@@ -571,6 +581,12 @@ warning_threshold = 20
 
 [widget.battery]
 warning_color = "error"
+
+[widget.power_profile.actions]
+left = "panel-open control-center power"
+right = "none"
+scroll_up = "none"
+scroll_down = "none"
 
 [system.monitor]
 cpu_poll_seconds = 3

@@ -135,6 +135,8 @@
 
 - When creating or editing coding-agent prompts or skills, read and follow
   `$ACCEL_OS/ai/SKILLS_AND_PROMPTS_INTENT.md`.
+- Before reviewing or revising `ai/SYSTEM.md`, read `ai/INTENT.md` to understand which behaviors
+  reflect deliberate user preferences.
 - Skill helper scripts should be Node TypeScript run directly with `node`, not Deno or Python.
 - When a skill references cross-folder policy docs, use `$ACCEL_OS` absolute paths because relative
   paths drift by working directory.
@@ -210,6 +212,8 @@
   and package comparisons. Verify version alignment, disclose mismatches, and prefer local evidence
   over upstream docs unless freshness matters.
 - Pi config in this repo lives under `ai/pi/` and is the source of truth for this machine.
+- Local Pi session transcripts are under `ai/pi/sessions/`; look up the session ID in filenames
+  when investigating behavior from a past run.
 - Edit `ai/pi/` for Pi settings, models, and keybindings, including files such as
   `ai/pi/settings.json`, `ai/pi/models.json`, and `ai/pi/keybindings.json`.
 - When adding a new Pi tool that should be agent-callable by default, register its extension in

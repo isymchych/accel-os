@@ -252,18 +252,18 @@ test("text editor consumes the snapshot before cleanup, including on command fai
   }
 });
 
-test("YouTube actions are additive and delegate interactive download choices to mb-ydl", async (t) => {
-  const url = "https://www.youtube.com/watch?v=example&feature=share";
+test("X post links delegate interactive download choices to mb-ydl", async (t) => {
+  const url = "https://x.com/example/status/123?s=20&t=share";
   const fixture = await createFixture(t, ` ${url}\n`);
   const destination = path.join(fixture.root, "download folder");
-  const result = fixture.run({ CHOICE: "Download…", DESTINATION: destination });
+  const result = fixture.run({ CHOICE: "Try downloading video…", DESTINATION: destination });
   assert.equal(result.status, 0, result.stderr);
   const calls = await fixture.calls();
   assert.deepEqual(
     calls
       .find((call) => call.command === "noctalia")
       ?.snapshot?.actions.map((action) => action.label),
-    ["Download…", "Open in browser", "Open in editor", "Save as…"],
+    ["Try downloading video…", "Open in browser", "Open in editor", "Save as…"],
   );
   assert.deepEqual(calls.find((call) => call.command === "xterm")?.args, [
     "run",
@@ -275,33 +275,31 @@ test("YouTube actions are additive and delegate interactive download choices to 
   ]);
 });
 
-test("URL matching rejects embedded links and lookalike hosts; browser URLs are single arguments", async (t) => {
-  for (const [text, download, browser] of [
-    ["https://youtu.be/example", true, true],
-    ["https://music.youtube.com/watch?v=example", true, true],
-    ["https://youtube.com.example.org/watch?v=example", false, true],
-    ["https://youtube.com@evil.example/watch", false, true],
-    ["some text https://youtu.be/example", false, false],
-    ["https://youtu.be/example\nmore text", false, false],
-    ["file:///etc/passwd", false, false],
-    ["https://example.org/?q=$(touch%20nope)&x='quoted'", false, true],
+test("only single HTTP(S) URLs get link actions; browser URLs are single arguments", async (t) => {
+  for (const [text, isWebUrl] of [
+    ["https://youtu.be/example", true],
+    ["http://example.org/", true],
+    ["some text https://youtu.be/example", false],
+    ["https://youtu.be/example\nmore text", false],
+    ["file:///etc/passwd", false],
+    ["https://example.org/?q=$(touch%20nope)&x='quoted'", true],
   ] as const) {
     const fixture = await createFixture(t, text);
-    const result = fixture.run(browser ? { CHOICE: "Open in browser" } : {});
+    const result = fixture.run(isWebUrl ? { CHOICE: "Open in browser" } : {});
     assert.equal(result.status, 0, result.stderr);
     const calls = await fixture.calls();
     const actions = calls.find((call) => call.command === "noctalia")?.snapshot?.actions ?? [];
     assert.equal(
       actions.some((action) => action.id === "download"),
-      download,
+      isWebUrl,
       text,
     );
     assert.equal(
       actions.some((action) => action.id === "browse"),
-      browser,
+      isWebUrl,
       text,
     );
-    if (browser) {
+    if (isWebUrl) {
       assert.deepEqual(calls.find((call) => call.command === "xdg-open")?.args, [
         new URL(text).href,
       ]);
@@ -353,7 +351,7 @@ test("JSON formatting delegates original numeric literals to jq rather than roun
 });
 
 test("closing the panel and cancelling dialogs has no action side effects", async (t) => {
-  for (const choice of ["", "Save as…", "Download…"]) {
+  for (const choice of ["", "Save as…", "Try downloading video…"]) {
     const fixture = await createFixture(t, "https://youtu.be/example");
     const result = fixture.run({ CHOICE: choice });
     assert.equal(result.status, 0, result.stderr);
@@ -487,7 +485,7 @@ test("execution revalidates the selected action instead of trusting preview meta
     path.join(directory, "snapshot.json"),
     JSON.stringify({
       ...panel.snapshot,
-      actions: [{ id: "download", label: "Download…" }],
+      actions: [{ id: "download", label: "Try downloading video…" }],
     }),
   );
   const result = fixture.run({}, ["run", directory, "download"]);
