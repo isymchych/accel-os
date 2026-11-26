@@ -21,6 +21,7 @@ and conventions live in [AGENTS.md](../AGENTS.md).
 - A helper can earn its place by owning reusable policy or providing a stable semantic boundary. A
   private helper used once is useful only when its name or boundary makes the code easier to
   understand.
+- Before making work faster, establish whether that work is necessary.
 
 ## Ownership and trust boundaries
 

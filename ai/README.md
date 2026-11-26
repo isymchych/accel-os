@@ -226,6 +226,7 @@ pinpoint the root cause Makes targeted fixes based on evidence
   - Redundant database tables and duplicated logic.
   - Excessive backward compatibility.
   - Architectures that are technically valid but inappropriate for the product.
+- helpful overreach
 
 # Getting started with AI coding agents
 
@@ -276,6 +277,24 @@ pinpoint the root cause Makes targeted fixes based on evidence
 - **More extensive testing becomes practical**, including hermetic simulations and fuzzing.
 - **AI-assisted operations**: Dedicated monitoring agents continuously examine telemetry and logs
   for anomalies.
+
+### The developer's new responsibilities
+
+- Traditional focus -> AI-era focus
+- Implement features -> Decide how features should work
+- Write code -> Define architectural constraints
+- Design database tables -> Evaluate data models and trade-offs
+- Fix implementation bugs -> Identify architectural problems
+- Follow requirements -> Challenge unnecessary requirements
+- Review colleagues' code -> Review AI-generated implementations
+
+### Developers must balance
+
+- Performance vs. security.
+- Simplicity vs. flexibility.
+- Maintainability vs. backward compatibility.
+- Development speed vs. scalability.
+- Product requirements vs. infrastructure costs.
 
 ## MCPs
 
