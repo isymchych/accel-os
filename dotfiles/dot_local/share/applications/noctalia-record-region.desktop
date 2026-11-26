@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Start region recording
+TryExec=noctalia
+Exec=noctalia msg plugin noctalia/screen_recorder:service all start region
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=record;video;capture;area;selection;

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Start monitor recording
+TryExec=noctalia
+Exec=noctalia msg plugin noctalia/screen_recorder:service all start focused
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=record;video;capture;monitor;fullscreen;

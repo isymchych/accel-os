@@ -256,6 +256,7 @@ start = [
 center = ["media-art", "media-title-gap", "media"]
 end = [
   "failed-units",
+  "screen-recorder",
   "notifications",
   "notifications-gap",
   "pi-agents",
@@ -296,6 +297,7 @@ center = [
   "right-media-art",
   "right-media-gap",
   "failed-units",
+  "screen-recorder",
   "notifications",
   "playback",
   "privacy",
@@ -461,7 +463,7 @@ hide_when_no_unread = false
 [widget.workspaces]
 type = "workspaces"
 font_scale = 1.1
-show_all_outputs = true
+monitors = ["*"]
 style = "minimal"
 active_pill_size = 1.0
 inactive_pill_size = 1.0
@@ -491,6 +493,10 @@ right = "exec pavucontrol"
 type = "privacy"
 scale = 1.25
 hide_inactive = true
+
+[widget.screen-recorder]
+type = "noctalia/screen_recorder:recorder"
+scale = 1.4
 
 [widget.network]
 type = "network"
@@ -603,11 +609,23 @@ disk_used_pct_activity_threshold = 75
 disk_used_pct_critical_threshold = 95
 
 [plugins]
-enabled = ["accel-os/desktop-status", "accel-os/clipboard-actions"]
+enabled = ["accel-os/desktop-status", "accel-os/clipboard-actions", "noctalia/screen_recorder"]
 auto_update = "none"
+
+[[plugins.source]]
+name = "official"
+kind = "git"
+location = "https://github.com/noctalia-dev/official-plugins"
+enabled = true
 
 [[plugins.source]]
 name = "accel-os"
 kind = "path"
 location = "~/.config/noctalia/plugins"
 enabled = true
+
+[plugin_settings."noctalia/screen_recorder"]
+directory = "~/temp/screenshots"
+hide_inactive = true
+audio_source = "none"
+frame_rate = 30

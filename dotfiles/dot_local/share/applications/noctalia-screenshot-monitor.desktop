@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Take output screenshot
+Name=Take monitor screenshot
 TryExec=noctalia
 Exec=noctalia msg screenshot-fullscreen pick
 Icon=noctalia

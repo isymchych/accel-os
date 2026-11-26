@@ -169,7 +169,7 @@ packages:
               - slurp # Select a region in a Wayland compositor
               - wev # Inspect Wayland input events
               - ddcutil # External-monitor brightness control through Noctalia
-              - wf-recorder # Screen recorder for wlroots-based compositors such as sway
+              - gpu-screen-recorder # Backend for Noctalia's Screen Recorder plugin
               - imagemagick # An image viewing/manipulation program
               - jq # Command-line JSON processor
               - translate-shell # A command-line interface and interactive shell for Google Translate

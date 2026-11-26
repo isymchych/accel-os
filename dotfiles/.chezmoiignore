@@ -22,14 +22,12 @@ bin/mb-template
 bin/mb-colorpicker
 bin/mb-file-manager
 bin/mb-preview
-bin/mb-record
 bin/mb-spotify
 bin/mb-touchpad
 bin/completions/_mb-template
 bin/completions/_mb-file-manager
 bin/completions/_mb-no-args
 bin/completions/_mb-preview
-bin/completions/_mb-record
 bin/completions/_mb-spotify
 bin/completions/_mb-touchpad
 

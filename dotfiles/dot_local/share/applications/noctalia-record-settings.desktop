@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Open screen recorder settings
+TryExec=noctalia
+Exec=noctalia msg settings-open-plugin noctalia/screen_recorder
+Icon=noctalia
+Terminal=false
+StartupNotify=false
+Categories=Settings;
+Keywords=record;video;capture;screen;

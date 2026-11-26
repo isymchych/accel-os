@@ -1,9 +1,0 @@
-#compdef mb-record
-
-_mb-record() {
-  _arguments -s \
-    '(-r --region)'{-r,--region}'[record a selected region]' \
-    '(-d --delay)'{-d,--delay}'[delay recording]:seconds:_message "non-negative integer"' \
-    '(-h --help)'{-h,--help}'[show help]' \
-    '1:delay in seconds:_message "non-negative integer"'
-}
