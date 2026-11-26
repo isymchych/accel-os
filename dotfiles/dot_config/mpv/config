@@ -16,6 +16,13 @@ no-sub
 # auto load external audio files if they contain media filename
 audio-file-auto=fuzzy
 
+screenshot-dir=~/temp/screenshots
+
+# Show a larger scrub handle and reveal controls in the lower half of the window.
+script-opts-append=osc-seekbarstyle=knob
+script-opts-append=osc-seekbarhandlesize=0.9
+script-opts-append=osc-deadzonesize=0.5
+
 # use wayland
 gpu-context=wayland
 
